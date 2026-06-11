@@ -36,7 +36,9 @@ This MVP is not a publication system and does not perform customer-facing automa
 - Any persistent fixture derived from a real ticket must be approved and sanitized first.
 
 ### Evidence Package
-Claude receives only sanitized normalized evidence packets.
+Claude receives only sanitized normalized evidence packets, bounded extraction
+requests, bounded decision/reviewer packets, and structured search results when
+the corresponding handoff slice is approved.
 Evidence packages must not contain:
 - personal or customer identifiers: names, email addresses, contact information, raw customer identifiers, or raw ticket IDs in article draft content
 - infrastructure identifiers: live domains, URLs, server IP addresses, hostnames, license IDs, or private filesystem paths
@@ -47,6 +49,18 @@ Evidence packages must not contain:
 
 source code, private scripts, proprietary configuration, or customer-provided application code
 Opaque internal references such as `case_ref` or `source_ref` may be used for traceability, but must not appear in article draft content.
+
+### Semantic Extraction
+`NormalizedTicketEvidencePacket` is not trusted just because an LLM produced
+candidate fields. Evidence preparation may include human-prepared summaries,
+fixtures, deterministic extraction, or bounded Claude-assisted extraction after
+approval. The Python sanitizer/normalizer/validator owns packet acceptance.
+
+Claude-assisted extraction, when introduced, may receive only approved
+sanitized/clean evidence according to this baseline. It must not receive raw
+Zendesk JSON, credentials, attachments, raw internal comments, or unapproved
+private data. Its JSON output must pass Python validation before it can become
+an accepted `NormalizedTicketEvidencePacket`.
 
 ### Internal Comments
 - Internal Zendesk comments are internal-only by default and are not passed to Claude by default.
@@ -75,10 +89,14 @@ If internal comments are needed for evidence, the Python/runtime layer must firs
 
 ### Claude Usage
 - Claude receives only sanitized normalized evidence packets, bounded decision/reviewer packets, and structured search results.
+- Claude may propose candidate normalized evidence fields only through an
+  approved bounded extraction path.
 - Claude does not receive Zendesk tokens or other credentials.
 - Claude does not call Zendesk directly.
 - Claude does not receive raw Zendesk payloads by default.
-- Claude drafts, reviews, and suggests wording, but does not own final KCS decision or publication readiness.
+- Claude drafts, reviews, suggests wording, and may assist semantic extraction
+  when approved, but does not own packet acceptance, final KCS decision, safety
+  gates, validation state, or publication readiness.
 - Final KCS decision remains with the support engineer or KCS reviewer.
 
 ### Logs

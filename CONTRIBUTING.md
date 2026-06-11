@@ -72,6 +72,10 @@ Fixtures must be synthetic or approved sanitized fixtures and must follow the Da
 
 Run the narrowest relevant local checks for the slice.
 
+Do not bypass local hooks, pre-commit hooks, or repository checks with
+`--no-verify`. If a check fails, fix the issue or document the explicit
+deferral in the PR.
+
 Expected progression:
 
 - KCS-1: contract and fixture validation tests;
@@ -82,3 +86,16 @@ Expected progression:
 - KCS-6+: CLI/adapter-specific checks.
 
 Do not add live Zendesk, Claude connector, or internal search tests before their dedicated slices.
+
+Once the tooling is present, implementation PRs should run at minimum:
+
+```bash
+python -m pytest
+python -m ruff check .
+git diff --check
+```
+
+Ruff complexity checks are part of the default quality target for new Python
+logic. New safety, decision, validation, renderer, and adapter code should stay
+small enough to pass the configured McCabe complexity threshold unless the PR
+documents why a narrow exception is needed.

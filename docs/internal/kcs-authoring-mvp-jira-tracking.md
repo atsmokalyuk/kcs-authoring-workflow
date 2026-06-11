@@ -23,6 +23,7 @@ This page links the product and architecture documents to the Jira implementatio
 - Product brief: [KCS Authoring MVP - Goal and Success Criteria](https://webpros.atlassian.net/wiki/spaces/~atsmokalyuk/pages/6687424547/KCS+Authoring+MVP+-+Goal+and+Success+Criteria)
 - Data handling baseline: [KCS Authoring MVP - Data Handling Baseline](https://webpros.atlassian.net/wiki/spaces/~atsmokalyuk/pages/6684377098/KCS+Authoring+MVP+-+Data+Handling+Baseline)
 - Architecture and contracts: [KCS Core Pipeline - Architecture and Contracts](https://webpros.atlassian.net/wiki/spaces/~atsmokalyuk/pages/6683918381/KCS+Core+Pipeline+-+Architecture+and+Contracts)
+- Technical design: `docs/internal/kcs-core-pipeline-technical-design.md`
 - Feature engineering approach: `docs/internal/kcs-authoring-mvp-feature-engineering.md`
 
 ## Rule

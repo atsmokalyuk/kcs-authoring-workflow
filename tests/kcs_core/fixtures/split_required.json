@@ -1,0 +1,27 @@
+{
+  "schema_version": "kcs_reviewer_packet_v1",
+  "case_ref": "CASE-SYNTH-SPLIT",
+  "recommended_action": "split_required",
+  "review_required": true,
+  "public_article_candidate": null,
+  "internal_reviewer_notes": [
+    "Synthetic fixture for split_required contract coverage."
+  ],
+  "evidence_basis": {
+    "source_refs": [
+      "SRC-SYNTH-SPLIT"
+    ],
+    "issue_candidate_refs": [
+      "ISSUE-SYNTH-1",
+      "ISSUE-SYNTH-2"
+    ]
+  },
+  "validation_report": {
+    "status": "blocked",
+    "blocker_codes": [
+      "multi_issue"
+    ]
+  },
+  "zendesk_source_html": null,
+  "auto_publish_allowed": false
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": "kcs_reviewer_packet_v1",
+  "case_ref": "CASE-SYNTH-BLOCKED-SEARCH",
+  "recommended_action": "blocked",
+  "review_required": true,
+  "public_article_candidate": null,
+  "internal_reviewer_notes": [
+    "Synthetic fixture for missing reuse search blocker coverage."
+  ],
+  "evidence_basis": {
+    "source_refs": [
+      "SRC-SYNTH-BLOCKED-SEARCH"
+    ]
+  },
+  "validation_report": {
+    "status": "blocked",
+    "blocker_codes": [
+      "reuse_search_missing"
+    ]
+  },
+  "zendesk_source_html": null,
+  "auto_publish_allowed": false
+}

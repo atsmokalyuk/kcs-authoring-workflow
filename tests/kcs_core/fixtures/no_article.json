@@ -1,0 +1,22 @@
+{
+  "schema_version": "kcs_reviewer_packet_v1",
+  "case_ref": "CASE-SYNTH-NO-ARTICLE",
+  "recommended_action": "no_article",
+  "review_required": true,
+  "public_article_candidate": null,
+  "internal_reviewer_notes": [
+    "Synthetic fixture for no_article contract coverage."
+  ],
+  "evidence_basis": {
+    "source_refs": [
+      "SRC-SYNTH-NO-ARTICLE"
+    ],
+    "reason_code": "case_not_reusable"
+  },
+  "validation_report": {
+    "status": "passed",
+    "blocker_codes": []
+  },
+  "zendesk_source_html": null,
+  "auto_publish_allowed": false
+}

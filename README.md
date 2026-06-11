@@ -66,6 +66,7 @@ kcs-authoring-mvp/
         |-- kcs-authoring-mvp-goal-and-success-criteria.md
         |-- kcs-authoring-mvp-data-handling-baseline.md
         |-- kcs-core-pipeline-architecture-and-contracts.md
+        |-- kcs-core-pipeline-technical-design.md
         |-- kcs-authoring-mvp-feature-engineering.md
         `-- kcs-authoring-mvp-jira-tracking.md
 ```
@@ -91,10 +92,8 @@ the repository.
 
 ### Setup
 
-There is no installable package yet. Package metadata and dependencies will be
-introduced with the first code slice.
-
-Expected local setup once Python code is added:
+Create a Python 3.11 environment before installing the package. Do not use a
+system or Conda `python` unless it resolves to Python 3.11.
 
 ```bash
 python3.11 -m venv .venv
@@ -103,18 +102,26 @@ python -m pip install -U pip
 python -m pip install -e '.[dev]'
 ```
 
-If the project chooses another approved dependency tool, update this section in
-the same PR that introduces it.
+If Python 3.11 is managed through `uv`, the equivalent local setup is:
+
+```bash
+uv venv --python 3.11
+source .venv/bin/activate
+uv pip install -e '.[dev]'
+```
 
 ### Running Tests
 
-There are no tests yet because the repository currently contains the planning
-and contract baseline only.
-
-Expected command once KCS-1 tests are added:
+After installing the dev extra in a Python 3.11 environment:
 
 ```bash
-pytest
+python -m pytest tests/kcs_core -q
+```
+
+One-shot check without activating a virtual environment:
+
+```bash
+uv run --python 3.11 --extra dev python -m pytest tests/kcs_core -q
 ```
 
 ### Running the Tool
@@ -142,6 +149,7 @@ Project source-of-truth documents live under `docs/internal/`:
 - `docs/internal/kcs-authoring-mvp-goal-and-success-criteria.md`
 - `docs/internal/kcs-authoring-mvp-data-handling-baseline.md`
 - `docs/internal/kcs-core-pipeline-architecture-and-contracts.md`
+- `docs/internal/kcs-core-pipeline-technical-design.md`
 - `docs/internal/kcs-authoring-mvp-feature-engineering.md`
 - `docs/internal/kcs-authoring-mvp-jira-tracking.md`
 

@@ -1,0 +1,23 @@
+{
+  "schema_version": "kcs_reviewer_packet_v1",
+  "case_ref": "CASE-SYNTH-BLOCKED-RESOLUTION",
+  "recommended_action": "blocked",
+  "review_required": true,
+  "public_article_candidate": null,
+  "internal_reviewer_notes": [
+    "Synthetic fixture for missing supported resolution blocker coverage."
+  ],
+  "evidence_basis": {
+    "source_refs": [
+      "SRC-SYNTH-BLOCKED-RESOLUTION"
+    ]
+  },
+  "validation_report": {
+    "status": "blocked",
+    "blocker_codes": [
+      "missing_supported_resolution"
+    ]
+  },
+  "zendesk_source_html": null,
+  "auto_publish_allowed": false
+}
