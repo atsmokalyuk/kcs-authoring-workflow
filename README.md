@@ -66,6 +66,7 @@ kcs-authoring-mvp/
         |-- kcs-authoring-mvp-goal-and-success-criteria.md
         |-- kcs-authoring-mvp-data-handling-baseline.md
         |-- kcs-core-pipeline-architecture-and-contracts.md
+        |-- kcs-core-pipeline-technical-design.md
         |-- kcs-authoring-mvp-feature-engineering.md
         `-- kcs-authoring-mvp-jira-tracking.md
 ```
@@ -142,6 +143,7 @@ Project source-of-truth documents live under `docs/internal/`:
 - `docs/internal/kcs-authoring-mvp-goal-and-success-criteria.md`
 - `docs/internal/kcs-authoring-mvp-data-handling-baseline.md`
 - `docs/internal/kcs-core-pipeline-architecture-and-contracts.md`
+- `docs/internal/kcs-core-pipeline-technical-design.md`
 - `docs/internal/kcs-authoring-mvp-feature-engineering.md`
 - `docs/internal/kcs-authoring-mvp-jira-tracking.md`
 

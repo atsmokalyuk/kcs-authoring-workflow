@@ -160,6 +160,7 @@ Relevant source documents:
 - `docs/internal/kcs-authoring-mvp-goal-and-success-criteria.md`;
 - `docs/internal/kcs-authoring-mvp-data-handling-baseline.md`;
 - `docs/internal/kcs-core-pipeline-architecture-and-contracts.md`;
+- `docs/internal/kcs-core-pipeline-technical-design.md`;
 - `docs/internal/kcs-authoring-mvp-jira-tracking.md`.
 
 Product and architecture commitments belong in `docs/internal/`.
@@ -251,6 +252,26 @@ Minimum expectations:
 - adapters have no-write and no-secret tests.
 
 Do not use live Zendesk or Claude connector tests before their dedicated slices.
+
+## Semantic Extraction Boundary
+
+The KCS core does not pretend that pure Python can reliably understand long
+support-ticket narratives. Semantic extraction from narrative text is an
+evidence-preparation concern, not KCS decision-core logic.
+
+Allowed pattern:
+
+```text
+human/fixture/deterministic parser/bounded Claude extraction
+  -> candidate evidence fields
+  -> Python sanitizer/normalizer/validator
+  -> accepted packet or blocker
+```
+
+KCS-1 defines packet contracts and fixtures only. KCS-7 may define evidence
+package builder behavior and extraction interfaces. KCS-9 may introduce bounded
+Claude-assisted extraction if approved. No slice may make an LLM the owner of
+packet acceptance, KCS action decisions, safety gates, or readiness state.
 
 ## Portability From `plesk_support`
 

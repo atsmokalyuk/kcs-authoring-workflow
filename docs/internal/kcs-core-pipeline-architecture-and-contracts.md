@@ -14,20 +14,37 @@ Runtime-independent Python core for KCS Authoring MVP.
 ## Flow
 
 ```text
-+----------------+     +------------------------+     +-----------------+
-| Source adapter | --> | Sanitizer / normalizer | --> | Evidence packet |
-+----------------+     +------------------------+     +-----------------+
-                                                            |
-                                                            v
++----------------+     +----------------------+     +------------------------+
+| Source adapter | --> | Evidence preparation | --> | Sanitizer / normalizer |
++----------------+     +----------------------+     +------------------------+
+                                                                |
+                                                                v
+                                                        +-----------------+
+                                                        | Evidence packet |
+                                                        +-----------------+
+                                                                |
+                                                                v
 +-----------------+     +----------+     +-----------------------+
 | Reviewer packet | <-- | KCS core | <-- | Search / reuse packet |
 +-----------------+     +----------+     +-----------------------+
 ```
 
+Evidence preparation may use fixtures, human/operator-prepared sanitized
+summaries, deterministic extraction where possible, or bounded Claude-assisted
+semantic extraction when approved. Python validation owns packet acceptance.
+Claude output is untrusted until validated.
+
 ## Core principle
 - Code decides
 - LLM drafts
 - Validators block
+
+## Extraction principle
+
+- LLM may propose candidate evidence fields.
+- Python validates and accepts or blocks the packet.
+- The KCS core never treats LLM output as trusted input without validation.
+- No Gemma or local-model dependency is part of the MVP architecture.
 
 ## Packets
 
@@ -97,8 +114,6 @@ kcs_reviewer_packet_v1 {
 - split_required
 - no_article
 - blocked
-
-## Article types
 
 ## Article types
 - technical_scr

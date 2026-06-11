@@ -1,4 +1,4 @@
-"""Schema-versioned packet models for KCS-1 contract tests."""
+"""Schema-versioned packet models for KCS-1 contract."""
 
 from __future__ import annotations
 
