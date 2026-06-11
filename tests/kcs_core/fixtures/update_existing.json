@@ -1,0 +1,28 @@
+{
+  "schema_version": "kcs_reviewer_packet_v1",
+  "case_ref": "CASE-SYNTH-UPDATE",
+  "recommended_action": "update_existing",
+  "review_required": true,
+  "public_article_candidate": {
+    "existing_article_ref": "KB-SYNTH-UPDATE",
+    "article_type": "technical_scr",
+    "update_summary": "Add a synthetic workaround step."
+  },
+  "internal_reviewer_notes": [
+    "Synthetic fixture for update_existing contract coverage."
+  ],
+  "evidence_basis": {
+    "source_refs": [
+      "SRC-SYNTH-UPDATE"
+    ],
+    "selected_reuse_match": {
+      "article_ref": "KB-SYNTH-UPDATE"
+    }
+  },
+  "validation_report": {
+    "status": "passed",
+    "blocker_codes": []
+  },
+  "zendesk_source_html": null,
+  "auto_publish_allowed": false
+}

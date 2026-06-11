@@ -1,0 +1,31 @@
+{
+  "schema_version": "kcs_reviewer_packet_v1",
+  "case_ref": "CASE-SYNTH-CREATE",
+  "recommended_action": "create_candidate",
+  "review_required": true,
+  "public_article_candidate": {
+    "title": "Synthetic service restart resolves a safe task failure",
+    "article_type": "technical_scr",
+    "symptoms": [
+      "A scheduled task fails with a synthetic safe error code."
+    ],
+    "resolution": [
+      "Restart the affected synthetic service and rerun the task."
+    ]
+  },
+  "internal_reviewer_notes": [
+    "Synthetic fixture for create_candidate contract coverage."
+  ],
+  "evidence_basis": {
+    "source_refs": [
+      "SRC-SYNTH-CREATE"
+    ],
+    "blocker_codes": []
+  },
+  "validation_report": {
+    "status": "passed",
+    "blocker_codes": []
+  },
+  "zendesk_source_html": null,
+  "auto_publish_allowed": false
+}
