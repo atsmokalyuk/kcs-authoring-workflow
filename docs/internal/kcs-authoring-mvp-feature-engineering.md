@@ -1,0 +1,282 @@
+# KCS Authoring MVP - Feature Engineering Approach
+
+## Purpose
+
+Define the engineering approach for developing the KCS Authoring MVP in small, controlled, reviewable slices.
+
+This document captures the project-level feature engineering rules learned from the local `plesk_support` prototype and adapts them for the corporate KCS Authoring MVP. It is not a Git policy and does not replace the Data Handling Baseline or Architecture and Contracts documents.
+
+## Core Principle
+
+The MVP must be workflow-first, not prompt-first.
+
+```text
+Code decides.
+LLM drafts.
+Validators block.
+```
+
+The LLM may draft text, suggest wording, or help review style. It must not own safety decisions, KCS action decisions, publication readiness, data-handling boundaries, or final reviewer approval.
+
+## Standard Feature Lifecycle
+
+Every feature slice should follow this sequence:
+
+```text
+Define boundary
+  -> define contract
+  -> implement the smallest safe slice
+  -> add validation/tests
+  -> expose safe output
+  -> document operator path
+  -> gate promotion to the next risk level
+```
+
+This avoids the unstable shortcut:
+
+```text
+ticket in -> LLM prompt -> article out
+```
+
+The MVP should instead use explicit workflow state, typed packets, deterministic checks, and reviewer-ready outputs.
+
+## Engineering Rules
+
+### 1. Define the boundary first
+
+Before implementing a feature, define what it may read, what it may output, and what it must not do.
+
+Examples:
+
+- PR-1 may use synthetic or approved sanitized fixtures only.
+- Zendesk read-only ingest starts only in KCS-8.
+- Claude handoff starts only after bounded packet contracts and validation exist.
+- The MVP never writes to Zendesk, Help Center, Jira, Confluence, or customer-facing systems.
+
+### 2. Define the contract before implementation
+
+A feature should expose typed, schema-versioned packets or reports before it grows behavior.
+
+Examples:
+
+- normalized evidence packet;
+- reuse/search result packet;
+- KCS action decision packet;
+- reviewer-ready KCS packet;
+- validation report;
+- ready/blocked loop state.
+
+If the contract is unclear, the implementation should stay narrow until the contract is clarified.
+
+### 3. Keep implementation slices small
+
+Each PR should prove one behavior family.
+
+Recommended slice order:
+
+- KCS-1: packet contracts and fixtures;
+- KCS-2: safety and evidence validation gates;
+- KCS-3: KCS action decision engine;
+- KCS-4: reviewer packet renderer and Zendesk HTML output;
+- KCS-5: validation report and ready_for_reviewer loop state;
+- KCS-6: CLI entrypoint for local verification;
+- KCS-7: evidence package builder from approved fixtures/exported tickets;
+- KCS-8: Zendesk read-only ingest adapter;
+- KCS-9: Claude Enterprise/Desktop bounded handoff;
+- KCS-10: pilot with approved tickets and reviewer feedback.
+
+Do not move runtime integration, live Zendesk access, Claude handoff, or publication-adjacent behavior into earlier slices.
+
+### 4. Fail closed
+
+When data, evidence, search status, sanitizer status, article identity, or validation status is incomplete, the workflow should return a blocked or review-required state instead of guessing.
+
+Examples:
+
+- missing supported resolution -> blocked;
+- unsafe input -> blocked;
+- duplicate/reuse search not performed -> review blocker;
+- multiple unrelated issues -> split_required;
+- unsupported cause -> blocked;
+- invalid Zendesk HTML -> review_blocked or markup_blocked;
+- validation not rerun after draft changes -> not ready_for_reviewer.
+
+### 5. Separate search from issue identity
+
+Search is symptom-oriented. Issue identity is not.
+
+The workflow may search existing articles by symptoms, error text, product area, and environment signals.
+
+For Technical SCR articles, the issue identity should be based on the article type plus the supported cause-resolution pair. Symptoms may vary across tickets.
+
+For How-to Q&A articles, the identity should be based on the question-answer pair.
+
+This prevents both duplicate articles and incorrect reuse.
+
+### 6. Keep adapters outside the core
+
+The core pipeline should be runtime-independent Python logic.
+
+Adapters may fetch or prepare inputs, but they must not own KCS decisions.
+
+Examples of adapters:
+
+- fixture loader;
+- temporary local/public RAG search adapter;
+- future kcs-search-mcp adapter;
+- Zendesk read-only ingest adapter;
+- Claude Enterprise/Desktop handoff adapter.
+
+The core receives normalized packets and returns typed decisions, reviewer packets, and validation reports.
+
+### 7. Treat Claude output as untrusted draft text
+
+Claude may receive only bounded, approved packets according to the Data Handling Baseline.
+
+Claude output must be validated before it can be marked reviewer-ready.
+
+The core must not assume that Claude followed instructions, templates, KCS style rules, privacy rules, or Zendesk HTML requirements.
+
+### 8. No repo artifacts during normal workflow
+
+Normal KCS runs should not create draft articles, temporary candidate files, ticket extracts, or runtime reports inside committable repository paths unless the command explicitly asks to write a named artifact.
+
+Temporary runtime files should stay outside the repo or inside ignored cache/runtime storage.
+
+Generated runtime artifacts are not product source.
+
+### 9. Keep observability safe
+
+Logs and reports should use opaque IDs, statuses, blocker codes, schema versions, and validation summaries.
+
+They must not contain raw ticket text, raw Zendesk JSON, customer identifiers, raw search queries, raw snippets, vector values, internal article chunks, credentials, private paths, or source-ticket quotes.
+
+### 10. Documentation must stay aligned
+
+When a feature changes behavior, update the corresponding document or explicitly explain why no doc update is needed.
+
+Relevant source documents:
+
+- `docs/internal/kcs-authoring-mvp-goal-and-success-criteria.md`;
+- `docs/internal/kcs-authoring-mvp-data-handling-baseline.md`;
+- `docs/internal/kcs-core-pipeline-architecture-and-contracts.md`;
+- `docs/internal/kcs-authoring-mvp-jira-tracking.md`.
+
+Local-only engineering instructions may live under `local-docs/`, but product and architecture commitments belong in `docs/internal/`.
+
+## Risk Levels and Promotion Gates
+
+The MVP should not promote to a higher-risk scope just because tests pass at a lower-risk scope.
+
+```text
+synthetic fixture
+  -> approved sanitized fixture
+  -> exported approved ticket evidence
+  -> read-only Zendesk ingest
+  -> bounded Claude handoff
+  -> approved pilot
+```
+
+Each promotion requires explicit scope, validation, and approval appropriate to that risk level.
+
+Examples:
+
+- Passing fixture tests does not approve live Zendesk access.
+- Passing local CLI tests does not approve Claude-visible raw ticket data.
+- Passing HTML validation does not approve Help Center publication.
+- Reviewer-ready output does not mean auto-publication.
+
+`auto_publish_allowed` must remain `false` for MVP outputs.
+
+
+## Client Integration Readiness Gate
+
+This gate applies only to adapter and client integration work, such as Zendesk read-only ingest, MCP connector paths, Claude Enterprise/Desktop handoff, future `kcs-search-mcp`, or future internal search adapters.
+
+It is not required for pure KCS core slices such as packet contracts, fixtures, deterministic gates, decision logic, renderer logic, validation reports, or local CLI checks.
+
+Before any adapter/client path is used with a real client or approved pilot input, the implementation must pass a readiness sequence:
+
+```text
+profile contract and threat model
+  -> allowed tool surface
+  -> preflight / smoke / dry-run
+  -> operator readiness
+  -> rehearsal / practice-run
+  -> manual synthetic attempt
+  -> enum-only closeout
+  -> security or next-scope decision
+```
+
+The purpose is to prove that the client-visible surface is safe before moving beyond synthetic or approved sanitized inputs.
+
+This gate must confirm:
+
+- allowed tools are explicitly listed;
+- forbidden tools are absent;
+- resources, prompts, templates, and hidden data surfaces are not exposed unless explicitly approved;
+- tool outputs are bounded and safe for the target runtime;
+- no customer-facing writes, publication actions, or unsupported corporate-resource access are introduced;
+- a successful dry-run does not automatically approve real ticket use, Claude-visible raw ticket data, customer replies, or Help Center publication.
+
+Detailed local procedure belongs in `local-docs/feature-engineering-playbook.md`.
+
+## PR Expectations
+
+Each implementation PR should state:
+
+- Jira subtask scope;
+- changed contracts or explicitly unchanged contracts;
+- data-handling assumptions;
+- validation commands run;
+- fixtures added or changed;
+- known risks or deferred behavior;
+- confirmation that no publication/write behavior was added.
+
+For documentation-only PRs, explain which implementation slice the document supports and whether it changes engineering behavior.
+
+## Validation Expectations
+
+Validation should be proportional to the slice.
+
+Minimum expectations:
+
+- packet contracts have schema/version tests;
+- fixtures have privacy/safety scans;
+- safety gates have allowed/blocked input tests;
+- decision engine has deterministic action tests;
+- renderer has Zendesk HTML structure tests;
+- loop state has ready/blocked transition tests;
+- CLI has fixture-based smoke tests;
+- adapters have no-write and no-secret tests.
+
+Do not use live Zendesk or Claude connector tests before their dedicated slices.
+
+## Portability From `plesk_support`
+
+The local `plesk_support` project is reference material, not a source project to copy wholesale.
+
+Reusable lessons:
+
+- workflow-first architecture;
+- typed packet contracts;
+- deterministic gates;
+- value-free blocker/status codes;
+- fixture-driven tests;
+- HTML validation before reviewer handoff;
+- no-auto-publish invariant;
+- bounded LLM handoff.
+
+Any code adapted from `plesk_support` must follow the portability rules in `local-docs/portability-from-plesk-support.md`.
+
+## First Implementation Anchor
+
+The first code PR should be KCS-1 only:
+
+```text
+packet contracts + safe fixtures + basic contract tests
+```
+
+It should not implement safety gates, KCS decision logic, renderer behavior, CLI orchestration, Zendesk ingest, search adapters, or Claude handoff.
+
+Those belong to later Jira slices.
