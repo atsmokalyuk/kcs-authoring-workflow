@@ -5,7 +5,6 @@ from pathlib import Path
 
 from kcs_core.models import KcsReviewerPacket
 
-
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
 

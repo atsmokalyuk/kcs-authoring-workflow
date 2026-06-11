@@ -1,4 +1,4 @@
-"""Schema-versioned packet models for KCS-1 contract."""
+"""Runtime-independent schema-versioned packet models for KCS-1 contracts."""
 
 from __future__ import annotations
 
@@ -130,7 +130,9 @@ class NormalizedTicketEvidencePacket:
         return self.SCHEMA_VERSION
 
     @classmethod
-    def from_json_dict(cls, payload: Mapping[str, Any] | object) -> "NormalizedTicketEvidencePacket":
+    def from_json_dict(
+        cls, payload: Mapping[str, Any] | object
+    ) -> "NormalizedTicketEvidencePacket":
         data = require_json_object(payload)
         _require_schema_version(data, cls.SCHEMA_VERSION)
         return cls(
@@ -161,7 +163,9 @@ class NormalizedTicketEvidencePacket:
             "symptoms": list(self.symptoms),
             "confirmed_facts": list(self.confirmed_facts),
             "supported_cause": self.supported_cause,
-            "supported_resolution_or_workaround": self.supported_resolution_or_workaround,
+            "supported_resolution_or_workaround": (
+                self.supported_resolution_or_workaround
+            ),
             "open_questions": list(self.open_questions),
             "visibility_summary": dict(self.visibility_summary),
             "sanitizer_report": dict(self.sanitizer_report),
@@ -185,7 +189,9 @@ class ReuseSearchResultsPacket:
         return self.SCHEMA_VERSION
 
     @classmethod
-    def from_json_dict(cls, payload: Mapping[str, Any] | object) -> "ReuseSearchResultsPacket":
+    def from_json_dict(
+        cls, payload: Mapping[str, Any] | object
+    ) -> "ReuseSearchResultsPacket":
         data = require_json_object(payload)
         _require_schema_version(data, cls.SCHEMA_VERSION)
         return cls(
@@ -226,7 +232,11 @@ class KcsActionDecisionPacket:
         object.__setattr__(
             self,
             "recommended_action",
-            _enum_value(RecommendedAction, self.recommended_action, "recommended_action"),
+            _enum_value(
+                RecommendedAction,
+                self.recommended_action,
+                "recommended_action",
+            ),
         )
         object.__setattr__(
             self,
@@ -234,14 +244,18 @@ class KcsActionDecisionPacket:
             _enum_value(ArticleType, self.article_type, "article_type"),
         )
         if self.auto_publish_allowed:
-            raise ContractValidationError("auto_publish_allowed must be false for MVP packets")
+            raise ContractValidationError(
+                "auto_publish_allowed must be false for MVP packets"
+            )
 
     @property
     def schema_version(self) -> str:
         return self.SCHEMA_VERSION
 
     @classmethod
-    def from_json_dict(cls, payload: Mapping[str, Any] | object) -> "KcsActionDecisionPacket":
+    def from_json_dict(
+        cls, payload: Mapping[str, Any] | object
+    ) -> "KcsActionDecisionPacket":
         data = require_json_object(payload)
         _require_schema_version(data, cls.SCHEMA_VERSION)
         return cls(
@@ -293,10 +307,16 @@ class KcsReviewerPacket:
         object.__setattr__(
             self,
             "recommended_action",
-            _enum_value(RecommendedAction, self.recommended_action, "recommended_action"),
+            _enum_value(
+                RecommendedAction,
+                self.recommended_action,
+                "recommended_action",
+            ),
         )
         if self.auto_publish_allowed:
-            raise ContractValidationError("auto_publish_allowed must be false for MVP packets")
+            raise ContractValidationError(
+                "auto_publish_allowed must be false for MVP packets"
+            )
 
     @property
     def schema_version(self) -> str:

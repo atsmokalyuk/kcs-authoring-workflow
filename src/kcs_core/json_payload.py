@@ -8,7 +8,6 @@ from typing import Any, Protocol, TypeVar
 
 from kcs_core.errors import ContractValidationError
 
-
 JsonDict = dict[str, Any]
 
 

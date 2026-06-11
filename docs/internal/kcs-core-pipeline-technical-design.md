@@ -42,6 +42,58 @@ KCS action and readiness
 The LLM may propose normalized evidence fields, but those fields are untrusted
 until the Python layer validates and accepts them.
 
+## Future Internal Packet: CandidateSemanticExtraction
+
+`CandidateSemanticExtraction` may be introduced in KCS-7 or KCS-9 as an
+untrusted internal intermediate packet.
+
+Purpose:
+
+```text
+Represent what an extractor thinks the ticket means.
+```
+
+The extractor may be a human-prepared fixture, deterministic parser, or bounded
+Claude handoff. This packet is not canonical evidence and must not be consumed
+directly by the KCS action decision engine.
+
+Conceptual shape:
+
+```text
+CandidateSemanticExtraction {
+  schema_version
+  case_ref
+  extraction_source_ref
+  symptoms[]
+  confirmed_facts[]
+  environment{}
+  supported_cause
+  supported_resolution_or_workaround
+  open_questions[]
+  issue_split_signals[]
+  visibility_notes{}
+  confidence_notes[]
+}
+```
+
+Required flow:
+
+```text
+CandidateSemanticExtraction
+  -> Python sanitizer / normalizer / validator
+  -> NormalizedTicketEvidencePacket or blockers
+```
+
+Rules:
+
+- Do not implement `CandidateSemanticExtraction` in KCS-1.
+- Do not persist it as canonical evidence.
+- Do not expose it as reviewer-ready output.
+- Do not pass it to the KCS decision engine directly.
+- If implemented later, keep it internal-only and untrusted.
+- Its free-text fields must follow the Data Handling Baseline and must be
+  scanned before normalization.
+
 ## Planned End-to-End Flow
 
 ```text

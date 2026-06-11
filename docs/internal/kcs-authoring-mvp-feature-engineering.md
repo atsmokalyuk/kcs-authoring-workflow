@@ -165,6 +165,34 @@ Relevant source documents:
 
 Product and architecture commitments belong in `docs/internal/`.
 
+### 11. Deterministic quality gates for generated or assisted code
+
+Prose guidance and process notes are not enforcement. The project must rely on
+deterministic checks for code quality, contract safety, and regression
+prevention.
+
+For Python implementation slices, quality gates should include:
+
+- contract and fixture tests for every packet schema;
+- focused unit tests for safety, decision, validation, and rendering behavior;
+- `git diff --check` before commit;
+- Ruff linting and import checks once `pyproject.toml` tooling is active;
+- a strict McCabe complexity threshold for new Python logic.
+
+For this MVP, new decision, validation, sanitizer, renderer, and adapter functions should stay small and testable. A McCabe complexity threshold of `7` is the default target for AI-assisted code. If a function exceeds it, prefer decomposing the function before adding more branching behavior.
+
+Quality gates should be introduced progressively:
+
+- KCS-1: package/test baseline, contract tests, fixture checks, Ruff configuration;
+- KCS-2: safety/evidence gate tests and unsafe fixture rejection tests;
+- KCS-3: deterministic decision matrix tests;
+- KCS-4: renderer and Zendesk HTML validation tests;
+- KCS-5: loop-state and readiness validation tests;
+- KCS-6: CLI output stability tests;
+- KCS-8/KCS-9: adapter and bounded handoff tests with approved inputs only.
+
+CI can be added after the local command set is stable. CI should block merges on tests and lint/format checks once enabled.
+
 ## Risk Levels and Promotion Gates
 
 The MVP should not promote to a higher-risk scope just because tests pass at a lower-risk scope.
