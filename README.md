@@ -77,9 +77,8 @@ src/kcs_core/       # Runtime-independent Python core
 tests/kcs_core/     # Contract, fixture, gate, decision, renderer tests
 ```
 
-`AGENTS.md`, `.gitignore`, and `local-docs/` may exist on developer machines
-for local agent/playbook notes and local ignore rules, but they are
-intentionally local-only and must not be committed.
+Machine-specific notes, ignore rules, and runtime artifacts must stay outside
+the repository.
 
 ## Getting Started
 

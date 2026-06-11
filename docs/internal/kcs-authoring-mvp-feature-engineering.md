@@ -162,7 +162,7 @@ Relevant source documents:
 - `docs/internal/kcs-core-pipeline-architecture-and-contracts.md`;
 - `docs/internal/kcs-authoring-mvp-jira-tracking.md`.
 
-Local-only engineering instructions may live under `local-docs/`, but product and architecture commitments belong in `docs/internal/`.
+Product and architecture commitments belong in `docs/internal/`.
 
 ## Risk Levels and Promotion Gates
 
@@ -219,7 +219,7 @@ This gate must confirm:
 - no customer-facing writes, publication actions, or unsupported corporate-resource access are introduced;
 - a successful dry-run does not automatically approve real ticket use, Claude-visible raw ticket data, customer replies, or Help Center publication.
 
-Detailed local procedure belongs in `local-docs/feature-engineering-playbook.md`.
+Detailed readiness procedure should be documented in tracked project docs before adapter/client integration work starts.
 
 ## PR Expectations
 
@@ -267,7 +267,7 @@ Reusable lessons:
 - no-auto-publish invariant;
 - bounded LLM handoff.
 
-Any code adapted from `plesk_support` must follow the portability rules in `local-docs/portability-from-plesk-support.md`.
+Any code adapted from `plesk_support` must be reviewed for portability, data boundaries, source-project assumptions, and test coverage before it is committed.
 
 ## First Implementation Anchor
 

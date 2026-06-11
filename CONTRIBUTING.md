@@ -9,10 +9,8 @@ Before changing code or docs, read the relevant project documents:
 - `docs/internal/kcs-authoring-mvp-feature-engineering.md`
 - `docs/internal/kcs-authoring-mvp-jira-tracking.md`
 
-`AGENTS.md` may exist locally for developer/agent behavior, but it is not a
-tracked repository contract. If a prompt, implementation idea, or local note
-conflicts with `docs/internal/`, follow `docs/internal/` and surface the
-conflict.
+If an implementation idea or local note conflicts with `docs/internal/`, follow
+`docs/internal/` and surface the conflict.
 
 ## Development Model
 
@@ -66,8 +64,7 @@ Do not commit:
 - credentials, tokens, keys, `.env` files;
 - internal article chunks, vector values, raw query logs;
 - runtime drafts, reviewer packets, caches, or generated local artifacts;
-- local `AGENTS.md` or `.gitignore` files;
-- `local-docs/`.
+- machine-specific notes and ignore files.
 
 Fixtures must be synthetic or approved sanitized fixtures and must follow the Data Handling Baseline.
 
