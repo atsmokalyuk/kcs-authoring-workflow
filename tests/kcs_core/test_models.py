@@ -123,3 +123,31 @@ def test_decision_packet_accepts_known_article_type() -> None:
         packet.to_json_dict()["schema_version"]
         == KcsActionDecisionPacket.SCHEMA_VERSION
     )
+    assert packet.split_items == []
+    assert packet.to_json_dict()["split_items"] == []
+
+
+def test_decision_packet_serializes_split_items() -> None:
+    packet = KcsActionDecisionPacket(
+        candidate_id="CASE-SYNTH-SPLIT",
+        recommended_action=RecommendedAction.SPLIT_REQUIRED.value,
+        article_type=ArticleType.NONE.value,
+        confidence=0.5,
+        blockers=["multi_issue"],
+        split_items=[
+            {
+                "candidate_id": "ISSUE-SYNTH-1",
+                "summary": "Synthetic summary.",
+                "recommended_action": RecommendedAction.CREATE_CANDIDATE.value,
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "blockers": [],
+                "evidence_basis": {"source_refs": ["SRC-SYNTH-1"]},
+                "reuse_search_status": "checked",
+            }
+        ],
+    )
+
+    assert (
+        KcsActionDecisionPacket.from_json_dict(packet.to_json_dict()).split_items
+        == packet.split_items
+    )

@@ -38,6 +38,7 @@ Implemented code slices:
 ```text
 KCS-1: core packet contracts and safe fixtures
 KCS-2: safety and evidence readiness gates for sanitized normalized evidence
+KCS-3: deterministic KCS action decision core
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -45,9 +46,16 @@ value-free blockers/warnings for sanitized evidence readiness and does not make
 KCS action decisions, render articles, read Zendesk, call search, or hand off
 to Claude.
 
-KCS-1 and KCS-2 do not require live Zendesk access, Zendesk tokens, Claude
+KCS-3 is implemented as local `decision.py` logic. It consumes accepted
+evidence plus structured reuse/search results and returns a
+`KcsActionDecisionPacket` without reading Zendesk, calling search, rendering
+articles, or handing off to Claude. Multi-issue evidence returns top-level
+`split_required` with preliminary per-candidate decision items instead of a
+combined article draft.
+
+KCS-1 through KCS-3 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access.
-Decision, reviewer packet, and Zendesk HTML validation belong to later slices.
+Reviewer packet and Zendesk HTML validation belong to later slices.
 
 ## Non-goals
 

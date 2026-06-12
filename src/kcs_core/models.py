@@ -226,6 +226,7 @@ class KcsActionDecisionPacket:
     blockers: list[str] = field(default_factory=list)
     evidence_basis: JsonDict = field(default_factory=dict)
     selected_reuse_match: JsonDict | None = None
+    split_items: list[JsonDict] = field(default_factory=list)
     auto_publish_allowed: bool = False
 
     def __post_init__(self) -> None:
@@ -266,6 +267,7 @@ class KcsActionDecisionPacket:
             blockers=_string_list(data, "blockers"),
             evidence_basis=_require_dict(data, "evidence_basis"),
             selected_reuse_match=_optional_dict(data, "selected_reuse_match"),
+            split_items=_optional_dict_list(data, "split_items"),
             auto_publish_allowed=_optional_bool(data, "auto_publish_allowed", False),
         )
 
@@ -283,6 +285,7 @@ class KcsActionDecisionPacket:
                 if self.selected_reuse_match is not None
                 else None
             ),
+            "split_items": [dict(item) for item in self.split_items],
             "auto_publish_allowed": self.auto_publish_allowed,
         }
 
@@ -369,6 +372,12 @@ def _dict_list(payload: Mapping[str, Any], key: str) -> list[JsonDict]:
     if not all(isinstance(value, dict) for value in values):
         raise ContractValidationError(f"{key} must contain only objects")
     return [dict(value) for value in values]
+
+
+def _optional_dict_list(payload: Mapping[str, Any], key: str) -> list[JsonDict]:
+    if key not in payload:
+        return []
+    return _dict_list(payload, key)
 
 
 def ensure_json_payloads(packets: Sequence[Any]) -> list[JsonDict]:

@@ -89,6 +89,30 @@ Evidence readiness warnings:
 
 - `missing_supported_cause`
 
+## KCS-3 Scope Alignment
+
+KCS-3 is limited to deterministic KCS action decisions from accepted evidence
+and structured reuse/search results.
+
+KCS-3 includes:
+
+- `decision.py` as the KCS action decision core;
+- `KcsActionDecisionPacket` output;
+- per-candidate preliminary split items when multiple atomic candidates are
+  present;
+- value-free blocker codes;
+- no mutation of packet content;
+- no Zendesk, Claude, MCP, search, renderer, or publish behavior.
+
+KCS-3 decision match convention for `reuse_search_results_packet_v1.matches`:
+
+- `match_ref`: opaque article/reference id.
+- `article_type`: `technical_scr`, `howto_qa`, or `none`.
+- `identity`: object with `cause`, `question`, and `resolution_or_answer`
+  keys as applicable.
+- `content_status`: `complete`, `incomplete`, `outdated`, `partial`, or
+  `incorrect`.
+
 ## Core principle
 - Code decides
 - LLM drafts
@@ -142,6 +166,7 @@ kcs_action_decision_packet_v1 {
   blockers
   evidence_basis
   selected_reuse_match
+  split_items
   auto_publish_allowed
 }
 ```
@@ -229,6 +254,7 @@ KCS-2 visibility classes:
 | `blockers` | list[string] | yes | Code-like blockers. Empty only when no blocker is present. |
 | `evidence_basis` | object | yes | Structured evidence references/summary, not raw evidence dumps. |
 | `selected_reuse_match` | object or null | optional/default null | Selected reuse/update target when applicable. |
+| `split_items` | list[object] | optional/default empty | Preliminary per-candidate decision cards for `split_required`; empty for normal single-candidate decisions. |
 | `auto_publish_allowed` | boolean | optional/default false | Must be `false` for all MVP packets. `true` is invalid. |
 
 ### kcs_reviewer_packet_v1
