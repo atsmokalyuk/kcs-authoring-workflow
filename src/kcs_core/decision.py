@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Any
 
 from kcs_core.models import (
     ArticleType,
+    DecisionStatus,
     KcsActionDecisionPacket,
     NormalizedTicketEvidencePacket,
+    OperatorOverrideMode,
+    OverrideStatus,
     RecommendedAction,
     ReuseSearchResultsPacket,
 )
@@ -32,6 +36,7 @@ class DecisionBlocker(StrEnum):
     THIRD_PARTY_ONLY = "third_party_only"
     THIRD_PARTY_GENERIC = "third_party_generic"
     UNSUPPORTED_PUBLIC_ARTICLE = "unsupported_public_article"
+    UNSAFE_REUSE_SEARCH_BLOCKER = "unsafe_reuse_search_blocker"
 
 
 CONFIDENCE_BY_ACTION = {
@@ -68,7 +73,7 @@ def decide_kcs_action(
             article_type=ArticleType.NONE,
             blockers=[
                 DecisionBlocker.POSSIBLE_DUPLICATE_NOT_CHECKED.value,
-                *reuse_results.blockers,
+                *_safe_reuse_blockers(reuse_results.blockers),
             ],
         )
     if reuse_results.blockers:
@@ -77,7 +82,7 @@ def decide_kcs_action(
             candidate=candidate,
             action=RecommendedAction.BLOCKED,
             article_type=ArticleType.NONE,
-            blockers=reuse_results.blockers,
+            blockers=_safe_reuse_blockers(reuse_results.blockers),
         )
     return _decision_for_ready_evidence(
         evidence,
@@ -159,15 +164,21 @@ def _packet(
     blockers: Iterable[str] = (),
     selected_match: dict[str, Any] | None = None,
 ) -> KcsActionDecisionPacket:
+    blocker_list = list(_dedupe(blockers))
+    override_allowed = _operator_override_allowed(action, blocker_list)
     return KcsActionDecisionPacket(
         candidate_id=_candidate_id(evidence, candidate),
         recommended_action=action.value,
         article_type=article_type.value,
         confidence=CONFIDENCE_BY_ACTION[action],
-        blockers=list(_dedupe(blockers)),
+        blockers=blocker_list,
         evidence_basis=_evidence_basis(evidence, article_type),
         selected_reuse_match=selected_match,
+        status=_decision_status(action).value,
         split_items=[],
+        operator_override_allowed=override_allowed,
+        allowed_override_modes=_allowed_override_modes(override_allowed),
+        override_status=OverrideStatus.NOT_REQUESTED.value,
         auto_publish_allowed=False,
     )
 
@@ -185,10 +196,14 @@ def _split_required_packet(
         blockers=list(_dedupe(_split_required_blockers(blockers))),
         evidence_basis=_evidence_basis(evidence, ArticleType.NONE),
         selected_reuse_match=None,
+        status=DecisionStatus.SPLIT_REQUIRED.value,
         split_items=[
             _split_item(evidence, candidate, index, reuse_results, blockers)
             for index, candidate in enumerate(evidence.issue_candidates)
         ],
+        operator_override_allowed=False,
+        allowed_override_modes=[],
+        override_status=OverrideStatus.NOT_REQUESTED.value,
         auto_publish_allowed=False,
     )
 
@@ -222,13 +237,14 @@ def _split_item(
         root_blockers,
         item_reuse_status,
         item_reuse_matches,
-        reuse_results.blockers,
+        _safe_reuse_blockers(reuse_results.blockers),
     )
     return {
         "candidate_id": item_candidate_id,
         "summary": _summary_for_split_item(candidate, item_decision.blockers),
         "recommended_action": item_decision.recommended_action,
         "article_type": item_decision.article_type,
+        "status": item_decision.status,
         "confidence": item_decision.confidence,
         "blockers": list(item_decision.blockers),
         "evidence_basis": dict(item_decision.evidence_basis),
@@ -238,6 +254,10 @@ def _split_item(
             else None
         ),
         "reuse_search_status": item_reuse_status,
+        "auto_publish_allowed": False,
+        "operator_override_allowed": item_decision.operator_override_allowed,
+        "allowed_override_modes": list(item_decision.allowed_override_modes),
+        "override_status": item_decision.override_status,
     }
 
 
@@ -260,18 +280,6 @@ def _decision_for_split_item(
             article_type,
             blockers=blocking_root_findings,
         )
-    no_article_blocker = _no_article_blocker(candidate)
-    if (
-        no_article_blocker is not None
-        and EvidenceBlocker.UNSAFE_INPUT.value not in validation_blockers
-    ):
-        return _packet(
-            item_evidence,
-            candidate,
-            RecommendedAction.NO_ARTICLE,
-            article_type,
-            blockers=[no_article_blocker],
-        )
     if validation_blockers:
         return _packet(
             item_evidence,
@@ -279,6 +287,15 @@ def _decision_for_split_item(
             RecommendedAction.BLOCKED,
             article_type,
             blockers=validation_blockers,
+        )
+    no_article_blocker = _no_article_blocker(candidate)
+    if no_article_blocker is not None:
+        return _packet(
+            item_evidence,
+            candidate,
+            RecommendedAction.NO_ARTICLE,
+            article_type,
+            blockers=[no_article_blocker],
         )
     if _has_internal_only_solution(item_evidence, candidate):
         return _packet(
@@ -322,7 +339,9 @@ def _select_match(
         if _article_type_value(match) == article_type.value
         and _identity_matches(evidence, candidate, article_type, match)
     ]
-    exact = _first_with_status(same_identity, {"complete", "incomplete", "outdated"})
+    exact = _first_with_status(
+        same_identity, {"complete", "incomplete", "outdated", "partial"}
+    )
     if exact is not None:
         return exact
     return _first_with_status(same_identity, {"incorrect"})
@@ -332,7 +351,9 @@ def _action_for_match(match: Mapping[str, Any]) -> RecommendedAction:
     status = _string_value(match, "content_status")
     if status == "complete":
         return RecommendedAction.REUSE_EXISTING
-    if status in {"incomplete", "outdated"}:
+    if status in {"incomplete", "outdated", "partial"}:
+        if _is_public_article_match(match):
+            return RecommendedAction.FLAG_EXISTING
         return RecommendedAction.UPDATE_EXISTING
     if status == "incorrect":
         return RecommendedAction.FLAG_EXISTING
@@ -437,8 +458,12 @@ def _evidence_basis(
     evidence: NormalizedTicketEvidencePacket, article_type: ArticleType
 ) -> dict[str, object]:
     return {
-        "case_ref": evidence.case_ref,
-        "source_refs": list(evidence.source_refs),
+        "case_ref": _safe_metadata_value(evidence.case_ref),
+        "source_refs": [
+            source_ref
+            for source_ref in evidence.source_refs
+            if _is_safe_metadata_value(source_ref)
+        ],
         "article_type": article_type.value,
         "identity_rule": _identity_rule(article_type),
     }
@@ -453,11 +478,38 @@ def _identity_rule(article_type: ArticleType) -> str:
 
 
 def _selected_match(match: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        "match_ref": match.get("match_ref"),
-        "article_type": match.get("article_type"),
-        "content_status": match.get("content_status"),
+    selected = {
+        "match_ref": _safe_metadata_value(match.get("match_ref")),
+        "article_type": _safe_metadata_value(match.get("article_type")),
+        "content_status": _safe_metadata_value(match.get("content_status")),
     }
+    publication_status = _match_publication_status(match)
+    if publication_status:
+        selected["publication_status"] = publication_status
+    return selected
+
+
+def _is_public_article_match(match: Mapping[str, Any]) -> bool:
+    return _match_publication_status(match) in {"public", "published"}
+
+
+def _match_publication_status(match: Mapping[str, Any]) -> str:
+    for key in ("publication_status", "visibility", "article_visibility"):
+        value = _string_value(match, key)
+        status = value.strip().casefold()
+        if status in _PUBLICATION_STATUS_VALUES:
+            return status
+    return ""
+
+
+_PUBLICATION_STATUS_VALUES = frozenset(
+    {
+        "internal",
+        "not_public",
+        "public",
+        "published",
+    }
+)
 
 
 def _first_candidate(evidence: NormalizedTicketEvidencePacket) -> Mapping[str, Any]:
@@ -628,6 +680,88 @@ def _split_item_root_blockers(blockers: tuple[str, ...]) -> tuple[str, ...]:
         EvidenceBlocker.OPEN_QUESTIONS_PRESENT.value,
     }
     return tuple(blocker for blocker in blockers if blocker in item_global_blockers)
+
+
+def _decision_status(action: RecommendedAction) -> DecisionStatus:
+    if action == RecommendedAction.BLOCKED:
+        return DecisionStatus.BLOCKED
+    if action == RecommendedAction.SPLIT_REQUIRED:
+        return DecisionStatus.SPLIT_REQUIRED
+    return DecisionStatus.DECISION_READY
+
+
+def _operator_override_allowed(
+    action: RecommendedAction, blockers: Iterable[str]
+) -> bool:
+    blocker_list = list(blockers)
+    if action == RecommendedAction.BLOCKED:
+        return bool(blocker_list) and all(
+            blocker in _OVERRIDE_ALLOWED_BLOCKED_BLOCKERS for blocker in blocker_list
+        )
+    if action not in {
+        RecommendedAction.REUSE_EXISTING,
+        RecommendedAction.NO_ARTICLE,
+        RecommendedAction.FLAG_EXISTING,
+    }:
+        return False
+    return not any(
+        blocker in _OVERRIDE_DISALLOWED_BLOCKERS for blocker in blocker_list
+    )
+
+
+def _allowed_override_modes(override_allowed: bool) -> list[str]:
+    if not override_allowed:
+        return []
+    return [OperatorOverrideMode.REVIEWER_ONLY_DRAFT.value]
+
+
+def _safe_reuse_blockers(blockers: Iterable[str]) -> tuple[str, ...]:
+    safe_blockers: list[str] = []
+    unsafe_found = False
+    for blocker in blockers:
+        if _is_safe_blocker_code(blocker):
+            safe_blockers.append(blocker)
+        else:
+            unsafe_found = True
+    if unsafe_found:
+        safe_blockers.append(DecisionBlocker.UNSAFE_REUSE_SEARCH_BLOCKER.value)
+    return _dedupe(safe_blockers)
+
+
+def _is_safe_blocker_code(value: str) -> bool:
+    return bool(_SAFE_BLOCKER_CODE_RE.fullmatch(value))
+
+
+def _safe_metadata_value(value: object) -> str:
+    if isinstance(value, str) and _is_safe_metadata_value(value):
+        return value
+    return ""
+
+
+def _is_safe_metadata_value(value: str) -> bool:
+    return bool(_SAFE_METADATA_VALUE_RE.fullmatch(value))
+
+
+_SAFE_BLOCKER_CODE_RE = re.compile(r"[a-z][a-z0-9_]*")
+_SAFE_METADATA_VALUE_RE = re.compile(r"[A-Za-z0-9_.:-]+")
+
+
+_OVERRIDE_DISALLOWED_BLOCKERS = frozenset(
+    {
+        EvidenceBlocker.UNSAFE_INPUT.value,
+        EvidenceBlocker.MISSING_SUPPORTED_RESOLUTION.value,
+        EvidenceBlocker.OPEN_QUESTIONS_PRESENT.value,
+        DecisionBlocker.POSSIBLE_DUPLICATE_NOT_CHECKED.value,
+        DecisionBlocker.REUSE_SEARCH_STATUS_MISSING.value,
+        DecisionBlocker.NO_SUPPORTED_ANSWER.value,
+    }
+)
+
+_OVERRIDE_ALLOWED_BLOCKED_BLOCKERS = frozenset(
+    {
+        DecisionBlocker.INTERNAL_ONLY_SOLUTION.value,
+    }
+)
 
 
 def _article_type_value(match: Mapping[str, Any]) -> str:

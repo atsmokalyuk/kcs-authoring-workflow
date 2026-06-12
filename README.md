@@ -51,7 +51,14 @@ evidence plus structured reuse/search results and returns a
 `KcsActionDecisionPacket` without reading Zendesk, calling search, rendering
 articles, or handing off to Claude. Multi-issue evidence returns top-level
 `split_required` with preliminary per-candidate decision items instead of a
-combined article draft.
+combined article draft. KCS-3 may expose future-safe reviewer-only override
+metadata, but it does not generate override drafts.
+For same-identity article changes, KCS-3 distinguishes public articles
+(`flag_existing`) from internal/not-public articles (`update_existing`) but
+does not generate updated HTML content.
+Future local review bundle slices must persist any requested override status in
+packet/artifact metadata while preserving the original recommendation and
+`auto_publish_allowed=false`.
 
 KCS-1 through KCS-3 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access.
@@ -94,7 +101,7 @@ The Python package contains runtime-independent KCS core contracts and gates:
 
 ```text
 src/kcs_core/       # Runtime-independent Python core
-tests/kcs_core/     # Contract, fixture, gate, decision, renderer tests
+tests/kcs_core/     # Contract, fixture, gate, and decision tests
 ```
 
 Machine-specific notes, ignore rules, and runtime artifacts must stay outside
@@ -182,8 +189,8 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- First implementation subtask: PAUX-7084 / KCS-0 baseline, KCS-1 packet
-  contracts and fixtures, and KCS-2 safety/evidence gates
+- Current implementation subtask: PAUX-7090 / KCS-3 deterministic decision
+  core
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

@@ -100,6 +100,7 @@ KCS-3 includes:
 - `KcsActionDecisionPacket` output;
 - per-candidate preliminary split items when multiple atomic candidates are
   present;
+- future-safe operator override metadata only;
 - value-free blocker codes;
 - no mutation of packet content;
 - no Zendesk, Claude, MCP, search, renderer, or publish behavior.
@@ -112,6 +113,43 @@ KCS-3 decision match convention for `reuse_search_results_packet_v1.matches`:
   keys as applicable.
 - `content_status`: `complete`, `incomplete`, `outdated`, `partial`, or
   `incorrect`.
+- `publication_status` / `visibility` / `article_visibility`: optional
+  structured metadata such as `public`, `published`, `internal`, or
+  `not_public`.
+
+Reuse identity ignores delivery variants such as GUI vs CLI wording. For
+Technical SCR articles, identity is same `article_type` plus same
+cause-resolution pair. For How-to Q&A articles, identity is same
+question-answer pair. GUI instructions are preferred when renderer output is
+created later; CLI steps may be added when missing or more optimal, without
+creating a separate KCS identity.
+
+When a same-identity existing article needs new content:
+
+- public/published existing article -> `flag_existing`;
+- internal or not-public existing article -> `update_existing`.
+
+KCS-3 may recommend the action and selected target only. Updated reviewer
+packet or Zendesk HTML content belongs to the KCS-4 renderer slice.
+
+KCS-3 does not implement renderer behavior, local bundle writing, CLI handoff,
+Zendesk ingest, Claude drafting, operator-requested draft generation, Zendesk
+writes, Help Center publication, or customer reply generation.
+
+KCS-3 operator override metadata preserves the deterministic recommendation.
+`operator_override_allowed=true` only means a later reviewer-only draft request
+may be accepted by a future slice. It does not generate draft content, approve
+public readiness, or change `recommended_action`.
+
+Override metadata must remain disabled for safety and mandatory-evidence
+blockers such as unsafe input, raw/sensitive data not cleaned, missing required
+resolution/answer, open questions, or missing reuse search status.
+
+Internal-only or public-output-not-safe findings may allow a later
+`reviewer_only_draft` override request, but they do not approve public output.
+Future local review bundle artifacts must record the override request/status,
+preserve the original deterministic recommendation, and keep
+`auto_publish_allowed=false`.
 
 ## Core principle
 - Code decides
@@ -166,7 +204,11 @@ kcs_action_decision_packet_v1 {
   blockers
   evidence_basis
   selected_reuse_match
+  status
   split_items
+  operator_override_allowed
+  allowed_override_modes
+  override_status
   auto_publish_allowed
 }
 ```
@@ -254,8 +296,28 @@ KCS-2 visibility classes:
 | `blockers` | list[string] | yes | Code-like blockers. Empty only when no blocker is present. |
 | `evidence_basis` | object | yes | Structured evidence references/summary, not raw evidence dumps. |
 | `selected_reuse_match` | object or null | optional/default null | Selected reuse/update target when applicable. |
-| `split_items` | list[object] | optional/default empty | Preliminary per-candidate decision cards for `split_required`; empty for normal single-candidate decisions. |
+| `status` | enum string | optional/default `decision_ready` | `decision_ready`, `split_required`, or `blocked`. Compact state for future local summaries. |
+| `split_items` | list[object] | optional/default empty | Preliminary per-candidate decision cards for `split_required`; empty for normal single-candidate decisions. Each item must use only safe summary/title text and value-free blocker codes. |
+| `operator_override_allowed` | boolean | optional/default false | Future-slice metadata only. It does not change `recommended_action` and does not generate drafts. |
+| `allowed_override_modes` | list[string] | optional/default empty | Future-slice enum strings. KCS-3 may emit `reviewer_only_draft` only for non-safety reviewer-only cases. |
+| `override_status` | enum string | optional/default `not_requested` | Override lifecycle marker for future slices. KCS-3 emits `not_requested`. |
 | `auto_publish_allowed` | boolean | optional/default false | Must be `false` for all MVP packets. `true` is invalid. |
+
+`split_items` decision card fields:
+
+- `candidate_id`
+- `summary`
+- `recommended_action`
+- `article_type`
+- `status`
+- `blockers`
+- `evidence_basis`
+- `selected_reuse_match`
+- `reuse_search_status`
+- `auto_publish_allowed`
+- `operator_override_allowed`
+- `allowed_override_modes`
+- `override_status`
 
 ### kcs_reviewer_packet_v1
 
@@ -288,3 +350,78 @@ KCS-2 visibility classes:
   artifacts must not appear in committed fixtures.
 - KCS-1 fixtures are already-normalized packet fixtures. KCS-1 does not extract
   facts from raw or clean-ticket prose.
+
+## Future Local Output Model
+
+Future KCS-4/KCS-5/KCS-6 flow:
+
+```text
+KCS pipeline run
+  -> identifies KCS items
+  -> makes decision per item
+  -> renders local review bundle
+  -> saves files under ticket_<safe_case_ref>/
+  -> Claude/CLI shows only a short index/status + local file paths
+```
+
+Future Claude/CLI compact summaries may include only:
+
+- bundle folder path;
+- item_id;
+- short title;
+- recommended_action;
+- article_type;
+- status;
+- reason/blocker codes;
+- local review packet path;
+- local Zendesk HTML draft path, if generated;
+- operator_override_allowed / allowed_override_modes;
+- auto_publish_allowed=false.
+
+Future Claude/CLI compact summaries must not include:
+
+- full reviewer packet body;
+- full Zendesk HTML;
+- raw ticket;
+- redaction map;
+- raw internal comments;
+- full evidence basis;
+- raw search snippets/chunks/vector values.
+
+## Deferred Slices
+
+KCS-4:
+
+- reviewer packet renderer;
+- Zendesk HTML renderer;
+- no local bundle writing yet.
+
+KCS-5:
+
+- validation report / ready_for_reviewer loop state;
+- no Claude chat integration yet.
+
+KCS-6:
+
+- CLI entrypoint and compact run index;
+- local file paths only in CLI/chat summary.
+
+KCS-7:
+
+- evidence package builder from approved fixtures/exported tickets;
+- no live Zendesk dependency.
+
+KCS-8:
+
+- Zendesk read-only ingest adapter;
+- approved allowlist and token only here.
+
+KCS-9:
+
+- Claude Enterprise/Desktop bounded handoff;
+- operator-requested reviewer-only draft flow;
+- Claude output remains untrusted and validators rerun.
+
+KCS-10:
+
+- pilot with approved tickets and reviewer feedback.

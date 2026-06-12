@@ -5,8 +5,11 @@ import pytest
 from kcs_core.errors import ContractValidationError
 from kcs_core.models import (
     ArticleType,
+    DecisionStatus,
     KcsActionDecisionPacket,
     KcsReviewerPacket,
+    OperatorOverrideMode,
+    OverrideStatus,
     RecommendedAction,
 )
 
@@ -125,6 +128,28 @@ def test_decision_packet_accepts_known_article_type() -> None:
     )
     assert packet.split_items == []
     assert packet.to_json_dict()["split_items"] == []
+    assert packet.status == DecisionStatus.DECISION_READY.value
+    assert packet.operator_override_allowed is False
+    assert packet.allowed_override_modes == []
+    assert packet.override_status == OverrideStatus.NOT_REQUESTED.value
+
+
+def test_decision_packet_preserves_legacy_positional_argument_order() -> None:
+    packet = KcsActionDecisionPacket(
+        "CANDIDATE-SYNTH",
+        RecommendedAction.CREATE_CANDIDATE.value,
+        ArticleType.TECHNICAL_SCR.value,
+        0.8,
+        [],
+        {},
+        None,
+        [],
+        False,
+    )
+
+    assert packet.split_items == []
+    assert packet.auto_publish_allowed is False
+    assert packet.status == DecisionStatus.DECISION_READY.value
 
 
 def test_decision_packet_serializes_split_items() -> None:
@@ -134,20 +159,32 @@ def test_decision_packet_serializes_split_items() -> None:
         article_type=ArticleType.NONE.value,
         confidence=0.5,
         blockers=["multi_issue"],
+        status=DecisionStatus.SPLIT_REQUIRED.value,
         split_items=[
             {
                 "candidate_id": "ISSUE-SYNTH-1",
                 "summary": "Synthetic summary.",
                 "recommended_action": RecommendedAction.CREATE_CANDIDATE.value,
                 "article_type": ArticleType.TECHNICAL_SCR.value,
+                "status": DecisionStatus.DECISION_READY.value,
                 "blockers": [],
                 "evidence_basis": {"source_refs": ["SRC-SYNTH-1"]},
                 "reuse_search_status": "checked",
+                "auto_publish_allowed": False,
+                "operator_override_allowed": False,
+                "allowed_override_modes": [],
+                "override_status": OverrideStatus.NOT_REQUESTED.value,
             }
         ],
+        operator_override_allowed=True,
+        allowed_override_modes=[OperatorOverrideMode.REVIEWER_ONLY_DRAFT.value],
     )
 
-    assert (
-        KcsActionDecisionPacket.from_json_dict(packet.to_json_dict()).split_items
-        == packet.split_items
-    )
+    loaded = KcsActionDecisionPacket.from_json_dict(packet.to_json_dict())
+    assert loaded.split_items == packet.split_items
+    assert loaded.status == DecisionStatus.SPLIT_REQUIRED.value
+    assert loaded.operator_override_allowed is True
+    assert loaded.allowed_override_modes == [
+        OperatorOverrideMode.REVIEWER_ONLY_DRAFT.value
+    ]
+    assert loaded.override_status == OverrideStatus.NOT_REQUESTED.value

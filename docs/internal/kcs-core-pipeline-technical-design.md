@@ -263,6 +263,11 @@ Issue identity is not symptom-only:
 - How-to Q&A identity: question-answer pair.
 
 Symptoms may differ across tickets while the reusable issue remains the same.
+GUI and CLI variants of the same solution are delivery variants, not separate
+KCS identities. GUI wording should be preferred in later rendered output. CLI
+steps may be added when they are missing or more optimal, but they should not
+force a separate article when the underlying cause-resolution or
+question-answer identity is the same.
 
 ## KCS Action Decision
 
@@ -278,6 +283,35 @@ The deterministic KCS decision core chooses one of:
 
 The decision engine uses accepted evidence packet fields and structured
 reuse/search results. It does not read raw tickets and does not call Claude.
+
+For same-identity matches that need content changes, public or published
+existing articles are flagged for reviewer update with `flag_existing`.
+Internal or not-public existing articles use `update_existing`. The decision
+packet selects the action and target only; reviewer packet and Zendesk HTML
+content are produced by later renderer slices.
+
+For multiple KCS-relevant issue/question candidates, the decision engine returns
+top-level `split_required` plus preliminary per-item decision cards. It does
+not create a combined article draft for multiple issues.
+
+KCS-3 may expose future-safe operator override metadata:
+
+- `operator_override_allowed`
+- `allowed_override_modes`
+- `override_status=not_requested`
+
+This metadata does not change the deterministic recommendation and does not
+generate draft text. It only tells later slices whether a reviewer-only draft
+request could be considered after operator selection. Safety blockers, raw or
+sensitive data, open questions, missing duplicate/reuse checks, and missing
+mandatory resolution/answer evidence keep override disabled.
+
+Internal-only or public-output-not-safe findings may allow a later
+reviewer-only draft request, but public readiness remains unapproved. When a
+future slice implements operator-requested override handling, the local review
+bundle and persisted packet artifacts must record the override request/status,
+preserve the original deterministic recommendation, and keep
+`auto_publish_allowed=false`.
 
 ## Drafting and Reviewer Output
 
@@ -300,3 +334,68 @@ a write/publish operation.
 - No repo artifacts during normal runtime workflow.
 - Python validation owns packet acceptance.
 - Python deterministic core owns readiness state.
+
+## Deferred Local Output Model
+
+Later slices may use this local-output flow:
+
+```text
+KCS pipeline run
+  -> identifies KCS items
+  -> makes decision per item
+  -> renders local review bundle
+  -> saves files under ticket_<safe_case_ref>/
+  -> Claude/CLI shows only a short index/status + local file paths
+```
+
+The future compact Claude/CLI summary may include only the bundle path, item id,
+short title, recommended action, article type, status, reason/blocker codes,
+local review packet path, local Zendesk HTML draft path when generated,
+operator override metadata, and `auto_publish_allowed=false`.
+
+If an operator override is requested later, the local bundle must persist that
+fact in the review packet or adjacent metadata artifact. The compact summary may
+show only the override status/mode and local artifact paths, not the full draft
+body or raw evidence.
+
+It must not include full reviewer packet bodies, full Zendesk HTML, raw tickets,
+redaction maps, raw internal comments, full evidence basis, raw search snippets,
+chunks, or vector values.
+
+## Deferred Slices
+
+KCS-4:
+
+- reviewer packet renderer;
+- Zendesk HTML renderer;
+- no local bundle writing yet.
+
+KCS-5:
+
+- validation report / ready_for_reviewer loop state;
+- no Claude chat integration yet.
+
+KCS-6:
+
+- CLI entrypoint and compact run index;
+- local file paths only in CLI/chat summary.
+
+KCS-7:
+
+- evidence package builder from approved fixtures/exported tickets;
+- no live Zendesk dependency.
+
+KCS-8:
+
+- Zendesk read-only ingest adapter;
+- approved allowlist and token only here.
+
+KCS-9:
+
+- Claude Enterprise/Desktop bounded handoff;
+- operator-requested reviewer-only draft flow;
+- Claude output remains untrusted and validators rerun.
+
+KCS-10:
+
+- pilot with approved tickets and reviewer feedback.
