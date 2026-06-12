@@ -189,8 +189,8 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- Current implementation subtask: PAUX-7090 / KCS-3 deterministic decision
-  core
+- Current implementation subtask: PAUX-7092 / KCS-3 KCS Action Decision
+  Engine
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
