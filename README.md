@@ -40,6 +40,11 @@ KCS-1: core packet contracts and safe fixtures
 KCS-2: safety and evidence readiness gates for sanitized normalized evidence
 ```
 
+KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
+value-free blockers/warnings for sanitized evidence readiness and does not make
+KCS action decisions, render articles, read Zendesk, call search, or hand off
+to Claude.
+
 KCS-1 and KCS-2 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access.
 Decision, reviewer packet, and Zendesk HTML validation belong to later slices.

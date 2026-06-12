@@ -41,7 +41,8 @@ KCS-2 is limited to safety and sanitized-evidence readiness gates.
 KCS-2 includes:
 
 - `safety.py` as the data-boundary gate;
-- evidence/input readiness validation for sanitized normalized evidence;
+- `validation.py` as evidence/input readiness validation for sanitized
+  normalized evidence;
 - value-free blockers and warnings suitable for logs and reports;
 - no mutation of packet content;
 - no sanitizer implementation inside the KCS core.
@@ -65,9 +66,28 @@ raw ticket
   -> KCS-3 decision
 ```
 
-If `validation.py` is introduced in KCS-2, it validates only sanitized evidence
-readiness. Decision packet validation belongs to KCS-3, Zendesk HTML validation
-belongs to KCS-4, and `ready_for_reviewer` loop validation belongs to KCS-5.
+`validation.py` validates only sanitized evidence readiness. Decision packet
+validation belongs to KCS-3, Zendesk HTML validation belongs to KCS-4, and
+`ready_for_reviewer` loop validation belongs to KCS-5.
+
+KCS-2 evidence readiness validation returns value-free blockers and warnings.
+It must not echo raw evidence values into results or exceptions.
+
+Evidence readiness blockers:
+
+- `unsafe_input`
+- `missing_source_ref`
+- `missing_issue_candidate`
+- `multi_issue`
+- `missing_symptoms`
+- `missing_confirmed_facts`
+- `missing_supported_resolution`
+- `open_questions_present`
+- `evidence_not_atomic`
+
+Evidence readiness warnings:
+
+- `missing_supported_cause`
 
 ## Core principle
 - Code decides
