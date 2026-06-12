@@ -50,6 +50,25 @@ Evidence packages must not contain:
 source code, private scripts, proprietary configuration, or customer-provided application code
 Opaque internal references such as `case_ref` or `source_ref` may be used for traceability, but must not appear in article draft content.
 
+### Safety Gate
+KCS-2 introduces a deterministic safety gate for accepted
+`NormalizedTicketEvidencePacket` inputs. The gate runs before KCS action
+decision, drafting, rendering, or Claude handoff.
+
+The safety gate accepts only approved normalized input classes:
+
+- `synthetic_fixture`;
+- `approved_sanitized_fixture`;
+- `normalized_zendesk_evidence`;
+- `operator_sanitized_summary`.
+
+The safety gate blocks unknown input classes, unsafe or unknown visibility
+classes, missing sanitizer pass markers, unsafe sanitizer flags, forbidden
+source labels, and private identifiers in normalized evidence fields.
+
+This gate does not approve raw Zendesk processing, live Zendesk access, Claude
+handoff, customer replies, Zendesk writes, or Help Center publication.
+
 ### Semantic Extraction
 `NormalizedTicketEvidencePacket` is not trusted just because an LLM produced
 candidate fields. Evidence preparation may include human-prepared summaries,

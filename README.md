@@ -2,8 +2,8 @@
 
 Internal WebPros PAUX prototype for a runtime-independent KCS Authoring core.
 
-Status: planning / documentation baseline. Python baseline: 3.11. CI, package
-metadata, and runnable commands will be added with the first code slice.
+Status: early implementation. Python baseline: 3.11. CI is deferred until the
+local command set is stable.
 
 ## Overview
 
@@ -33,14 +33,15 @@ after the relevant contracts and gates exist.
 Initial development follows the KCS-0..KCS-10 roadmap in
 `docs/internal/kcs-authoring-mvp-jira-tracking.md`.
 
-First code slice:
+Implemented code slices:
 
 ```text
 KCS-1: core packet contracts and safe fixtures
+KCS-2: safety and evidence gates
 ```
 
-KCS-1 does not require live Zendesk access, Zendesk tokens, Claude connector
-setup, or `kcs-search-mcp` access.
+KCS-1 and KCS-2 do not require live Zendesk access, Zendesk tokens, Claude
+connector setup, or `kcs-search-mcp` access.
 
 ## Non-goals
 
@@ -61,17 +62,21 @@ kcs-authoring-mvp/
 |-- CONTRIBUTING.md
 |-- .github/
 |   `-- pull_request_template.md
-`-- docs/
-    `-- internal/
-        |-- kcs-authoring-mvp-goal-and-success-criteria.md
-        |-- kcs-authoring-mvp-data-handling-baseline.md
-        |-- kcs-core-pipeline-architecture-and-contracts.md
-        |-- kcs-core-pipeline-technical-design.md
-        |-- kcs-authoring-mvp-feature-engineering.md
-        `-- kcs-authoring-mvp-jira-tracking.md
+|-- docs/
+|   `-- internal/
+|       |-- kcs-authoring-mvp-goal-and-success-criteria.md
+|       |-- kcs-authoring-mvp-data-handling-baseline.md
+|       |-- kcs-core-pipeline-architecture-and-contracts.md
+|       |-- kcs-core-pipeline-technical-design.md
+|       |-- kcs-authoring-mvp-feature-engineering.md
+|       `-- kcs-authoring-mvp-jira-tracking.md
+|-- src/
+|   `-- kcs_core/
+`-- tests/
+    `-- kcs_core/
 ```
 
-Planned code structure starts in KCS-1:
+The Python package contains runtime-independent KCS core contracts and gates:
 
 ```text
 src/kcs_core/       # Runtime-independent Python core
@@ -140,6 +145,7 @@ By default:
 - do not commit raw Zendesk JSON, full comments, customer identifiers,
   credentials, internal article chunks, vector values, raw query logs, or
   runtime artifacts;
+- run safety/evidence gates before decision, drafting, rendering, or handoff;
 - keep `auto_publish_allowed=false` in MVP outputs.
 
 ## Source Documents
@@ -162,8 +168,8 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- First implementation subtask: PAUX-7084 / KCS-0 baseline, followed by KCS-1
-  packet contracts and fixtures
+- First implementation subtask: PAUX-7084 / KCS-0 baseline, KCS-1 packet
+  contracts and fixtures, and KCS-2 safety/evidence gates
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
