@@ -35,6 +35,33 @@ This MVP is not a publication system and does not perform customer-facing automa
 - Raw ticket data may be processed only inside approved corporate/local runtime storage.
 - Any persistent fixture derived from a real ticket must be approved and sanitized first.
 
+### MVP Cleanup Form Lane
+During the MVP, an approved cleanup form may act as the temporary sanitizer and
+preprocessor for operator-driven testing.
+
+Allowed lane:
+
+```text
+raw ticket
+  -> approved cleanup form
+  -> operator_sanitized_summary / normalized evidence packet
+  -> safety gate
+  -> evidence readiness validation
+  -> later KCS decision/drafting slices
+```
+
+Raw Zendesk ticket content may be pasted only into the approved cleanup form or
+other approved sanitizer/preprocessor runtime. Raw ticket content must not be
+pasted directly into Claude Desktop, committed to the repository, logged, or
+stored as a fixture.
+
+The cleanup form output becomes `operator_sanitized_summary` or another
+approved sanitized normalized input. The safety gate runs after cleanup form
+output and before Claude handoff, KCS decision, drafting, rendering, or
+reviewer-ready output. A blocked safety result, or future
+`blocked_pre_handoff` status, means the operator must rerun cleanup, simplify
+the evidence, or defer the case instead of passing the packet forward.
+
 ### Evidence Package
 Claude receives only sanitized normalized evidence packets, bounded extraction
 requests, bounded decision/reviewer packets, and structured search results when

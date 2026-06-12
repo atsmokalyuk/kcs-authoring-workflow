@@ -34,6 +34,41 @@ summaries, deterministic extraction where possible, or bounded Claude-assisted
 semantic extraction when approved. Python validation owns packet acceptance.
 Claude output is untrusted until validated.
 
+## KCS-2 Scope Alignment
+
+KCS-2 is limited to safety and sanitized-evidence readiness gates.
+
+KCS-2 includes:
+
+- `safety.py` as the data-boundary gate;
+- evidence/input readiness validation for sanitized normalized evidence;
+- value-free blockers and warnings suitable for logs and reports;
+- no mutation of packet content;
+- no sanitizer implementation inside the KCS core.
+
+KCS-2 does not include:
+
+- KCS action decision validation;
+- reviewer packet validation;
+- Zendesk HTML validation;
+- Claude output validation;
+- `ready_for_reviewer` loop state.
+
+Responsibility split:
+
+```text
+raw ticket
+  -> cleanup form / sanitizer lane
+  -> operator_sanitized_summary / normalized evidence packet
+  -> safety.py
+  -> validate_evidence_packet()
+  -> KCS-3 decision
+```
+
+If `validation.py` is introduced in KCS-2, it validates only sanitized evidence
+readiness. Decision packet validation belongs to KCS-3, Zendesk HTML validation
+belongs to KCS-4, and `ready_for_reviewer` loop validation belongs to KCS-5.
+
 ## Core principle
 - Code decides
 - LLM drafts

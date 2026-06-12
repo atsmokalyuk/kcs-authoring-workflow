@@ -37,11 +37,12 @@ Implemented code slices:
 
 ```text
 KCS-1: core packet contracts and safe fixtures
-KCS-2: safety and evidence gates
+KCS-2: safety and evidence readiness gates for sanitized normalized evidence
 ```
 
 KCS-1 and KCS-2 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access.
+Decision, reviewer packet, and Zendesk HTML validation belong to later slices.
 
 ## Non-goals
 
