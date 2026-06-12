@@ -1,10 +1,14 @@
 """Runtime-independent KCS core packet contracts."""
 
+from kcs_core.decision import DecisionBlocker, decide_kcs_action
 from kcs_core.models import (
     ArticleType,
+    DecisionStatus,
     KcsActionDecisionPacket,
     KcsReviewerPacket,
     NormalizedTicketEvidencePacket,
+    OperatorOverrideMode,
+    OverrideStatus,
     RecommendedAction,
     ReuseSearchResultsPacket,
 )
@@ -26,6 +30,8 @@ from kcs_core.validation import (
 
 __all__ = [
     "ArticleType",
+    "DecisionBlocker",
+    "DecisionStatus",
     "EvidenceBlocker",
     "EvidenceValidationResult",
     "EvidenceVisibility",
@@ -34,10 +40,13 @@ __all__ = [
     "KcsActionDecisionPacket",
     "KcsReviewerPacket",
     "NormalizedTicketEvidencePacket",
+    "OperatorOverrideMode",
+    "OverrideStatus",
     "RecommendedAction",
     "ReuseSearchResultsPacket",
     "SafetyBlocker",
     "SafetyGateResult",
+    "decide_kcs_action",
     "ensure_evidence_safe",
     "ensure_evidence_ready",
     "validate_evidence_packet",

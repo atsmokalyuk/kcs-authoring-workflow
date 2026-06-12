@@ -31,6 +31,26 @@ class ArticleType(StrEnum):
     NONE = "none"
 
 
+class DecisionStatus(StrEnum):
+    """Allowed KCS decision status values."""
+
+    DECISION_READY = "decision_ready"
+    SPLIT_REQUIRED = "split_required"
+    BLOCKED = "blocked"
+
+
+class OperatorOverrideMode(StrEnum):
+    """Allowed future operator override mode values."""
+
+    REVIEWER_ONLY_DRAFT = "reviewer_only_draft"
+
+
+class OverrideStatus(StrEnum):
+    """Allowed future operator override status values."""
+
+    NOT_REQUESTED = "not_requested"
+
+
 def _require_schema_version(payload: Mapping[str, Any], expected: str) -> None:
     actual = payload.get("schema_version")
     if actual != expected:
@@ -226,7 +246,12 @@ class KcsActionDecisionPacket:
     blockers: list[str] = field(default_factory=list)
     evidence_basis: JsonDict = field(default_factory=dict)
     selected_reuse_match: JsonDict | None = None
+    split_items: list[JsonDict] = field(default_factory=list)
     auto_publish_allowed: bool = False
+    status: str = DecisionStatus.DECISION_READY.value
+    operator_override_allowed: bool = False
+    allowed_override_modes: list[str] = field(default_factory=list)
+    override_status: str = OverrideStatus.NOT_REQUESTED.value
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -242,6 +267,28 @@ class KcsActionDecisionPacket:
             self,
             "article_type",
             _enum_value(ArticleType, self.article_type, "article_type"),
+        )
+        object.__setattr__(
+            self,
+            "status",
+            _enum_value(DecisionStatus, self.status, "status"),
+        )
+        object.__setattr__(
+            self,
+            "allowed_override_modes",
+            [
+                _enum_value(
+                    OperatorOverrideMode,
+                    mode,
+                    "allowed_override_modes",
+                )
+                for mode in self.allowed_override_modes
+            ],
+        )
+        object.__setattr__(
+            self,
+            "override_status",
+            _enum_value(OverrideStatus, self.override_status, "override_status"),
         )
         if self.auto_publish_allowed:
             raise ContractValidationError(
@@ -266,6 +313,21 @@ class KcsActionDecisionPacket:
             blockers=_string_list(data, "blockers"),
             evidence_basis=_require_dict(data, "evidence_basis"),
             selected_reuse_match=_optional_dict(data, "selected_reuse_match"),
+            status=(
+                _optional_string(data, "status")
+                or DecisionStatus.DECISION_READY.value
+            ),
+            split_items=_optional_dict_list(data, "split_items"),
+            operator_override_allowed=_optional_bool(
+                data, "operator_override_allowed", False
+            ),
+            allowed_override_modes=_optional_string_list(
+                data, "allowed_override_modes"
+            ),
+            override_status=(
+                _optional_string(data, "override_status")
+                or OverrideStatus.NOT_REQUESTED.value
+            ),
             auto_publish_allowed=_optional_bool(data, "auto_publish_allowed", False),
         )
 
@@ -283,6 +345,11 @@ class KcsActionDecisionPacket:
                 if self.selected_reuse_match is not None
                 else None
             ),
+            "status": self.status,
+            "split_items": [dict(item) for item in self.split_items],
+            "operator_override_allowed": self.operator_override_allowed,
+            "allowed_override_modes": list(self.allowed_override_modes),
+            "override_status": self.override_status,
             "auto_publish_allowed": self.auto_publish_allowed,
         }
 
@@ -369,6 +436,18 @@ def _dict_list(payload: Mapping[str, Any], key: str) -> list[JsonDict]:
     if not all(isinstance(value, dict) for value in values):
         raise ContractValidationError(f"{key} must contain only objects")
     return [dict(value) for value in values]
+
+
+def _optional_dict_list(payload: Mapping[str, Any], key: str) -> list[JsonDict]:
+    if key not in payload:
+        return []
+    return _dict_list(payload, key)
+
+
+def _optional_string_list(payload: Mapping[str, Any], key: str) -> list[str]:
+    if key not in payload:
+        return []
+    return _string_list(payload, key)
 
 
 def ensure_json_payloads(packets: Sequence[Any]) -> list[JsonDict]:
