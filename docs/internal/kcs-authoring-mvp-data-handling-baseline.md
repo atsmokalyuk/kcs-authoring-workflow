@@ -35,6 +35,33 @@ This MVP is not a publication system and does not perform customer-facing automa
 - Raw ticket data may be processed only inside approved corporate/local runtime storage.
 - Any persistent fixture derived from a real ticket must be approved and sanitized first.
 
+### MVP Cleanup Form Lane
+During the MVP, an approved cleanup form may act as the temporary sanitizer and
+preprocessor for operator-driven testing.
+
+Allowed lane:
+
+```text
+raw ticket
+  -> approved cleanup form
+  -> operator_sanitized_summary / normalized evidence packet
+  -> safety gate
+  -> evidence readiness validation
+  -> later KCS decision/drafting slices
+```
+
+Raw Zendesk ticket content may be pasted only into the approved cleanup form or
+other approved sanitizer/preprocessor runtime. Raw ticket content must not be
+pasted directly into Claude Desktop, committed to the repository, logged, or
+stored as a fixture.
+
+The cleanup form output becomes `operator_sanitized_summary` or another
+approved sanitized normalized input. The safety gate runs after cleanup form
+output and before Claude handoff, KCS decision, drafting, rendering, or
+reviewer-ready output. A blocked safety result, or future
+`blocked_pre_handoff` status, means the operator must rerun cleanup, simplify
+the evidence, or defer the case instead of passing the packet forward.
+
 ### Evidence Package
 Claude receives only sanitized normalized evidence packets, bounded extraction
 requests, bounded decision/reviewer packets, and structured search results when
@@ -49,6 +76,25 @@ Evidence packages must not contain:
 
 source code, private scripts, proprietary configuration, or customer-provided application code
 Opaque internal references such as `case_ref` or `source_ref` may be used for traceability, but must not appear in article draft content.
+
+### Safety Gate
+KCS-2 introduces a deterministic safety gate for accepted
+`NormalizedTicketEvidencePacket` inputs. The gate runs before KCS action
+decision, drafting, rendering, or Claude handoff.
+
+The safety gate accepts only approved normalized input classes:
+
+- `synthetic_fixture`;
+- `approved_sanitized_fixture`;
+- `normalized_zendesk_evidence`;
+- `operator_sanitized_summary`.
+
+The safety gate blocks unknown input classes, unsafe or unknown visibility
+classes, missing sanitizer pass markers, unsafe sanitizer flags, forbidden
+source labels, and private identifiers in normalized evidence fields.
+
+This gate does not approve raw Zendesk processing, live Zendesk access, Claude
+handoff, customer replies, Zendesk writes, or Help Center publication.
 
 ### Semantic Extraction
 `NormalizedTicketEvidencePacket` is not trusted just because an LLM produced

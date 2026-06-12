@@ -34,6 +34,61 @@ summaries, deterministic extraction where possible, or bounded Claude-assisted
 semantic extraction when approved. Python validation owns packet acceptance.
 Claude output is untrusted until validated.
 
+## KCS-2 Scope Alignment
+
+KCS-2 is limited to safety and sanitized-evidence readiness gates.
+
+KCS-2 includes:
+
+- `safety.py` as the data-boundary gate;
+- `validation.py` as evidence/input readiness validation for sanitized
+  normalized evidence;
+- value-free blockers and warnings suitable for logs and reports;
+- no mutation of packet content;
+- no sanitizer implementation inside the KCS core.
+
+KCS-2 does not include:
+
+- KCS action decision validation;
+- reviewer packet validation;
+- Zendesk HTML validation;
+- Claude output validation;
+- `ready_for_reviewer` loop state.
+
+Responsibility split:
+
+```text
+raw ticket
+  -> cleanup form / sanitizer lane
+  -> operator_sanitized_summary / normalized evidence packet
+  -> safety.py
+  -> validate_evidence_packet()
+  -> KCS-3 decision
+```
+
+`validation.py` validates only sanitized evidence readiness. Decision packet
+validation belongs to KCS-3, Zendesk HTML validation belongs to KCS-4, and
+`ready_for_reviewer` loop validation belongs to KCS-5.
+
+KCS-2 evidence readiness validation returns value-free blockers and warnings.
+It must not echo raw evidence values into results or exceptions.
+
+Evidence readiness blockers:
+
+- `unsafe_input`
+- `missing_source_ref`
+- `missing_issue_candidate`
+- `multi_issue`
+- `missing_symptoms`
+- `missing_confirmed_facts`
+- `missing_supported_resolution`
+- `open_questions_present`
+- `evidence_not_atomic`
+
+Evidence readiness warnings:
+
+- `missing_supported_cause`
+
 ## Core principle
 - Code decides
 - LLM drafts
@@ -132,8 +187,8 @@ field meanings unless a schema version changes.
 |---|---|---:|---|
 | `schema_version` | string | yes | Must equal `normalized_ticket_evidence_packet_v1`. |
 | `case_ref` | string | yes | Opaque case reference. Must not expose a raw ticket ID by default. |
-| `input_class` | string | yes | Describes the approved input class, for example synthetic or sanitized fixture input. |
-| `source_refs` | list[string] | yes | Opaque/source-safe references only. |
+| `input_class` | enum string | yes | KCS-2 safety gate accepts only `synthetic_fixture`, `approved_sanitized_fixture`, `normalized_zendesk_evidence`, or `operator_sanitized_summary`. |
+| `source_refs` | list[string] | yes | Opaque/source-safe references only. No URLs, raw paths, raw ticket IDs, source labels, or private identifiers. |
 | `issue_candidates` | list[object] | yes | Candidate issue/question records prepared by the evidence layer. |
 | `environment` | object | yes | Normalized safe environment facts. |
 | `symptoms` | list[string] | yes | Safe symptom/search wording. Search may use symptoms, but issue identity is not symptom-only. |
@@ -141,8 +196,15 @@ field meanings unless a schema version changes.
 | `supported_cause` | string or null | optional/default null | Null when no supported cause is available. Must not be invented. |
 | `supported_resolution_or_workaround` | string or null | optional/default null | Null when no supported resolution/workaround exists. |
 | `open_questions` | list[string] | yes | Safe unresolved questions/blockers. |
-| `visibility_summary` | object | yes | Safe visibility/data-handling summary. |
-| `sanitizer_report` | object | yes | Sanitizer/preparation status summary. |
+| `visibility_summary` | object | yes | Safe visibility/data-handling summary. KCS-2 expects `classes` or `visibility_classes` containing known visibility classes. |
+| `sanitizer_report` | object | yes | Sanitizer/preparation status summary. KCS-2 requires an affirmative pass marker and rejects unsafe flags. |
+
+KCS-2 visibility classes:
+
+- `public_customer_safe`: allowed for public/customer-safe evidence.
+- `customer_context_only`: allowed for contextual evidence that must not be copied directly into public article content.
+- `internal_reviewer_only`: allowed only when internal-only evidence approval is explicit in `visibility_summary`.
+- `unsafe_private`: always blocked.
 
 ### reuse_search_results_packet_v1
 
@@ -190,6 +252,11 @@ field meanings unless a schema version changes.
 - Unknown `recommended_action` values are rejected.
 - Unknown `article_type` values are rejected.
 - `auto_publish_allowed=true` is rejected.
+- Unknown `input_class` values are blocked by the KCS-2 safety gate.
+- Unsafe or unknown evidence visibility classes are blocked by the KCS-2
+  safety gate.
+- Sanitizer reports without an affirmative pass marker are blocked by the
+  KCS-2 safety gate.
 - Raw Zendesk JSON, customer identifiers, live infrastructure identifiers,
   credentials, raw internal comments, snippets, chunks, vectors, and runtime
   artifacts must not appear in committed fixtures.
