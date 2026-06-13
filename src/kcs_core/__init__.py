@@ -12,6 +12,7 @@ from kcs_core.models import (
     RecommendedAction,
     ReuseSearchResultsPacket,
 )
+from kcs_core.renderer import render_reviewer_packet
 from kcs_core.safety import (
     EvidenceVisibility,
     InputClass,
@@ -49,6 +50,7 @@ __all__ = [
     "decide_kcs_action",
     "ensure_evidence_safe",
     "ensure_evidence_ready",
+    "render_reviewer_packet",
     "validate_evidence_packet",
     "validate_evidence_safety",
 ]
