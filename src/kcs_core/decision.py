@@ -371,19 +371,94 @@ def _identity_matches(
         return False
     if article_type == ArticleType.TECHNICAL_SCR:
         return _same_text(
-            identity.get("cause"), evidence.supported_cause
+            _identity_value(identity, ("cause_key", "canonical_cause", "cause")),
+            _candidate_identity_value(
+                candidate,
+                ("cause_key", "canonical_cause", "supported_cause"),
+                evidence.supported_cause,
+            ),
         ) and _same_text(
-            identity.get("resolution_or_answer"),
-            evidence.supported_resolution_or_workaround,
+            _identity_value(
+                identity,
+                (
+                    "solution_key",
+                    "resolution_key",
+                    "answer_key",
+                    "canonical_solution",
+                    "canonical_resolution",
+                    "canonical_answer",
+                    "resolution_or_answer",
+                ),
+            ),
+            _candidate_identity_value(
+                candidate,
+                (
+                    "solution_key",
+                    "resolution_key",
+                    "answer_key",
+                    "canonical_solution",
+                    "canonical_resolution",
+                    "canonical_answer",
+                    "supported_resolution_or_workaround",
+                    "supported_answer",
+                ),
+                evidence.supported_resolution_or_workaround,
+            ),
         )
     if article_type == ArticleType.HOWTO_QA:
         return _same_text(
-            identity.get("question"), _question(candidate)
+            _identity_value(
+                identity, ("question_key", "canonical_question", "question")
+            ),
+            _candidate_identity_value(
+                candidate,
+                ("question_key", "canonical_question", "question"),
+                _question(candidate),
+            ),
         ) and _same_text(
-            identity.get("resolution_or_answer"),
-            evidence.supported_resolution_or_workaround,
+            _identity_value(
+                identity,
+                (
+                    "solution_key",
+                    "answer_key",
+                    "resolution_key",
+                    "canonical_solution",
+                    "canonical_answer",
+                    "canonical_resolution",
+                    "resolution_or_answer",
+                ),
+            ),
+            _candidate_identity_value(
+                candidate,
+                (
+                    "solution_key",
+                    "answer_key",
+                    "resolution_key",
+                    "canonical_solution",
+                    "canonical_answer",
+                    "canonical_resolution",
+                    "supported_answer",
+                    "supported_resolution_or_workaround",
+                ),
+                evidence.supported_resolution_or_workaround,
+            ),
         )
     return False
+
+
+def _identity_value(source: Mapping[str, Any], keys: tuple[str, ...]) -> str | None:
+    for key in keys:
+        value = source.get(key)
+        if isinstance(value, str) and value.strip():
+            return value
+    return None
+
+
+def _candidate_identity_value(
+    candidate: Mapping[str, Any], keys: tuple[str, ...], fallback: str | None
+) -> str | None:
+    value = _identity_value(candidate, keys)
+    return value if value is not None else fallback
 
 
 def _article_type(
@@ -744,6 +819,13 @@ def _is_safe_metadata_value(value: str) -> bool:
 
 _SAFE_BLOCKER_CODE_RE = re.compile(r"[a-z][a-z0-9_]*")
 _SAFE_METADATA_VALUE_RE = re.compile(r"[A-Za-z0-9_.:-]+")
+_DELIVERY_VARIANT_PREFIX_RE = re.compile(
+    r"^\s*(?:(?:using|via|from|in)\s+)?"
+    r"(?:gui|ui|web[-_ ]?ui|control[-_ ]?panel|cli|command[-_ ]?line|"
+    r"shell|terminal)\s*[:/-]\s*",
+    re.I,
+)
+_WHITESPACE_RE = re.compile(r"\s+")
 
 
 _OVERRIDE_DISALLOWED_BLOCKERS = frozenset(
@@ -776,7 +858,14 @@ def _string_value(value: Mapping[str, Any], key: str) -> str:
 def _same_text(left: object, right: object) -> bool:
     if not isinstance(left, str) or not isinstance(right, str):
         return False
-    return left.strip().casefold() == right.strip().casefold()
+    return _identity_text(left) == _identity_text(right)
+
+
+def _identity_text(value: str) -> str:
+    text = value.strip().casefold()
+    text = _DELIVERY_VARIANT_PREFIX_RE.sub("", text)
+    text = _WHITESPACE_RE.sub(" ", text)
+    return text.strip(" .,:;-/")
 
 
 def _has_text(value: str | None) -> bool:
