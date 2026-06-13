@@ -362,7 +362,7 @@ It must not include full reviewer packet bodies, full Zendesk HTML, raw tickets,
 redaction maps, raw internal comments, full evidence basis, raw search snippets,
 chunks, or vector values.
 
-## Deferred Slices
+## Slice Boundaries
 
 KCS-4:
 

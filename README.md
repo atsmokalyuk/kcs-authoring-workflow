@@ -40,6 +40,7 @@ KCS-1: core packet contracts and safe fixtures
 KCS-2: safety and evidence readiness gates for sanitized normalized evidence
 KCS-3: deterministic KCS action decision core
 KCS-4: reviewer packet renderer and Zendesk HTML output
+KCS-5: validation report and ready-for-reviewer loop state
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -71,10 +72,16 @@ Zendesk source HTML only for create/update candidates or reviewer-required
 read or write Zendesk, publish Help Center content, or generate customer
 replies.
 
-KCS-1 through KCS-4 do not require live Zendesk access, Zendesk tokens, Claude
-connector setup, or `kcs-search-mcp` access. Ready-for-reviewer loop state,
-bundle writing, CLI handoff, Claude handoff, and full Zendesk HTML validation
-belong to later slices.
+KCS-5 is implemented as local `readiness.py` logic. It combines evidence,
+decision, and renderer outcomes into a standalone `KcsValidationReportPacket`
+with value-safe blockers/warnings, required next step, and
+`ready_for_reviewer` loop state. It does not write local bundles, call Claude,
+read or write Zendesk, publish Help Center content, or generate customer
+replies.
+
+KCS-1 through KCS-5 do not require live Zendesk access, Zendesk tokens, Claude
+connector setup, or `kcs-search-mcp` access. Bundle writing, CLI handoff,
+Claude handoff, and adapter/client integration belong to later slices.
 
 ## Non-goals
 
@@ -201,8 +208,8 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- Current implementation subtask: PAUX-7093 / KCS-4 Reviewer Packet Renderer and
-  Zendesk HTML Output
+- Current implementation subtask: KCS-5 Validation Report and Ready-for-Reviewer
+  Loop State
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

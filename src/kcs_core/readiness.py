@@ -1,0 +1,583 @@
+"""Validation report and ready-for-reviewer loop state for KCS-5."""
+
+from __future__ import annotations
+
+import hashlib
+import re
+from collections.abc import Iterable, Mapping
+
+from kcs_core.errors import ContractValidationError
+from kcs_core.json_payload import dumps_payload
+from kcs_core.models import (
+    DecisionStatus,
+    KcsActionDecisionPacket,
+    KcsReviewerPacket,
+    KcsValidationReportPacket,
+    NormalizedTicketEvidencePacket,
+    ReadinessState,
+    RecommendedAction,
+    RequiredNextStep,
+)
+from kcs_core.validation import validate_evidence_packet
+
+_ARTICLE_OUTPUT_ACTIONS = frozenset(
+    {
+        RecommendedAction.CREATE_CANDIDATE.value,
+        RecommendedAction.UPDATE_EXISTING.value,
+        RecommendedAction.FLAG_EXISTING.value,
+    }
+)
+_REUSE_SEARCH_BLOCKERS = frozenset(
+    {
+        "possible_duplicate_not_checked",
+        "reuse_search_status_missing",
+    }
+)
+_NO_ARTICLE_REASON_CODES = frozenset(
+    {
+        "customer_specific",
+        "kcs_not_applicable",
+        "no_customer_reported_issue",
+        "no_supported_answer",
+        "third_party_generic",
+        "third_party_only",
+        "unsupported_public_article",
+    }
+)
+_SPLIT_COMPATIBLE_EVIDENCE_BLOCKERS = frozenset(
+    {
+        "evidence_not_atomic",
+        "multi_issue",
+    }
+)
+_SAFE_CODE_RE = re.compile(r"[a-z][a-z0-9_]*")
+_SAFE_METADATA_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
+_LICENSE_REF_RE = re.compile(r"\b(?:plsk|ext)[-_]?\d{4,}(?:[-_]?\d+)*\b", re.I)
+_TICKET_REF_RE = re.compile(r"\b(?:ticket|zendesk|zd)[-_]?\d{4,}\b", re.I)
+_MAX_CODE_LENGTH = 100
+_UNSAFE_REPORT_CODE = "unsafe_report_code"
+_RENDERER_VALIDATION_SCHEMA_VERSION = "kcs_renderer_validation_report_v1"
+_UNSAFE_METADATA_FRAGMENTS = frozenset(
+    {
+        "api_key",
+        "internal_comment",
+        "password",
+        "private",
+        "raw_internal",
+        "raw_ticket",
+        "secret",
+        "token",
+    }
+)
+
+
+def build_validation_report(
+    evidence: NormalizedTicketEvidencePacket,
+    decision: KcsActionDecisionPacket,
+    reviewer_packet: KcsReviewerPacket | None = None,
+) -> KcsValidationReportPacket:
+    """Return the deterministic KCS-5 validation report."""
+
+    evidence_result = validate_evidence_packet(evidence)
+    evidence_validation = evidence_result.to_json_dict()
+    decision_summary = _decision_summary(decision)
+    renderer_validation = _renderer_validation(reviewer_packet)
+    checks = _base_checks(reviewer_packet)
+    warnings = _safe_codes(evidence_result.warnings, "warnings")
+    warnings.extend(_renderer_warnings(reviewer_packet))
+    state, next_step, blockers = _readiness_outcome(
+        evidence,
+        decision,
+        reviewer_packet,
+        evidence_result.ok,
+    )
+    ok = state == ReadinessState.READY_FOR_REVIEWER
+    return KcsValidationReportPacket(
+        case_ref=evidence.case_ref,
+        ok=ok,
+        ready_for_reviewer=ok,
+        state=state.value,
+        required_next_step=next_step.value,
+        checks=_safe_codes(checks, "checks"),
+        blockers=_safe_codes(blockers, "blockers"),
+        warnings=_safe_codes(warnings, "warnings"),
+        evidence_validation=evidence_validation,
+        decision_summary=decision_summary,
+        renderer_validation=renderer_validation,
+        reviewer_packet_sha256=_reviewer_packet_hash(reviewer_packet),
+        zendesk_source_sha256=_zendesk_source_hash(reviewer_packet),
+        auto_publish_allowed=False,
+    )
+
+
+def ensure_ready_for_reviewer(report: KcsValidationReportPacket) -> None:
+    """Raise when the KCS-5 report is not ready for reviewer handoff."""
+
+    if not report.ready_for_reviewer:
+        raise ContractValidationError(
+            f"KCS output is not ready for reviewer: {report.state}"
+        )
+
+
+def _readiness_outcome(
+    evidence: NormalizedTicketEvidencePacket,
+    decision: KcsActionDecisionPacket,
+    reviewer_packet: KcsReviewerPacket | None,
+    evidence_ok: bool,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]]:
+    evidence_blockers = _evidence_blockers(evidence)
+    pre_review_outcome = _pre_review_outcome(decision, evidence_ok, evidence_blockers)
+    if pre_review_outcome is not None:
+        return pre_review_outcome
+    if reviewer_packet is None:
+        return _missing_reviewer_packet_outcome()
+    blocked_review = _blocked_review_outcome(evidence, decision, reviewer_packet)
+    if blocked_review is not None:
+        return blocked_review
+    if _draft_required(decision, reviewer_packet):
+        return _draft_required_outcome()
+    return (
+        ReadinessState.READY_FOR_REVIEWER,
+        RequiredNextStep.NONE,
+        [],
+    )
+
+
+def _pre_review_outcome(
+    decision: KcsActionDecisionPacket,
+    evidence_ok: bool,
+    evidence_blockers: list[str],
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    split_outcome = _split_decision_outcome(decision, evidence_blockers)
+    if split_outcome is not None:
+        return split_outcome
+    if not evidence_ok:
+        return _blocked_evidence_outcome(evidence_blockers)
+    if _decision_is_blocked(decision):
+        return _blocked_decision_outcome(decision)
+    return _decision_consistency_outcome(decision)
+
+
+def _split_required_outcome() -> tuple[ReadinessState, RequiredNextStep, list[str]]:
+    return (
+        ReadinessState.REVIEW_BLOCKED,
+        RequiredNextStep.REVIEW_SPLIT_ITEMS,
+        ["split_required"],
+    )
+
+
+def _blocked_evidence_outcome(
+    evidence_blockers: list[str],
+) -> tuple[ReadinessState, RequiredNextStep, list[str]]:
+    return (
+        ReadinessState.BLOCKED,
+        RequiredNextStep.FIX_EVIDENCE,
+        evidence_blockers,
+    )
+
+
+def _split_decision_outcome(
+    decision: KcsActionDecisionPacket, evidence_blockers: list[str]
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.recommended_action != RecommendedAction.SPLIT_REQUIRED.value:
+        return None
+    if _split_compatible_evidence_blockers(evidence_blockers):
+        return _split_required_outcome()
+    return (
+        ReadinessState.BLOCKED,
+        RequiredNextStep.FIX_EVIDENCE,
+        evidence_blockers,
+    )
+
+
+def _missing_reviewer_packet_outcome() -> tuple[
+    ReadinessState, RequiredNextStep, list[str]
+]:
+    return (
+        ReadinessState.DRAFT_REQUIRED,
+        RequiredNextStep.RENDER_REVIEWER_PACKET,
+        ["reviewer_packet_missing"],
+    )
+
+
+def _blocked_review_outcome(
+    evidence: NormalizedTicketEvidencePacket,
+    decision: KcsActionDecisionPacket,
+    reviewer_packet: KcsReviewerPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    blockers = _reviewer_packet_mismatch_blockers(evidence, decision, reviewer_packet)
+    blockers.extend(_renderer_blockers(reviewer_packet, decision))
+    if not blockers:
+        return None
+    return (
+        ReadinessState.REVIEW_BLOCKED,
+        RequiredNextStep.FIX_REVIEWER_PACKET,
+        blockers,
+    )
+
+
+def _draft_required_outcome() -> tuple[ReadinessState, RequiredNextStep, list[str]]:
+    return (
+        ReadinessState.DRAFT_REQUIRED,
+        RequiredNextStep.RENDER_REVIEWER_PACKET,
+        ["public_article_output_missing"],
+    )
+
+
+def _evidence_blockers(evidence: NormalizedTicketEvidencePacket) -> list[str]:
+    return list(validate_evidence_packet(evidence).blockers)
+
+
+def _split_compatible_evidence_blockers(blockers: list[str]) -> bool:
+    return set(blockers) <= _SPLIT_COMPATIBLE_EVIDENCE_BLOCKERS
+
+
+def _decision_is_blocked(decision: KcsActionDecisionPacket) -> bool:
+    return (
+        decision.status == DecisionStatus.BLOCKED.value
+        or decision.recommended_action == RecommendedAction.BLOCKED.value
+    )
+
+
+def _blocked_decision_outcome(
+    decision: KcsActionDecisionPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]]:
+    blockers = list(decision.blockers) or ["decision_blocked"]
+    next_step = RequiredNextStep.FIX_EVIDENCE
+    if any(blocker in _REUSE_SEARCH_BLOCKERS for blocker in blockers):
+        next_step = RequiredNextStep.RUN_REUSE_SEARCH
+    return (ReadinessState.BLOCKED, next_step, blockers)
+
+
+def _decision_consistency_outcome(
+    decision: KcsActionDecisionPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.recommended_action in _ARTICLE_OUTPUT_ACTIONS:
+        return _article_decision_consistency_outcome(decision)
+    if decision.recommended_action == RecommendedAction.NO_ARTICLE.value:
+        return _no_article_decision_consistency_outcome(decision)
+    return _non_article_decision_consistency_outcome(decision)
+
+
+def _article_decision_consistency_outcome(
+    decision: KcsActionDecisionPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.status != DecisionStatus.DECISION_READY.value:
+        return _inconsistent_decision_outcome("decision_status_mismatch")
+    if decision.blockers:
+        return _inconsistent_decision_outcome("decision_blockers_present")
+    return None
+
+
+def _no_article_decision_consistency_outcome(
+    decision: KcsActionDecisionPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.status != DecisionStatus.DECISION_READY.value:
+        return _inconsistent_decision_outcome("decision_status_mismatch")
+    if not _expected_no_article_reason_codes(decision.blockers):
+        return _inconsistent_decision_outcome("decision_blockers_present")
+    return None
+
+
+def _non_article_decision_consistency_outcome(
+    decision: KcsActionDecisionPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.blockers:
+        return _inconsistent_decision_outcome("decision_blockers_present")
+    if decision.status != DecisionStatus.DECISION_READY.value:
+        return _inconsistent_decision_outcome("decision_status_mismatch")
+    return None
+
+
+def _inconsistent_decision_outcome(
+    blocker: str,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]]:
+    return (
+        ReadinessState.REVIEW_BLOCKED,
+        RequiredNextStep.FIX_REVIEWER_PACKET,
+        [blocker],
+    )
+
+
+def _expected_no_article_reason_codes(blockers: Iterable[str]) -> bool:
+    return set(blockers) <= _NO_ARTICLE_REASON_CODES
+
+
+def _reviewer_packet_mismatch_blockers(
+    evidence: NormalizedTicketEvidencePacket,
+    decision: KcsActionDecisionPacket,
+    reviewer_packet: KcsReviewerPacket,
+) -> list[str]:
+    blockers = _reviewer_packet_base_blockers(evidence, decision, reviewer_packet)
+    candidate = reviewer_packet.public_article_candidate
+    if (
+        isinstance(candidate, Mapping)
+        and candidate.get("auto_publish_allowed") is not False
+    ):
+        blockers.append("public_candidate_auto_publish_allowed_not_false")
+    return blockers
+
+
+def _reviewer_packet_base_blockers(
+    evidence: NormalizedTicketEvidencePacket,
+    decision: KcsActionDecisionPacket,
+    reviewer_packet: KcsReviewerPacket,
+) -> list[str]:
+    blockers: list[str] = []
+    checks = (
+        (
+            reviewer_packet.case_ref != evidence.case_ref,
+            "reviewer_packet_case_ref_mismatch",
+        ),
+        (
+            reviewer_packet.recommended_action != decision.recommended_action,
+            "reviewer_packet_decision_mismatch",
+        ),
+        (reviewer_packet.review_required is not True, "review_required_not_true"),
+        (
+            reviewer_packet.auto_publish_allowed is not False,
+            "auto_publish_allowed_not_false",
+        ),
+        (
+            _unexpected_public_output(decision, reviewer_packet),
+            "unexpected_public_article_output",
+        ),
+        (
+            _renderer_validation_schema_mismatch(reviewer_packet),
+            "renderer_validation_schema_mismatch",
+        ),
+    )
+    blockers.extend(code for condition, code in checks if condition)
+    renderer_status_blocker = _renderer_status_blocker(decision, reviewer_packet)
+    if renderer_status_blocker is not None:
+        blockers.append(renderer_status_blocker)
+    return blockers
+
+
+def _renderer_blockers(
+    reviewer_packet: KcsReviewerPacket, decision: KcsActionDecisionPacket
+) -> list[str]:
+    blockers, blockers_invalid = _renderer_report_codes(
+        reviewer_packet.validation_report, "blockers"
+    )
+    _, checks_invalid = _renderer_report_codes(
+        reviewer_packet.validation_report, "checks"
+    )
+    _, warnings_invalid = _renderer_report_codes(
+        reviewer_packet.validation_report, "warnings"
+    )
+    if blockers_invalid or checks_invalid or warnings_invalid:
+        return blockers + ["renderer_validation_report_invalid"]
+    if decision.recommended_action == RecommendedAction.NO_ARTICLE.value:
+        safe_blockers = _safe_codes(blockers, "blockers")
+        if safe_blockers != blockers:
+            return safe_blockers
+        expected_reasons = set(decision.blockers) & _NO_ARTICLE_REASON_CODES
+        return [blocker for blocker in blockers if blocker not in expected_reasons]
+    return blockers
+
+
+def _draft_required(
+    decision: KcsActionDecisionPacket, reviewer_packet: KcsReviewerPacket
+) -> bool:
+    if decision.recommended_action not in _ARTICLE_OUTPUT_ACTIONS:
+        return False
+    return (
+        reviewer_packet.public_article_candidate is None
+        or reviewer_packet.zendesk_source_html is None
+    )
+
+
+def _unexpected_public_output(
+    decision: KcsActionDecisionPacket, reviewer_packet: KcsReviewerPacket
+) -> bool:
+    if decision.recommended_action in _ARTICLE_OUTPUT_ACTIONS:
+        return False
+    return (
+        reviewer_packet.public_article_candidate is not None
+        or reviewer_packet.zendesk_source_html is not None
+    )
+
+
+def _renderer_validation_schema_mismatch(reviewer_packet: KcsReviewerPacket) -> bool:
+    return (
+        reviewer_packet.validation_report.get("schema_version")
+        != _RENDERER_VALIDATION_SCHEMA_VERSION
+    )
+
+
+def _renderer_status_blocker(
+    decision: KcsActionDecisionPacket, reviewer_packet: KcsReviewerPacket
+) -> str | None:
+    if _draft_required(decision, reviewer_packet):
+        return None
+    expected_statuses = _expected_renderer_statuses(decision)
+    if not expected_statuses:
+        return None
+    status = reviewer_packet.validation_report.get("renderer_status")
+    if not isinstance(status, str) or status not in expected_statuses:
+        return "renderer_status_mismatch"
+    return None
+
+
+def _expected_renderer_statuses(decision: KcsActionDecisionPacket) -> frozenset[str]:
+    action = decision.recommended_action
+    if action in {
+        RecommendedAction.CREATE_CANDIDATE.value,
+        RecommendedAction.UPDATE_EXISTING.value,
+    }:
+        return frozenset({"zendesk_html_generated"})
+    if action == RecommendedAction.FLAG_EXISTING.value:
+        return frozenset({"flag_existing_review_required"})
+    if action in {
+        RecommendedAction.NO_ARTICLE.value,
+        RecommendedAction.REUSE_EXISTING.value,
+    }:
+        return frozenset({"no_public_article_output"})
+    return frozenset()
+
+
+def _decision_summary(decision: KcsActionDecisionPacket) -> dict[str, object]:
+    return {
+        "schema_version": decision.schema_version,
+        "candidate_id": _safe_metadata(decision.candidate_id),
+        "recommended_action": decision.recommended_action,
+        "article_type": decision.article_type,
+        "status": decision.status,
+        "blockers": _safe_codes(decision.blockers, "blockers"),
+        "split_item_count": len(decision.split_items),
+        "has_selected_reuse_match": decision.selected_reuse_match is not None,
+        "operator_override_allowed": decision.operator_override_allowed,
+        "allowed_override_modes": _safe_codes(
+            decision.allowed_override_modes, "allowed_override_modes"
+        ),
+        "override_status": decision.override_status,
+        "auto_publish_allowed": decision.auto_publish_allowed,
+    }
+
+
+def _renderer_validation(
+    reviewer_packet: KcsReviewerPacket | None,
+) -> dict[str, object]:
+    if reviewer_packet is None:
+        return {
+            "schema_version": _RENDERER_VALIDATION_SCHEMA_VERSION,
+            "renderer_status": "not_run",
+            "checks": [],
+            "blockers": ["reviewer_packet_missing"],
+            "warnings": [],
+            "has_public_article_candidate": False,
+            "has_zendesk_source_html": False,
+        }
+    report = reviewer_packet.validation_report
+    checks, checks_invalid = _renderer_report_codes(report, "checks")
+    blockers, blockers_invalid = _renderer_report_codes(report, "blockers")
+    warnings, warnings_invalid = _renderer_report_codes(report, "warnings")
+    if blockers_invalid or checks_invalid or warnings_invalid:
+        blockers.append("renderer_validation_report_invalid")
+    return {
+        "schema_version": _RENDERER_VALIDATION_SCHEMA_VERSION,
+        "renderer_status": _safe_metadata(report.get("renderer_status")),
+        "checks": _safe_codes(checks, "checks"),
+        "blockers": _safe_codes(blockers, "blockers"),
+        "warnings": _safe_codes(warnings, "warnings"),
+        "has_public_article_candidate": reviewer_packet.public_article_candidate
+        is not None,
+        "has_zendesk_source_html": reviewer_packet.zendesk_source_html is not None,
+    }
+
+
+def _base_checks(reviewer_packet: KcsReviewerPacket | None) -> list[str]:
+    checks = [
+        "evidence_validation_checked",
+        "decision_checked",
+        "auto_publish_allowed_false",
+    ]
+    if reviewer_packet is not None:
+        checks.extend(
+            [
+                "renderer_validation_checked",
+                "reviewer_packet_hash_computed",
+            ]
+        )
+        if reviewer_packet.zendesk_source_html is not None:
+            checks.append("zendesk_source_hash_computed")
+    return checks
+
+
+def _renderer_warnings(reviewer_packet: KcsReviewerPacket | None) -> list[str]:
+    if reviewer_packet is None:
+        return []
+    warnings, invalid = _renderer_report_codes(
+        reviewer_packet.validation_report, "warnings"
+    )
+    if invalid:
+        return ["renderer_validation_report_invalid"]
+    return _safe_codes(
+        warnings,
+        "warnings",
+    )
+
+
+def _reviewer_packet_hash(reviewer_packet: KcsReviewerPacket | None) -> str:
+    if reviewer_packet is None:
+        return ""
+    return hashlib.sha256(dumps_payload(reviewer_packet).encode("utf-8")).hexdigest()
+
+
+def _zendesk_source_hash(reviewer_packet: KcsReviewerPacket | None) -> str:
+    if reviewer_packet is None or reviewer_packet.zendesk_source_html is None:
+        return ""
+    return hashlib.sha256(
+        reviewer_packet.zendesk_source_html.encode("utf-8")
+    ).hexdigest()
+
+
+def _safe_codes(values: Iterable[str], field_name: str) -> list[str]:
+    safe_values: list[str] = []
+    unsafe_found = False
+    for value in values:
+        if (
+            isinstance(value, str)
+            and len(value) <= _MAX_CODE_LENGTH
+            and _SAFE_CODE_RE.fullmatch(value)
+        ):
+            safe_values.append(value)
+        else:
+            unsafe_found = True
+    if unsafe_found:
+        safe_values.append(f"{field_name}_{_UNSAFE_REPORT_CODE}")
+    return list(dict.fromkeys(safe_values))
+
+
+def _safe_metadata(value: object) -> str:
+    if (
+        isinstance(value, str)
+        and len(value) <= _MAX_CODE_LENGTH
+        and _SAFE_METADATA_RE.fullmatch(value)
+        and not _unsafe_metadata_value(value)
+    ):
+        return value
+    return ""
+
+
+def _unsafe_metadata_value(value: str) -> bool:
+    normalized = value.casefold().replace("-", "_")
+    if any(fragment in normalized for fragment in _UNSAFE_METADATA_FRAGMENTS):
+        return True
+    return bool(_LICENSE_REF_RE.search(value) or _TICKET_REF_RE.search(value))
+
+
+def _string_list(value: object) -> list[str]:
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return list(value)
+    return []
+
+
+def _renderer_report_codes(
+    report: dict[str, object], key: str
+) -> tuple[list[str], bool]:
+    values = report.get(key)
+    if isinstance(values, list) and all(isinstance(item, str) for item in values):
+        return list(values), False
+    return [], True

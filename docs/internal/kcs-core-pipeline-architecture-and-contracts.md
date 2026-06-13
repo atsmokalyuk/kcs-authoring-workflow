@@ -228,6 +228,26 @@ kcs_reviewer_packet_v1 {
 }
 ```
 
+```text
+kcs_validation_report_packet_v1 {
+  schema_version
+  case_ref
+  ok
+  ready_for_reviewer
+  state
+  required_next_step
+  checks
+  blockers
+  warnings
+  evidence_validation
+  decision_summary
+  renderer_validation
+  reviewer_packet_sha256
+  zendesk_source_sha256
+  auto_publish_allowed
+}
+```
+
 ## Candidate actions
 - reuse_existing
 - update_existing
@@ -330,8 +350,28 @@ KCS-2 visibility classes:
 | `public_article_candidate` | object or null | optional/default null | Draft/update content when available; null for blocked/no-article cases. |
 | `internal_reviewer_notes` | list[string] | yes | Reviewer-only notes. Must stay separate from public article content. |
 | `evidence_basis` | object | yes | Structured support for the recommendation. |
-| `validation_report` | object | yes | KCS-1 embedded validation summary object; standalone validation-report schema is deferred to KCS-5 if needed. |
+| `validation_report` | object | yes | KCS-4 embedded renderer validation summary object. KCS-5 adds the standalone `kcs_validation_report_packet_v1` readiness report. |
 | `zendesk_source_html` | string or null | optional/default null | Copy/paste artifact when available. It does not imply write/publish permission. |
+| `auto_publish_allowed` | boolean | optional/default false | Must be `false` for all MVP packets. `true` is invalid. |
+
+### kcs_validation_report_packet_v1
+
+| Field | Type | Required | Notes / invariants |
+|---|---|---:|---|
+| `schema_version` | string | yes | Must equal `kcs_validation_report_packet_v1`. |
+| `case_ref` | string | yes | Opaque case reference from the evidence packet. |
+| `ok` | boolean | yes | True only when the report is ready for reviewer handoff. |
+| `ready_for_reviewer` | boolean | yes | Same readiness meaning as `state=ready_for_reviewer`. |
+| `state` | enum string | yes | `ready_for_reviewer`, `blocked`, `draft_required`, or `review_blocked`. |
+| `required_next_step` | enum string | yes | `none`, `fix_evidence`, `run_reuse_search`, `render_reviewer_packet`, `fix_reviewer_packet`, or `review_split_items`. |
+| `checks` | list[string] | yes | Value-safe check codes. |
+| `blockers` | list[string] | yes | Value-safe blocker codes. |
+| `warnings` | list[string] | yes | Value-safe warning codes. |
+| `evidence_validation` | object | yes | Compact KCS-2 evidence validation result. |
+| `decision_summary` | object | yes | Compact KCS-3 decision summary without raw evidence. |
+| `renderer_validation` | object | yes | Compact KCS-4 renderer validation summary. |
+| `reviewer_packet_sha256` | string | yes | Deterministic hash when a reviewer packet is present; empty otherwise. |
+| `zendesk_source_sha256` | string | yes | Deterministic hash when Zendesk HTML is present; empty otherwise. |
 | `auto_publish_allowed` | boolean | optional/default false | Must be `false` for all MVP packets. `true` is invalid. |
 
 ### Cross-packet invariants
@@ -353,7 +393,7 @@ KCS-2 visibility classes:
 
 ## Future Local Output Model
 
-Future KCS-4/KCS-5/KCS-6 flow:
+KCS-4/KCS-5/KCS-6 flow:
 
 ```text
 KCS pipeline run
@@ -388,7 +428,7 @@ Future Claude/CLI compact summaries must not include:
 - full evidence basis;
 - raw search snippets/chunks/vector values.
 
-## Deferred Slices
+## Slice Boundaries
 
 KCS-4:
 
