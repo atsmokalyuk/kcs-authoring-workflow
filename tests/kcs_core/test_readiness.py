@@ -96,6 +96,17 @@ def _reuse_match(
     return values
 
 
+def _no_article_evidence() -> NormalizedTicketEvidencePacket:
+    return _evidence(
+        issue_candidates=[
+            {
+                **_evidence().issue_candidates[0],
+                "kcs_applicable": False,
+            }
+        ]
+    )
+
+
 def test_ready_create_candidate_report_is_ready_for_reviewer() -> None:
     evidence = _evidence()
     decision = decide_kcs_action(evidence, _reuse_results())
@@ -153,14 +164,7 @@ def test_update_existing_report_is_ready_for_reviewer() -> None:
 
 
 def test_no_article_with_renderer_packet_is_ready_without_public_html() -> None:
-    evidence = _evidence(
-        issue_candidates=[
-            {
-                **_evidence().issue_candidates[0],
-                "kcs_applicable": False,
-            }
-        ]
-    )
+    evidence = _no_article_evidence()
     decision = decide_kcs_action(evidence, _reuse_results())
     reviewer_packet = render_reviewer_packet(evidence, decision)
 
@@ -172,6 +176,32 @@ def test_no_article_with_renderer_packet_is_ready_without_public_html() -> None:
     assert report.state == ReadinessState.READY_FOR_REVIEWER.value
     assert report.required_next_step == RequiredNextStep.NONE.value
     assert report.blockers == []
+
+
+def test_no_article_with_unexpected_renderer_blocker_blocks_review() -> None:
+    evidence = _no_article_evidence()
+    decision = decide_kcs_action(evidence, _reuse_results())
+    reviewer_packet = render_reviewer_packet(evidence, decision)
+    malformed_packet = KcsReviewerPacket(
+        case_ref=reviewer_packet.case_ref,
+        recommended_action=reviewer_packet.recommended_action,
+        review_required=True,
+        public_article_candidate=None,
+        internal_reviewer_notes=reviewer_packet.internal_reviewer_notes,
+        evidence_basis=reviewer_packet.evidence_basis,
+        validation_report={
+            **reviewer_packet.validation_report,
+            "blockers": ["renderer_failed"],
+        },
+        zendesk_source_html=None,
+        auto_publish_allowed=False,
+    )
+
+    report = build_validation_report(evidence, decision, malformed_packet)
+
+    assert report.state == ReadinessState.REVIEW_BLOCKED.value
+    assert report.required_next_step == RequiredNextStep.FIX_REVIEWER_PACKET.value
+    assert report.blockers == ["renderer_failed"]
 
 
 def test_unsafe_evidence_blocks_without_echoing_private_value() -> None:
@@ -281,6 +311,89 @@ def test_reviewer_packet_action_mismatch_blocks_review() -> None:
     assert report.state == ReadinessState.REVIEW_BLOCKED.value
     assert report.required_next_step == RequiredNextStep.FIX_REVIEWER_PACKET.value
     assert report.blockers == ["reviewer_packet_decision_mismatch"]
+
+
+def test_article_action_with_decision_blockers_blocks_readiness() -> None:
+    evidence = _evidence()
+    decision = KcsActionDecisionPacket(
+        candidate_id="ISSUE-SYNTH-READY",
+        recommended_action=RecommendedAction.CREATE_CANDIDATE.value,
+        article_type=ArticleType.TECHNICAL_SCR.value,
+        confidence=0.6,
+        blockers=["unsafe_input"],
+        evidence_basis={},
+        status=DecisionStatus.DECISION_READY.value,
+    )
+    reviewer_packet = _valid_article_reviewer_packet(evidence, decision)
+
+    report = build_validation_report(evidence, decision, reviewer_packet)
+
+    assert report.state == ReadinessState.REVIEW_BLOCKED.value
+    assert report.required_next_step == RequiredNextStep.FIX_REVIEWER_PACKET.value
+    assert "decision_blockers_present" in report.blockers
+
+
+@pytest.mark.parametrize(
+    "bad_status",
+    [
+        "no_public_article_output",
+        "zendesk_html_not_generated",
+        "split_required",
+        "not_run",
+    ],
+)
+def test_create_candidate_with_renderer_status_mismatch_blocks_review(
+    bad_status: str,
+) -> None:
+    evidence = _evidence()
+    decision = decide_kcs_action(evidence, _reuse_results())
+    reviewer_packet = render_reviewer_packet(evidence, decision)
+    malformed_packet = _with_renderer_status(reviewer_packet, bad_status)
+
+    report = build_validation_report(evidence, decision, malformed_packet)
+
+    assert report.state == ReadinessState.REVIEW_BLOCKED.value
+    assert "renderer_status_mismatch" in report.blockers
+
+
+def test_update_existing_with_renderer_status_mismatch_blocks_review() -> None:
+    evidence = _evidence()
+    decision = decide_kcs_action(
+        evidence,
+        _reuse_results(matches=[_reuse_match("incomplete")]),
+    )
+    reviewer_packet = render_reviewer_packet(evidence, decision)
+    malformed_packet = _with_renderer_status(
+        reviewer_packet,
+        "no_public_article_output",
+    )
+
+    report = build_validation_report(evidence, decision, malformed_packet)
+
+    assert decision.recommended_action == RecommendedAction.UPDATE_EXISTING.value
+    assert report.state == ReadinessState.REVIEW_BLOCKED.value
+    assert "renderer_status_mismatch" in report.blockers
+
+
+def test_flag_existing_with_renderer_status_mismatch_blocks_review() -> None:
+    evidence = _evidence()
+    decision = decide_kcs_action(
+        evidence,
+        _reuse_results(
+            matches=[_reuse_match("incomplete", publication_status="public")]
+        ),
+    )
+    reviewer_packet = render_reviewer_packet(evidence, decision)
+    malformed_packet = _with_renderer_status(
+        reviewer_packet,
+        "zendesk_html_generated",
+    )
+
+    report = build_validation_report(evidence, decision, malformed_packet)
+
+    assert decision.recommended_action == RecommendedAction.FLAG_EXISTING.value
+    assert report.state == ReadinessState.REVIEW_BLOCKED.value
+    assert "renderer_status_mismatch" in report.blockers
 
 
 def test_invalid_renderer_blocker_list_blocks_review() -> None:
@@ -402,7 +515,7 @@ def test_reuse_existing_with_public_output_blocks_review() -> None:
 
     assert report.state == ReadinessState.REVIEW_BLOCKED.value
     assert report.required_next_step == RequiredNextStep.FIX_REVIEWER_PACKET.value
-    assert report.blockers == ["unexpected_public_article_output"]
+    assert "unexpected_public_article_output" in report.blockers
 
 
 def test_reviewer_packet_review_required_false_blocks_review() -> None:
@@ -529,6 +642,8 @@ def test_report_sanitizes_unsafe_decision_blocker_code() -> None:
         "ticket-123456",
         "customer.example.net",
         "10.0.0.1",
+        "PLSK-12345678-1234",
+        "EXT-12345678",
     ],
 )
 def test_decision_summary_does_not_echo_unsafe_candidate_id(
@@ -645,6 +760,24 @@ def test_validation_report_rejects_unsafe_report_codes(field: str) -> None:
         KcsValidationReportPacket.from_json_dict(payload)
 
 
+def test_validation_report_rejects_unsafe_nested_summary_values() -> None:
+    payload = _report_payload(
+        decision_summary={"candidate_id": "/private/raw"},
+        renderer_validation={"renderer_status": "ticket-123456"},
+    )
+
+    with pytest.raises(ContractValidationError):
+        KcsValidationReportPacket.from_json_dict(payload)
+
+
+@pytest.mark.parametrize("field", ["reviewer_packet_sha256", "zendesk_source_sha256"])
+def test_validation_report_rejects_invalid_hash_fields(field: str) -> None:
+    payload = _report_payload(**{field: "/private/raw"})
+
+    with pytest.raises(ContractValidationError):
+        KcsValidationReportPacket.from_json_dict(payload)
+
+
 def test_validation_report_rejects_not_ready_without_next_step() -> None:
     payload = _report_payload(
         ok=False,
@@ -711,6 +844,45 @@ def _report_payload(**overrides: object) -> dict[str, object]:
     }
     payload.update(overrides)
     return payload
+
+
+def _valid_article_reviewer_packet(
+    evidence: NormalizedTicketEvidencePacket,
+    decision: KcsActionDecisionPacket,
+) -> KcsReviewerPacket:
+    clean_decision = decide_kcs_action(evidence, _reuse_results())
+    clean_packet = render_reviewer_packet(evidence, clean_decision)
+    return KcsReviewerPacket(
+        case_ref=evidence.case_ref,
+        recommended_action=decision.recommended_action,
+        review_required=True,
+        public_article_candidate=clean_packet.public_article_candidate,
+        internal_reviewer_notes=clean_packet.internal_reviewer_notes,
+        evidence_basis=clean_packet.evidence_basis,
+        validation_report=clean_packet.validation_report,
+        zendesk_source_html=clean_packet.zendesk_source_html,
+        auto_publish_allowed=False,
+    )
+
+
+def _with_renderer_status(
+    reviewer_packet: KcsReviewerPacket,
+    renderer_status: str,
+) -> KcsReviewerPacket:
+    return KcsReviewerPacket(
+        case_ref=reviewer_packet.case_ref,
+        recommended_action=reviewer_packet.recommended_action,
+        review_required=reviewer_packet.review_required,
+        public_article_candidate=reviewer_packet.public_article_candidate,
+        internal_reviewer_notes=reviewer_packet.internal_reviewer_notes,
+        evidence_basis=reviewer_packet.evidence_basis,
+        validation_report={
+            **reviewer_packet.validation_report,
+            "renderer_status": renderer_status,
+        },
+        zendesk_source_html=reviewer_packet.zendesk_source_html,
+        auto_publish_allowed=False,
+    )
 
 
 def _packet_hash(packet: KcsReviewerPacket) -> str:

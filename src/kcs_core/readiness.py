@@ -33,6 +33,17 @@ _REUSE_SEARCH_BLOCKERS = frozenset(
         "reuse_search_status_missing",
     }
 )
+_NO_ARTICLE_REASON_CODES = frozenset(
+    {
+        "customer_specific",
+        "kcs_not_applicable",
+        "no_customer_reported_issue",
+        "no_supported_answer",
+        "third_party_generic",
+        "third_party_only",
+        "unsupported_public_article",
+    }
+)
 _SPLIT_COMPATIBLE_EVIDENCE_BLOCKERS = frozenset(
     {
         "evidence_not_atomic",
@@ -41,6 +52,7 @@ _SPLIT_COMPATIBLE_EVIDENCE_BLOCKERS = frozenset(
 )
 _SAFE_CODE_RE = re.compile(r"[a-z][a-z0-9_]*")
 _SAFE_METADATA_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
+_LICENSE_REF_RE = re.compile(r"\b(?:plsk|ext)[-_]?\d{4,}(?:[-_]?\d+)*\b", re.I)
 _TICKET_REF_RE = re.compile(r"\b(?:ticket|zendesk|zd)[-_]?\d{4,}\b", re.I)
 _MAX_CODE_LENGTH = 100
 _UNSAFE_REPORT_CODE = "unsafe_report_code"
@@ -113,17 +125,9 @@ def _readiness_outcome(
     evidence_ok: bool,
 ) -> tuple[ReadinessState, RequiredNextStep, list[str]]:
     evidence_blockers = _evidence_blockers(evidence)
-    split_outcome = _split_decision_outcome(decision, evidence_blockers)
-    if split_outcome is not None:
-        return split_outcome
-    if not evidence_ok:
-        return (
-            ReadinessState.BLOCKED,
-            RequiredNextStep.FIX_EVIDENCE,
-            evidence_blockers,
-        )
-    if _decision_is_blocked(decision):
-        return _blocked_decision_outcome(decision)
+    pre_review_outcome = _pre_review_outcome(decision, evidence_ok, evidence_blockers)
+    if pre_review_outcome is not None:
+        return pre_review_outcome
     if reviewer_packet is None:
         return _missing_reviewer_packet_outcome()
     blocked_review = _blocked_review_outcome(evidence, decision, reviewer_packet)
@@ -138,11 +142,36 @@ def _readiness_outcome(
     )
 
 
+def _pre_review_outcome(
+    decision: KcsActionDecisionPacket,
+    evidence_ok: bool,
+    evidence_blockers: list[str],
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    split_outcome = _split_decision_outcome(decision, evidence_blockers)
+    if split_outcome is not None:
+        return split_outcome
+    if not evidence_ok:
+        return _blocked_evidence_outcome(evidence_blockers)
+    if _decision_is_blocked(decision):
+        return _blocked_decision_outcome(decision)
+    return _decision_consistency_outcome(decision)
+
+
 def _split_required_outcome() -> tuple[ReadinessState, RequiredNextStep, list[str]]:
     return (
         ReadinessState.REVIEW_BLOCKED,
         RequiredNextStep.REVIEW_SPLIT_ITEMS,
         ["split_required"],
+    )
+
+
+def _blocked_evidence_outcome(
+    evidence_blockers: list[str],
+) -> tuple[ReadinessState, RequiredNextStep, list[str]]:
+    return (
+        ReadinessState.BLOCKED,
+        RequiredNextStep.FIX_EVIDENCE,
+        evidence_blockers,
     )
 
 
@@ -219,28 +248,104 @@ def _blocked_decision_outcome(
     return (ReadinessState.BLOCKED, next_step, blockers)
 
 
+def _decision_consistency_outcome(
+    decision: KcsActionDecisionPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.recommended_action in _ARTICLE_OUTPUT_ACTIONS:
+        return _article_decision_consistency_outcome(decision)
+    if decision.recommended_action == RecommendedAction.NO_ARTICLE.value:
+        return _no_article_decision_consistency_outcome(decision)
+    return _non_article_decision_consistency_outcome(decision)
+
+
+def _article_decision_consistency_outcome(
+    decision: KcsActionDecisionPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.status != DecisionStatus.DECISION_READY.value:
+        return _inconsistent_decision_outcome("decision_status_mismatch")
+    if decision.blockers:
+        return _inconsistent_decision_outcome("decision_blockers_present")
+    return None
+
+
+def _no_article_decision_consistency_outcome(
+    decision: KcsActionDecisionPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.status != DecisionStatus.DECISION_READY.value:
+        return _inconsistent_decision_outcome("decision_status_mismatch")
+    if not _expected_no_article_reason_codes(decision.blockers):
+        return _inconsistent_decision_outcome("decision_blockers_present")
+    return None
+
+
+def _non_article_decision_consistency_outcome(
+    decision: KcsActionDecisionPacket,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.blockers:
+        return _inconsistent_decision_outcome("decision_blockers_present")
+    if decision.status != DecisionStatus.DECISION_READY.value:
+        return _inconsistent_decision_outcome("decision_status_mismatch")
+    return None
+
+
+def _inconsistent_decision_outcome(
+    blocker: str,
+) -> tuple[ReadinessState, RequiredNextStep, list[str]]:
+    return (
+        ReadinessState.REVIEW_BLOCKED,
+        RequiredNextStep.FIX_REVIEWER_PACKET,
+        [blocker],
+    )
+
+
+def _expected_no_article_reason_codes(blockers: Iterable[str]) -> bool:
+    return set(blockers) <= _NO_ARTICLE_REASON_CODES
+
+
 def _reviewer_packet_mismatch_blockers(
     evidence: NormalizedTicketEvidencePacket,
     decision: KcsActionDecisionPacket,
     reviewer_packet: KcsReviewerPacket,
 ) -> list[str]:
-    blockers: list[str] = []
-    if reviewer_packet.case_ref != evidence.case_ref:
-        blockers.append("reviewer_packet_case_ref_mismatch")
-    if reviewer_packet.recommended_action != decision.recommended_action:
-        blockers.append("reviewer_packet_decision_mismatch")
-    if reviewer_packet.review_required is not True:
-        blockers.append("review_required_not_true")
-    if reviewer_packet.auto_publish_allowed is not False:
-        blockers.append("auto_publish_allowed_not_false")
-    if _unexpected_public_output(decision, reviewer_packet):
-        blockers.append("unexpected_public_article_output")
+    blockers = _reviewer_packet_base_blockers(evidence, decision, reviewer_packet)
     candidate = reviewer_packet.public_article_candidate
     if (
         isinstance(candidate, Mapping)
         and candidate.get("auto_publish_allowed") is not False
     ):
         blockers.append("public_candidate_auto_publish_allowed_not_false")
+    return blockers
+
+
+def _reviewer_packet_base_blockers(
+    evidence: NormalizedTicketEvidencePacket,
+    decision: KcsActionDecisionPacket,
+    reviewer_packet: KcsReviewerPacket,
+) -> list[str]:
+    blockers: list[str] = []
+    checks = (
+        (
+            reviewer_packet.case_ref != evidence.case_ref,
+            "reviewer_packet_case_ref_mismatch",
+        ),
+        (
+            reviewer_packet.recommended_action != decision.recommended_action,
+            "reviewer_packet_decision_mismatch",
+        ),
+        (reviewer_packet.review_required is not True, "review_required_not_true"),
+        (
+            reviewer_packet.auto_publish_allowed is not False,
+            "auto_publish_allowed_not_false",
+        ),
+        (
+            _unexpected_public_output(decision, reviewer_packet),
+            "unexpected_public_article_output",
+        ),
+    )
+    blockers.extend(code for condition, code in checks if condition)
+    renderer_status_blocker = _renderer_status_blocker(decision, reviewer_packet)
+    if renderer_status_blocker is not None:
+        blockers.append(renderer_status_blocker)
     return blockers
 
 
@@ -262,7 +367,8 @@ def _renderer_blockers(
         safe_blockers = _safe_codes(blockers, "blockers")
         if safe_blockers != blockers:
             return safe_blockers
-        return []
+        expected_reasons = set(decision.blockers) & _NO_ARTICLE_REASON_CODES
+        return [blocker for blocker in blockers if blocker not in expected_reasons]
     return blockers
 
 
@@ -286,6 +392,37 @@ def _unexpected_public_output(
         reviewer_packet.public_article_candidate is not None
         or reviewer_packet.zendesk_source_html is not None
     )
+
+
+def _renderer_status_blocker(
+    decision: KcsActionDecisionPacket, reviewer_packet: KcsReviewerPacket
+) -> str | None:
+    if _draft_required(decision, reviewer_packet):
+        return None
+    expected_statuses = _expected_renderer_statuses(decision)
+    if not expected_statuses:
+        return None
+    status = reviewer_packet.validation_report.get("renderer_status")
+    if not isinstance(status, str) or status not in expected_statuses:
+        return "renderer_status_mismatch"
+    return None
+
+
+def _expected_renderer_statuses(decision: KcsActionDecisionPacket) -> frozenset[str]:
+    action = decision.recommended_action
+    if action in {
+        RecommendedAction.CREATE_CANDIDATE.value,
+        RecommendedAction.UPDATE_EXISTING.value,
+    }:
+        return frozenset({"zendesk_html_generated"})
+    if action == RecommendedAction.FLAG_EXISTING.value:
+        return frozenset({"flag_existing_review_required"})
+    if action in {
+        RecommendedAction.NO_ARTICLE.value,
+        RecommendedAction.REUSE_EXISTING.value,
+    }:
+        return frozenset({"no_public_article_output"})
+    return frozenset()
 
 
 def _decision_summary(decision: KcsActionDecisionPacket) -> dict[str, object]:
@@ -416,7 +553,7 @@ def _unsafe_metadata_value(value: str) -> bool:
     normalized = value.casefold().replace("-", "_")
     if any(fragment in normalized for fragment in _UNSAFE_METADATA_FRAGMENTS):
         return True
-    return bool(_TICKET_REF_RE.search(value))
+    return bool(_LICENSE_REF_RE.search(value) or _TICKET_REF_RE.search(value))
 
 
 def _string_list(value: object) -> list[str]:
