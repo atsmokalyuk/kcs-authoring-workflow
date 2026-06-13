@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import dumps_payload
@@ -33,9 +33,29 @@ _REUSE_SEARCH_BLOCKERS = frozenset(
         "reuse_search_status_missing",
     }
 )
+_SPLIT_COMPATIBLE_EVIDENCE_BLOCKERS = frozenset(
+    {
+        "evidence_not_atomic",
+        "multi_issue",
+    }
+)
 _SAFE_CODE_RE = re.compile(r"[a-z][a-z0-9_]*")
+_SAFE_METADATA_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
+_TICKET_REF_RE = re.compile(r"\b(?:ticket|zendesk|zd)[-_]?\d{4,}\b", re.I)
 _MAX_CODE_LENGTH = 100
 _UNSAFE_REPORT_CODE = "unsafe_report_code"
+_UNSAFE_METADATA_FRAGMENTS = frozenset(
+    {
+        "api_key",
+        "internal_comment",
+        "password",
+        "private",
+        "raw_internal",
+        "raw_ticket",
+        "secret",
+        "token",
+    }
+)
 
 
 def build_validation_report(
@@ -92,13 +112,15 @@ def _readiness_outcome(
     reviewer_packet: KcsReviewerPacket | None,
     evidence_ok: bool,
 ) -> tuple[ReadinessState, RequiredNextStep, list[str]]:
-    if decision.recommended_action == RecommendedAction.SPLIT_REQUIRED.value:
-        return _split_required_outcome()
+    evidence_blockers = _evidence_blockers(evidence)
+    split_outcome = _split_decision_outcome(decision, evidence_blockers)
+    if split_outcome is not None:
+        return split_outcome
     if not evidence_ok:
         return (
             ReadinessState.BLOCKED,
             RequiredNextStep.FIX_EVIDENCE,
-            _evidence_blockers(evidence),
+            evidence_blockers,
         )
     if _decision_is_blocked(decision):
         return _blocked_decision_outcome(decision)
@@ -124,6 +146,20 @@ def _split_required_outcome() -> tuple[ReadinessState, RequiredNextStep, list[st
     )
 
 
+def _split_decision_outcome(
+    decision: KcsActionDecisionPacket, evidence_blockers: list[str]
+) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
+    if decision.recommended_action != RecommendedAction.SPLIT_REQUIRED.value:
+        return None
+    if _split_compatible_evidence_blockers(evidence_blockers):
+        return _split_required_outcome()
+    return (
+        ReadinessState.BLOCKED,
+        RequiredNextStep.FIX_EVIDENCE,
+        evidence_blockers,
+    )
+
+
 def _missing_reviewer_packet_outcome() -> tuple[
     ReadinessState, RequiredNextStep, list[str]
 ]:
@@ -140,7 +176,7 @@ def _blocked_review_outcome(
     reviewer_packet: KcsReviewerPacket,
 ) -> tuple[ReadinessState, RequiredNextStep, list[str]] | None:
     blockers = _reviewer_packet_mismatch_blockers(evidence, decision, reviewer_packet)
-    blockers.extend(_renderer_blockers(reviewer_packet))
+    blockers.extend(_renderer_blockers(reviewer_packet, decision))
     if not blockers:
         return None
     return (
@@ -162,11 +198,14 @@ def _evidence_blockers(evidence: NormalizedTicketEvidencePacket) -> list[str]:
     return list(validate_evidence_packet(evidence).blockers)
 
 
+def _split_compatible_evidence_blockers(blockers: list[str]) -> bool:
+    return set(blockers) <= _SPLIT_COMPATIBLE_EVIDENCE_BLOCKERS
+
+
 def _decision_is_blocked(decision: KcsActionDecisionPacket) -> bool:
     return (
         decision.status == DecisionStatus.BLOCKED.value
         or decision.recommended_action == RecommendedAction.BLOCKED.value
-        or bool(decision.blockers)
     )
 
 
@@ -190,12 +229,24 @@ def _reviewer_packet_mismatch_blockers(
         blockers.append("reviewer_packet_case_ref_mismatch")
     if reviewer_packet.recommended_action != decision.recommended_action:
         blockers.append("reviewer_packet_decision_mismatch")
+    if reviewer_packet.review_required is not True:
+        blockers.append("review_required_not_true")
     if reviewer_packet.auto_publish_allowed is not False:
         blockers.append("auto_publish_allowed_not_false")
+    if _unexpected_public_output(decision, reviewer_packet):
+        blockers.append("unexpected_public_article_output")
+    candidate = reviewer_packet.public_article_candidate
+    if (
+        isinstance(candidate, Mapping)
+        and candidate.get("auto_publish_allowed") is not False
+    ):
+        blockers.append("public_candidate_auto_publish_allowed_not_false")
     return blockers
 
 
-def _renderer_blockers(reviewer_packet: KcsReviewerPacket) -> list[str]:
+def _renderer_blockers(
+    reviewer_packet: KcsReviewerPacket, decision: KcsActionDecisionPacket
+) -> list[str]:
     blockers, blockers_invalid = _renderer_report_codes(
         reviewer_packet.validation_report, "blockers"
     )
@@ -207,6 +258,11 @@ def _renderer_blockers(reviewer_packet: KcsReviewerPacket) -> list[str]:
     )
     if blockers_invalid or checks_invalid or warnings_invalid:
         return blockers + ["renderer_validation_report_invalid"]
+    if decision.recommended_action == RecommendedAction.NO_ARTICLE.value:
+        safe_blockers = _safe_codes(blockers, "blockers")
+        if safe_blockers != blockers:
+            return safe_blockers
+        return []
     return blockers
 
 
@@ -218,6 +274,17 @@ def _draft_required(
     return (
         reviewer_packet.public_article_candidate is None
         or reviewer_packet.zendesk_source_html is None
+    )
+
+
+def _unexpected_public_output(
+    decision: KcsActionDecisionPacket, reviewer_packet: KcsReviewerPacket
+) -> bool:
+    if decision.recommended_action in _ARTICLE_OUTPUT_ACTIONS:
+        return False
+    return (
+        reviewer_packet.public_article_candidate is not None
+        or reviewer_packet.zendesk_source_html is not None
     )
 
 
@@ -254,10 +321,10 @@ def _renderer_validation(
             "has_zendesk_source_html": False,
         }
     report = reviewer_packet.validation_report
-    checks, _ = _renderer_report_codes(report, "checks")
+    checks, checks_invalid = _renderer_report_codes(report, "checks")
     blockers, blockers_invalid = _renderer_report_codes(report, "blockers")
-    warnings, _ = _renderer_report_codes(report, "warnings")
-    if blockers_invalid:
+    warnings, warnings_invalid = _renderer_report_codes(report, "warnings")
+    if blockers_invalid or checks_invalid or warnings_invalid:
         blockers.append("renderer_validation_report_invalid")
     return {
         "schema_version": _safe_metadata(report.get("schema_version")),
@@ -335,11 +402,21 @@ def _safe_codes(values: Iterable[str], field_name: str) -> list[str]:
 
 
 def _safe_metadata(value: object) -> str:
-    if isinstance(value, str) and _SAFE_CODE_RE.fullmatch(value.replace("-", "_")):
-        return value
-    if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_.:-]+", value):
+    if (
+        isinstance(value, str)
+        and len(value) <= _MAX_CODE_LENGTH
+        and _SAFE_METADATA_RE.fullmatch(value)
+        and not _unsafe_metadata_value(value)
+    ):
         return value
     return ""
+
+
+def _unsafe_metadata_value(value: str) -> bool:
+    normalized = value.casefold().replace("-", "_")
+    if any(fragment in normalized for fragment in _UNSAFE_METADATA_FRAGMENTS):
+        return True
+    return bool(_TICKET_REF_RE.search(value))
 
 
 def _string_list(value: object) -> list[str]:

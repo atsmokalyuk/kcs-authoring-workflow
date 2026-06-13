@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -69,6 +70,10 @@ class RequiredNextStep(StrEnum):
     RENDER_REVIEWER_PACKET = "render_reviewer_packet"
     FIX_REVIEWER_PACKET = "fix_reviewer_packet"
     REVIEW_SPLIT_ITEMS = "review_split_items"
+
+
+_VALIDATION_REPORT_CODE_RE = re.compile(r"[a-z][a-z0-9_]*")
+_MAX_VALIDATION_REPORT_CODE_LENGTH = 100
 
 
 def _require_schema_version(payload: Mapping[str, Any], expected: str) -> None:
@@ -489,6 +494,17 @@ class KcsValidationReportPacket:
             raise ContractValidationError(
                 "readiness booleans must match readiness state"
             )
+        _validate_validation_report_state(
+            self.state,
+            self.required_next_step,
+            self.blockers,
+        )
+        for key in ("checks", "blockers", "warnings"):
+            object.__setattr__(
+                self,
+                key,
+                _validate_validation_report_codes(getattr(self, key), key),
+            )
 
     @property
     def schema_version(self) -> str:
@@ -545,6 +561,40 @@ def _string_list(payload: Mapping[str, Any], key: str) -> list[str]:
     values = _require_list(payload, key)
     if not all(isinstance(value, str) for value in values):
         raise ContractValidationError(f"{key} must contain only strings")
+    return list(values)
+
+
+def _validate_validation_report_state(
+    state: str, required_next_step: str, blockers: list[str]
+) -> None:
+    if state == ReadinessState.READY_FOR_REVIEWER.value:
+        if required_next_step != RequiredNextStep.NONE.value or blockers:
+            raise ContractValidationError(
+                "ready reports must have no next step and no blockers"
+            )
+        return
+    if required_next_step == RequiredNextStep.NONE.value:
+        raise ContractValidationError("not-ready reports must include a next step")
+    if state in {
+        ReadinessState.BLOCKED.value,
+        ReadinessState.DRAFT_REQUIRED.value,
+        ReadinessState.REVIEW_BLOCKED.value,
+    } and not blockers:
+        raise ContractValidationError("not-ready reports must include blockers")
+
+
+def _validate_validation_report_codes(values: object, key: str) -> list[str]:
+    if not isinstance(values, list) or not all(
+        isinstance(value, str) for value in values
+    ):
+        raise ContractValidationError(f"{key} must contain only report code strings")
+    for value in values:
+        if (
+            not value
+            or len(value) > _MAX_VALIDATION_REPORT_CODE_LENGTH
+            or not _VALIDATION_REPORT_CODE_RE.fullmatch(value)
+        ):
+            raise ContractValidationError(f"{key} contains unsafe report code")
     return list(values)
 
 
