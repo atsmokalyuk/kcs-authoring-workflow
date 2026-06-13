@@ -56,6 +56,7 @@ _LICENSE_REF_RE = re.compile(r"\b(?:plsk|ext)[-_]?\d{4,}(?:[-_]?\d+)*\b", re.I)
 _TICKET_REF_RE = re.compile(r"\b(?:ticket|zendesk|zd)[-_]?\d{4,}\b", re.I)
 _MAX_CODE_LENGTH = 100
 _UNSAFE_REPORT_CODE = "unsafe_report_code"
+_RENDERER_VALIDATION_SCHEMA_VERSION = "kcs_renderer_validation_report_v1"
 _UNSAFE_METADATA_FRAGMENTS = frozenset(
     {
         "api_key",
@@ -341,6 +342,10 @@ def _reviewer_packet_base_blockers(
             _unexpected_public_output(decision, reviewer_packet),
             "unexpected_public_article_output",
         ),
+        (
+            _renderer_validation_schema_mismatch(reviewer_packet),
+            "renderer_validation_schema_mismatch",
+        ),
     )
     blockers.extend(code for condition, code in checks if condition)
     renderer_status_blocker = _renderer_status_blocker(decision, reviewer_packet)
@@ -391,6 +396,13 @@ def _unexpected_public_output(
     return (
         reviewer_packet.public_article_candidate is not None
         or reviewer_packet.zendesk_source_html is not None
+    )
+
+
+def _renderer_validation_schema_mismatch(reviewer_packet: KcsReviewerPacket) -> bool:
+    return (
+        reviewer_packet.validation_report.get("schema_version")
+        != _RENDERER_VALIDATION_SCHEMA_VERSION
     )
 
 
@@ -449,7 +461,7 @@ def _renderer_validation(
 ) -> dict[str, object]:
     if reviewer_packet is None:
         return {
-            "schema_version": "kcs_renderer_validation_report_v1",
+            "schema_version": _RENDERER_VALIDATION_SCHEMA_VERSION,
             "renderer_status": "not_run",
             "checks": [],
             "blockers": ["reviewer_packet_missing"],
@@ -464,7 +476,7 @@ def _renderer_validation(
     if blockers_invalid or checks_invalid or warnings_invalid:
         blockers.append("renderer_validation_report_invalid")
     return {
-        "schema_version": _safe_metadata(report.get("schema_version")),
+        "schema_version": _RENDERER_VALIDATION_SCHEMA_VERSION,
         "renderer_status": _safe_metadata(report.get("renderer_status")),
         "checks": _safe_codes(checks, "checks"),
         "blockers": _safe_codes(blockers, "blockers"),

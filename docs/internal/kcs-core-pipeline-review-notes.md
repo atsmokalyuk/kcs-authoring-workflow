@@ -294,10 +294,38 @@ Fixed in PR:
 Deferred:
 
 - CLI entrypoint and compact run index belong to KCS-6.
+- CLI summary/index should stay compact and must not print full reviewer
+  packet bodies, full Zendesk HTML, raw ticket text, raw search snippets, or
+  redaction maps.
+- Local review bundle writer remains a future output slice. When implemented,
+  it must persist operator override request/status metadata and keep public
+  article artifacts separate from internal reviewer notes.
+- Browser viewer remains a future UX slice. It should read approved packet
+  JSON and must not bypass KCS-2/KCS-5 gates or introduce new raw-data display
+  paths.
 - Local review bundle writing, browser viewer, and override artifact
   persistence remain future output/bundle slices.
 - Evidence package building and semantic extraction remain KCS-7+.
-- Claude and Zendesk adapters remain later dedicated slices.
+- Claude semantic extraction and Claude handoff remain later dedicated slices.
+  Claude output remains untrusted and validators must rerun after any
+  extraction or draft generation.
+- Zendesk ingest/write integration remains out of KCS-5. Read-only ingest,
+  writes, and Help Center publication require separate approved adapters and
+  boundary tests.
+- Operator override persistence on disk must record the override fact without
+  replacing the original deterministic recommendation.
+- New decision behaviors beyond the current action enum require a dedicated
+  decision-scope change and tests; do not smuggle new action behavior into
+  readiness, renderer, or bundle layers.
+- Content style and link catalog improvements belong to renderer/content
+  quality slices; they should not weaken deterministic safety or readiness
+  gates.
+- Centralized reusable safe-code and safe-metadata helpers across KCS-3,
+  KCS-4, and KCS-5 remain a cleanup branch candidate. Until then, local helper
+  behavior must stay covered by fail-closed regression tests.
+- Future branches should classify reviewer findings as current-slice blocker,
+  same-slice small fix, future pipeline risk, or architecture idea before
+  implementing them.
 
 Validation evidence:
 

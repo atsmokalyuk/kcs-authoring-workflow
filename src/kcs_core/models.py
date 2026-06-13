@@ -124,6 +124,17 @@ _RENDERER_VALIDATION_KEYS = frozenset(
         "warnings",
     }
 )
+_RENDERER_VALIDATION_SCHEMA_VERSION = "kcs_renderer_validation_report_v1"
+_RENDERER_STATUS_VALUES = frozenset(
+    {
+        "flag_existing_review_required",
+        "no_public_article_output",
+        "not_run",
+        "split_required",
+        "zendesk_html_generated",
+        "zendesk_html_not_generated",
+    }
+)
 
 
 def _require_schema_version(payload: Mapping[str, Any], expected: str) -> None:
@@ -558,29 +569,17 @@ class KcsValidationReportPacket:
         object.__setattr__(
             self,
             "evidence_validation",
-            _validate_validation_report_object(
-                self.evidence_validation,
-                "evidence_validation",
-                _EVIDENCE_VALIDATION_KEYS,
-            ),
+            _validate_evidence_validation_summary(self.evidence_validation),
         )
         object.__setattr__(
             self,
             "decision_summary",
-            _validate_validation_report_object(
-                self.decision_summary,
-                "decision_summary",
-                _DECISION_SUMMARY_KEYS,
-            ),
+            _validate_decision_summary(self.decision_summary),
         )
         object.__setattr__(
             self,
             "renderer_validation",
-            _validate_validation_report_object(
-                self.renderer_validation,
-                "renderer_validation",
-                _RENDERER_VALIDATION_KEYS,
-            ),
+            _validate_renderer_validation_summary(self.renderer_validation),
         )
         object.__setattr__(
             self,
@@ -686,9 +685,127 @@ def _validate_validation_report_codes(values: object, key: str) -> list[str]:
             not value
             or len(value) > _MAX_VALIDATION_REPORT_CODE_LENGTH
             or not _VALIDATION_REPORT_CODE_RE.fullmatch(value)
+            or _contains_unsafe_validation_report_metadata(value)
         ):
             raise ContractValidationError(f"{key} contains unsafe report code")
     return list(values)
+
+
+def _validate_evidence_validation_summary(value: object) -> JsonDict:
+    data = _validate_validation_report_object(
+        value,
+        "evidence_validation",
+        _EVIDENCE_VALIDATION_KEYS,
+    )
+    if "ok" in data:
+        _require_report_bool(data["ok"], "evidence_validation.ok")
+    for key in ("blockers", "warnings"):
+        if key in data:
+            data[key] = _validate_validation_report_codes(
+                data[key],
+                f"evidence_validation.{key}",
+            )
+    return data
+
+
+def _validate_decision_summary(value: object) -> JsonDict:
+    data = _validate_validation_report_object(
+        value,
+        "decision_summary",
+        _DECISION_SUMMARY_KEYS,
+    )
+    _validate_decision_summary_schema(data)
+    _validate_decision_summary_enums(data)
+    _validate_decision_summary_lists(data)
+    _validate_decision_summary_scalars(data)
+    return data
+
+
+def _validate_decision_summary_schema(data: JsonDict) -> None:
+    if "schema_version" in data:
+        _require_report_exact_string(
+            data["schema_version"],
+            KcsActionDecisionPacket.SCHEMA_VERSION,
+            "decision_summary.schema_version",
+        )
+    if "candidate_id" in data:
+        _validate_report_metadata_or_empty(
+            data["candidate_id"],
+            "decision_summary.candidate_id",
+        )
+
+
+def _validate_decision_summary_enums(data: JsonDict) -> None:
+    enum_fields: tuple[tuple[str, type[StrEnum]], ...] = (
+        ("recommended_action", RecommendedAction),
+        ("article_type", ArticleType),
+        ("status", DecisionStatus),
+        ("override_status", OverrideStatus),
+    )
+    for key, enum_type in enum_fields:
+        if key in data:
+            _require_report_enum(data[key], enum_type, f"decision_summary.{key}")
+
+
+def _validate_decision_summary_lists(data: JsonDict) -> None:
+    if "blockers" in data:
+        data["blockers"] = _validate_validation_report_codes(
+            data["blockers"],
+            "decision_summary.blockers",
+        )
+    if "allowed_override_modes" in data:
+        data["allowed_override_modes"] = _validate_report_enum_list(
+            data["allowed_override_modes"],
+            OperatorOverrideMode,
+            "decision_summary.allowed_override_modes",
+        )
+
+
+def _validate_decision_summary_scalars(data: JsonDict) -> None:
+    if "split_item_count" in data:
+        _require_report_non_negative_int(
+            data["split_item_count"],
+            "decision_summary.split_item_count",
+        )
+    for key in (
+        "has_selected_reuse_match",
+        "operator_override_allowed",
+    ):
+        if key in data:
+            _require_report_bool(data[key], f"decision_summary.{key}")
+    if "auto_publish_allowed" in data and data["auto_publish_allowed"] is not False:
+        raise ContractValidationError(
+            "decision_summary.auto_publish_allowed must be false"
+        )
+
+
+def _validate_renderer_validation_summary(value: object) -> JsonDict:
+    data = _validate_validation_report_object(
+        value,
+        "renderer_validation",
+        _RENDERER_VALIDATION_KEYS,
+    )
+    if "schema_version" in data:
+        _require_report_exact_string(
+            data["schema_version"],
+            _RENDERER_VALIDATION_SCHEMA_VERSION,
+            "renderer_validation.schema_version",
+        )
+    if "renderer_status" in data:
+        _require_report_renderer_status(
+            data["renderer_status"],
+            "renderer_validation.renderer_status",
+        )
+    for key in ("checks", "blockers", "warnings"):
+        if key in data:
+            data[key] = _validate_validation_report_codes(
+                data[key],
+                f"renderer_validation.{key}",
+            )
+    for key in ("has_public_article_candidate", "has_zendesk_source_html"):
+        if key in data:
+            _require_report_bool(data[key], f"renderer_validation.{key}")
+    return data
 
 
 def _validate_validation_report_object(
@@ -698,34 +815,69 @@ def _validate_validation_report_object(
         raise ContractValidationError(f"{key} must be an object")
     if not set(value) <= allowed_keys:
         raise ContractValidationError(f"{key} contains unsupported field")
-    for item_key, item_value in value.items():
-        _validate_validation_report_metadata(item_value, f"{key}.{item_key}")
     return dict(value)
 
 
-def _validate_validation_report_metadata(value: object, key: str) -> None:
-    if isinstance(value, bool):
-        return
-    if isinstance(value, int):
-        if value < 0:
-            raise ContractValidationError(f"{key} contains unsafe report value")
-        return
-    if isinstance(value, str):
-        _validate_validation_report_metadata_string(value, key)
-        return
-    if isinstance(value, list):
-        _validate_validation_report_codes(value, key)
-        return
-    raise ContractValidationError(f"{key} contains unsupported report value")
+def _require_report_bool(value: object, key: str) -> None:
+    if type(value) is not bool:
+        raise ContractValidationError(f"{key} must be a boolean")
+
+
+def _require_report_non_negative_int(value: object, key: str) -> None:
+    if type(value) is not int or value < 0:
+        raise ContractValidationError(f"{key} must be a non-negative integer")
+
+
+def _require_report_exact_string(value: object, expected: str, key: str) -> None:
+    if value != expected:
+        raise ContractValidationError(f"{key} has unsupported value")
+
+
+def _require_report_enum(value: object, enum_type: type[StrEnum], key: str) -> None:
+    if not isinstance(value, str):
+        raise ContractValidationError(f"{key} must be a string")
+    _enum_value(enum_type, value, key)
+
+
+def _validate_report_enum_list(
+    value: object,
+    enum_type: type[StrEnum],
+    key: str,
+) -> list[str]:
+    if not isinstance(value, list):
+        raise ContractValidationError(f"{key} must be a list")
+    return [_enum_value(enum_type, item, key) for item in value]
+
+
+def _require_report_renderer_status(value: object, key: str) -> None:
+    if not isinstance(value, str) or (
+        value != "" and value not in _RENDERER_STATUS_VALUES
+    ):
+        raise ContractValidationError(f"{key} has unsupported value")
+
+
+def _validate_report_metadata_or_empty(value: object, key: str) -> None:
+    if not isinstance(value, str):
+        raise ContractValidationError(f"{key} must be a string")
+    if (
+        value
+        and (
+            len(value) > _MAX_VALIDATION_REPORT_CODE_LENGTH
+            or not _VALIDATION_REPORT_METADATA_RE.fullmatch(value)
+            or _contains_unsafe_validation_report_metadata(value)
+        )
+    ):
+        raise ContractValidationError(f"{key} contains unsafe report value")
 
 
 def _validate_validation_report_metadata_string(value: str, key: str) -> None:
-    if value == "":
-        return
     if (
-        len(value) > _MAX_VALIDATION_REPORT_CODE_LENGTH
-        or not _VALIDATION_REPORT_METADATA_RE.fullmatch(value)
-        or _contains_unsafe_validation_report_metadata(value)
+        value
+        and (
+            len(value) > _MAX_VALIDATION_REPORT_CODE_LENGTH
+            or not _VALIDATION_REPORT_METADATA_RE.fullmatch(value)
+            or _contains_unsafe_validation_report_metadata(value)
+        )
     ):
         raise ContractValidationError(f"{key} contains unsafe report value")
 

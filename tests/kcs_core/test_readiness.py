@@ -15,6 +15,8 @@ from kcs_core.models import (
     KcsReviewerPacket,
     KcsValidationReportPacket,
     NormalizedTicketEvidencePacket,
+    OperatorOverrideMode,
+    OverrideStatus,
     ReadinessState,
     RecommendedAction,
     RequiredNextStep,
@@ -691,6 +693,37 @@ def test_renderer_validation_does_not_echo_unsafe_status() -> None:
     assert private_value not in repr(report.to_json_dict())
 
 
+@pytest.mark.parametrize("bad_schema", ["wrong", "/private/raw", None])
+def test_renderer_validation_schema_mismatch_blocks_review(
+    bad_schema: object,
+) -> None:
+    evidence = _evidence()
+    decision = decide_kcs_action(evidence, _reuse_results())
+    reviewer_packet = render_reviewer_packet(evidence, decision)
+    malformed_packet = KcsReviewerPacket(
+        case_ref=reviewer_packet.case_ref,
+        recommended_action=reviewer_packet.recommended_action,
+        review_required=reviewer_packet.review_required,
+        public_article_candidate=reviewer_packet.public_article_candidate,
+        internal_reviewer_notes=reviewer_packet.internal_reviewer_notes,
+        evidence_basis=reviewer_packet.evidence_basis,
+        validation_report={
+            **reviewer_packet.validation_report,
+            "schema_version": bad_schema,
+        },
+        zendesk_source_html=reviewer_packet.zendesk_source_html,
+        auto_publish_allowed=False,
+    )
+
+    report = build_validation_report(evidence, decision, malformed_packet)
+    payload = report.to_json_dict()
+
+    assert report.state == ReadinessState.REVIEW_BLOCKED.value
+    assert report.required_next_step == RequiredNextStep.FIX_REVIEWER_PACKET.value
+    assert "renderer_validation_schema_mismatch" in report.blockers
+    assert "/private/raw" not in repr(payload)
+
+
 def test_report_does_not_mutate_inputs() -> None:
     evidence = _evidence()
     decision = decide_kcs_action(evidence, _reuse_results())
@@ -764,6 +797,87 @@ def test_validation_report_rejects_unsafe_nested_summary_values() -> None:
     payload = _report_payload(
         decision_summary={"candidate_id": "/private/raw"},
         renderer_validation={"renderer_status": "ticket-123456"},
+    )
+
+    with pytest.raises(ContractValidationError):
+        KcsValidationReportPacket.from_json_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "decision_summary_patch",
+    [
+        {"auto_publish_allowed": True},
+        {"recommended_action": "not_an_action"},
+        {"article_type": "not_an_article_type"},
+        {"status": "not_a_status"},
+        {"override_status": "not_an_override_status"},
+        {"blockers": "bad"},
+        {"candidate_id": 123456789},
+        {"split_item_count": -1},
+        {"has_selected_reuse_match": 1},
+        {"operator_override_allowed": 1},
+        {"allowed_override_modes": ["not_an_override_mode"]},
+    ],
+)
+def test_validation_report_rejects_malformed_decision_summary(
+    decision_summary_patch: dict[str, object],
+) -> None:
+    payload = _report_payload(
+        decision_summary={
+            **_decision_summary_payload(),
+            **decision_summary_patch,
+        },
+    )
+
+    with pytest.raises(ContractValidationError):
+        KcsValidationReportPacket.from_json_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "evidence_validation_patch",
+    [
+        {"ok": 1},
+        {"blockers": "bad"},
+        {"warnings": "bad"},
+        {"blockers": ["raw_ticket"]},
+    ],
+)
+def test_validation_report_rejects_malformed_evidence_validation(
+    evidence_validation_patch: dict[str, object],
+) -> None:
+    payload = _report_payload(
+        evidence_validation={
+            **_evidence_validation_payload(),
+            **evidence_validation_patch,
+        },
+    )
+
+    with pytest.raises(ContractValidationError):
+        KcsValidationReportPacket.from_json_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "renderer_validation_patch",
+    [
+        {"schema_version": "wrong"},
+        {"renderer_status": 123},
+        {"renderer_status": "not_a_renderer_status"},
+        {"has_public_article_candidate": 1},
+        {"has_zendesk_source_html": 1},
+        {"checks": "bad"},
+        {"blockers": "bad"},
+        {"warnings": "bad"},
+        {"warnings": ["api_key"]},
+    ],
+)
+def test_validation_report_rejects_malformed_renderer_validation(
+    renderer_validation_patch: dict[str, object],
+) -> None:
+    payload = _report_payload(
+        renderer_validation={
+            **_renderer_validation_payload(),
+            **renderer_validation_patch,
+        },
     )
 
     with pytest.raises(ContractValidationError):
@@ -844,6 +958,43 @@ def _report_payload(**overrides: object) -> dict[str, object]:
     }
     payload.update(overrides)
     return payload
+
+
+def _evidence_validation_payload() -> dict[str, object]:
+    return {
+        "ok": True,
+        "blockers": [],
+        "warnings": [],
+    }
+
+
+def _decision_summary_payload() -> dict[str, object]:
+    return {
+        "schema_version": KcsActionDecisionPacket.SCHEMA_VERSION,
+        "candidate_id": "ISSUE-SYNTH-READY",
+        "recommended_action": RecommendedAction.CREATE_CANDIDATE.value,
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "status": DecisionStatus.DECISION_READY.value,
+        "blockers": [],
+        "split_item_count": 0,
+        "has_selected_reuse_match": False,
+        "operator_override_allowed": False,
+        "allowed_override_modes": [OperatorOverrideMode.REVIEWER_ONLY_DRAFT.value],
+        "override_status": OverrideStatus.NOT_REQUESTED.value,
+        "auto_publish_allowed": False,
+    }
+
+
+def _renderer_validation_payload() -> dict[str, object]:
+    return {
+        "schema_version": "kcs_renderer_validation_report_v1",
+        "renderer_status": "zendesk_html_generated",
+        "checks": ["auto_publish_allowed_false"],
+        "blockers": [],
+        "warnings": [],
+        "has_public_article_candidate": True,
+        "has_zendesk_source_html": True,
+    }
 
 
 def _valid_article_reviewer_packet(
