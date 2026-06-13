@@ -1,0 +1,57 @@
+{
+  "case_ref": "approved-fixture-004",
+  "confirmed_facts": [
+    "A safe mail setting is disabled."
+  ],
+  "environment": {
+    "component": "Mail",
+    "platform": "Linux",
+    "product": "Plesk"
+  },
+  "input_class": "synthetic_fixture",
+  "issue_candidates": [
+    {
+      "article_type": "technical_scr",
+      "atomic": true,
+      "candidate_id": "item-004",
+      "confirmed_facts": [
+        "A safe mail setting is disabled."
+      ],
+      "customer_reported": true,
+      "kcs_applicable": true,
+      "public_solution_safe": true,
+      "resolution_state": "unsolved",
+      "resolution_steps": [
+        "Open the product mail settings page.",
+        "Enable the required mail setting.",
+        "Rerun the mail task."
+      ],
+      "reuse_search_status": "checked",
+      "summary": "Mail task result is not yet explained by supported facts.",
+      "supported_cause": "A required mail setting is disabled.",
+      "supported_resolution_or_workaround": "Enable the required mail setting.",
+      "symptoms": [
+        "Mail task fails with a synthetic safe status."
+      ],
+      "title": "Synthetic unresolved mail question"
+    }
+  ],
+  "open_questions": [],
+  "sanitizer_report": {
+    "status": "passed"
+  },
+  "schema_version": "normalized_ticket_evidence_packet_v1",
+  "source_refs": [
+    "fixture-source-004"
+  ],
+  "supported_cause": "A required mail setting is disabled.",
+  "supported_resolution_or_workaround": "Enable the required mail setting.",
+  "symptoms": [
+    "Mail task fails with a synthetic safe status."
+  ],
+  "visibility_summary": {
+    "classes": [
+      "public_customer_safe"
+    ]
+  }
+}

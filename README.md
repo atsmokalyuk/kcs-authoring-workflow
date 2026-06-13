@@ -171,9 +171,27 @@ uv run --python 3.11 --extra dev python -m pytest tests/kcs_core -q
 
 ### Running the Tool
 
-There is no CLI/runtime entrypoint yet. CLI work is planned for KCS-6 after
-packet contracts, gates, decision logic, renderer behavior, and validation
-state exist.
+KCS-6 adds a local verification CLI for synthetic or approved sanitized packet
+fixtures. It does not require Zendesk, Claude, MCP, search-adapter, or publish
+credentials.
+
+```bash
+python -m kcs_core.cli validate-evidence \
+  --input tests/kcs_core/cli_fixtures/003_create_candidate/evidence_packet.json \
+  --json
+
+python -m kcs_core.cli decide \
+  --input tests/kcs_core/cli_fixtures/003_create_candidate/evidence_packet.json \
+  --reuse-results tests/kcs_core/cli_fixtures/003_create_candidate/reuse_results.json \
+  --json
+
+python -m kcs_core.cli run \
+  --input tests/kcs_core/cli_fixtures/003_create_candidate/evidence_packet.json \
+  --reuse-results tests/kcs_core/cli_fixtures/003_create_candidate/reuse_results.json \
+  --json
+```
+
+The CLI prints deterministic JSON and keeps `auto_publish_allowed=false`.
 
 ## Data Handling
 

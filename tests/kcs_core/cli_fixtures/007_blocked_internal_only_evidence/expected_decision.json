@@ -1,0 +1,27 @@
+{
+  "allowed_override_modes": [
+    "reviewer_only_draft"
+  ],
+  "article_type": "technical_scr",
+  "auto_publish_allowed": false,
+  "blockers": [
+    "internal_only_solution"
+  ],
+  "candidate_id": "item-007",
+  "confidence": 0.0,
+  "evidence_basis": {
+    "article_type": "technical_scr",
+    "case_ref": "approved-fixture-007",
+    "identity_rule": "article_type_cause_resolution",
+    "source_refs": [
+      "fixture-source-007"
+    ]
+  },
+  "operator_override_allowed": true,
+  "override_status": "not_requested",
+  "recommended_action": "blocked",
+  "schema_version": "kcs_action_decision_packet_v1",
+  "selected_reuse_match": null,
+  "split_items": [],
+  "status": "blocked"
+}

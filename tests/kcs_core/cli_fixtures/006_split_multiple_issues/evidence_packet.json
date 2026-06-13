@@ -1,0 +1,113 @@
+{
+  "case_ref": "approved-fixture-006",
+  "confirmed_facts": [
+    "Multiple independent synthetic issues are present."
+  ],
+  "environment": {
+    "component": "Mail",
+    "platform": "Linux",
+    "product": "Plesk"
+  },
+  "input_class": "synthetic_fixture",
+  "issue_candidates": [
+    {
+      "article_type": "technical_scr",
+      "atomic": true,
+      "candidate_id": "item-006-a",
+      "confirmed_facts": [
+        "Synthetic fact for item-006-a."
+      ],
+      "customer_reported": true,
+      "kcs_applicable": true,
+      "public_solution_safe": true,
+      "resolution_state": "solved",
+      "resolution_steps": [
+        "Enable the required mail setting."
+      ],
+      "reuse_search_status": "checked",
+      "source_refs": [
+        "fixture-source-item-006-a"
+      ],
+      "summary": "Synthetic mail task setting issue",
+      "supported_cause": "A required mail setting is disabled.",
+      "supported_resolution_or_workaround": "Enable the required mail setting.",
+      "symptoms": [
+        "Synthetic mail task setting issue"
+      ],
+      "title": "Synthetic mail task setting issue"
+    },
+    {
+      "article_type": "technical_scr",
+      "atomic": true,
+      "candidate_id": "item-006-b",
+      "confirmed_facts": [
+        "Synthetic fact for item-006-b."
+      ],
+      "customer_reported": true,
+      "kcs_applicable": true,
+      "public_solution_safe": true,
+      "resolution_state": "solved",
+      "resolution_steps": [
+        "Enable the required backup setting."
+      ],
+      "reuse_search_status": "checked",
+      "source_refs": [
+        "fixture-source-item-006-b"
+      ],
+      "summary": "Synthetic backup task setting issue",
+      "supported_cause": "A required backup setting is disabled.",
+      "supported_resolution_or_workaround": "Enable the required backup setting.",
+      "symptoms": [
+        "Synthetic backup task setting issue"
+      ],
+      "title": "Synthetic backup task setting issue"
+    },
+    {
+      "article_type": "technical_scr",
+      "atomic": true,
+      "candidate_id": "item-006-c",
+      "confirmed_facts": [
+        "Synthetic fact for item-006-c."
+      ],
+      "customer_reported": true,
+      "kcs_applicable": true,
+      "public_solution_safe": true,
+      "resolution_state": "solved",
+      "resolution_steps": [
+        "Use the third-party vendor documentation."
+      ],
+      "reuse_search_status": "checked",
+      "source_refs": [
+        "fixture-source-item-006-c"
+      ],
+      "summary": "Synthetic unsupported third-party question",
+      "supported_cause": "A third-party setting is outside product scope.",
+      "supported_resolution_or_workaround": "Use the third-party vendor documentation.",
+      "symptoms": [
+        "Synthetic unsupported third-party question"
+      ],
+      "third_party_only": true,
+      "title": "Synthetic unsupported third-party question"
+    }
+  ],
+  "open_questions": [],
+  "sanitizer_report": {
+    "status": "passed"
+  },
+  "schema_version": "normalized_ticket_evidence_packet_v1",
+  "source_refs": [
+    "fixture-source-006"
+  ],
+  "supported_cause": "Multiple independent synthetic causes are present.",
+  "supported_resolution_or_workaround": "Evaluate each synthetic item separately.",
+  "symptoms": [
+    "Synthetic mail task setting issue",
+    "Synthetic backup task setting issue",
+    "Synthetic unsupported third-party question"
+  ],
+  "visibility_summary": {
+    "classes": [
+      "public_customer_safe"
+    ]
+  }
+}
