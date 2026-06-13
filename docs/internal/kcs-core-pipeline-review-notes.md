@@ -143,23 +143,24 @@ Fixed in PR:
 - Adjusted internal-only/public-not-safe override behavior so reviewer-only
   override metadata can be allowed while public output remains unapproved.
 
+Fixed in follow-up bugfix:
+
+- Hardened KCS-3 identity matching for explicit GUI/CLI delivery variants:
+  canonical identity keys are preferred when available, and explicit delivery
+  labels do not create separate KCS identities.
+- Added tests proving that technical SCR identity remains article type plus
+  cause-resolution, and how-to Q&A identity remains question-answer.
+- Added tests for public/published same-identity content changes
+  (`flag_existing`) and internal/not-public same-identity content changes
+  (`update_existing`).
+- Confirmed KCS-3 chooses action and target only; updated reviewer packet or
+  Zendesk HTML content remains KCS-4 renderer behavior.
+
 Deferred:
 
-- A later KCS-3 bugfix PR should explicitly harden decision identity and
-  public-content status rules:
-  - technical SCR identity is article type plus cause-resolution pair;
-  - how-to Q&A identity is question-answer pair;
-  - GUI and CLI variants of the same solution are delivery variants, not
-    separate identities;
-  - GUI path should be preferred for public article wording when both GUI and
-    CLI paths solve the same issue, while CLI may be included when missing or
-    materially better;
-  - public/published same-identity article changes should remain
-    `flag_existing`;
-  - internal/not-public same-identity article changes should remain
-    `update_existing`;
-  - KCS-3 chooses action and target only; updated reviewer packet or Zendesk
-    HTML content remains KCS-4 renderer behavior.
+- GUI path preference for final public wording, and whether CLI steps are
+  included when missing or materially better, belongs to renderer/content
+  generation slices rather than the KCS-3 decision core.
 - `reuse_existing` selected metadata as a renderer/decision consistency
   requirement remains a future KCS-3/KCS-4 alignment check.
 - Renderer artifacts, local bundle writing, CLI handoff, Claude handoff, and

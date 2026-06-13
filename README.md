@@ -57,6 +57,9 @@ metadata, but it does not generate override drafts.
 For same-identity article changes, KCS-3 distinguishes public articles
 (`flag_existing`) from internal/not-public articles (`update_existing`) but
 does not generate updated HTML content.
+Explicit GUI/CLI delivery variants are treated as the same reusable issue when
+the structured KCS identity resolves to the same cause-resolution or
+question-answer pair.
 Future local review bundle slices must persist any requested override status in
 packet/artifact metadata while preserving the original recommendation and
 `auto_publish_allowed=false`.

@@ -208,6 +208,52 @@ def test_internal_same_identity_with_missing_content_updates_existing() -> None:
     assert decision.auto_publish_allowed is False
 
 
+def test_published_same_identity_with_missing_content_flags_existing() -> None:
+    decision = decide_kcs_action(
+        _evidence(),
+        _reuse_results(
+            matches=[
+                _technical_match(
+                    "outdated",
+                    publication_status="published",
+                )
+            ]
+        ),
+    )
+
+    assert decision.recommended_action == RecommendedAction.FLAG_EXISTING.value
+    assert decision.selected_reuse_match == {
+        "match_ref": "KB-SYNTH-MAIL-SETTING",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "content_status": "outdated",
+        "publication_status": "published",
+    }
+    assert decision.auto_publish_allowed is False
+
+
+def test_not_public_same_identity_with_missing_content_updates_existing() -> None:
+    decision = decide_kcs_action(
+        _evidence(),
+        _reuse_results(
+            matches=[
+                _technical_match(
+                    "partial",
+                    publication_status="not_public",
+                )
+            ]
+        ),
+    )
+
+    assert decision.recommended_action == RecommendedAction.UPDATE_EXISTING.value
+    assert decision.selected_reuse_match == {
+        "match_ref": "KB-SYNTH-MAIL-SETTING",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "content_status": "partial",
+        "publication_status": "not_public",
+    }
+    assert decision.auto_publish_allowed is False
+
+
 def test_technical_identity_ignores_cli_gui_variant_metadata() -> None:
     match = _technical_match()
     match["identity"]["interface"] = "cli"
@@ -215,6 +261,101 @@ def test_technical_identity_ignores_cli_gui_variant_metadata() -> None:
     decision = decide_kcs_action(_evidence(), _reuse_results(matches=[match]))
 
     assert decision.recommended_action == RecommendedAction.REUSE_EXISTING.value
+
+
+def test_technical_identity_uses_canonical_solution_key_for_delivery_variants() -> None:
+    candidate = dict(_evidence().issue_candidates[0])
+    candidate["solution_key"] = "enable_required_mail_setting"
+    evidence = _evidence(
+        issue_candidates=[candidate],
+        supported_resolution_or_workaround=(
+            "GUI: Enable the required mail setting in product settings."
+        ),
+    )
+    match = _technical_match(
+        identity={
+            "cause": "A required mail setting is disabled.",
+            "solution_key": "enable_required_mail_setting",
+            "resolution_or_answer": (
+                "CLI: Run the product command to enable the required mail setting."
+            ),
+        }
+    )
+
+    decision = decide_kcs_action(evidence, _reuse_results(matches=[match]))
+
+    assert decision.recommended_action == RecommendedAction.REUSE_EXISTING.value
+    assert decision.selected_reuse_match["match_ref"] == "KB-SYNTH-MAIL-SETTING"
+
+
+def test_technical_identity_uses_canonical_cause_key() -> None:
+    candidate = dict(_evidence().issue_candidates[0])
+    candidate["cause_key"] = "mail_setting_disabled"
+    evidence = _evidence(
+        issue_candidates=[candidate],
+        supported_cause="Customer-facing wording for the disabled mail setting.",
+    )
+    match = _technical_match(
+        identity={
+            "cause_key": "mail_setting_disabled",
+            "cause": "Different wording for the same supported cause.",
+            "resolution_or_answer": "Enable the required mail setting.",
+        }
+    )
+
+    decision = decide_kcs_action(evidence, _reuse_results(matches=[match]))
+
+    assert decision.recommended_action == RecommendedAction.REUSE_EXISTING.value
+
+
+def test_technical_identity_normalizes_explicit_delivery_variant_labels() -> None:
+    evidence = _evidence(
+        supported_resolution_or_workaround="GUI: Enable the required mail setting."
+    )
+    match = _technical_match(
+        identity={
+            "cause": "A required mail setting is disabled.",
+            "resolution_or_answer": "CLI: enable the required mail setting.",
+        }
+    )
+
+    decision = decide_kcs_action(evidence, _reuse_results(matches=[match]))
+
+    assert decision.recommended_action == RecommendedAction.REUSE_EXISTING.value
+
+
+def test_technical_identity_does_not_merge_different_delivery_solutions() -> None:
+    evidence = _evidence(
+        supported_resolution_or_workaround="GUI: Enable the required mail setting."
+    )
+    match = _technical_match(
+        identity={
+            "cause": "A required mail setting is disabled.",
+            "resolution_or_answer": "CLI: Disable the required mail setting.",
+        }
+    )
+
+    decision = decide_kcs_action(evidence, _reuse_results(matches=[match]))
+
+    assert decision.recommended_action == RecommendedAction.CREATE_CANDIDATE.value
+    assert decision.selected_reuse_match is None
+
+
+def test_technical_identity_does_not_remove_delivery_words_inside_solution() -> None:
+    evidence = _evidence(
+        supported_resolution_or_workaround="Open shell access for the safe task."
+    )
+    match = _technical_match(
+        identity={
+            "cause": "A required mail setting is disabled.",
+            "resolution_or_answer": "Open access for the safe task.",
+        }
+    )
+
+    decision = decide_kcs_action(evidence, _reuse_results(matches=[match]))
+
+    assert decision.recommended_action == RecommendedAction.CREATE_CANDIDATE.value
+    assert decision.selected_reuse_match is None
 
 
 def test_howto_identity_ignores_cli_gui_variant_metadata() -> None:
@@ -242,6 +383,113 @@ def test_howto_identity_ignores_cli_gui_variant_metadata() -> None:
             "question": "How to change PHP version?",
             "resolution_or_answer": answer,
             "interface": "cli",
+        },
+        "content_status": "complete",
+    }
+
+    decision = decide_kcs_action(evidence, _reuse_results(matches=[match]))
+
+    assert decision.recommended_action == RecommendedAction.REUSE_EXISTING.value
+
+
+def test_howto_identity_uses_canonical_answer_key_for_delivery_variants() -> None:
+    answer = "GUI: Change the PHP version in the domain settings."
+    evidence = _evidence(
+        supported_cause=None,
+        supported_resolution_or_workaround=answer,
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-HOWTO",
+                "article_type": ArticleType.HOWTO_QA.value,
+                "question": "How to change PHP version?",
+                "answer_key": "change_domain_php_version",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "answered",
+                "public_solution_safe": True,
+            }
+        ],
+    )
+    match = {
+        "match_ref": "KB-SYNTH-HOWTO-PHP",
+        "article_type": ArticleType.HOWTO_QA.value,
+        "identity": {
+            "question": "How to change PHP version?",
+            "answer_key": "change_domain_php_version",
+            "resolution_or_answer": "CLI: Run the product command to change PHP.",
+        },
+        "content_status": "complete",
+    }
+
+    decision = decide_kcs_action(evidence, _reuse_results(matches=[match]))
+
+    assert decision.recommended_action == RecommendedAction.REUSE_EXISTING.value
+    assert decision.selected_reuse_match["match_ref"] == "KB-SYNTH-HOWTO-PHP"
+
+
+def test_howto_identity_uses_canonical_question_key() -> None:
+    answer = "Change the PHP version in the domain settings."
+    evidence = _evidence(
+        supported_cause=None,
+        supported_resolution_or_workaround=answer,
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-HOWTO",
+                "article_type": ArticleType.HOWTO_QA.value,
+                "question": "Customer-facing wording for PHP version change?",
+                "question_key": "change_domain_php_version",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "answered",
+                "public_solution_safe": True,
+            }
+        ],
+    )
+    match = {
+        "match_ref": "KB-SYNTH-HOWTO-PHP",
+        "article_type": ArticleType.HOWTO_QA.value,
+        "identity": {
+            "question_key": "change_domain_php_version",
+            "question": "Different wording for the same how-to question?",
+            "resolution_or_answer": answer,
+        },
+        "content_status": "complete",
+    }
+
+    decision = decide_kcs_action(evidence, _reuse_results(matches=[match]))
+
+    assert decision.recommended_action == RecommendedAction.REUSE_EXISTING.value
+
+
+def test_howto_identity_normalizes_explicit_delivery_variant_labels() -> None:
+    evidence = _evidence(
+        supported_cause=None,
+        supported_resolution_or_workaround=(
+            "GUI: Change the PHP version in the domain settings."
+        ),
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-HOWTO",
+                "article_type": ArticleType.HOWTO_QA.value,
+                "question": "How to change PHP version?",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "answered",
+                "public_solution_safe": True,
+            }
+        ],
+    )
+    match = {
+        "match_ref": "KB-SYNTH-HOWTO-PHP",
+        "article_type": ArticleType.HOWTO_QA.value,
+        "identity": {
+            "question": "How to change PHP version?",
+            "resolution_or_answer": (
+                "CLI: change the PHP version in the domain settings."
+            ),
         },
         "content_status": "complete",
     }
