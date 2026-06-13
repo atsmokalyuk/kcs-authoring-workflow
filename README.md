@@ -39,6 +39,7 @@ Implemented code slices:
 KCS-1: core packet contracts and safe fixtures
 KCS-2: safety and evidence readiness gates for sanitized normalized evidence
 KCS-3: deterministic KCS action decision core
+KCS-4: reviewer packet renderer and Zendesk HTML output
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -60,9 +61,17 @@ Future local review bundle slices must persist any requested override status in
 packet/artifact metadata while preserving the original recommendation and
 `auto_publish_allowed=false`.
 
-KCS-1 through KCS-3 do not require live Zendesk access, Zendesk tokens, Claude
-connector setup, or `kcs-search-mcp` access.
-Reviewer packet and Zendesk HTML validation belong to later slices.
+KCS-4 is implemented as local `renderer.py` logic. It turns accepted evidence
+and KCS-3 decisions into canonical `KcsReviewerPacket` output and generates
+Zendesk source HTML only for create/update candidates or reviewer-required
+`flag_existing` artifacts. It does not write local review bundles, call Claude,
+read or write Zendesk, publish Help Center content, or generate customer
+replies.
+
+KCS-1 through KCS-4 do not require live Zendesk access, Zendesk tokens, Claude
+connector setup, or `kcs-search-mcp` access. Ready-for-reviewer loop state,
+bundle writing, CLI handoff, Claude handoff, and full Zendesk HTML validation
+belong to later slices.
 
 ## Non-goals
 
@@ -189,8 +198,8 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- Current implementation subtask: PAUX-7092 / KCS-3 KCS Action Decision
-  Engine
+- Current implementation subtask: PAUX-7093 / KCS-4 Reviewer Packet Renderer and
+  Zendesk HTML Output
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
