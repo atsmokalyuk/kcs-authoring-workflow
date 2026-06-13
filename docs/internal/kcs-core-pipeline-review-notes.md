@@ -248,3 +248,62 @@ Current validation result for the KCS-4 branch:
 - full KCS core tests: 177 passed;
 - Ruff: all checks passed;
 - diff whitespace check: passed.
+
+## KCS-5 Validation Report And Loop State Review
+
+Date: 2026-06
+
+Scope: standalone validation report and ready-for-reviewer loop state.
+
+Reviewer: Codex local engineering review and `gpt-5.3-codex-spark`.
+
+Result: fixed before merge.
+
+Key findings:
+
+- KCS-5 must combine existing KCS-2 evidence validation, KCS-3 decision, and
+  KCS-4 renderer outputs into a compact readiness report.
+- KCS-5 must not implement CLI, local bundle writing, Claude handoff, Zendesk
+  ingest, Zendesk writes, Help Center publication, or customer reply behavior.
+- Report output must stay value-safe: blockers/warnings/checks are code-like,
+  and hashes may identify generated reviewer artifacts without embedding full
+  reviewer packet or Zendesk HTML bodies.
+- Portable `plesk_support` reference is limited to the loop-report pattern:
+  `ok`, readiness state, value-free blockers/warnings, required next step, and
+  stable hashes.
+
+Fixed in PR:
+
+- Added standalone `kcs_validation_report_packet_v1`.
+- Added deterministic readiness states: `ready_for_reviewer`, `blocked`,
+  `draft_required`, and `review_blocked`.
+- Added required-next-step codes for evidence fixes, reuse/search checks,
+  renderer output generation, reviewer packet fixes, and split-item review.
+- Added compact evidence, decision, and renderer summaries without raw evidence
+  or full rendered article bodies.
+- Added deterministic hashes for reviewer packet JSON and Zendesk HTML when
+  present.
+- Added report invariant checks so `ok` and `ready_for_reviewer` must match
+  the `ready_for_reviewer` state.
+- Added fail-closed handling for malformed renderer validation report code
+  lists instead of silently dropping non-string blockers.
+- Added focused tests for ready, blocked, draft-required, review-blocked,
+  split-required, value-safe, malformed renderer report, no-mutation, and
+  export paths.
+
+Deferred:
+
+- CLI entrypoint and compact run index belong to KCS-6.
+- Local review bundle writing, browser viewer, and override artifact
+  persistence remain future output/bundle slices.
+- Evidence package building and semantic extraction remain KCS-7+.
+- Claude and Zendesk adapters remain later dedicated slices.
+
+Validation evidence:
+
+- `.venv/bin/python -m pytest tests/kcs_core/test_readiness.py -vv`:
+  17 passed.
+- `.venv/bin/python -m pytest tests/kcs_core -q`: 204 passed.
+- `.venv/bin/python -m ruff check src/kcs_core tests/kcs_core`: all checks
+  passed.
+- `git diff --check`: passed.

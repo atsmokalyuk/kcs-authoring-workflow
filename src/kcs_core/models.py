@@ -1,4 +1,4 @@
-"""Runtime-independent schema-versioned packet models for KCS-1 contracts."""
+"""Runtime-independent schema-versioned packet models for KCS core contracts."""
 
 from __future__ import annotations
 
@@ -49,6 +49,26 @@ class OverrideStatus(StrEnum):
     """Allowed future operator override status values."""
 
     NOT_REQUESTED = "not_requested"
+
+
+class ReadinessState(StrEnum):
+    """Allowed KCS reviewer-readiness loop state values."""
+
+    READY_FOR_REVIEWER = "ready_for_reviewer"
+    BLOCKED = "blocked"
+    DRAFT_REQUIRED = "draft_required"
+    REVIEW_BLOCKED = "review_blocked"
+
+
+class RequiredNextStep(StrEnum):
+    """Allowed next-step values for KCS-5 readiness reports."""
+
+    NONE = "none"
+    FIX_EVIDENCE = "fix_evidence"
+    RUN_REUSE_SEARCH = "run_reuse_search"
+    RENDER_REVIEWER_PACKET = "render_reviewer_packet"
+    FIX_REVIEWER_PACKET = "fix_reviewer_packet"
+    REVIEW_SPLIT_ITEMS = "review_split_items"
 
 
 def _require_schema_version(payload: Mapping[str, Any], expected: str) -> None:
@@ -420,6 +440,103 @@ class KcsReviewerPacket:
             "evidence_basis": dict(self.evidence_basis),
             "validation_report": dict(self.validation_report),
             "zendesk_source_html": self.zendesk_source_html,
+            "auto_publish_allowed": self.auto_publish_allowed,
+        }
+
+
+@dataclass(frozen=True)
+class KcsValidationReportPacket:
+    """Validation report and ready-for-reviewer loop state packet."""
+
+    SCHEMA_VERSION: ClassVar[str] = "kcs_validation_report_packet_v1"
+
+    case_ref: str
+    ok: bool
+    ready_for_reviewer: bool
+    state: str
+    required_next_step: str
+    checks: list[str] = field(default_factory=list)
+    blockers: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    evidence_validation: JsonDict = field(default_factory=dict)
+    decision_summary: JsonDict = field(default_factory=dict)
+    renderer_validation: JsonDict = field(default_factory=dict)
+    reviewer_packet_sha256: str = ""
+    zendesk_source_sha256: str = ""
+    auto_publish_allowed: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "state",
+            _enum_value(ReadinessState, self.state, "state"),
+        )
+        object.__setattr__(
+            self,
+            "required_next_step",
+            _enum_value(
+                RequiredNextStep,
+                self.required_next_step,
+                "required_next_step",
+            ),
+        )
+        if self.auto_publish_allowed:
+            raise ContractValidationError(
+                "auto_publish_allowed must be false for MVP packets"
+            )
+        ready_state = self.state == ReadinessState.READY_FOR_REVIEWER.value
+        if self.ok != ready_state or self.ready_for_reviewer != ready_state:
+            raise ContractValidationError(
+                "readiness booleans must match readiness state"
+            )
+
+    @property
+    def schema_version(self) -> str:
+        return self.SCHEMA_VERSION
+
+    @classmethod
+    def from_json_dict(
+        cls, payload: Mapping[str, Any] | object
+    ) -> "KcsValidationReportPacket":
+        data = require_json_object(payload)
+        _require_schema_version(data, cls.SCHEMA_VERSION)
+        return cls(
+            case_ref=_require_string(data, "case_ref"),
+            ok=_require_bool(data, "ok"),
+            ready_for_reviewer=_require_bool(data, "ready_for_reviewer"),
+            state=_require_string(data, "state"),
+            required_next_step=_require_string(data, "required_next_step"),
+            checks=_string_list(data, "checks"),
+            blockers=_string_list(data, "blockers"),
+            warnings=_string_list(data, "warnings"),
+            evidence_validation=_require_dict(data, "evidence_validation"),
+            decision_summary=_require_dict(data, "decision_summary"),
+            renderer_validation=_require_dict(data, "renderer_validation"),
+            reviewer_packet_sha256=_optional_string(
+                data, "reviewer_packet_sha256"
+            )
+            or "",
+            zendesk_source_sha256=_optional_string(data, "zendesk_source_sha256")
+            or "",
+            auto_publish_allowed=_optional_bool(data, "auto_publish_allowed", False),
+        )
+
+    def to_json_dict(self) -> JsonDict:
+        return {
+            "schema_version": self.schema_version,
+            "case_ref": self.case_ref,
+            "ok": self.ok,
+            "ready_for_reviewer": self.ready_for_reviewer,
+            "state": self.state,
+            "required_next_step": self.required_next_step,
+            "checks": list(self.checks),
+            "blockers": list(self.blockers),
+            "warnings": list(self.warnings),
+            "evidence_validation": dict(self.evidence_validation),
+            "decision_summary": dict(self.decision_summary),
+            "renderer_validation": dict(self.renderer_validation),
+            "reviewer_packet_sha256": self.reviewer_packet_sha256,
+            "zendesk_source_sha256": self.zendesk_source_sha256,
             "auto_publish_allowed": self.auto_publish_allowed,
         }
 
