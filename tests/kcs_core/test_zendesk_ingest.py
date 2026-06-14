@@ -9,6 +9,7 @@ import kcs_core
 from kcs_core import (
     ZendeskAdapterConfig,
     ZendeskIngestPolicy,
+    ZendeskIngestResult,
     ZendeskRawTicketSnapshot,
     ZendeskSourceClient,
     build_evidence_packet_from_zendesk_export,
@@ -35,6 +36,11 @@ class FakeZendeskClient:
 class FailingZendeskClient:
     def fetch_ticket_snapshot(self, ticket_ref: str) -> ZendeskRawTicketSnapshot:
         raise RuntimeError(f"client failed for {ticket_ref} {PRIVATE_SUBJECT}")
+
+
+class BadReturnClient:
+    def fetch_ticket_snapshot(self, ticket_ref: str) -> object:
+        return {"ticket_ref": ticket_ref, "ticket": {"subject": PRIVATE_SUBJECT}}
 
 
 def _policy(**overrides: Any) -> ZendeskIngestPolicy:
@@ -144,6 +150,52 @@ def test_client_failure_returns_value_safe_error() -> None:
     assert captured.value.__context__ is None
     assert PRIVATE_SUBJECT not in str(captured.value)
     assert APPROVED_REF not in str(captured.value)
+
+
+def test_source_client_non_snapshot_return_fails_value_safely() -> None:
+    with pytest.raises(ContractValidationError) as captured:
+        ingest_zendesk_ticket_for_cleanup(
+            ticket_ref=APPROVED_REF,
+            client=BadReturnClient(),  # type: ignore[arg-type]
+            policy=_policy(),
+        )
+
+    assert str(captured.value) == "zendesk source client returned invalid snapshot"
+    assert PRIVATE_SUBJECT not in str(captured.value)
+    assert captured.value.__cause__ is None
+    assert captured.value.__context__ is None
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"ticket_ref": "ticket-123456"},
+        {"snapshot_sha256": "/private/raw"},
+        {"snapshot_sha256": "not-a-hash"},
+        {"comments_complete": 1},
+        {"partial_comment_bodies": 1},
+        {"attachments_present": 1},
+        {"raw_handoff_written": 1},
+        {"reason_codes": ("token=SECRET",)},
+        {"reason_codes": ["partial_comments"]},
+    ],
+)
+def test_zendesk_ingest_result_rejects_unsafe_manual_state(
+    kwargs: dict[str, object],
+) -> None:
+    values = {
+        "ticket_ref": APPROVED_REF,
+        "snapshot_sha256": "0" * 64,
+        "comments_complete": True,
+        "partial_comment_bodies": False,
+        "attachments_present": False,
+        "raw_handoff_written": False,
+        "reason_codes": (),
+    }
+    values.update(kwargs)
+
+    with pytest.raises(ContractValidationError):
+        ZendeskIngestResult(**values)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -311,6 +363,33 @@ def test_local_raw_handoff_writes_snapshot_and_safe_manifest(tmp_path: Path) -> 
     assert manifest_path.stat().st_mode & 0o777 == 0o600
 
 
+def test_raw_handoff_safe_manifest_excludes_attachment_url(tmp_path: Path) -> None:
+    workspace = tmp_path / "cleanup"
+
+    ingest_zendesk_ticket_for_cleanup(
+        ticket_ref=APPROVED_REF,
+        client=FakeZendeskClient(
+            _snapshot(
+                comments=(
+                    {
+                        "body": PRIVATE_COMMENT,
+                        "attachments": [{"content_url": PRIVATE_URL}],
+                    },
+                )
+            )
+        ),
+        policy=_policy(allow_raw_handoff_files=True),
+        cleanup_workspace=workspace,
+    )
+
+    manifest_text = (workspace / "zendesk-ingest-manifest.json").read_text(
+        encoding="utf-8"
+    )
+    assert '"attachments_present": true' in manifest_text
+    assert PRIVATE_URL not in manifest_text
+    assert PRIVATE_COMMENT not in manifest_text
+
+
 def test_local_raw_handoff_rejects_repo_paths() -> None:
     repo_path = Path.cwd() / "tmp-kcs8-cleanup"
 
@@ -383,6 +462,32 @@ def test_local_raw_handoff_rolls_back_partial_writes(
 
     assert not (workspace / "zendesk-raw-cleanup-snapshot.json").exists()
     assert not (workspace / "zendesk-ingest-manifest.json").exists()
+
+
+def test_local_raw_handoff_write_error_is_value_safe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import kcs_core.zendesk_ingest as zendesk_ingest
+
+    private_path = f"/private/{PRIVATE_SUBJECT}"
+
+    def fail_open(*args: object, **kwargs: object) -> int:
+        raise OSError(private_path)
+
+    monkeypatch.setattr(zendesk_ingest.os, "open", fail_open)
+
+    with pytest.raises(ContractValidationError) as captured:
+        ingest_zendesk_ticket_for_cleanup(
+            ticket_ref=APPROVED_REF,
+            client=FakeZendeskClient(),
+            policy=_policy(allow_raw_handoff_files=True),
+            cleanup_workspace=tmp_path / "cleanup",
+        )
+
+    assert str(captured.value) == "could not write zendesk handoff files"
+    assert PRIVATE_SUBJECT not in str(captured.value)
+    assert captured.value.__cause__ is None
 
 
 def test_kcs8_api_exports_are_available() -> None:

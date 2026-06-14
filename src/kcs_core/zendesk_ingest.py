@@ -59,6 +59,8 @@ _FORBIDDEN_WORKSPACE_PARTS = frozenset(
 )
 _RAW_SNAPSHOT_NAME = "zendesk-raw-cleanup-snapshot.json"
 _SAFE_MANIFEST_NAME = "zendesk-ingest-manifest.json"
+_SAFE_REASON_CODE_RE = re.compile(r"[a-z][a-z0-9_]{0,79}")
+_SHA256_RE = re.compile(r"[0-9a-f]{64}")
 
 
 class ZendeskSourceClient(Protocol):
@@ -135,6 +137,17 @@ class ZendeskIngestResult:
     raw_handoff_written: bool
     reason_codes: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        _ensure_safe_ticket_ref(self.ticket_ref)
+        _ensure_snapshot_hash(self.snapshot_sha256)
+        _ensure_ingest_result_flags(
+            comments_complete=self.comments_complete,
+            partial_comment_bodies=self.partial_comment_bodies,
+            attachments_present=self.attachments_present,
+            raw_handoff_written=self.raw_handoff_written,
+        )
+        _ensure_reason_codes(self.reason_codes)
+
     def safe_payload(self) -> JsonDict:
         """Return the safe reporting surface for logs/CLI/tests."""
 
@@ -165,14 +178,7 @@ def ingest_zendesk_ticket_for_cleanup(
 
     safe_ref = _ensure_safe_ticket_ref(ticket_ref)
     _ensure_allowlisted(safe_ref, policy)
-    client_failed = False
-    snapshot: ZendeskRawTicketSnapshot | None = None
-    try:
-        snapshot = client.fetch_ticket_snapshot(safe_ref)
-    except Exception:
-        client_failed = True
-    if client_failed or snapshot is None:
-        raise ContractValidationError("zendesk source client failed")
+    snapshot = _fetch_snapshot(safe_ref, client)
     if snapshot.ticket_ref != safe_ref:
         raise ContractValidationError("zendesk source client returned invalid snapshot")
 
@@ -218,6 +224,23 @@ def ingest_zendesk_ticket_for_cleanup(
     )
 
 
+def _fetch_snapshot(
+    ticket_ref: str,
+    client: ZendeskSourceClient,
+) -> ZendeskRawTicketSnapshot:
+    client_failed = False
+    snapshot: ZendeskRawTicketSnapshot | None = None
+    try:
+        snapshot = client.fetch_ticket_snapshot(ticket_ref)
+    except Exception:
+        client_failed = True
+    if client_failed or snapshot is None:
+        raise ContractValidationError("zendesk source client failed")
+    if not isinstance(snapshot, ZendeskRawTicketSnapshot):
+        raise ContractValidationError("zendesk source client returned invalid snapshot")
+    return snapshot
+
+
 def _ensure_safe_ticket_ref(ticket_ref: object) -> str:
     if not isinstance(ticket_ref, str) or not _SAFE_TICKET_REF_RE.fullmatch(ticket_ref):
         raise ContractValidationError("ticket_ref must be an opaque safe reference")
@@ -258,6 +281,38 @@ def _ensure_snapshot_flags(
         raise ContractValidationError("zendesk comment completeness is invalid")
     if comments_complete is not None and not isinstance(comments_complete, bool):
         raise ContractValidationError("zendesk comment completeness is invalid")
+
+
+def _ensure_snapshot_hash(value: object) -> None:
+    if not isinstance(value, str) or not _SHA256_RE.fullmatch(value):
+        raise ContractValidationError("zendesk ingest result hash is invalid")
+
+
+def _ensure_ingest_result_flags(
+    *,
+    comments_complete: object,
+    partial_comment_bodies: object,
+    attachments_present: object,
+    raw_handoff_written: object,
+) -> None:
+    for value in (
+        comments_complete,
+        partial_comment_bodies,
+        attachments_present,
+        raw_handoff_written,
+    ):
+        if not isinstance(value, bool):
+            raise ContractValidationError("zendesk ingest result flags are invalid")
+
+
+def _ensure_reason_codes(reason_codes: object) -> None:
+    if not isinstance(reason_codes, tuple):
+        raise ContractValidationError("zendesk ingest result reason codes are invalid")
+    for code in reason_codes:
+        if not isinstance(code, str) or not _SAFE_REASON_CODE_RE.fullmatch(code):
+            raise ContractValidationError(
+                "zendesk ingest result reason codes are invalid"
+            )
 
 
 def _ensure_no_inline_credentials(value: str) -> None:
@@ -369,8 +424,8 @@ def _sha256_json(payload: Mapping[str, Any]) -> str:
     try:
         _ensure_strict_json_value(payload)
         encoded = json.dumps(payload, sort_keys=True, allow_nan=False).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise ContractValidationError("zendesk snapshot must be strict JSON") from exc
+    except (TypeError, ValueError):
+        raise ContractValidationError("zendesk snapshot must be strict JSON") from None
     return sha256(encoded).hexdigest()
 
 
@@ -433,10 +488,10 @@ def _prepare_cleanup_workspace(cleanup_workspace: Path) -> Path:
     _reject_symlink_path(workspace)
     try:
         workspace.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
+    except OSError:
         raise ContractValidationError(
             "could not create zendesk cleanup workspace"
-        ) from exc
+        ) from None
     return workspace
 
 
@@ -475,18 +530,18 @@ def _write_private_text(path: Path, text: str) -> None:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(text)
         temp_path.rename(path)
-    except OSError as exc:
+    except OSError:
         _cleanup_written([temp_path])
-        raise ContractValidationError("could not write zendesk handoff files") from exc
+        raise ContractValidationError("could not write zendesk handoff files") from None
 
 
 def _json_text(payload: Mapping[str, Any]) -> str:
     try:
         return json.dumps(payload, sort_keys=True, allow_nan=False, indent=2) + "\n"
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError):
         raise ContractValidationError(
             "zendesk handoff payload must be strict JSON"
-        ) from exc
+        ) from None
 
 
 def _cleanup_written(paths: Sequence[Path]) -> None:
