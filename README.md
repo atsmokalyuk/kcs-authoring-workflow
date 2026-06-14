@@ -43,6 +43,7 @@ KCS-4: reviewer packet renderer and Zendesk HTML output
 KCS-5: validation report and ready-for-reviewer loop state
 KCS-6: CLI entrypoint for local verification
 KCS-7: evidence package builder for approved sanitized structured input
+KCS-8: Zendesk read-only ingest boundary for local cleanup handoff
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -91,9 +92,21 @@ It accepts only approved/sanitized structured evidence exports and returns
 read raw tickets, perform semantic extraction, call Claude, use live Zendesk,
 or change decision, renderer, readiness, or CLI behavior.
 
+KCS-8 is implemented as local `zendesk_ingest.py` logic. It accepts an injected
+read-only `ZendeskSourceClient` for approved allowlisted ticket refs and returns
+a safe cleanup handoff manifest for raw/pre-cleanup Zendesk snapshots. It does
+not convert raw Zendesk ticket bodies into evidence, call KCS-7 on raw payloads,
+download attachment bodies, list/search/bulk export tickets, call Claude, write
+Zendesk, publish Help Center content, or generate customer replies. Production
+deployment is expected to use an approved internal service endpoint behind the
+source-client protocol; local/dev may use an MCP-backed source client, but no
+MCP path, service endpoint, Zendesk token, URL, or secret is hardcoded in KCS
+core.
+
 KCS-1 through KCS-7 do not require live Zendesk access, Zendesk tokens, Claude
-connector setup, or `kcs-search-mcp` access. Bundle writing, CLI handoff,
-Claude handoff, and adapter/client integration belong to later slices.
+connector setup, or `kcs-search-mcp` access. KCS-8 introduces the read-only
+Zendesk source boundary only. Bundle writing, Claude handoff, and broad
+adapter/client integration remain later slices.
 
 ## Non-goals
 

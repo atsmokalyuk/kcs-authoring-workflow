@@ -454,7 +454,12 @@ KCS-7:
 KCS-8:
 
 - Zendesk read-only ingest adapter;
-- approved allowlist and token only here.
+- approved allowlist and read-only source-client boundary;
+- production uses approved internal service endpoint behind the source-client
+  protocol;
+- local/dev MCP source client is optional and never hardcoded in KCS core;
+- raw Zendesk snapshots remain local-only/pre-cleanup and are not KCS-7
+  approved exports.
 
 KCS-9:
 

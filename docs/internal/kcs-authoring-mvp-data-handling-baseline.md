@@ -22,6 +22,8 @@ This MVP is not a publication system and does not perform customer-facing automa
 - Approved ticket allowlist only.
 - No bulk export.
 - No background crawling.
+- No broad ticket search/list access in KCS-8; ingest starts from an approved
+  ticket reference only.
 - No customer reply, ticket update, tag update, or status update actions.
 - No Help Center write or publish actions.
 - Zendesk credentials or tokens must never be exposed to Claude or stored in repository files.
@@ -117,6 +119,9 @@ If internal comments are needed for evidence, the Python/runtime layer must firs
 - Attachments are not downloaded or processed in the MVP.
 - Attachment handling requires separate approval, scope, storage rules, and sanitization rules.
 - Binary files, logs, screenshots, archives, and customer-provided files must not be uploaded to Claude by default.
+- KCS-8 may report value-safe attachment status metadata such as
+  `attachments_present=true`, but it must not download or return attachment
+  bodies, URLs, screenshots, logs, or archives.
 
 ### Public Knowledge Search and Future Search Adapters
 - In the MVP, reuse and duplicate checks use approved public knowledge sources and/or local RAG over public articles.

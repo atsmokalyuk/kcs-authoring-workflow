@@ -203,11 +203,32 @@ classification from ticket narrative, or make the core depend on an LLM.
 
 ### KCS-8: Zendesk Read-only Ingest Adapter
 
-KCS-8 fetches approved allowlisted Zendesk ticket data through a read-only
-adapter and passes it to the evidence package builder.
+KCS-8 fetches approved allowlisted Zendesk ticket data through an injected
+read-only source client and produces a raw/pre-cleanup cleanup handoff
+manifest. It does not pass raw Zendesk payloads to the evidence package
+builder.
 
-The adapter does not own KCS decisions and does not pass raw Zendesk payloads to
-Claude by default.
+`ZendeskIngestPolicy` owns the approved ticket-reference allowlist.
+`ingest_zendesk_ticket_for_cleanup()` validates `ticket_ref` against that
+policy before calling `ZendeskSourceClient`.
+
+The intended production deployment shape is an approved internal service
+endpoint implementing the source-client contract. Local/dev may use an
+MCP-backed source client, but no MCP path, service endpoint, Zendesk token, URL,
+or secret is hardcoded in the KCS core.
+
+The adapter does not own KCS decisions, semantic extraction, cleanup, rendering,
+readiness, Claude handoff, attachment processing, Zendesk writes, Help Center
+publication, or customer replies. Attachment bodies are not downloaded in this
+slice. The source client exposes no broad ticket search, list, bulk export, or
+background crawl entrypoint.
+
+Raw ticket/comment bodies remain local-only and pre-Claude until a later
+approved cleanup/sanitizer lane produces a KCS-7 approved sanitized export.
+Raw handoff files are local cleanup inputs only. They must not be committed as
+fixtures and must not be included in reviewer, CLI, or publication artifacts.
+`ZendeskIngestResult.safe_payload()` is the default reporting surface for logs,
+tests, CLI/debug output, and exceptions.
 
 ### KCS-9: Bounded Claude Handoff
 

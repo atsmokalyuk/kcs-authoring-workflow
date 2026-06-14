@@ -36,6 +36,14 @@ from kcs_core.validation import (
     ensure_evidence_ready,
     validate_evidence_packet,
 )
+from kcs_core.zendesk_ingest import (
+    ZendeskAdapterConfig,
+    ZendeskIngestPolicy,
+    ZendeskIngestResult,
+    ZendeskRawTicketSnapshot,
+    ZendeskSourceClient,
+    ingest_zendesk_ticket_for_cleanup,
+)
 
 __all__ = [
     "ArticleType",
@@ -59,12 +67,18 @@ __all__ = [
     "ReuseSearchResultsPacket",
     "SafetyBlocker",
     "SafetyGateResult",
+    "ZendeskAdapterConfig",
+    "ZendeskIngestPolicy",
+    "ZendeskIngestResult",
+    "ZendeskRawTicketSnapshot",
+    "ZendeskSourceClient",
     "build_evidence_packet_from_zendesk_export",
     "build_validation_report",
     "decide_kcs_action",
     "ensure_evidence_safe",
     "ensure_evidence_ready",
     "ensure_ready_for_reviewer",
+    "ingest_zendesk_ticket_for_cleanup",
     "render_reviewer_packet",
     "validate_evidence_packet",
     "validate_evidence_safety",
