@@ -1,6 +1,10 @@
 """Runtime-independent KCS core packet contracts."""
 
 from kcs_core.decision import DecisionBlocker, decide_kcs_action
+from kcs_core.evidence_builder import (
+    EvidenceBuildPolicy,
+    build_evidence_packet_from_zendesk_export,
+)
 from kcs_core.models import (
     ArticleType,
     DecisionStatus,
@@ -37,6 +41,7 @@ __all__ = [
     "ArticleType",
     "DecisionBlocker",
     "DecisionStatus",
+    "EvidenceBuildPolicy",
     "EvidenceBlocker",
     "EvidenceValidationResult",
     "EvidenceVisibility",
@@ -54,6 +59,7 @@ __all__ = [
     "ReuseSearchResultsPacket",
     "SafetyBlocker",
     "SafetyGateResult",
+    "build_evidence_packet_from_zendesk_export",
     "build_validation_report",
     "decide_kcs_action",
     "ensure_evidence_safe",

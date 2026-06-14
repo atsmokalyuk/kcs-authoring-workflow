@@ -335,3 +335,79 @@ Validation evidence:
 - `.venv/bin/python -m ruff check src/kcs_core tests/kcs_core`: all checks
   passed.
 - `git diff --check`: passed.
+
+## KCS-7 Evidence Package Builder Review
+
+Date: 2026-06
+
+Scope: evidence package builder for approved/sanitized structured JSON input.
+
+Reviewer: Codex local engineering review and external patch review.
+
+Result: fixed before merge.
+
+Key findings:
+
+- KCS-7 must build `NormalizedTicketEvidencePacket` from approved/sanitized
+  structured input only.
+- KCS-7 must not process raw Zendesk tickets, call Claude/LLMs, perform
+  semantic extraction from free text, run reuse/search, make KCS decisions,
+  render reviewer packets, write local bundles, or use live Zendesk APIs.
+- The builder boundary must reject unsupported fields, raw/private markers,
+  nested raw numeric IDs, non-strict JSON values, unsafe candidate refs, and
+  unsafe sanitizer report content without echoing offending values.
+- `case_ref` must come from the function argument, not from export payload data.
+
+Fixed in PR:
+
+- Added `evidence_builder.py` and `sanitizer.py` for approved structured
+  evidence export normalization.
+- Added policy controls for `assume_sanitized` and
+  `allow_internal_reviewer_only`, both fail-closed by default.
+- Added allowlist checks for top-level export fields and issue candidate
+  fields.
+- Added strict JSON-shape validation for nested objects before packet
+  construction: string keys only, finite numeric values only, and no non-JSON
+  runtime objects.
+- Added nested raw-ID detection for keys such as `requester_id`, `user_id`,
+  `organization_id`, `external_id`, and generic `*_id` / `*-id` fields while
+  preserving safe opaque `candidate_id`.
+- Added explicit rejection for non-string `candidate_id` values instead of
+  coercing booleans, nulls, or numbers into safe-looking strings.
+- Added tests for approved export builds, approved sanitized samples,
+  operator-sanitized summaries, single-candidate promotion, multi-issue
+  preservation, downstream pipeline consumption, malformed schema, unknown
+  fields, unsafe candidate/source-ref values, sanitizer failures, strict JSON
+  violations, internal-only policy handling, and package-root exports.
+- Updated README to reflect KCS-6 and KCS-7 implementation status.
+
+Deferred:
+
+- Consider adding a neutral public alias such as
+  `build_evidence_packet_from_approved_export` if `zendesk_export` naming
+  becomes misleading for non-Zendesk approved structured inputs. Keep current
+  names stable unless a contract change is explicitly approved.
+- Schema-specific validation for `environment`, `visibility_summary`, and
+  `sanitizer_report` can be tightened in a follow-up branch if approved export
+  schemas need stronger field-level contracts.
+- The current builder intentionally allows small normalization conveniences,
+  such as string-to-list handling in shared normalizers. If approved export
+  schema strictness needs to match packet JSON exactly, add a follow-up branch
+  to reject scalar list fields and null list elements explicitly.
+- Centralize shared raw-boundary, safe-ref, safe-code, and safe-metadata
+  helpers across KCS-3 through KCS-7 to reduce drift between `safety.py`,
+  `cli.py`, `renderer.py`, `readiness.py`, and `sanitizer.py`.
+- Public RAG/article metadata input, semantic extraction, cleanup-form
+  continuation, Zendesk read-only ingest, Claude-assisted extraction, local
+  bundle writing, browser viewer, operator override persistence, Zendesk
+  writes, and Help Center publication remain future slices.
+
+Validation evidence:
+
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core/test_evidence_builder.py -vv`:
+  33 passed.
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core -q`:
+  349 passed.
+- `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core tests/kcs_core`:
+  all checks passed.
+- `git diff --check`: passed.
