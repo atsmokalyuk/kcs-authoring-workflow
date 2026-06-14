@@ -44,7 +44,7 @@ until the Python layer validates and accepts them.
 
 ## Future Internal Packet: CandidateSemanticExtraction
 
-`CandidateSemanticExtraction` may be introduced in KCS-7 or KCS-9 as an
+`CandidateSemanticExtraction` may be introduced in KCS-7 or KCS-9a as an
 untrusted internal intermediate packet.
 
 Purpose:
@@ -197,8 +197,9 @@ It may include deterministic extraction for obvious structure, but it should
 not pretend that Python can reliably understand long support narratives without
 semantic assistance.
 
-If semantic extraction is needed, KCS-7 should define the extraction interface
-and blockers, not silently make the core depend on an LLM.
+KCS-7 may define the structured extraction interface and blockers for future
+semantic KCS item identification. It does not call Claude, perform semantic
+classification from ticket narrative, or make the core depend on an LLM.
 
 ### KCS-8: Zendesk Read-only Ingest Adapter
 
@@ -210,15 +211,28 @@ Claude by default.
 
 ### KCS-9: Bounded Claude Handoff
 
-KCS-9 may include bounded Claude-assisted extraction if approved.
+KCS-9 is the bounded Claude handoff umbrella. It has two planned sub-slices:
+
+- KCS-9a: semantic KCS item identification;
+- KCS-9b: reviewer/draft handoff.
+
+KCS-9a may introduce Claude-assisted extraction if approved and smoke-testable.
+It identifies candidate KCS items/questions/issues from approved sanitized
+context, but it does not accept packets or decide KCS actions.
 
 Allowed role:
 
 ```text
 approved sanitized input
-  -> Claude proposes candidate evidence JSON
+  -> Claude proposes KCS item candidates
+       problems/questions to address
+       atomic issue boundaries
+       answered vs unresolved items
+       suggested article type
+       public/internal visibility hints
   -> Python validates/sanitizes/normalizes
   -> accepted NormalizedTicketEvidencePacket or blockers
+  -> KCS-2..6 decide/render/report
 ```
 
 Forbidden role:
@@ -393,6 +407,8 @@ KCS-8:
 KCS-9:
 
 - Claude Enterprise/Desktop bounded handoff;
+- KCS-9a semantic KCS item identification from approved sanitized context;
+- KCS-9b reviewer/draft handoff from bounded safe packets;
 - operator-requested reviewer-only draft flow;
 - Claude output remains untrusted and validators rerun.
 

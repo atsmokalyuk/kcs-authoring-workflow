@@ -17,6 +17,8 @@ This page links the product and architecture documents to the Jira implementatio
 - KCS-7 Evidence package builder from approved fixtures/exported tickets
 - KCS-8 Zendesk read-only ingest adapter; requires adapter readiness checks before approved ticket use
 - KCS-9 Claude Enterprise/Desktop bounded handoff; requires client integration readiness before pilot use
+  - KCS-9a Semantic KCS item identification from approved sanitized context
+  - KCS-9b Reviewer/draft handoff from bounded safe packets
 - KCS-10 Pilot with approved tickets and reviewer feedback
 
 ## Source Documents
