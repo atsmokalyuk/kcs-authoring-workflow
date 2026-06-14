@@ -84,7 +84,8 @@ Recommended slice order:
 - KCS-8: Zendesk read-only ingest adapter;
 - KCS-9: Claude Enterprise/Desktop bounded handoff;
   - KCS-9a: semantic KCS item identification;
-  - KCS-9b: reviewer/draft handoff;
+  - KCS-9b: bounded reviewer-assist handoff contract;
+  - KCS-9c: reviewer-only draft generation;
 - KCS-10: pilot with approved tickets and reviewer feedback.
 
 Do not move runtime integration, live Zendesk access, Claude handoff, or publication-adjacent behavior into earlier slices.
@@ -302,7 +303,8 @@ KCS-1 defines packet contracts and fixtures only. KCS-7 may define evidence
 package builder behavior and extraction interfaces, but it does not call Claude
 or perform semantic KCS item identification from ticket narrative. KCS-9a may
 introduce bounded Claude-assisted KCS item identification if approved. KCS-9b
-may introduce reviewer/draft handoff from bounded safe packets. No slice may
+may introduce a bounded reviewer-assist handoff contract from compact safe
+summaries. KCS-9c may introduce reviewer-only draft generation. No slice may
 make an LLM the owner of packet acceptance, KCS action decisions, safety gates,
 or readiness state.
 
