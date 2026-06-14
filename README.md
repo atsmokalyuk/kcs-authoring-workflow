@@ -44,6 +44,7 @@ KCS-5: validation report and ready-for-reviewer loop state
 KCS-6: CLI entrypoint for local verification
 KCS-7: evidence package builder for approved sanitized structured input
 KCS-8: Zendesk read-only ingest boundary for local cleanup handoff
+KCS-9a: semantic KCS item identification contract
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -103,10 +104,20 @@ source-client protocol; local/dev may use an MCP-backed source client, but no
 MCP path, service endpoint, Zendesk token, URL, or secret is hardcoded in KCS
 core.
 
+KCS-9a is implemented as local `semantic_extraction.py` contract and validation
+logic. It accepts bounded semantic item-identification output from a future
+approved extractor/provider, validates it as untrusted input, and normalizes it
+into the existing KCS-7 approved evidence export path. It may classify item
+boundaries, product relation, supportability hints, article type hints, and
+visibility hints. It does not return KCS action recommendations, call Claude,
+perform online EOL lookup, draft text, render reviewer packets, write Zendesk,
+or publish Help Center content.
+
 KCS-1 through KCS-7 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access. KCS-8 introduces the read-only
-Zendesk source boundary only. Bundle writing, Claude handoff, and broad
-adapter/client integration remain later slices.
+Zendesk source boundary only. KCS-9a introduces a provider protocol and local
+validation/normalization boundary only. Bundle writing, live Claude handoff,
+and broad adapter/client integration remain later slices.
 
 ## Non-goals
 
@@ -251,7 +262,7 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- Current implementation subtask: KCS-7 Evidence Package Builder
+- Current implementation subtask: KCS-9a Semantic KCS Item Identification
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
