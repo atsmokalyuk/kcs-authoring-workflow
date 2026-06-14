@@ -41,6 +41,8 @@ KCS-2: safety and evidence readiness gates for sanitized normalized evidence
 KCS-3: deterministic KCS action decision core
 KCS-4: reviewer packet renderer and Zendesk HTML output
 KCS-5: validation report and ready-for-reviewer loop state
+KCS-6: CLI entrypoint for local verification
+KCS-7: evidence package builder for approved sanitized structured input
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -79,7 +81,17 @@ with value-safe blockers/warnings, required next step, and
 read or write Zendesk, publish Help Center content, or generate customer
 replies.
 
-KCS-1 through KCS-5 do not require live Zendesk access, Zendesk tokens, Claude
+KCS-6 is implemented as local `cli.py` verification logic for deterministic
+synthetic or approved sanitized packet fixtures. It does not require Zendesk,
+Claude, MCP, search-adapter, or publish credentials.
+
+KCS-7 is implemented as local `evidence_builder.py` and `sanitizer.py` logic.
+It accepts only approved/sanitized structured evidence exports and returns
+`NormalizedTicketEvidencePacket` output for downstream KCS gates. It does not
+read raw tickets, perform semantic extraction, call Claude, use live Zendesk,
+or change decision, renderer, readiness, or CLI behavior.
+
+KCS-1 through KCS-7 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access. Bundle writing, CLI handoff,
 Claude handoff, and adapter/client integration belong to later slices.
 
@@ -226,8 +238,7 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- Current implementation subtask: KCS-5 Validation Report and Ready-for-Reviewer
-  Loop State
+- Current implementation subtask: KCS-7 Evidence Package Builder
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

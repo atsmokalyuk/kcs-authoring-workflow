@@ -83,6 +83,8 @@ Recommended slice order:
 - KCS-7: evidence package builder from approved fixtures/exported tickets;
 - KCS-8: Zendesk read-only ingest adapter;
 - KCS-9: Claude Enterprise/Desktop bounded handoff;
+  - KCS-9a: semantic KCS item identification;
+  - KCS-9b: reviewer/draft handoff;
 - KCS-10: pilot with approved tickets and reviewer feedback.
 
 Do not move runtime integration, live Zendesk access, Claude handoff, or publication-adjacent behavior into earlier slices.
@@ -297,9 +299,12 @@ human/fixture/deterministic parser/bounded Claude extraction
 ```
 
 KCS-1 defines packet contracts and fixtures only. KCS-7 may define evidence
-package builder behavior and extraction interfaces. KCS-9 may introduce bounded
-Claude-assisted extraction if approved. No slice may make an LLM the owner of
-packet acceptance, KCS action decisions, safety gates, or readiness state.
+package builder behavior and extraction interfaces, but it does not call Claude
+or perform semantic KCS item identification from ticket narrative. KCS-9a may
+introduce bounded Claude-assisted KCS item identification if approved. KCS-9b
+may introduce reviewer/draft handoff from bounded safe packets. No slice may
+make an LLM the owner of packet acceptance, KCS action decisions, safety gates,
+or readiness state.
 
 ## Portability From `plesk_support`
 
