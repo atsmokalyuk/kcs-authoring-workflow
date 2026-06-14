@@ -45,6 +45,7 @@ KCS-6: CLI entrypoint for local verification
 KCS-7: evidence package builder for approved sanitized structured input
 KCS-8: Zendesk read-only ingest boundary for local cleanup handoff
 KCS-9a: semantic KCS item identification contract
+KCS-9b: bounded Claude/provider handoff contract
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -113,11 +114,22 @@ visibility hints. It does not return KCS action recommendations, call Claude,
 perform online EOL lookup, draft text, render reviewer packets, write Zendesk,
 or publish Help Center content.
 
+KCS-9b is implemented as local `claude_handoff.py` contract and validation
+logic. It builds compact safe reviewer-assist handoff requests from existing
+deterministic decision/readiness outputs and validates provider responses as
+untrusted data. It supports fake-provider tests only, accepts safe logical
+artifact refs instead of raw local paths, preserves original deterministic
+metadata, and keeps `auto_publish_allowed=false` and
+`public_output_approved=false`. It does not generate drafts, include full
+reviewer packet bodies or full Zendesk HTML, write files, call live Claude/API,
+implement MCP/service transport, or change KCS decisions.
+
 KCS-1 through KCS-7 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access. KCS-8 introduces the read-only
 Zendesk source boundary only. KCS-9a introduces a provider protocol and local
-validation/normalization boundary only. Bundle writing, live Claude handoff,
-and broad adapter/client integration remain later slices.
+validation/normalization boundary only. KCS-9b introduces the bounded
+reviewer-assist handoff contract only. Bundle writing, live Claude/API handoff,
+draft generation, and broad adapter/client integration remain later slices.
 
 ## Non-goals
 
@@ -262,7 +274,7 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- Current implementation subtask: KCS-9a Semantic KCS Item Identification
+- Current implementation subtask: KCS-9b Bounded Claude Handoff Contract
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

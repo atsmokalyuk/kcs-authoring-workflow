@@ -18,7 +18,8 @@ This page links the product and architecture documents to the Jira implementatio
 - KCS-8 Zendesk read-only ingest adapter; requires adapter readiness checks before approved ticket use
 - KCS-9 Claude Enterprise/Desktop bounded handoff; requires client integration readiness before pilot use
   - KCS-9a Semantic KCS item identification from approved sanitized context
-  - KCS-9b Reviewer/draft handoff from bounded safe packets
+  - KCS-9b Bounded reviewer-assist handoff contract from compact safe packets
+  - KCS-9c Reviewer-only draft generation from validated handoff packets
 - KCS-10 Pilot with approved tickets and reviewer feedback
 
 ## Source Documents

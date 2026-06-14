@@ -246,11 +246,12 @@ tests, CLI/debug output, and exceptions.
 
 ### KCS-9: Bounded Claude Handoff
 
-KCS-9 is the bounded Claude handoff umbrella. It has two planned sub-slices:
+KCS-9 is the bounded Claude handoff umbrella. It has planned sub-slices:
 
 - KCS-9a-prep: chronology-preserving sanitized conversation context builder;
 - KCS-9a: semantic KCS item identification;
-- KCS-9b: reviewer/draft handoff.
+- KCS-9b: bounded reviewer-assist handoff contract;
+- KCS-9c: Claude-assisted reviewer-only draft generation.
 
 KCS-9a-prep produces the safe semantic input context for KCS-9a. It preserves
 conversation order and the meaning needed to identify KCS items while removing
@@ -328,6 +329,18 @@ raw Zendesk ticket
 
 Claude output remains untrusted candidate data until the Python validation layer
 accepts it.
+
+KCS-9b defines the bounded provider handoff contract. It builds compact safe
+reviewer-assist requests from deterministic decision/readiness summaries and
+optional safe artifact refs. It does not generate drafts, write files, call a
+live provider, implement MCP/service transport, or let the provider decide KCS
+actions.
+
+KCS-9c is deferred until KCS-9b is validated. It is the first slice that may
+allow provider-proposed reviewer-only draft wording. Python owns validation and
+artifact writing. Style compliance must be layered through prompt constraints,
+structured draft schema, deterministic Python validators, optional style judge
+feedback, and human review.
 
 ## NormalizedTicketEvidencePacket Acceptance Rules
 
@@ -491,8 +504,8 @@ KCS-9:
 
 - Claude Enterprise/Desktop bounded handoff;
 - KCS-9a semantic KCS item identification from approved sanitized context;
-- KCS-9b reviewer/draft handoff from bounded safe packets;
-- operator-requested reviewer-only draft flow;
+- KCS-9b bounded reviewer-assist handoff contract;
+- KCS-9c operator-requested reviewer-only draft flow;
 - Claude output remains untrusted and validators rerun.
 
 KCS-10:

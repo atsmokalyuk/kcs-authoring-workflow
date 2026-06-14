@@ -465,8 +465,8 @@ KCS-9:
 
 - Claude Enterprise/Desktop bounded handoff;
 - KCS-9a: semantic KCS item identification from approved sanitized context;
-- KCS-9b: reviewer/draft handoff from bounded safe packets;
-- operator-requested reviewer-only draft flow;
+- KCS-9b: bounded reviewer-assist handoff contract from compact safe packets;
+- KCS-9c: operator-requested reviewer-only draft flow;
 - Claude output remains untrusted and validators rerun.
 
 KCS-10:

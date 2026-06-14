@@ -481,3 +481,90 @@ Validation evidence:
 - `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core tests/kcs_core`:
   all checks passed.
 - `git diff --check`: passed.
+
+## KCS-9b Bounded Claude Handoff Review
+
+Date: 2026-06
+
+Scope: compact safe Claude/provider handoff contract from deterministic KCS
+decision and readiness outputs.
+
+Reviewer: Codex local engineering review and external patch review.
+
+Result: fixed before merge.
+
+Key findings:
+
+- KCS-9b must remain handoff-contract only: no live Claude/API/MCP/service
+  calls, no file or bundle writing, no draft generation, no Zendesk writes, no
+  Help Center publication, and no customer replies.
+- Provider input must be compact safe metadata from deterministic KCS outputs,
+  not full reviewer packets, full Zendesk HTML, raw evidence basis, raw
+  comments, internal notes, ticket data, or attachment bodies/URLs.
+- Provider output remains untrusted and may only return bounded reviewer-assist
+  status/notes. It must not return article drafts, KCS actions, publication
+  approval, or changed deterministic state.
+- Immutable original action/readiness metadata must be distinguishable from
+  provider-owned action output.
+- Reviewer findings for handoff text smuggling, article type mismatch,
+  failed-response notes, and action-like split context codes are current-slice
+  KCS-9b boundary issues.
+
+Fixed in PR:
+
+- Added `claude_handoff.py` with schema-versioned request/response packets,
+  bounded enums, fake-provider protocol, and value-safe failure handling.
+- Added strict allowed-key validation for request root, `safe_context`,
+  operator override metadata, artifact refs, response root, and structured
+  comments.
+- Added fixed false publication/provider-authority flags:
+  `auto_publish_allowed=false`, `public_output_approved=false`,
+  `provider_may_decide_action=false`,
+  `provider_may_generate_draft_body=false`, and
+  `contains_article_draft=false`.
+- Added provider profile validation so profiles are safe enum metadata only and
+  cannot smuggle endpoints, commands, tokens, or credentials.
+- Added logical artifact refs and hashes only; file bodies and absolute local
+  paths are not provider-visible.
+- Added free-text hardening so provider-visible text rejects draft-like HTML,
+  KCS article section bodies, customer-reply markers, full-packet/body labels,
+  evidence-basis labels, and action enum tokens.
+- Added response invariants so failed/rejected provider responses cannot carry
+  reviewer-assist notes or structured comments.
+- Added context-code aliasing for deterministic action-like blockers such as
+  `split_required`, preserving original actions only under immutable
+  `original_*` metadata.
+- Added tests for safe request construction, forbidden fields, nested
+  allowlists, artifact refs, unsafe provider profiles, action-like output,
+  malformed provider responses, provider exceptions, strict JSON behavior, root
+  exports, and synthetic fixture smoke through fake provider.
+
+Deferred:
+
+- KCS-9c reviewer-only draft generation remains a future slice.
+- Live Claude/provider adapters, internal service/API transport, MCP transport,
+  and runtime smoke tests remain future approved integration slices.
+- Local bundle/reviewer artifact writing remains future output work and must
+  stay Python-owned.
+- Optional style judge feedback remains a later reviewer-assist loop and must
+  not override Python validators or reviewer decisions.
+- KCS-9a-prep chronology-preserving sanitized conversation context builder,
+  deterministic online supportability/EOL lookup, attachment processing,
+  browser UI, Zendesk writes, Help Center publication, and customer replies
+  remain out of scope.
+- Centralized shared raw-boundary, safe-ref, safe-code, and safe-metadata
+  helpers across KCS-3 through KCS-9 remain a cleanup branch candidate.
+
+Validation evidence:
+
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core/test_claude_handoff.py -q`:
+  77 passed.
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core -q`:
+  512 passed.
+- Synthetic fixture smoke with fake provider:
+  `003_create_candidate`, `001_reuse_existing`, `002_update_existing`,
+  `005_blocked_missing_search`, `006_split_multiple_issues`, and
+  `007_blocked_internal_only_evidence` passed.
+- `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core tests/kcs_core`:
+  all checks passed.
+- `git diff --check`: passed.

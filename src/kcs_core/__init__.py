@@ -1,5 +1,18 @@
 """Runtime-independent KCS core packet contracts."""
 
+from kcs_core.claude_handoff import (
+    CLAUDE_HANDOFF_REQUEST_SCHEMA_VERSION,
+    CLAUDE_HANDOFF_RESPONSE_SCHEMA_VERSION,
+    ClaudeHandoffProvider,
+    ClaudeHandoffProviderErrorCode,
+    ClaudeHandoffProviderProfile,
+    ClaudeHandoffProviderStatus,
+    KcsClaudeHandoffRequestPacket,
+    KcsClaudeHandoffResponsePacket,
+    build_claude_handoff_request,
+    submit_claude_handoff,
+    validate_claude_handoff_response,
+)
 from kcs_core.decision import DecisionBlocker, decide_kcs_action
 from kcs_core.evidence_builder import (
     EvidenceBuildPolicy,
@@ -64,9 +77,15 @@ from kcs_core.zendesk_ingest import (
 
 __all__ = [
     "ArticleType",
+    "CLAUDE_HANDOFF_REQUEST_SCHEMA_VERSION",
+    "CLAUDE_HANDOFF_RESPONSE_SCHEMA_VERSION",
     "CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION",
     "CandidateKcsItem",
     "CandidateSemanticExtraction",
+    "ClaudeHandoffProvider",
+    "ClaudeHandoffProviderErrorCode",
+    "ClaudeHandoffProviderProfile",
+    "ClaudeHandoffProviderStatus",
     "DecisionBlocker",
     "DecisionStatus",
     "EolRole",
@@ -77,6 +96,8 @@ __all__ = [
     "EvidenceWarning",
     "InputClass",
     "KcsActionDecisionPacket",
+    "KcsClaudeHandoffRequestPacket",
+    "KcsClaudeHandoffResponsePacket",
     "KcsItemStatus",
     "KcsReviewerPacket",
     "KcsValidationReportPacket",
@@ -100,6 +121,7 @@ __all__ = [
     "ZendeskIngestResult",
     "ZendeskRawTicketSnapshot",
     "ZendeskSourceClient",
+    "build_claude_handoff_request",
     "build_evidence_packet_from_zendesk_export",
     "build_evidence_packet_from_semantic_extraction",
     "build_validation_report",
@@ -111,7 +133,9 @@ __all__ = [
     "normalize_candidate_semantic_extraction",
     "propose_semantic_kcs_items",
     "render_reviewer_packet",
+    "submit_claude_handoff",
     "validate_candidate_semantic_extraction",
+    "validate_claude_handoff_response",
     "validate_evidence_packet",
     "validate_evidence_safety",
 ]
