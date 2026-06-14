@@ -411,3 +411,73 @@ Validation evidence:
 - `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core tests/kcs_core`:
   all checks passed.
 - `git diff --check`: passed.
+
+## KCS-9a Semantic KCS Item Identification Review
+
+Date: 2026-06
+
+Scope: bounded semantic KCS item identification contract and normalization into
+the existing KCS-7 approved evidence export path.
+
+Reviewer: Codex local engineering review and external patch review.
+
+Result: fixed before merge.
+
+Key findings:
+
+- KCS-9a must treat extractor/provider output as untrusted input.
+- KCS-9a may classify item boundaries, product relation, supportability,
+  article type hints, visibility hints, and missing evidence.
+- KCS-9a must not return final KCS action recommendations, call Claude, perform
+  online EOL lookup, draft text, render reviewer packets, or write Zendesk/Help
+  Center content.
+- `decision.py` remains the sole owner of final KCS action recommendation.
+- Semantic context should preserve useful customer/support conversation meaning
+  and chronology while removing only explicit noise and unsafe values.
+
+Fixed in PR:
+
+- Added `semantic_extraction.py` with `CandidateSemanticExtraction`,
+  `CandidateKcsItem`, bounded semantic enums, provider protocol, validation,
+  and normalization into the KCS-7 approved evidence export path.
+- Added provider-context safety checks before provider calls.
+- Added strict validation for provider-returned contract objects so tuple/list
+  fields cannot fragment unsafe strings into safe-looking character lists.
+- Added fail-closed product relation rules for generic third-party,
+  customer-specific, and non-Plesk-owned-but-support-provided classifications.
+- Added deterministic EOL rules that require explicit sanitized input mention
+  before `eol_only` or `unsupported` supportability can be accepted.
+- Added value-safe enum validation without preserving raw provider values in
+  exception causes.
+- Added tests for happy path, multi-item extraction, product relation
+  classification, no-article/internal-only paths, EOL roles, action-value
+  rejection, provider failure, unsafe provider context, provider object return
+  validation, and package-root exports.
+
+Deferred:
+
+- KCS-9a-prep chronology-preserving sanitized conversation context builder
+  remains a future slice. It should preserve ordered turns, roles, visibility,
+  troubleshooting context, support answer/resolution, customer confirmation,
+  open questions, and explicit EOL mentions while removing private values and
+  obvious transport/footer noise.
+- Live Claude/provider integration remains a future approved handoff slice. The
+  current branch defines protocol and validation only.
+- Online supportability/EOL lookup remains deferred to a future deterministic
+  approved lookup adapter. KCS-9a currently accepts EOL/unsupported status only
+  when explicitly mentioned in sanitized input.
+- Transcript sanitizer implementation, semantic summarization, attachment
+  processing, MCP/server transport, browser UI, bundle writer, Zendesk writes,
+  Help Center publication, and customer reply generation remain out of scope.
+- Centralized shared raw-boundary, safe-ref, safe-code, and safe-metadata
+  helpers across KCS-3 through KCS-9 remain a cleanup branch candidate.
+
+Validation evidence:
+
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core/test_semantic_extraction.py -vv`:
+  34 passed.
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core -q`:
+  435 passed.
+- `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core tests/kcs_core`:
+  all checks passed.
+- `git diff --check`: passed.

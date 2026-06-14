@@ -42,10 +42,10 @@ KCS action and readiness
 The LLM may propose normalized evidence fields, but those fields are untrusted
 until the Python layer validates and accepts them.
 
-## Future Internal Packet: CandidateSemanticExtraction
+## Internal Packet: CandidateSemanticExtraction
 
-`CandidateSemanticExtraction` may be introduced in KCS-7 or KCS-9a as an
-untrusted internal intermediate packet.
+`CandidateSemanticExtraction` is the KCS-9a untrusted internal intermediate
+packet for semantic item identification.
 
 Purpose:
 
@@ -64,15 +64,26 @@ CandidateSemanticExtraction {
   schema_version
   case_ref
   extraction_source_ref
-  symptoms[]
-  confirmed_facts[]
-  environment{}
-  supported_cause
-  supported_resolution_or_workaround
-  open_questions[]
-  issue_split_signals[]
-  visibility_notes{}
-  confidence_notes[]
+  source_refs[]
+  items[] {
+    candidate_id
+    summary
+    product_relation
+    supportability
+    supportability_basis
+    kcs_item_status
+    article_type_hint
+    visibility_hint
+    eol_role
+    symptoms[]
+    confirmed_facts[]
+    supported_cause
+    supported_resolution_or_workaround
+    question
+    supported_answer
+    open_questions[]
+    environment{}
+  }
 }
 ```
 
@@ -86,13 +97,16 @@ CandidateSemanticExtraction
 
 Rules:
 
-- Do not implement `CandidateSemanticExtraction` in KCS-1.
 - Do not persist it as canonical evidence.
 - Do not expose it as reviewer-ready output.
 - Do not pass it to the KCS decision engine directly.
-- If implemented later, keep it internal-only and untrusted.
+- Do not let it return KCS actions such as `reuse_existing`,
+  `update_existing`, `create_candidate`, `flag_existing`, `split_required`, or
+  `blocked`.
 - Its free-text fields must follow the Data Handling Baseline and must be
   scanned before normalization.
+- EOL/supportability status must come from explicit sanitized input mention in
+  this slice; KCS-9a does not perform online EOL lookup.
 
 ## Planned End-to-End Flow
 
@@ -234,12 +248,60 @@ tests, CLI/debug output, and exceptions.
 
 KCS-9 is the bounded Claude handoff umbrella. It has two planned sub-slices:
 
+- KCS-9a-prep: chronology-preserving sanitized conversation context builder;
 - KCS-9a: semantic KCS item identification;
 - KCS-9b: reviewer/draft handoff.
+
+KCS-9a-prep produces the safe semantic input context for KCS-9a. It preserves
+conversation order and the meaning needed to identify KCS items while removing
+or replacing private values. It is not a broad redaction engine inside KCS core;
+it is an approved cleanup/preparation layer that outputs bounded safe context.
+The sanitizer/context builder should remove only explicit noise and unsafe
+values, such as transport metadata, quoted mail footers, signatures, tracking
+headers, attachment links, and private identifiers. Relevant context from the
+actual customer/support conversation must remain in the sanitized data.
+
+Required preserved context:
+
+```text
+sanitized_turns[]
+  turn_index
+  role = customer | support | internal_note | system
+  visibility
+  text
+
+known_safe_facts[]
+explicit_status_mentions[]
+operator_notes[]
+```
+
+The context builder must preserve:
+
+- chronological order;
+- who said what at a role level;
+- customer-visible symptom/question;
+- relevant troubleshooting context exchanged during the conversation;
+- support checks, answer, workaround, or resolution;
+- customer confirmation or remaining open questions;
+- explicit EOL/unsupported mentions from the sanitized input.
+
+The context builder must remove or replace:
+
+- message transport metadata and duplicated quoted mail noise;
+- email footers, signatures, and boilerplate that do not affect KCS meaning;
+- customer names, emails, live domains, IPs, hostnames, license IDs, raw ticket
+  IDs, private paths, credentials, tokens, and secrets;
+- attachment URLs/bodies;
+- raw internal comments as-is.
+
+It must not infer KCS actions, run online EOL lookup, call Claude, decide
+article readiness, or create canonical evidence directly.
 
 KCS-9a may introduce Claude-assisted extraction if approved and smoke-testable.
 It identifies candidate KCS items/questions/issues from approved sanitized
 context, but it does not accept packets or decide KCS actions.
+Detailed item-identification rules are tracked in
+`docs/internal/kcs-item-identification-decision-rules.md`.
 
 Allowed role:
 
