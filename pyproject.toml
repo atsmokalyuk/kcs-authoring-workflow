@@ -21,7 +21,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["kcs_core*"]
+include = ["kcs_core*", "kcs_adapters*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
