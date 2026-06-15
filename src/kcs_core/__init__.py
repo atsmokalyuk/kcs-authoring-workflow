@@ -50,6 +50,12 @@ from kcs_core.models import (
 )
 from kcs_core.readiness import build_validation_report, ensure_ready_for_reviewer
 from kcs_core.renderer import render_reviewer_packet
+from kcs_core.reviewer_bundle import (
+    REVIEWER_BUNDLE_MANIFEST_SCHEMA_VERSION,
+    KcsReviewerBundle,
+    build_reviewer_bundle,
+    write_reviewer_bundle,
+)
 from kcs_core.safety import (
     EvidenceVisibility,
     InputClass,
@@ -124,6 +130,7 @@ __all__ = [
     "KcsItemStatus",
     "KcsReviewerPacket",
     "KcsReviewerOnlyDraftArtifact",
+    "KcsReviewerBundle",
     "KcsValidationReportPacket",
     "NormalizedTicketEvidencePacket",
     "OperatorOverrideMode",
@@ -132,6 +139,7 @@ __all__ = [
     "ReadinessState",
     "RecommendedAction",
     "REVIEWER_ONLY_DRAFT_ARTIFACT_SCHEMA_VERSION",
+    "REVIEWER_BUNDLE_MANIFEST_SCHEMA_VERSION",
     "RequiredNextStep",
     "ReuseSearchResultsPacket",
     "SafetyBlocker",
@@ -151,6 +159,7 @@ __all__ = [
     "build_evidence_packet_from_zendesk_export",
     "build_evidence_packet_from_semantic_extraction",
     "build_reviewer_only_draft_artifact",
+    "build_reviewer_bundle",
     "build_validation_report",
     "decide_kcs_action",
     "ensure_evidence_safe",
@@ -168,4 +177,5 @@ __all__ = [
     "validate_evidence_packet",
     "validate_evidence_safety",
     "write_reviewer_only_draft_artifact",
+    "write_reviewer_bundle",
 ]

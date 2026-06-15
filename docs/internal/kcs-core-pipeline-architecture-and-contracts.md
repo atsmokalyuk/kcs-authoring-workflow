@@ -471,4 +471,22 @@ KCS-9:
 
 KCS-10:
 
-- pilot with approved tickets and reviewer feedback.
+- local reviewer bundle writer for deterministic audit/debug artifacts;
+- writes safe local bundles from existing validated packets and reviewer-only
+  draft artifacts;
+- not a production review UI, Zendesk write path, Help Center publication path,
+  or customer-reply path.
+
+KCS-11:
+
+- live Claude provider adapter for real provider smoke tests;
+- sends only validated compact safe request packets;
+- provider output remains untrusted and Python validators still own acceptance;
+- no raw Zendesk data, provider-owned file writing, KCS action authority, or
+  publication behavior.
+
+KCS-12:
+
+- optional debug browser reviewer view if Claude chat review is not enough;
+- reads local reviewer bundles as a read-only inspection surface;
+- deferred until real ticket or pilot testing shows a browser view is needed.

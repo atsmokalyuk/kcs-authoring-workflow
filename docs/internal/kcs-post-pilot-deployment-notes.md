@@ -51,7 +51,9 @@ decision rules, renderer rules, or publication invariants.
 
 ## Local Browser Viewer
 
-A local browser viewer may be useful after pilot as a workflow improvement.
+A local browser viewer may be useful after pilot as a debugging and inspection
+workflow improvement. It is not the default production review surface while
+Claude chat can show the reviewer output directly.
 
 Possible model:
 
@@ -64,6 +66,9 @@ Possible model:
 
 This is not KCS-4 scope unless explicitly approved later. KCS-4 remains the
 reviewer packet renderer and Zendesk HTML copy/paste artifact slice.
+The current roadmap keeps the browser view behind the local bundle writer and
+live Claude provider smoke tests. Implement it only if real ticket or pilot
+review shows that Claude chat output is not enough for efficient debugging.
 
 ## Packaging And Code Protection
 

@@ -47,6 +47,7 @@ KCS-8: Zendesk read-only ingest boundary for local cleanup handoff
 KCS-9a: semantic KCS item identification contract
 KCS-9b: bounded Claude/provider handoff contract
 KCS-9c: reviewer-only draft generation contract and artifact writer
+KCS-10: local reviewer bundle writer for audit/debug artifacts
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -133,12 +134,22 @@ reviewer-only draft artifacts through Python-owned code. Draft artifacts keep
 output cannot decide KCS actions, write files directly, publish content,
 generate customer replies, or replace KCS-4 deterministic renderer output.
 
+KCS-10 is implemented as local `reviewer_bundle.py` writing logic. It collects
+existing validated KCS packets and optional KCS-9b/KCS-9c artifacts into a
+fixed local reviewer bundle with a safe manifest/index. The bundle is a
+file-based audit/debug/regression artifact, not the production chat review UI.
+Production may render a safe chat summary from the same validated packet data.
+KCS-10 does not write Zendesk, publish Help Center content, generate customer
+replies, call live Claude/provider APIs, or change KCS decision, renderer, or
+readiness behavior.
+
 KCS-1 through KCS-7 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access. KCS-8 introduces the read-only
 Zendesk source boundary only. KCS-9a introduces a provider protocol and local
 validation/normalization boundary only. KCS-9b introduces the bounded
 reviewer-assist handoff contract only. KCS-9c introduces reviewer-only draft
-contracts and local artifact writing only. Live Claude/API handoff, production
+contracts and local artifact writing only. KCS-10 introduces local reviewer
+bundle writing only. Live Claude/API handoff, production
 transport, and broad adapter/client integration remain later slices.
 
 ## Non-goals
