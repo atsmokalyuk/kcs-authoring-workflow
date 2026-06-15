@@ -46,6 +46,7 @@ KCS-7: evidence package builder for approved sanitized structured input
 KCS-8: Zendesk read-only ingest boundary for local cleanup handoff
 KCS-9a: semantic KCS item identification contract
 KCS-9b: bounded Claude/provider handoff contract
+KCS-9c: reviewer-only draft generation contract and artifact writer
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -124,12 +125,21 @@ metadata, and keeps `auto_publish_allowed=false` and
 reviewer packet bodies or full Zendesk HTML, write files, call live Claude/API,
 implement MCP/service transport, or change KCS decisions.
 
+KCS-9c is implemented as local `claude_draft.py` contract and validation
+logic. It consumes validated KCS-9b-style bounded handoff context for eligible
+article-output paths, validates untrusted provider draft proposals, and writes
+reviewer-only draft artifacts through Python-owned code. Draft artifacts keep
+`auto_publish_allowed=false` and `public_output_approved=false`; provider
+output cannot decide KCS actions, write files directly, publish content,
+generate customer replies, or replace KCS-4 deterministic renderer output.
+
 KCS-1 through KCS-7 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access. KCS-8 introduces the read-only
 Zendesk source boundary only. KCS-9a introduces a provider protocol and local
 validation/normalization boundary only. KCS-9b introduces the bounded
-reviewer-assist handoff contract only. Bundle writing, live Claude/API handoff,
-draft generation, and broad adapter/client integration remain later slices.
+reviewer-assist handoff contract only. KCS-9c introduces reviewer-only draft
+contracts and local artifact writing only. Live Claude/API handoff, production
+transport, and broad adapter/client integration remain later slices.
 
 ## Non-goals
 
@@ -274,7 +284,7 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- Current implementation subtask: KCS-9b Bounded Claude Handoff Contract
+- Current implementation subtask: KCS-9c Reviewer-Only Draft Generation
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

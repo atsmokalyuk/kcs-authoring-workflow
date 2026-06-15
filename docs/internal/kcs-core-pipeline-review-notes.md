@@ -568,3 +568,79 @@ Validation evidence:
 - `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core tests/kcs_core`:
   all checks passed.
 - `git diff --check`: passed.
+
+## KCS-9c Reviewer-Only Draft Generation Review
+
+Date: 2026-06
+
+Scope: reviewer-only provider draft contract, validation, and local artifact
+writer from validated KCS-9b bounded handoff context.
+
+Reviewer: Codex local engineering review and external architecture review.
+
+Result: fixed before merge.
+
+Key findings:
+
+- KCS-9c may allow provider-proposed draft wording only for deterministic
+  article-output paths: `create_candidate`, `update_existing`, and
+  `flag_existing`.
+- KCS-9c must reject `reuse_existing`, `no_article`, `blocked`,
+  `split_required`, and non-ready readiness states for article draft
+  generation.
+- Provider output remains untrusted. Python owns draft validation, artifact
+  writing, readiness/publication safety, and value-safe provider failure
+  handling.
+- Reviewer-only draft artifacts must not replace KCS-4 reviewer packets or
+  KCS-5 readiness reports.
+- Provider-generated Zendesk HTML is reviewer-only draft output and must be
+  validated by allowlist, not accepted as publication-ready output.
+- KCS Style Guide compliance remains layered: prompt constraints, structured
+  schema, deterministic Python validators, optional advisory style judge, and
+  human review.
+
+Fixed in PR:
+
+- Added `claude_draft.py` with schema-versioned KCS-9c request, response, and
+  reviewer-only draft artifact packets.
+- Added draft eligibility checks for article-output actions and
+  `ready_for_reviewer` state.
+- Added bounded request validation with allowed keys, safe context, safe
+  artifact refs/hashes, immutable original metadata, and fixed false
+  publication/provider-authority flags.
+- Added untrusted response validation for structured technical SCR and how-to
+  draft sections, article type matching, unsupported-claim blocking,
+  customer-reply marker rejection, provider-owned action rejection, and
+  value-safe provider errors.
+- Added reviewer-only draft HTML allowlist validation with default no-external
+  link policy.
+- Added Python-owned artifact writer with overwrite and symlink rejection,
+  safe permissions, deterministic artifact hashing, and reviewer-only flags.
+- Added tests for eligibility, request safety, response safety, HTML safety,
+  provider failure, artifact writing boundaries, root exports, and artifact
+  rejection as KCS-4/KCS-5 canonical packet output.
+
+Deferred:
+
+- Live Claude/provider adapter and runtime smoke tests remain future approved
+  integration work.
+- Internal service/API or MCP transport remains out of KCS-9c.
+- Optional style judge packet/result/disposition workflow remains a later
+  reviewer-assist loop and must not override Python validators or reviewer
+  decisions.
+- KCS-9a-prep chronology-preserving sanitized conversation context builder,
+  deterministic online supportability/EOL lookup, attachment processing,
+  browser UI, Zendesk writes, Help Center publication, and customer replies
+  remain out of scope.
+- Shared safe-code, safe-ref, safe-metadata, and raw-boundary helper
+  centralization remains a cleanup branch candidate.
+
+Validation evidence:
+
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core/test_claude_draft.py -q`:
+  42 passed.
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core -q`:
+  554 passed.
+- `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core tests/kcs_core`:
+  all checks passed.
+- `git diff --check`: passed.
