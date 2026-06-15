@@ -336,11 +336,12 @@ optional safe artifact refs. It does not generate drafts, write files, call a
 live provider, implement MCP/service transport, or let the provider decide KCS
 actions.
 
-KCS-9c is deferred until KCS-9b is validated. It is the first slice that may
-allow provider-proposed reviewer-only draft wording. Python owns validation and
-artifact writing. Style compliance must be layered through prompt constraints,
-structured draft schema, deterministic Python validators, optional style judge
-feedback, and human review.
+KCS-9c is the first slice that may allow provider-proposed reviewer-only draft
+wording. It consumes validated KCS-9b-style bounded context for eligible
+article-output paths only. Python owns validation and artifact writing. Style
+compliance must be layered through prompt constraints, structured draft schema,
+deterministic Python validators, optional style judge feedback, and human
+review.
 
 ## NormalizedTicketEvidencePacket Acceptance Rules
 
@@ -505,7 +506,7 @@ KCS-9:
 - Claude Enterprise/Desktop bounded handoff;
 - KCS-9a semantic KCS item identification from approved sanitized context;
 - KCS-9b bounded reviewer-assist handoff contract;
-- KCS-9c operator-requested reviewer-only draft flow;
+- KCS-9c reviewer-only draft generation and artifact writer;
 - Claude output remains untrusted and validators rerun.
 
 KCS-10:
