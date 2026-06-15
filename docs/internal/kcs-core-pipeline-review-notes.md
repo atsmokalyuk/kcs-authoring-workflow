@@ -710,6 +710,72 @@ Validation evidence:
   46 passed.
 - `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core tests/kcs_adapters -q`:
   622 passed.
+- `uv run ruff check src/kcs_core src/kcs_adapters tests/kcs_core tests/kcs_adapters scripts`:
+  all checks passed.
+- `git diff --check`: passed.
+
+## KCS-12 Claude Desktop MCP Adapter Boundary Review
+
+Date: 2026-06
+
+Scope: Claude Desktop stdio MCP validator/control adapter and installable MCPB
+package for existing KCS-9b/KCS-9c packet contracts. This is an adapter
+boundary review, not a new KCS decision, drafting, publication, or file-writing
+authority.
+
+Reviewer: Codex local engineering review and MCP architecture review.
+
+Result: implemented with focused MCP lifecycle, tool-surface, and safety tests.
+
+Key boundaries:
+
+- `kcs_adapters.mcp_desktop` stays outside `kcs_core`.
+- The server exposes only read-only validator/control tools through stdio MCP.
+- Default Claude Desktop mode lists and accepts underscore-safe aliases only.
+- MCP resources, prompts, sampling, elicitation, server-initiated requests,
+  file writes, network calls, provider calls, Zendesk writes, Help Center
+  publication, and customer replies remain out of scope.
+- Tool outputs are compact `structuredContent` summaries with matching text
+  JSON and no resource links, embedded resources, full packets, HTML bodies,
+  local paths, or raw validation payloads.
+- KCS-9b/KCS-9c provider/Claude output remains untrusted and is accepted only
+  through existing Python validators.
+
+Implemented:
+
+- Added MCP protocol `2025-06-18` stdio lifecycle handling with initialize,
+  initialized notification, ping, tools/list, tools/call, empty resources/list,
+  empty prompts/list, and value-safe unknown-method errors.
+- Added strict line-delimited JSON-RPC parsing behavior for malformed JSON,
+  oversized lines, non-object/batch messages, invalid ids, invalid UTF-8, and
+  `NaN`/`Infinity`.
+- Added fixed KCS-12 tool surface: policy summary, MCP readiness,
+  handoff/draft request validation, handoff/draft response validation, and
+  in-memory synthetic contract smoke.
+- Added console script `kcs-desktop-mcp`.
+- Added reproducible MCPB source package under `packaging/claude-desktop/` and
+  `scripts/build_kcs_mcpb.py` to produce
+  `dist/kcs-authoring-mvp-validator-control.mcpb`.
+- Exported KCS-12 public adapter API from `kcs_adapters`.
+- Updated README and internal roadmap/architecture docs for KCS-12.
+
+Deferred:
+
+- Real-ticket smoke, direct HTTP/live Claude API work, production transport
+  rollout, internal service implementation, browser UI, local file/bundle
+  writing through MCP, Zendesk writes, Help Center publication, and customer
+  replies remain out of scope.
+
+Validation evidence:
+
+- `uv run pytest tests/kcs_adapters -q`:
+  105 passed.
+- `uv run pytest tests/kcs_core tests/kcs_adapters -q`:
+  681 passed.
 - `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core src/kcs_adapters tests/kcs_core tests/kcs_adapters`:
   all checks passed.
+- `uv run python scripts/build_kcs_mcpb.py`:
+  passed and produced `dist/kcs-authoring-mvp-validator-control.mcpb`.
+- MCPB Node wrapper initialize smoke:
+  passed.
 - `git diff --check`: passed.

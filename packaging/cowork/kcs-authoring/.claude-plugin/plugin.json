@@ -1,0 +1,16 @@
+{
+  "name": "kcs-authoring",
+  "version": "0.1.0",
+  "description": "Local KCS Authoring workflow tools and guidance for Claude/Cowork sessions.",
+  "author": {
+    "name": "KCS Authoring MVP"
+  },
+  "keywords": [
+    "kcs",
+    "support",
+    "authoring",
+    "mcp",
+    "validation"
+  ],
+  "mcpServers": "./.mcp.json"
+}

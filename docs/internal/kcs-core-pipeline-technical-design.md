@@ -527,6 +527,21 @@ KCS-11:
 
 KCS-12:
 
-- optional debug browser reviewer view if Claude chat review is not enough;
-- reads local reviewer bundles as a read-only inspection surface;
-- deferred until real ticket or pilot testing shows a browser view is needed.
+- Claude Desktop MCP validator/control adapter under `kcs_adapters`;
+- installable local Claude Desktop MCPB package source under
+  `packaging/claude-desktop/`;
+- exposes read-only stdio MCP tools for KCS-9b/KCS-9c packet validation and
+  synthetic contract smoke;
+- returns compact safe summaries only, with no resources, prompts, file writes,
+  network calls, provider calls, raw Zendesk data, publication behavior, or
+  customer replies.
+
+Future remote MCP / intranet deployment:
+
+- separate from the KCS-12 local MCPB implementation;
+- reuse the safe tool facade and packet validators where possible;
+- replace the local Node/stdout wrapper with an approved internal MCP service
+  endpoint;
+- connect Claude Desktop through a custom remote connector URL;
+- keep runtime credentials, auth, ACLs, audit logs, service health checks, and
+  deployment packaging outside the deterministic KCS core.

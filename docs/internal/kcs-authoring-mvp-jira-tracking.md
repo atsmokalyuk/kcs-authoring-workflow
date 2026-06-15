@@ -19,11 +19,14 @@ This page links the product and architecture documents to the Jira implementatio
 - KCS-9 Claude Enterprise/Desktop bounded handoff; requires client integration readiness before pilot use
   - KCS-9a Semantic KCS item identification from approved sanitized context
   - KCS-9b Bounded reviewer-assist handoff contract from compact safe packets
-  - KCS-9c Reviewer-only draft generation from validated handoff packets
+- KCS-9c Reviewer-only draft generation from validated handoff packets
 - KCS-10 Local reviewer bundle writer for deterministic audit/debug artifacts
 - KCS-11 Live Claude provider adapter for real provider smoke tests
-- KCS-12 Optional debug browser reviewer view if Claude chat review is not enough
+- KCS-12 Claude Desktop MCP validator/control adapter and MCPB package
 - KCS-13 Pilot with approved tickets and reviewer feedback
+- KCS-14 / future: intranet remote MCP service deployment for managed operator
+  use, connected from Claude Desktop through a custom remote connector URL
+  rather than the local MCPB stdio wrapper
 
 ## Source Documents
 - Product brief: [KCS Authoring MVP - Goal and Success Criteria](https://webpros.atlassian.net/wiki/spaces/~atsmokalyuk/pages/6687424547/KCS+Authoring+MVP+-+Goal+and+Success+Criteria)

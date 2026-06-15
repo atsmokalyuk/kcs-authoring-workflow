@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "kcs-authoring": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "${HOME}/kcs-authoring-mvp",
+        "run",
+        "kcs-desktop-mcp",
+        "--tool-name-style",
+        "claude_desktop_aliases"
+      ],
+      "env": {
+        "KCS_AUTHORING_MVP_REPO_ROOT": "${HOME}/kcs-authoring-mvp",
+        "KCS_AUTHORING_MVP_UV_COMMAND": "uv"
+      }
+    }
+  }
+}
