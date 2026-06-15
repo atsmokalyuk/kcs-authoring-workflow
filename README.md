@@ -30,7 +30,7 @@ after the relevant contracts and gates exist.
 
 ## Current Scope
 
-Initial development follows the KCS-0..KCS-10 roadmap in
+Initial development follows the KCS-0..KCS-11 roadmap in
 `docs/internal/kcs-authoring-mvp-jira-tracking.md`.
 
 Implemented code slices:
@@ -48,6 +48,7 @@ KCS-9a: semantic KCS item identification contract
 KCS-9b: bounded Claude/provider handoff contract
 KCS-9c: reviewer-only draft generation contract and artifact writer
 KCS-10: local reviewer bundle writer for audit/debug artifacts
+KCS-11: live-capable Claude/provider adapter for bounded smoke tests
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -143,14 +144,26 @@ KCS-10 does not write Zendesk, publish Help Center content, generate customer
 replies, call live Claude/provider APIs, or change KCS decision, renderer, or
 readiness behavior.
 
+KCS-11 is implemented as adapter-layer `kcs_adapters.claude_provider`
+smoke logic outside `kcs_core`. It validates safe provider configuration,
+builds value-safe preflight and attempt packets, and submits validated
+KCS-9b/KCS-9c request packets through an injected fake or direct HTTP provider
+client. Runtime endpoint and credential material is kept out of serializable
+packets and smoke results. Provider output remains untrusted and is accepted
+only after existing KCS-9b/KCS-9c validators pass. KCS-11 does not write files,
+implement MCP or internal service transports, change KCS decisions, publish
+content, write Zendesk, or generate customer replies.
+
 KCS-1 through KCS-7 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access. KCS-8 introduces the read-only
 Zendesk source boundary only. KCS-9a introduces a provider protocol and local
 validation/normalization boundary only. KCS-9b introduces the bounded
 reviewer-assist handoff contract only. KCS-9c introduces reviewer-only draft
 contracts and local artifact writing only. KCS-10 introduces local reviewer
-bundle writing only. Live Claude/API handoff, production
-transport, and broad adapter/client integration remain later slices.
+bundle writing only. KCS-11 introduces a live-capable provider adapter package
+and bounded smoke layer only. Production transport rollout, MCP/internal
+service implementation, and broad adapter/client integration remain later
+slices.
 
 ## Non-goals
 
@@ -180,16 +193,20 @@ kcs-authoring-mvp/
 |       |-- kcs-authoring-mvp-feature-engineering.md
 |       `-- kcs-authoring-mvp-jira-tracking.md
 |-- src/
+|   |-- kcs_adapters/
 |   `-- kcs_core/
 `-- tests/
+    |-- kcs_adapters/
     `-- kcs_core/
 ```
 
-The Python package contains runtime-independent KCS core contracts and gates:
+The Python packages separate runtime-independent core from runtime adapters:
 
 ```text
-src/kcs_core/       # Runtime-independent Python core
-tests/kcs_core/     # Contract, fixture, gate, and decision tests
+src/kcs_core/          # Runtime-independent Python core
+src/kcs_adapters/      # Runtime adapter boundaries and smoke clients
+tests/kcs_core/        # Contract, fixture, gate, and decision tests
+tests/kcs_adapters/    # Adapter-boundary tests
 ```
 
 Machine-specific notes, ignore rules, and runtime artifacts must stay outside
@@ -295,7 +312,7 @@ data/security rules, and validation expectations.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- Current implementation subtask: KCS-9c Reviewer-Only Draft Generation
+- Current implementation subtask: KCS-11 Live Claude Provider Adapter
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

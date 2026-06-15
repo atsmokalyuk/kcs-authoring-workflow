@@ -644,3 +644,72 @@ Validation evidence:
 - `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core tests/kcs_core`:
   all checks passed.
 - `git diff --check`: passed.
+
+## KCS-11 Live Claude Provider Adapter Boundary Review
+
+Date: 2026-06
+
+Scope: live-capable adapter package and bounded smoke layer for validated
+KCS-9b/KCS-9c request packets. This is an adapter boundary review, not a new
+deterministic core pipeline authority.
+
+Reviewer: Codex local engineering review and external architecture review.
+
+Result: fixed before merge.
+
+Key findings:
+
+- KCS-11 must separate serializable safe provider config from runtime-only
+  endpoint and credential material.
+- Direct HTTP must use an injectable transport so unit tests do not make real
+  network calls and can inspect the outbound bounded payload.
+- Provider responses need byte limits, strict JSON-object parsing, safe failure
+  behavior, and existing KCS-9b/KCS-9c response validation.
+- Smoke results must be compact and value-safe; they must not carry full draft
+  HTML, raw provider response bodies, endpoint URLs, tokens, or raw errors.
+- Direct HTTP runtime configuration must still be safe-shaped even though it is
+  runtime-only: endpoint URLs must not carry credentials/query/fragment
+  material, model references must be safe refs, and API keys must not allow
+  header injection.
+- Direct HTTP preflight must require safe endpoint and credential source refs,
+  and direct HTTP transport must use the approved-provider profile.
+- Smoke result packets must be internally consistent even when constructed or
+  deserialized manually; injected clients must match the configured transport.
+- `internal_service` and `mcp_client` remain future transport modes and are
+  not ready in this slice.
+
+Fixed in PR:
+
+- Added `kcs_adapters.claude_provider` with safe config, runtime-only direct
+  HTTP config, preflight report, attempt packet, compact smoke result, fake
+  provider client, direct HTTP client, and injectable HTTP transport protocol.
+- Added fixed instruction wrappers selected by request kind and typed
+  handoff/draft request-kind/schema derivation.
+- Added strict response parsing limits for direct HTTP provider output.
+- Added safe-shaped runtime config validation, direct HTTP endpoint/credential
+  ref preflight checks, profile/transport compatibility checks, client
+  transport markers, and compact smoke result invariants.
+- Added value-safe handling for provider exceptions, malformed output, unsafe
+  provider flags, and unsupported future transports.
+- Exported KCS-11 public API from the adapter package and kept it out of
+  `kcs_core` root exports.
+- Updated README status for KCS-11.
+
+Deferred:
+
+- Real production transport rollout, internal service endpoint implementation,
+  MCP client implementation, retries/rate limiting, operational telemetry,
+  Zendesk writes, Help Center publication, customer replies, and browser UI
+  remain out of scope.
+- Manual live smoke requires explicit approval and approved runtime
+  configuration; unit tests use fake provider/transport only.
+
+Validation evidence:
+
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_adapters/test_claude_provider.py -q`:
+  46 passed.
+- `PYTHONPATH=src .venv/bin/python -m pytest tests/kcs_core tests/kcs_adapters -q`:
+  622 passed.
+- `PYTHONPATH=src .venv/bin/python -m ruff check src/kcs_core src/kcs_adapters tests/kcs_core tests/kcs_adapters`:
+  all checks passed.
+- `git diff --check`: passed.
