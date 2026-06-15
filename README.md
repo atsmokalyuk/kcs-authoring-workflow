@@ -30,7 +30,7 @@ after the relevant contracts and gates exist.
 
 ## Current Scope
 
-Initial development follows the KCS-0..KCS-11 roadmap in
+Initial development follows the KCS-0..KCS-12 roadmap in
 `docs/internal/kcs-authoring-mvp-jira-tracking.md`.
 
 Implemented code slices:
@@ -49,6 +49,7 @@ KCS-9b: bounded Claude/provider handoff contract
 KCS-9c: reviewer-only draft generation contract and artifact writer
 KCS-10: local reviewer bundle writer for audit/debug artifacts
 KCS-11: live-capable Claude/provider adapter for bounded smoke tests
+KCS-12: Claude Desktop MCP validator/control adapter and MCPB package
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -154,6 +155,22 @@ only after existing KCS-9b/KCS-9c validators pass. KCS-11 does not write files,
 implement MCP or internal service transports, change KCS decisions, publish
 content, write Zendesk, or generate customer replies.
 
+KCS-12 is implemented as adapter-layer `kcs_adapters.mcp_desktop` stdio MCP
+logic outside `kcs_core`, plus a reproducible Claude Desktop MCPB package
+source under `packaging/claude-desktop/`. It exposes Claude Desktop-safe
+read-only validation tools for KCS-9b/KCS-9c request and response packets plus
+a synthetic contract smoke. Tool outputs are compact summaries only. KCS-12
+does not read raw tickets, call Claude/provider APIs, write files through MCP,
+expose MCP resources/prompts, change KCS decisions, publish content, write
+Zendesk, or generate customer replies.
+
+Longer-term managed deployment may replace the local MCPB stdio wrapper with
+an intranet remote MCP service. In that model Claude Desktop would connect to
+an approved internal MCP endpoint through a custom remote connector URL, while
+auth, ACLs, audit, health checks, and deployment packaging live outside the
+deterministic KCS core. That is a future service slice, not the KCS-12 local
+Desktop extension.
+
 KCS-1 through KCS-7 do not require live Zendesk access, Zendesk tokens, Claude
 connector setup, or `kcs-search-mcp` access. KCS-8 introduces the read-only
 Zendesk source boundary only. KCS-9a introduces a provider protocol and local
@@ -161,9 +178,10 @@ validation/normalization boundary only. KCS-9b introduces the bounded
 reviewer-assist handoff contract only. KCS-9c introduces reviewer-only draft
 contracts and local artifact writing only. KCS-10 introduces local reviewer
 bundle writing only. KCS-11 introduces a live-capable provider adapter package
-and bounded smoke layer only. Production transport rollout, MCP/internal
-service implementation, and broad adapter/client integration remain later
-slices.
+and bounded smoke layer only. KCS-12 introduces the Claude Desktop MCP
+validator/control surface and installable local MCPB package only. Real-ticket
+smoke, production transport rollout, remote MCP/internal service
+implementation, and broad adapter/client integration remain later slices.
 
 ## Non-goals
 
@@ -308,11 +326,50 @@ Project source-of-truth documents live under `docs/internal/`:
 See `CONTRIBUTING.md` for branch naming, commit message format, PR process,
 data/security rules, and validation expectations.
 
+### Claude Desktop MCPB
+
+Build the local Claude Desktop extension package:
+
+```bash
+python scripts/build_kcs_mcpb.py
+```
+
+The generated package is written to:
+
+```text
+dist/kcs-authoring-mvp-validator-control.mcpb
+```
+
+Install this MCPB in Claude Desktop, set `repository_root` to the local
+checkout, keep `uv_command=uv` unless a full path is required, enable the
+extension, and start a new chat. The package starts `kcs-desktop-mcp` through
+`uv --project <repository_root> run ...` and exposes only compact read-only
+validator/control tools.
+
+### Claude/Cowork Plugin
+
+Build the local Claude/Cowork plugin package:
+
+```bash
+python scripts/build_kcs_cowork_plugin.py
+```
+
+The generated package is written to:
+
+```text
+dist/kcs-authoring.plugin
+```
+
+This plugin adds a `kcs-authoring-control` skill and references the local
+`kcs-desktop-mcp` server through `.mcp.json`. It is the preferred local
+chat/Cowork surface when Claude Desktop Extensions are installed but their MCP
+tools are not loaded into the active chat.
+
 ## Ownership
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Parent Jira item: PAUX-7083
-- Current implementation subtask: KCS-11 Live Claude Provider Adapter
+- Current implementation subtask: KCS-12 Claude Desktop MCP Adapter
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

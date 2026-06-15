@@ -88,8 +88,12 @@ Recommended slice order:
   - KCS-9c: reviewer-only draft generation;
 - KCS-10: local reviewer bundle writer for audit/debug;
 - KCS-11: live Claude provider adapter for real provider smoke tests;
-- KCS-12: optional debug browser reviewer view if Claude chat review is not enough;
+- KCS-12: Claude Desktop MCP validator/control adapter and MCPB package;
 - KCS-13: pilot with approved tickets and reviewer feedback.
+- KCS-14 / future deployment: intranet remote MCP service for managed
+  operator use. Claude Desktop would connect through a custom remote MCP
+  connector URL to an internal service endpoint, not through the local MCPB
+  stdio wrapper.
 
 Do not move runtime integration, live Zendesk access, Claude handoff, or publication-adjacent behavior into earlier slices.
 

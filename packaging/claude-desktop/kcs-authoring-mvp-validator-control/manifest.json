@@ -1,0 +1,91 @@
+{
+  "author": {
+    "name": "KCS Authoring MVP"
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=16.0.0"
+    }
+  },
+  "description": "Local read-only Claude Desktop validator/control adapter for KCS Authoring MVP.",
+  "display_name": "KCS Authoring",
+  "keywords": [
+    "kcs",
+    "support",
+    "mcp",
+    "validator",
+    "claude-desktop"
+  ],
+  "long_description": "Starts the repository-local KCS Authoring MVP stdio MCP server through uv. This extension exposes compact read-only validator/control tools for approved KCS packets and synthetic contract smoke only. It is not approved for raw Zendesk payloads, raw comments, internal notes, attachments, customer replies, Zendesk writes, Help Center publication, provider calls, or file-writing tools.",
+  "manifest_version": "0.3",
+  "name": "kcs-authoring-mvp-validator-control",
+  "prompts_generated": false,
+  "server": {
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "command": "node",
+      "env": {
+        "KCS_AUTHORING_MVP_REPO_ROOT": "${user_config.repository_root}",
+        "KCS_AUTHORING_MVP_UV_COMMAND": "${user_config.uv_command}"
+      }
+    },
+    "type": "node"
+  },
+  "tools": [
+    {
+      "description": "Return compact KCS Authoring MVP policy and boundary metadata.",
+      "name": "kcs_get_policy_summary"
+    },
+    {
+      "description": "Return compact Claude Desktop MCP readiness metadata.",
+      "name": "kcs_get_mcp_readiness"
+    },
+    {
+      "description": "Validate a KCS-9b Claude handoff request packet.",
+      "name": "kcs_validate_handoff_request"
+    },
+    {
+      "description": "Validate a KCS-9b Claude handoff response packet.",
+      "name": "kcs_validate_handoff_response"
+    },
+    {
+      "description": "Validate a KCS-9c Claude draft request packet.",
+      "name": "kcs_validate_draft_request"
+    },
+    {
+      "description": "Validate a KCS-9c Claude draft response packet.",
+      "name": "kcs_validate_draft_response"
+    },
+    {
+      "description": "Run in-memory synthetic KCS MCP contract smoke and return compact result.",
+      "name": "kcs_run_contract_smoke"
+    }
+  ],
+  "tools_generated": false,
+  "user_config": {
+    "repository_root": {
+      "default": "${HOME}/kcs-authoring-mvp",
+      "description": "Local KCS Authoring MVP checkout containing pyproject.toml.",
+      "required": true,
+      "title": "KCS Authoring MVP repository root",
+      "type": "directory"
+    },
+    "uv_command": {
+      "default": "uv",
+      "description": "uv executable or absolute path used to run the local MCP server.",
+      "required": true,
+      "title": "uv command",
+      "type": "string"
+    }
+  },
+  "version": "0.1.0"
+}

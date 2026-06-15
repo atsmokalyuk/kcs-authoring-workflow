@@ -123,10 +123,36 @@ Current roadmap boundaries remain unchanged:
 - KCS-9: bounded Claude-assisted extraction/handoff if approved and
   smoke-testable.
 
+## Future Intranet Remote MCP Option
+
+The local Claude Desktop MCPB package is the development and local smoke path.
+It starts a stdio MCP server from a local repository checkout through `uv`.
+
+A later managed operator path can instead expose the same safe
+validator/control tool facade through an internal remote MCP service:
+
+```text
+Claude Desktop
+  -> custom remote MCP connector URL
+  -> approved intranet MCP endpoint
+  -> deployed KCS adapter/service
+  -> deterministic KCS core packets and validators
+```
+
+This would remove the requirement for every operator machine to have a local
+repository checkout and local `uv` runtime. It also moves auth, ACLs, audit,
+health checks, deployment packaging, and network routing into a governed
+service slice.
+
+This is not part of the current local MCPB implementation and should not change
+KCS core ownership: code still decides, validators still block, Claude output
+remains untrusted, and no Zendesk writes, Help Center publication, customer
+replies, or auto-publish are introduced by the transport.
+
 ## PM Summary
 
 Post-pilot direction: keep the KCS core stable, versioned, and governed; allow
 engineers to customize input/output experience around approved JSON contracts.
 Local packaging can reduce accidental modification but is not a strong
 encryption boundary. If stronger control is needed later, move the core behind
-an internal service/API.
+an internal service/API or approved intranet remote MCP service.
