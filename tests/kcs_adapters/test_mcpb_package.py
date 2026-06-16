@@ -9,7 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from kcs_adapters.mcp_desktop import CLAUDE_DESKTOP_TOOL_ALIASES
+from kcs_adapters.mcp_desktop import (
+    CLAUDE_DESKTOP_TOOL_ALIASES,
+    DESKTOP_OPERATOR_TOOLS,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MCPB_SOURCE = (
@@ -44,14 +47,20 @@ def _copy_mcpb_source(tmp_path: Path) -> Path:
 
 def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     manifest = json.loads((MCPB_SOURCE / "manifest.json").read_text(encoding="utf-8"))
+    expected_tool_names = {
+        CLAUDE_DESKTOP_TOOL_ALIASES[tool_name]
+        for tool_name in DESKTOP_OPERATOR_TOOLS
+    }
 
     assert manifest["manifest_version"] == "0.3"
     assert manifest["name"] == "kcs-authoring-mvp-validator-control"
     assert manifest["server"]["type"] == "node"
     assert manifest["server"]["entry_point"] == "server/index.js"
     assert manifest["server"]["mcp_config"]["command"] == "node"
-    assert {tool["name"] for tool in manifest["tools"]} == set(
-        CLAUDE_DESKTOP_TOOL_ALIASES.values()
+    assert {tool["name"] for tool in manifest["tools"]} == expected_tool_names
+    assert all(
+        not tool["name"].startswith("kcs_validate_")
+        for tool in manifest["tools"]
     )
     assert all("." not in tool["name"] for tool in manifest["tools"])
     assert manifest["prompts_generated"] is False

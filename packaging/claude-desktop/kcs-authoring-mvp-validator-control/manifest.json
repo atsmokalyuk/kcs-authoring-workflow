@@ -50,22 +50,6 @@
       "name": "kcs_get_mcp_readiness"
     },
     {
-      "description": "Validate a KCS-9b Claude handoff request packet.",
-      "name": "kcs_validate_handoff_request"
-    },
-    {
-      "description": "Validate a KCS-9b Claude handoff response packet.",
-      "name": "kcs_validate_handoff_response"
-    },
-    {
-      "description": "Validate a KCS-9c Claude draft request packet.",
-      "name": "kcs_validate_draft_request"
-    },
-    {
-      "description": "Validate a KCS-9c Claude draft response packet.",
-      "name": "kcs_validate_draft_response"
-    },
-    {
       "description": "Run in-memory synthetic KCS MCP contract smoke and return compact result.",
       "name": "kcs_run_contract_smoke"
     },

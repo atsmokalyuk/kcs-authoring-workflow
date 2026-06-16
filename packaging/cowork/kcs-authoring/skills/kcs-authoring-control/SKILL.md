@@ -21,10 +21,6 @@ these MCP tools:
 
 - `kcs_get_policy_summary`
 - `kcs_get_mcp_readiness`
-- `kcs_validate_handoff_request`
-- `kcs_validate_handoff_response`
-- `kcs_validate_draft_request`
-- `kcs_validate_draft_response`
 - `kcs_run_contract_smoke`
 - `kcs_run_approved_summary_pipeline`
 
@@ -79,10 +75,10 @@ Use:
 - `kcs_run_contract_smoke` for synthetic in-memory validation.
 - `kcs_run_approved_summary_pipeline` for one approved sanitized summary
   converted into compact pipeline status.
-- `kcs_validate_handoff_request` and `kcs_validate_handoff_response` only for
-  already sanitized KCS-9b packets.
-- `kcs_validate_draft_request` and `kcs_validate_draft_response` only for
-  already sanitized KCS-9c packets.
+
+Do not call low-level KCS-9b/KCS-9c packet validators from Claude Desktop.
+They are internal development tools and are intentionally hidden from the
+operator-facing tool list.
 
 Keep user-facing output brief and concrete. Report only compact safe metadata,
 not raw packet bodies.

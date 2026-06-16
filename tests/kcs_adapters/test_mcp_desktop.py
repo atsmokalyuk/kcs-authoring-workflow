@@ -425,9 +425,15 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
     tools = response["result"]["tools"]
     tool_names = {tool["name"] for tool in tools}
     assert "kcs.validate_handoff_request" not in tool_names
-    assert "kcs_validate_handoff_request" in tool_names
+    assert "kcs_validate_handoff_request" not in tool_names
+    assert "kcs_validate_handoff_response" not in tool_names
+    assert "kcs_validate_draft_request" not in tool_names
+    assert "kcs_validate_draft_response" not in tool_names
+    assert "kcs_get_policy_summary" in tool_names
+    assert "kcs_get_mcp_readiness" in tool_names
     assert "kcs_run_contract_smoke" in tool_names
     assert "kcs_run_approved_summary_pipeline" in tool_names
+    assert len(tools) == 4
     for tool in tools:
         assert tool["annotations"]["readOnlyHint"] is True
         assert tool["annotations"]["destructiveHint"] is False
@@ -448,6 +454,17 @@ def test_tools_list_internal_mode_keeps_output_schema() -> None:
     assert tools
     for tool in tools:
         assert "outputSchema" in tool
+
+
+def test_desktop_mode_rejects_low_level_validation_tools() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_VALIDATE_HANDOFF_REQUEST),
+        {"request": _handoff_request().to_json_dict()},
+    )
+
+    assert response is not None
+    assert response["error"]["code"] == -32602
 
 
 def test_unknown_desktop_alias_conversion_fails_closed() -> None:
@@ -499,11 +516,11 @@ def test_tools_call_notification_does_not_execute_tool() -> None:
 
 
 def test_validate_handoff_request_returns_compact_safe_summary() -> None:
-    transport = _initialized_transport()
+    transport = _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL)
 
     response = _call_tool(
         transport,
-        claude_desktop_tool_alias(TOOL_VALIDATE_HANDOFF_REQUEST),
+        TOOL_VALIDATE_HANDOFF_REQUEST,
         {"request": _handoff_request().to_json_dict()},
     )
 
@@ -518,7 +535,7 @@ def test_validate_handoff_request_returns_compact_safe_summary() -> None:
 
 
 def test_validate_handoff_response_rejects_private_value_without_echo() -> None:
-    transport = _initialized_transport()
+    transport = _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL)
     request = _handoff_request()
     response_payload = _handoff_response(
         request,
@@ -527,7 +544,7 @@ def test_validate_handoff_response_rejects_private_value_without_echo() -> None:
 
     response = _call_tool(
         transport,
-        claude_desktop_tool_alias(TOOL_VALIDATE_HANDOFF_RESPONSE),
+        TOOL_VALIDATE_HANDOFF_RESPONSE,
         {"request": request.to_json_dict(), "response": response_payload},
     )
 
@@ -539,12 +556,12 @@ def test_validate_handoff_response_rejects_private_value_without_echo() -> None:
 
 
 def test_validate_draft_response_returns_no_html_body() -> None:
-    transport = _initialized_transport()
+    transport = _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL)
     request = _draft_request()
 
     response = _call_tool(
         transport,
-        claude_desktop_tool_alias(TOOL_VALIDATE_DRAFT_RESPONSE),
+        TOOL_VALIDATE_DRAFT_RESPONSE,
         {"request": request.to_json_dict(), "response": _draft_response()},
     )
 
@@ -569,12 +586,12 @@ def test_validate_draft_response_returns_no_html_body() -> None:
 def test_validate_draft_response_rejects_publish_or_invalid_provider_output(
     patch: dict[str, object],
 ) -> None:
-    transport = _initialized_transport()
+    transport = _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL)
     request = _draft_request()
 
     response = _call_tool(
         transport,
-        claude_desktop_tool_alias(TOOL_VALIDATE_DRAFT_RESPONSE),
+        TOOL_VALIDATE_DRAFT_RESPONSE,
         {"request": request.to_json_dict(), "response": _draft_response(**patch)},
     )
 
@@ -679,10 +696,9 @@ def test_run_approved_summary_pipeline_reports_evidence_builder_stage() -> None:
 def test_unknown_tool_argument_is_json_rpc_error_not_tool_result() -> None:
     response = _call_tool(
         _initialized_transport(),
-        claude_desktop_tool_alias(TOOL_VALIDATE_HANDOFF_REQUEST),
+        claude_desktop_tool_alias(TOOL_GET_POLICY_SUMMARY),
         {
             "raw_note": "safe-looking value",
-            "request": _handoff_request().to_json_dict(),
         },
     )
 

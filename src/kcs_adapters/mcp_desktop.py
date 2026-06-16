@@ -73,6 +73,14 @@ TOOL_VALIDATE_DRAFT_REQUEST = "kcs.validate_draft_request"
 TOOL_VALIDATE_DRAFT_RESPONSE = "kcs.validate_draft_response"
 TOOL_RUN_CONTRACT_SMOKE = "kcs.run_contract_smoke"
 TOOL_RUN_APPROVED_SUMMARY_PIPELINE = "kcs.run_approved_summary_pipeline"
+DESKTOP_OPERATOR_TOOLS = frozenset(
+    {
+        TOOL_GET_POLICY_SUMMARY,
+        TOOL_GET_MCP_READINESS,
+        TOOL_RUN_CONTRACT_SMOKE,
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+    }
+)
 
 CLAUDE_DESKTOP_TOOL_ALIASES = {
     TOOL_GET_POLICY_SUMMARY: "kcs_get_policy_summary",
@@ -221,8 +229,9 @@ class McpArgumentError(ValueError):
 class KcsDesktopMcpAdapter:
     """Read-only validator/control tool facade for Claude Desktop."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, visible_tools: Iterable[str] | None = None) -> None:
         self._tools: tuple[McpToolDescriptor, ...] | None = None
+        self._visible_tools = frozenset(visible_tools) if visible_tools else None
         self._handlers: dict[
             str, Any
         ] = {
@@ -240,7 +249,7 @@ class KcsDesktopMcpAdapter:
         """Return the fixed KCS-12 tool surface."""
 
         if self._tools is None:
-            self._tools = (
+            tools = (
                 _policy_summary_descriptor(),
                 _readiness_descriptor(),
                 _validate_handoff_request_descriptor(),
@@ -250,6 +259,11 @@ class KcsDesktopMcpAdapter:
                 _contract_smoke_descriptor(),
                 _approved_summary_pipeline_descriptor(),
             )
+            if self._visible_tools is not None:
+                tools = tuple(
+                    tool for tool in tools if tool.name in self._visible_tools
+                )
+            self._tools = tools
         return self._tools
 
     def call_tool(
@@ -489,7 +503,12 @@ class McpStdioTransport:
             TOOL_NAME_STYLE_CANONICAL,
         }:
             raise ValueError("Unsupported MCP tool name style.")
-        self._adapter = adapter or KcsDesktopMcpAdapter()
+        visible_tools = (
+            DESKTOP_OPERATOR_TOOLS
+            if tool_name_style == TOOL_NAME_STYLE_DESKTOP_ALIASES
+            else None
+        )
+        self._adapter = adapter or KcsDesktopMcpAdapter(visible_tools=visible_tools)
         self._tool_name_style = tool_name_style
         self._initialize_responded = False
         self._ready = False

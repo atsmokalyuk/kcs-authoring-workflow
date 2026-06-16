@@ -5,7 +5,10 @@ import json
 import zipfile
 from pathlib import Path
 
-from kcs_adapters.mcp_desktop import CLAUDE_DESKTOP_TOOL_ALIASES
+from kcs_adapters.mcp_desktop import (
+    CLAUDE_DESKTOP_TOOL_ALIASES,
+    DESKTOP_OPERATOR_TOOLS,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLUGIN_SOURCE = REPO_ROOT / "packaging" / "cowork" / "kcs-authoring"
@@ -66,9 +69,15 @@ def test_cowork_plugin_skill_names_expected_tools_and_boundaries() -> None:
     text = (
         PLUGIN_SOURCE / "skills" / "kcs-authoring-control" / "SKILL.md"
     ).read_text(encoding="utf-8")
+    expected_tool_names = {
+        CLAUDE_DESKTOP_TOOL_ALIASES[tool_name]
+        for tool_name in DESKTOP_OPERATOR_TOOLS
+    }
 
-    for tool_name in CLAUDE_DESKTOP_TOOL_ALIASES.values():
+    for tool_name in expected_tool_names:
         assert tool_name in text
+    assert "kcs_validate_handoff_request" not in text
+    assert "kcs_validate_draft_request" not in text
     for boundary in (
         "raw Zendesk payloads",
         "customer replies",
