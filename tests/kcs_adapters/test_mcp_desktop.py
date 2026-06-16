@@ -587,7 +587,7 @@ def test_run_approved_summary_pipeline_returns_compact_ready_status() -> None:
     response = _call_tool(
         _initialized_transport(),
         claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
-        _approved_summary_args(),
+        _approved_summary_args(debug=True),
     )
 
     assert response is not None
@@ -596,6 +596,8 @@ def test_run_approved_summary_pipeline_returns_compact_ready_status() -> None:
     structured = response["result"]["structuredContent"]
     assert structured["result_kind"] == "approved_summary_pipeline"
     assert structured["pipeline_ok"] is True
+    assert structured["failure_stage"] == "none"
+    assert structured["debug_code"] == "none"
     assert structured["input_safety_ok"] is True
     assert structured["evidence_valid"] is True
     assert structured["ready_for_reviewer"] is True
@@ -634,8 +636,11 @@ def test_run_approved_summary_pipeline_rejects_private_value_without_echo() -> N
 
     text = json.dumps(response, sort_keys=True)
     assert response is not None
-    assert response["result"]["isError"] is True
-    assert response["result"]["structuredContent"]["error_code"] == "validation_failed"
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "approved_summary_input_invalid"
     assert "person@example.com" not in text
 
 
@@ -647,8 +652,28 @@ def test_run_approved_summary_pipeline_rejects_non_string_summary_text() -> None
     )
 
     assert response is not None
-    assert response["result"]["isError"] is True
-    assert response["result"]["structuredContent"]["error_code"] == "validation_failed"
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "approved_summary_input_invalid"
+
+
+def test_run_approved_summary_pipeline_reports_evidence_builder_stage() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        _approved_summary_args(case_ref="person@example.com"),
+    )
+
+    text = json.dumps(response, sort_keys=True)
+    assert response is not None
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "evidence_builder"
+    assert structured["debug_code"] == "approved_summary_evidence_build_failed"
+    assert "person@example.com" not in text
 
 
 def test_unknown_tool_argument_is_json_rpc_error_not_tool_result() -> None:

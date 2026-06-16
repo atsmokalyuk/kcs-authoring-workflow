@@ -119,7 +119,7 @@ _INITIALIZE_FORBIDDEN_TEXT_FRAGMENTS = (
 _REQUEST_ARG = frozenset({"request"})
 _REQUEST_RESPONSE_ARGS = frozenset({"request", "response"})
 _APPROVED_SUMMARY_PIPELINE_ARGS = frozenset(
-    {"approved_summary_text", "case_ref", "item"}
+    {"approved_summary_text", "case_ref", "debug", "item"}
 )
 _APPROVED_SUMMARY_ITEM_FIELDS = frozenset(
     {
@@ -379,20 +379,38 @@ class KcsDesktopMcpAdapter:
         }
 
     def _run_approved_summary_pipeline(self, arguments: Mapping[str, Any]) -> JsonDict:
-        payload = _approved_summary_pipeline_payload(arguments)
-        evidence = build_evidence_packet_from_zendesk_export(
-            payload,
-            case_ref=_approved_summary_case_ref(arguments),
-            policy=EvidenceBuildPolicy(
-                input_class=InputClass.OPERATOR_SANITIZED_SUMMARY.value,
-                assume_sanitized=True,
-            ),
-        )
-        safety = validate_evidence_safety(evidence)
-        evidence_validation = validate_evidence_packet(evidence)
-        decision = decide_kcs_action(evidence, _empty_reuse_results())
-        reviewer_packet = render_reviewer_packet(evidence, decision)
-        readiness = build_validation_report(evidence, decision, reviewer_packet)
+        try:
+            payload = _approved_summary_pipeline_payload(arguments)
+        except ContractValidationError:
+            return _approved_summary_failure_result(
+                failure_stage="input_validation",
+                debug_code="approved_summary_input_invalid",
+            )
+        try:
+            evidence = build_evidence_packet_from_zendesk_export(
+                payload,
+                case_ref=_approved_summary_case_ref(arguments),
+                policy=EvidenceBuildPolicy(
+                    input_class=InputClass.OPERATOR_SANITIZED_SUMMARY.value,
+                    assume_sanitized=True,
+                ),
+            )
+        except ContractValidationError:
+            return _approved_summary_failure_result(
+                failure_stage="evidence_builder",
+                debug_code="approved_summary_evidence_build_failed",
+            )
+        try:
+            safety = validate_evidence_safety(evidence)
+            evidence_validation = validate_evidence_packet(evidence)
+            decision = decide_kcs_action(evidence, _empty_reuse_results())
+            reviewer_packet = render_reviewer_packet(evidence, decision)
+            readiness = build_validation_report(evidence, decision, reviewer_packet)
+        except ContractValidationError:
+            return _approved_summary_failure_result(
+                failure_stage="pipeline_execution",
+                debug_code="approved_summary_pipeline_failed",
+            )
         item_ref = decision.candidate_id or _approved_summary_item_ref(arguments)
         handoff_ref = f"handoff-{item_ref}"
         handoff_request = build_claude_handoff_request(
@@ -420,6 +438,9 @@ class KcsDesktopMcpAdapter:
             "auto_publish_allowed": False,
             "case_ref": evidence.case_ref,
             "checks": [
+                {"kind": "input_validation", "ok": True},
+                {"kind": "evidence_builder", "ok": True},
+                {"kind": "pipeline_execution", "ok": True},
                 {"kind": "input_safety", "ok": safety.ok},
                 {"kind": "evidence_validation", "ok": evidence_validation.ok},
                 {
@@ -429,8 +450,10 @@ class KcsDesktopMcpAdapter:
                 {"kind": "readiness", "ok": readiness.ready_for_reviewer},
                 {"kind": "draft_request_ready", "ok": draft_request_ready},
             ],
+            "debug_code": "none",
             "draft_request_ready": draft_request_ready,
             "evidence_valid": evidence_validation.ok,
+            "failure_stage": "none",
             "handoff_ref": handoff_request.handoff_ref,
             "input_safety_ok": safety.ok,
             "item_ref": item_ref,
@@ -785,12 +808,14 @@ def _approved_summary_pipeline_descriptor() -> McpToolDescriptor:
             "Provide approved_summary_text plus item fields: title, article_type, "
             "symptoms, confirmed_facts, supported_cause, "
             "supported_resolution_or_workaround, resolution_steps, applicable_to, "
-            "and environment. The tool returns compact status only."
+            "and environment. Set debug=true to receive value-safe failure_stage "
+            "and debug_code. The tool returns compact status only."
         ),
         input_schema=_object_schema(
             properties={
                 "approved_summary_text": {"type": "string"},
                 "case_ref": {"type": "string"},
+                "debug": {"type": "boolean"},
                 "item": {"type": "object"},
             },
             required=["approved_summary_text", "item"],
@@ -853,10 +878,12 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "case_ref": {"type": "string"},
     "checks": {"type": "array"},
     "customer_replies": {"type": "boolean"},
+    "debug_code": {"type": "string"},
     "draft_ref": {"type": "string"},
     "draft_request_ready": {"type": "boolean"},
     "evidence_valid": {"type": "boolean"},
     "draft_status": {"type": "string"},
+    "failure_stage": {"type": "string"},
     "handoff_ref": {"type": "string"},
     "input_safety_ok": {"type": "boolean"},
     "item_ref": {"type": "string"},
@@ -1030,6 +1057,51 @@ def _tool_error(error_code: str) -> McpToolResult:
         error="KCS MCP tool validation failed.",
         error_code=error_code,
     )
+
+
+def _approved_summary_failure_result(
+    *,
+    failure_stage: str,
+    debug_code: str,
+) -> JsonDict:
+    input_ok = failure_stage != "input_validation"
+    evidence_ok = failure_stage not in {"input_validation", "evidence_builder"}
+    pipeline_ok = failure_stage not in {
+        "input_validation",
+        "evidence_builder",
+        "pipeline_execution",
+    }
+    return {
+        "auto_publish_allowed": False,
+        "case_ref": "approved-summary-case-001",
+        "checks": [
+            {"kind": "input_validation", "ok": input_ok},
+            {"kind": "evidence_builder", "ok": evidence_ok},
+            {"kind": "pipeline_execution", "ok": pipeline_ok},
+            {"kind": "readiness", "ok": False},
+            {"kind": "draft_request_ready", "ok": False},
+        ],
+        "debug_code": debug_code,
+        "draft_request_ready": False,
+        "evidence_valid": False,
+        "failure_stage": failure_stage,
+        "input_safety_ok": input_ok,
+        "network_calls": False,
+        "ok": False,
+        "original_article_type": ArticleType.NONE.value,
+        "original_decision_status": DecisionStatus.BLOCKED.value,
+        "original_readiness_state": ReadinessState.BLOCKED.value,
+        "original_recommended_action": RecommendedAction.BLOCKED.value,
+        "pipeline_ok": False,
+        "provider_calls": False,
+        "public_output_approved": False,
+        "ready_for_real_ticket_use": False,
+        "ready_for_reviewer": False,
+        "result_kind": "approved_summary_pipeline",
+        "schema_version": MCP_TOOL_RESULT_SCHEMA_VERSION,
+        "validation_ok": False,
+        "writes_files": False,
+    }
 
 
 def _approved_summary_pipeline_payload(arguments: Mapping[str, Any]) -> JsonDict:

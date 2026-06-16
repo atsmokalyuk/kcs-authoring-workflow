@@ -32,8 +32,9 @@ If the user asks to run the smoke check, call `kcs_run_contract_smoke` and show
 the compact result.
 
 If the user provides an approved sanitized support summary and asks whether it
-can flow through KCS, call `kcs_run_approved_summary_pipeline`. Extract a
-single structured `item` from the approved summary with:
+can flow through KCS, call `kcs_run_approved_summary_pipeline` with
+`debug: true`. Extract a single structured `item` from the approved summary
+with:
 
 - `title`
 - `article_type`
@@ -44,6 +45,9 @@ single structured `item` from the approved summary with:
 - `resolution_steps`
 - `applicable_to`
 - `environment`
+
+If this tool returns `pipeline_ok: false`, report the returned `failure_stage`
+and `debug_code` instead of guessing KCS-9b or KCS-9c packet schemas.
 
 Do not try to construct KCS-9b or KCS-9c packet schemas manually from chat.
 

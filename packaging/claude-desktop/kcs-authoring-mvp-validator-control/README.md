@@ -28,6 +28,8 @@ kcs_run_approved_summary_pipeline
 ```
 
 This tool accepts structured safe fields and returns compact pipeline status.
+Pass `debug: true` during manual smoke to receive value-safe `failure_stage`
+and `debug_code` fields when validation fails.
 It does not write files, call a provider, publish, or return article HTML.
 
 The package does not embed raw tickets, fixtures, local paths, credentials,

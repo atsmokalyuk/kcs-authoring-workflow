@@ -70,7 +70,7 @@
       "name": "kcs_run_contract_smoke"
     },
     {
-      "description": "Run the KCS pipeline for one approved sanitized summary and return compact readiness status.",
+      "description": "Run the KCS pipeline for one approved sanitized summary and return compact readiness/debug status.",
       "name": "kcs_run_approved_summary_pipeline"
     }
   ],
