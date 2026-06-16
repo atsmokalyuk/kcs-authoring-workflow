@@ -11,6 +11,7 @@ Expected tools:
 - `kcs_validate_draft_request`
 - `kcs_validate_draft_response`
 - `kcs_run_contract_smoke`
+- `kcs_run_approved_summary_pipeline`
 
 The tools are read-only validation/control tools. They do not perform network
 calls, provider calls, file writes, Zendesk writes, Help Center publication, or

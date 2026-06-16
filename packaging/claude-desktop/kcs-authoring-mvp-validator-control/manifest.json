@@ -22,7 +22,7 @@
     "validator",
     "claude-desktop"
   ],
-  "long_description": "Starts the repository-local KCS Authoring MVP stdio MCP server through uv. This extension exposes compact read-only validator/control tools for approved KCS packets and synthetic contract smoke only. It is not approved for raw Zendesk payloads, raw comments, internal notes, attachments, customer replies, Zendesk writes, Help Center publication, provider calls, or file-writing tools.",
+  "long_description": "Starts the repository-local KCS Authoring MVP stdio MCP server through uv. This extension exposes compact read-only validator/control tools for approved KCS packets, approved sanitized summary pipeline checks, and synthetic contract smoke only. It is not approved for raw Zendesk payloads, raw comments, internal notes, attachments, customer replies, Zendesk writes, Help Center publication, provider calls, or file-writing tools.",
   "manifest_version": "0.3",
   "name": "kcs-authoring-mvp-validator-control",
   "prompts_generated": false,
@@ -68,6 +68,10 @@
     {
       "description": "Run in-memory synthetic KCS MCP contract smoke and return compact result.",
       "name": "kcs_run_contract_smoke"
+    },
+    {
+      "description": "Run the KCS pipeline for one approved sanitized summary and return compact readiness status.",
+      "name": "kcs_run_approved_summary_pipeline"
     }
   ],
   "tools_generated": false,

@@ -405,6 +405,68 @@ def test_public_article_text_rejects_private_values_without_echo(
     assert private_value not in str(captured.value)
 
 
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "setup.php",
+        "service.log",
+        "application.ini",
+        "worker-process.pid",
+        "service.conf",
+        "02component-feature.conf",
+        "settings.yaml",
+        "metadata.json",
+    ],
+)
+def test_public_article_text_allows_standalone_safe_filenames(
+    filename: str,
+) -> None:
+    candidate = {
+        "candidate_id": "ISSUE-SYNTH-SAFE-FILENAME",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "title": "Product task fails with reusable symptom",
+        "summary": f"Diagnostic evidence references {filename}.",
+        "public_solution_safe": True,
+        "resolution_steps": [f"Review the standalone filename {filename}."],
+    }
+
+    packet = render_reviewer_packet(
+        _evidence(issue_candidates=[candidate]),
+        _decision(candidate_id="ISSUE-SYNTH-SAFE-FILENAME"),
+    )
+
+    assert packet.public_article_candidate is not None
+    assert packet.auto_publish_allowed is False
+
+
+@pytest.mark.parametrize(
+    "private_value",
+    [
+        "Open customer.example.net/index.php.",
+        "Open https://customer.example.net/index.php.",
+    ],
+)
+def test_public_article_text_filename_allowlist_does_not_allow_domains(
+    private_value: str,
+) -> None:
+    candidate = {
+        "candidate_id": "ISSUE-SYNTH-UNSAFE-FILENAME",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "title": "Product task fails with reusable symptom",
+        "summary": private_value,
+        "public_solution_safe": True,
+        "resolution_steps": ["Apply a public-safe resolution."],
+    }
+
+    with pytest.raises(ContractValidationError) as captured:
+        render_reviewer_packet(
+            _evidence(issue_candidates=[candidate]),
+            _decision(candidate_id="ISSUE-SYNTH-UNSAFE-FILENAME"),
+        )
+
+    assert private_value not in str(captured.value)
+
+
 def test_renderer_rejects_unbounded_title_without_echoing_value() -> None:
     long_title = "x" * 181
     evidence = _evidence(

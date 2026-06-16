@@ -11,6 +11,7 @@ from kcs_adapters.mcp_desktop import (
     MCP_PROTOCOL_VERSION,
     TOOL_GET_POLICY_SUMMARY,
     TOOL_NAME_STYLE_CANONICAL,
+    TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
     TOOL_RUN_CONTRACT_SMOKE,
     TOOL_VALIDATE_DRAFT_RESPONSE,
     TOOL_VALIDATE_HANDOFF_REQUEST,
@@ -187,6 +188,48 @@ def _call_tool(
             {"arguments": {} if arguments is None else arguments, "name": name},
         )
     )
+
+
+def _approved_summary_args(**overrides: object) -> dict[str, object]:
+    item: dict[str, object] = {
+        "applicable_to": ["Plesk Obsidian for Linux"],
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "candidate_id": "item-001",
+        "confirmed_facts": [
+            "The product module request completes but graphs show no data.",
+            "The diagnostic summary references service.log and service.conf.",
+        ],
+        "environment": {
+            "component": "Monitoring",
+            "platform": "Linux",
+            "product": "Plesk",
+        },
+        "resolution_steps": [
+            "Install the missing product-side package.",
+            "Restart the related product service.",
+            "Reload the module page.",
+        ],
+        "summary": "Product monitoring graphs show no data after module load.",
+        "supported_cause": "A required product-side package is missing.",
+        "supported_resolution_or_workaround": (
+            "Install the missing package and restart the related service."
+        ),
+        "symptoms": ["Product monitoring graphs show no data."],
+        "title": "Monitoring graphs show no data in Plesk",
+    }
+    item_override = overrides.pop("item", {})
+    if isinstance(item_override, dict):
+        item.update(item_override)
+    payload: dict[str, object] = {
+        "approved_summary_text": (
+            "Approved sanitized summary: product monitoring graphs show no data. "
+            "The summary references service.log and service.conf."
+        ),
+        "case_ref": "approved-summary-case-001",
+        "item": item,
+    }
+    payload.update(overrides)
+    return payload
 
 
 def test_initialize_lifecycle_and_capabilities_are_narrow() -> None:
@@ -384,6 +427,7 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
     assert "kcs.validate_handoff_request" not in tool_names
     assert "kcs_validate_handoff_request" in tool_names
     assert "kcs_run_contract_smoke" in tool_names
+    assert "kcs_run_approved_summary_pipeline" in tool_names
     for tool in tools:
         assert tool["annotations"]["readOnlyHint"] is True
         assert tool["annotations"]["destructiveHint"] is False
@@ -532,6 +576,74 @@ def test_validate_draft_response_rejects_publish_or_invalid_provider_output(
         transport,
         claude_desktop_tool_alias(TOOL_VALIDATE_DRAFT_RESPONSE),
         {"request": request.to_json_dict(), "response": _draft_response(**patch)},
+    )
+
+    assert response is not None
+    assert response["result"]["isError"] is True
+    assert response["result"]["structuredContent"]["error_code"] == "validation_failed"
+
+
+def test_run_approved_summary_pipeline_returns_compact_ready_status() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        _approved_summary_args(),
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "approved_summary_pipeline"
+    assert structured["pipeline_ok"] is True
+    assert structured["input_safety_ok"] is True
+    assert structured["evidence_valid"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert structured["draft_request_ready"] is True
+    assert structured["original_recommended_action"] == "create_candidate"
+    assert structured["original_article_type"] == "technical_scr"
+    assert structured["auto_publish_allowed"] is False
+    assert structured["public_output_approved"] is False
+    assert structured["provider_calls"] is False
+    assert structured["writes_files"] is False
+    assert "zendesk_source_html" not in result_text
+    assert "evidence_basis" not in result_text
+    assert "<h1>" not in result_text
+
+
+def test_run_approved_summary_pipeline_rejects_unknown_item_field() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        _approved_summary_args(item={"raw_ticket": "safe-looking value"}),
+    )
+
+    assert response is not None
+    assert response["error"]["code"] == -32602
+    assert "raw_ticket" not in json.dumps(response)
+
+
+def test_run_approved_summary_pipeline_rejects_private_value_without_echo() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        _approved_summary_args(
+            approved_summary_text="Contact person@example.com for details."
+        ),
+    )
+
+    text = json.dumps(response, sort_keys=True)
+    assert response is not None
+    assert response["result"]["isError"] is True
+    assert response["result"]["structuredContent"]["error_code"] == "validation_failed"
+    assert "person@example.com" not in text
+
+
+def test_run_approved_summary_pipeline_rejects_non_string_summary_text() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        _approved_summary_args(approved_summary_text=["not", "a", "summary"]),
     )
 
     assert response is not None
@@ -716,4 +828,8 @@ def test_stdio_framing_rejects_oversized_lines_and_invalid_utf8() -> None:
 def test_root_exports_include_mcp_desktop_api() -> None:
     assert kcs_adapters.KcsDesktopMcpAdapter is KcsDesktopMcpAdapter
     assert kcs_adapters.McpStdioTransport is McpStdioTransport
+    assert (
+        kcs_adapters.TOOL_RUN_APPROVED_SUMMARY_PIPELINE
+        == TOOL_RUN_APPROVED_SUMMARY_PIPELINE
+    )
     assert kcs_adapters.TOOL_VALIDATE_DRAFT_RESPONSE == TOOL_VALIDATE_DRAFT_RESPONSE

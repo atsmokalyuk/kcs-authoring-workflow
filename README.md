@@ -159,10 +159,11 @@ KCS-12 is implemented as adapter-layer `kcs_adapters.mcp_desktop` stdio MCP
 logic outside `kcs_core`, plus a reproducible Claude Desktop MCPB package
 source under `packaging/claude-desktop/`. It exposes Claude Desktop-safe
 read-only validation tools for KCS-9b/KCS-9c request and response packets plus
-a synthetic contract smoke. Tool outputs are compact summaries only. KCS-12
-does not read raw tickets, call Claude/provider APIs, write files through MCP,
-expose MCP resources/prompts, change KCS decisions, publish content, write
-Zendesk, or generate customer replies.
+a synthetic contract smoke and a compact approved-sanitized-summary pipeline
+check. Tool outputs are compact summaries only. KCS-12 does not read raw
+tickets, call Claude/provider APIs, write files through MCP, expose MCP
+resources/prompts, change KCS decisions, publish content, write Zendesk, or
+generate customer replies.
 
 Longer-term managed deployment may replace the local MCPB stdio wrapper with
 an intranet remote MCP service. In that model Claude Desktop would connect to

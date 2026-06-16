@@ -27,9 +27,16 @@ from kcs_core.claude_handoff import (
     ClaudeHandoffProviderErrorCode,
     ClaudeHandoffProviderStatus,
     KcsClaudeHandoffRequestPacket,
+    build_claude_handoff_request,
     validate_claude_handoff_response,
 )
+from kcs_core.decision import decide_kcs_action
 from kcs_core.errors import ContractValidationError
+from kcs_core.evidence_builder import (
+    APPROVED_EVIDENCE_EXPORT_SCHEMA_VERSION,
+    EvidenceBuildPolicy,
+    build_evidence_packet_from_zendesk_export,
+)
 from kcs_core.json_payload import (
     JsonDict,
     JsonPayload,
@@ -41,8 +48,13 @@ from kcs_core.models import (
     DecisionStatus,
     ReadinessState,
     RecommendedAction,
+    ReuseSearchResultsPacket,
 )
+from kcs_core.readiness import build_validation_report
+from kcs_core.renderer import render_reviewer_packet
+from kcs_core.safety import EvidenceVisibility, InputClass, validate_evidence_safety
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
+from kcs_core.validation import validate_evidence_packet
 
 MCP_PROTOCOL_VERSION = "2025-11-25"
 MCP_SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", MCP_PROTOCOL_VERSION)
@@ -60,6 +72,7 @@ TOOL_VALIDATE_HANDOFF_RESPONSE = "kcs.validate_handoff_response"
 TOOL_VALIDATE_DRAFT_REQUEST = "kcs.validate_draft_request"
 TOOL_VALIDATE_DRAFT_RESPONSE = "kcs.validate_draft_response"
 TOOL_RUN_CONTRACT_SMOKE = "kcs.run_contract_smoke"
+TOOL_RUN_APPROVED_SUMMARY_PIPELINE = "kcs.run_approved_summary_pipeline"
 
 CLAUDE_DESKTOP_TOOL_ALIASES = {
     TOOL_GET_POLICY_SUMMARY: "kcs_get_policy_summary",
@@ -69,6 +82,7 @@ CLAUDE_DESKTOP_TOOL_ALIASES = {
     TOOL_VALIDATE_DRAFT_REQUEST: "kcs_validate_draft_request",
     TOOL_VALIDATE_DRAFT_RESPONSE: "kcs_validate_draft_response",
     TOOL_RUN_CONTRACT_SMOKE: "kcs_run_contract_smoke",
+    TOOL_RUN_APPROVED_SUMMARY_PIPELINE: "kcs_run_approved_summary_pipeline",
 }
 CANONICAL_TOOL_BY_CLAUDE_DESKTOP_ALIAS = {
     alias: canonical for canonical, alias in CLAUDE_DESKTOP_TOOL_ALIASES.items()
@@ -104,6 +118,31 @@ _INITIALIZE_FORBIDDEN_TEXT_FRAGMENTS = (
 )
 _REQUEST_ARG = frozenset({"request"})
 _REQUEST_RESPONSE_ARGS = frozenset({"request", "response"})
+_APPROVED_SUMMARY_PIPELINE_ARGS = frozenset(
+    {"approved_summary_text", "case_ref", "item"}
+)
+_APPROVED_SUMMARY_ITEM_FIELDS = frozenset(
+    {
+        "answer_steps",
+        "applicable_to",
+        "article_type",
+        "candidate_id",
+        "confirmed_facts",
+        "environment",
+        "open_questions",
+        "question",
+        "resolution_steps",
+        "summary",
+        "supported_answer",
+        "supported_cause",
+        "supported_resolution_or_workaround",
+        "symptoms",
+        "title",
+    }
+)
+_APPROVED_SUMMARY_ENVIRONMENT_FIELDS = frozenset(
+    {"component", "platform", "product", "version"}
+)
 _NO_ARGS = frozenset()
 _EMPTY_PARAM_METHOD_RESULTS: Mapping[str, JsonDict] = {
     "ping": {},
@@ -194,6 +233,7 @@ class KcsDesktopMcpAdapter:
             TOOL_VALIDATE_DRAFT_REQUEST: self._validate_draft_request,
             TOOL_VALIDATE_DRAFT_RESPONSE: self._validate_draft_response,
             TOOL_RUN_CONTRACT_SMOKE: self._run_contract_smoke,
+            TOOL_RUN_APPROVED_SUMMARY_PIPELINE: self._run_approved_summary_pipeline,
         }
 
     def list_tools(self) -> tuple[McpToolDescriptor, ...]:
@@ -208,6 +248,7 @@ class KcsDesktopMcpAdapter:
                 _validate_draft_request_descriptor(),
                 _validate_draft_response_descriptor(),
                 _contract_smoke_descriptor(),
+                _approved_summary_pipeline_descriptor(),
             )
         return self._tools
 
@@ -334,6 +375,79 @@ class KcsDesktopMcpAdapter:
             "result_kind": "contract_smoke",
             "schema_version": MCP_TOOL_RESULT_SCHEMA_VERSION,
             "smoke_ok": True,
+            "writes_files": False,
+        }
+
+    def _run_approved_summary_pipeline(self, arguments: Mapping[str, Any]) -> JsonDict:
+        payload = _approved_summary_pipeline_payload(arguments)
+        evidence = build_evidence_packet_from_zendesk_export(
+            payload,
+            case_ref=_approved_summary_case_ref(arguments),
+            policy=EvidenceBuildPolicy(
+                input_class=InputClass.OPERATOR_SANITIZED_SUMMARY.value,
+                assume_sanitized=True,
+            ),
+        )
+        safety = validate_evidence_safety(evidence)
+        evidence_validation = validate_evidence_packet(evidence)
+        decision = decide_kcs_action(evidence, _empty_reuse_results())
+        reviewer_packet = render_reviewer_packet(evidence, decision)
+        readiness = build_validation_report(evidence, decision, reviewer_packet)
+        item_ref = decision.candidate_id or _approved_summary_item_ref(arguments)
+        handoff_ref = f"handoff-{item_ref}"
+        handoff_request = build_claude_handoff_request(
+            decision,
+            readiness,
+            handoff_ref=handoff_ref,
+            safe_context={
+                "short_public_safe_summary": _approved_summary_short_summary(
+                    arguments
+                ),
+                "title_hint": _approved_summary_title(arguments),
+            },
+        )
+        draft_request_ready = False
+        if readiness.ready_for_reviewer:
+            try:
+                build_claude_draft_request(
+                    handoff_request,
+                    draft_ref=f"draft-{item_ref}",
+                )
+                draft_request_ready = True
+            except ContractValidationError:
+                draft_request_ready = False
+        return {
+            "auto_publish_allowed": False,
+            "case_ref": evidence.case_ref,
+            "checks": [
+                {"kind": "input_safety", "ok": safety.ok},
+                {"kind": "evidence_validation", "ok": evidence_validation.ok},
+                {
+                    "kind": "decision",
+                    "ok": decision.status == DecisionStatus.DECISION_READY.value,
+                },
+                {"kind": "readiness", "ok": readiness.ready_for_reviewer},
+                {"kind": "draft_request_ready", "ok": draft_request_ready},
+            ],
+            "draft_request_ready": draft_request_ready,
+            "evidence_valid": evidence_validation.ok,
+            "handoff_ref": handoff_request.handoff_ref,
+            "input_safety_ok": safety.ok,
+            "item_ref": item_ref,
+            "network_calls": False,
+            "ok": safety.ok and readiness.ready_for_reviewer,
+            "original_article_type": decision.article_type,
+            "original_decision_status": decision.status,
+            "original_readiness_state": readiness.state,
+            "original_recommended_action": decision.recommended_action,
+            "pipeline_ok": safety.ok and readiness.ready_for_reviewer,
+            "provider_calls": False,
+            "public_output_approved": False,
+            "ready_for_real_ticket_use": False,
+            "ready_for_reviewer": readiness.ready_for_reviewer,
+            "result_kind": "approved_summary_pipeline",
+            "schema_version": MCP_TOOL_RESULT_SCHEMA_VERSION,
+            "validation_ok": evidence_validation.ok,
             "writes_files": False,
         }
 
@@ -663,6 +777,27 @@ def _contract_smoke_descriptor() -> McpToolDescriptor:
     )
 
 
+def _approved_summary_pipeline_descriptor() -> McpToolDescriptor:
+    return _descriptor(
+        name=TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        description=(
+            "Run the local KCS pipeline for one approved sanitized summary. "
+            "Provide approved_summary_text plus item fields: title, article_type, "
+            "symptoms, confirmed_facts, supported_cause, "
+            "supported_resolution_or_workaround, resolution_steps, applicable_to, "
+            "and environment. The tool returns compact status only."
+        ),
+        input_schema=_object_schema(
+            properties={
+                "approved_summary_text": {"type": "string"},
+                "case_ref": {"type": "string"},
+                "item": {"type": "object"},
+            },
+            required=["approved_summary_text", "item"],
+        ),
+    )
+
+
 def _descriptor(
     *,
     name: str,
@@ -719,8 +854,11 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "checks": {"type": "array"},
     "customer_replies": {"type": "boolean"},
     "draft_ref": {"type": "string"},
+    "draft_request_ready": {"type": "boolean"},
+    "evidence_valid": {"type": "boolean"},
     "draft_status": {"type": "string"},
     "handoff_ref": {"type": "string"},
+    "input_safety_ok": {"type": "boolean"},
     "item_ref": {"type": "string"},
     "network_calls": {"type": "boolean"},
     "ok": {"type": "boolean"},
@@ -735,6 +873,8 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "provider_status": {"type": "string"},
     "public_output_approved": {"type": "boolean"},
     "publishes": {"type": "boolean"},
+    "pipeline_ok": {"type": "boolean"},
+    "ready_for_reviewer": {"type": "boolean"},
     "ready_for_real_ticket_use": {"type": "boolean"},
     "request_schema_version": {"type": "string"},
     "request_sha256": {"type": "string"},
@@ -889,6 +1029,184 @@ def _tool_error(error_code: str) -> McpToolResult:
         ok=False,
         error="KCS MCP tool validation failed.",
         error_code=error_code,
+    )
+
+
+def _approved_summary_pipeline_payload(arguments: Mapping[str, Any]) -> JsonDict:
+    _require_args(
+        arguments,
+        _APPROVED_SUMMARY_PIPELINE_ARGS,
+        required=frozenset({"approved_summary_text", "item"}),
+    )
+    _required_argument_string(arguments, "approved_summary_text")
+    item = require_json_object(arguments["item"])
+    if any(key not in _APPROVED_SUMMARY_ITEM_FIELDS for key in item):
+        raise McpArgumentError("Unexpected approved summary item field.")
+    ensure_safe_sanitized_payload(item)
+    article_type = _approved_summary_article_type(item)
+    candidate_id = _approved_summary_item_ref(arguments)
+    environment = _approved_summary_environment(item)
+    candidate: JsonDict = {
+        "article_type": article_type,
+        "atomic": True,
+        "candidate_id": candidate_id,
+        "confirmed_facts": _required_string_list(item, "confirmed_facts"),
+        "customer_reported": True,
+        "kcs_applicable": True,
+        "public_solution_safe": True,
+        "resolution_state": "solved",
+        "resolution_steps": _optional_string_list(item, "resolution_steps"),
+        "reuse_search_status": "checked",
+        "source_refs": [f"approved-summary-source-{candidate_id}"],
+        "summary": _required_string(item, "summary"),
+        "symptoms": _required_string_list(item, "symptoms"),
+        "title": _required_string(item, "title"),
+    }
+    optional_string_fields = (
+        "question",
+        "supported_answer",
+        "supported_cause",
+        "supported_resolution_or_workaround",
+    )
+    for field_name in optional_string_fields:
+        value = _optional_string(item, field_name)
+        if value is not None:
+            candidate[field_name] = value
+    optional_list_fields = ("answer_steps", "applicable_to", "open_questions")
+    for field_name in optional_list_fields:
+        values = _optional_string_list(item, field_name)
+        if values:
+            candidate[field_name] = values
+    if environment:
+        candidate["environment"] = environment
+    return {
+        "confirmed_facts": candidate["confirmed_facts"],
+        "environment": environment
+        or {
+            "component": "product-component",
+            "platform": "supported-platform",
+            "product": "supported-product",
+        },
+        "input_class": InputClass.OPERATOR_SANITIZED_SUMMARY.value,
+        "issue_candidates": [candidate],
+        "open_questions": _optional_string_list(item, "open_questions"),
+        "sanitizer_report": None,
+        "schema_version": APPROVED_EVIDENCE_EXPORT_SCHEMA_VERSION,
+        "source_refs": ["approved-summary-source-001"],
+        "supported_cause": candidate.get("supported_cause"),
+        "supported_resolution_or_workaround": candidate.get(
+            "supported_resolution_or_workaround"
+        )
+        or candidate.get("supported_answer"),
+        "symptoms": candidate["symptoms"],
+        "visibility_summary": {
+            "classes": [EvidenceVisibility.PUBLIC_CUSTOMER_SAFE.value]
+        },
+    }
+
+
+def _approved_summary_case_ref(arguments: Mapping[str, Any]) -> str:
+    value = arguments.get("case_ref")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return "approved-summary-case-001"
+
+
+def _approved_summary_item_ref(arguments: Mapping[str, Any]) -> str:
+    item = require_json_object(arguments["item"])
+    value = item.get("candidate_id")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return "item-001"
+
+
+def _approved_summary_title(arguments: Mapping[str, Any]) -> str:
+    item = require_json_object(arguments["item"])
+    return _required_string(item, "title")
+
+
+def _approved_summary_short_summary(arguments: Mapping[str, Any]) -> str:
+    item = require_json_object(arguments["item"])
+    return _required_string(item, "summary")
+
+
+def _approved_summary_article_type(item: Mapping[str, Any]) -> str:
+    value = _required_string(item, "article_type")
+    try:
+        article_type = ArticleType(value)
+    except ValueError:
+        raise ContractValidationError("approved summary article_type invalid") from None
+    if article_type == ArticleType.NONE:
+        raise ContractValidationError("approved summary article_type invalid")
+    return article_type.value
+
+
+def _approved_summary_environment(item: Mapping[str, Any]) -> JsonDict:
+    value = item.get("environment")
+    if value is None:
+        return {}
+    environment = require_json_object(value)
+    if any(key not in _APPROVED_SUMMARY_ENVIRONMENT_FIELDS for key in environment):
+        raise McpArgumentError("Unexpected approved summary environment field.")
+    ensure_safe_sanitized_payload(environment)
+    return dict(environment)
+
+
+def _required_string(item: Mapping[str, Any], key: str) -> str:
+    value = item.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ContractValidationError("approved summary field invalid")
+    ensure_safe_sanitized_payload(value)
+    return value.strip()
+
+
+def _required_argument_string(arguments: Mapping[str, Any], key: str) -> str:
+    value = arguments.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ContractValidationError("approved summary argument invalid")
+    ensure_safe_sanitized_payload(value)
+    return value.strip()
+
+
+def _optional_string(item: Mapping[str, Any], key: str) -> str | None:
+    value = item.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ContractValidationError("approved summary field invalid")
+    ensure_safe_sanitized_payload(value)
+    return value.strip()
+
+
+def _required_string_list(item: Mapping[str, Any], key: str) -> list[str]:
+    values = _optional_string_list(item, key)
+    if not values:
+        raise ContractValidationError("approved summary field invalid")
+    return values
+
+
+def _optional_string_list(item: Mapping[str, Any], key: str) -> list[str]:
+    value = item.get(key)
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ContractValidationError("approved summary field invalid")
+    result: list[str] = []
+    for entry in value:
+        if not isinstance(entry, str) or not entry.strip():
+            raise ContractValidationError("approved summary field invalid")
+        ensure_safe_sanitized_payload(entry)
+        result.append(entry.strip())
+    return result
+
+
+def _empty_reuse_results() -> ReuseSearchResultsPacket:
+    return ReuseSearchResultsPacket(
+        search_run_ref="mcp-approved-summary-reuse-001",
+        searched=True,
+        search_source="mcp_approved_summary",
+        matches=[],
+        blockers=[],
     )
 
 
@@ -1217,6 +1535,7 @@ __all__ = [
     "TOOL_GET_POLICY_SUMMARY",
     "TOOL_NAME_STYLE_CANONICAL",
     "TOOL_NAME_STYLE_DESKTOP_ALIASES",
+    "TOOL_RUN_APPROVED_SUMMARY_PIPELINE",
     "TOOL_RUN_CONTRACT_SMOKE",
     "TOOL_VALIDATE_DRAFT_REQUEST",
     "TOOL_VALIDATE_DRAFT_RESPONSE",

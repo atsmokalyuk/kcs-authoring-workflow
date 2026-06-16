@@ -101,6 +101,10 @@ _DOMAIN_RE = re.compile(
     r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.[a-z]{2,63}\b",
     re.I,
 )
+_SAFE_FILENAME_RE = re.compile(
+    r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
+    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid)\b"
+)
 _PRIVATE_PATH_RE = re.compile(
     r"(?:/Users/|/home/|/var/www/vhosts/|C:\\Users\\)", re.I
 )
@@ -268,14 +272,15 @@ def _strings_from(value: Any) -> tuple[str, ...]:
 def _contains_unsafe_identifier(value: str) -> bool:
     if not value:
         return False
+    text_without_safe_filenames = _SAFE_FILENAME_RE.sub("", value)
     return (
-        bool(_SECRET_RE.search(value))
-        or bool(_EMAIL_RE.search(value))
-        or bool(_DOMAIN_RE.search(value))
-        or bool(_PRIVATE_PATH_RE.search(value))
-        or bool(_LICENSE_RE.search(value))
-        or bool(_RAW_TICKET_ID_RE.search(value))
-        or _contains_unsafe_ip(value)
+        bool(_SECRET_RE.search(text_without_safe_filenames))
+        or bool(_EMAIL_RE.search(text_without_safe_filenames))
+        or bool(_DOMAIN_RE.search(text_without_safe_filenames))
+        or bool(_PRIVATE_PATH_RE.search(text_without_safe_filenames))
+        or bool(_LICENSE_RE.search(text_without_safe_filenames))
+        or bool(_RAW_TICKET_ID_RE.search(text_without_safe_filenames))
+        or _contains_unsafe_ip(text_without_safe_filenames)
     )
 
 

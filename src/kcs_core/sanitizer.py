@@ -28,8 +28,9 @@ _PRIVATE_VALUE_PATTERNS = (
     ),
     re.compile(r"\bauthorization:\s*bearer\s+\S+", re.I),
 )
-_SAFE_CONFIG_FILENAME_RE = re.compile(
-    r"\b[A-Za-z0-9_-]+\.(?:conf|ini|cnf|yaml|yml|json|xml)\b"
+_SAFE_FILENAME_RE = re.compile(
+    r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
+    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid)\b"
 )
 _RAW_ID_VALUE_RE = re.compile(r"\d{6,}")
 _SAFE_REF_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,79}")
@@ -286,7 +287,8 @@ def _contains_private_raw_text(value: str) -> bool:
     normalized = value.casefold()
     if any(fragment in normalized for fragment in _UNSAFE_RAW_VALUE_FRAGMENTS):
         return True
-    text_without_config_names = _SAFE_CONFIG_FILENAME_RE.sub("", value)
+    text_without_safe_filenames = _SAFE_FILENAME_RE.sub("", value)
     return any(
-        pattern.search(text_without_config_names) for pattern in _PRIVATE_VALUE_PATTERNS
+        pattern.search(text_without_safe_filenames)
+        for pattern in _PRIVATE_VALUE_PATTERNS
     )

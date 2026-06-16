@@ -750,8 +750,9 @@ Implemented:
   oversized lines, non-object/batch messages, invalid ids, invalid UTF-8, and
   `NaN`/`Infinity`.
 - Added fixed KCS-12 tool surface: policy summary, MCP readiness,
-  handoff/draft request validation, handoff/draft response validation, and
-  in-memory synthetic contract smoke.
+  handoff/draft request validation, handoff/draft response validation,
+  in-memory synthetic contract smoke, and an approved sanitized summary
+  pipeline check.
 - Added console script `kcs-desktop-mcp`.
 - Added reproducible MCPB source package under `packaging/claude-desktop/` and
   `scripts/build_kcs_mcpb.py` to produce

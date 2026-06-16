@@ -143,6 +143,40 @@ def test_builds_copied_sanitized_support_example() -> None:
     assert validate_evidence_safety(packet).ok is True
 
 
+def test_operator_sanitized_summary_accepts_safe_log_and_config_filenames() -> None:
+    safe_filename_context = (
+        "The sanitized summary references setup.php, service.log, "
+        "application.ini, worker-process.pid, service.conf, and "
+        "02component-feature.conf as product-side diagnostic filenames."
+    )
+
+    packet = build_evidence_packet_from_zendesk_export(
+        _export_payload(
+            input_class=InputClass.OPERATOR_SANITIZED_SUMMARY.value,
+            symptoms=[safe_filename_context],
+            confirmed_facts=[safe_filename_context],
+            sanitizer_report=None,
+            issue_candidates=[
+                {
+                    **_export_payload()["issue_candidates"][0],  # type: ignore[index]
+                    "confirmed_facts": [safe_filename_context],
+                    "summary": "Product feature shows no reusable data.",
+                    "symptoms": [safe_filename_context],
+                }
+            ],
+        ),
+        case_ref="operator-summary-filenames-001",
+        policy=_policy(
+            input_class=InputClass.OPERATOR_SANITIZED_SUMMARY.value,
+            assume_sanitized=True,
+        ),
+    )
+
+    assert packet.input_class == InputClass.OPERATOR_SANITIZED_SUMMARY.value
+    assert validate_evidence_safety(packet).ok is True
+    assert validate_evidence_packet(packet).ok is True
+
+
 def test_single_candidate_fields_can_be_promoted_to_top_level_evidence() -> None:
     payload = _export_payload(
         symptoms=[],

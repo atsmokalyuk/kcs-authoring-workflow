@@ -77,6 +77,10 @@ _PRIVATE_PUBLIC_TEXT_PATTERNS = (
     ),
     re.compile(r"\bauthorization:\s*bearer\s+\S+", re.I),
 )
+_SAFE_PUBLIC_TEXT_FILENAME_RE = re.compile(
+    r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
+    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid)\b"
+)
 _UNSAFE_METADATA_VALUE_FRAGMENTS = (
     "raw_ticket",
     "raw-zendesk",
@@ -423,8 +427,10 @@ def _public_article_text_values(
 
 
 def _contains_private_public_text(value: str) -> bool:
-    return bool(value) and any(
-        pattern.search(value) for pattern in _PRIVATE_PUBLIC_TEXT_PATTERNS
+    text_without_safe_filenames = _SAFE_PUBLIC_TEXT_FILENAME_RE.sub("", value)
+    return bool(text_without_safe_filenames) and any(
+        pattern.search(text_without_safe_filenames)
+        for pattern in _PRIVATE_PUBLIC_TEXT_PATTERNS
     )
 
 

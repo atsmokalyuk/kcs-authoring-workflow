@@ -11,6 +11,7 @@ from kcs_core.safety import (
     ensure_evidence_safe,
     validate_evidence_safety,
 )
+from kcs_core.sanitizer import ensure_safe_sanitized_payload
 
 
 def _safe_packet(**overrides: object) -> NormalizedTicketEvidencePacket:
@@ -266,6 +267,43 @@ def test_allows_documentation_reserved_identifiers() -> None:
 
     assert result.ok is True
     assert result.blockers == ()
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "setup.php",
+        "service.log",
+        "application.ini",
+        "worker-process.pid",
+        "service.conf",
+        "02component-feature.conf",
+        "settings.yaml",
+        "metadata.json",
+    ],
+)
+def test_allows_standalone_safe_filenames_in_sanitized_summary(
+    filename: str,
+) -> None:
+    value = f"The sanitized diagnostic summary references {filename}."
+
+    ensure_safe_sanitized_payload(value)
+    result = validate_evidence_safety(_safe_packet(symptoms=[value]))
+
+    assert result.ok is True
+    assert result.blockers == ()
+
+
+def test_safe_filename_allowlist_does_not_allow_customer_domain_or_url() -> None:
+    with pytest.raises(ContractValidationError):
+        ensure_safe_sanitized_payload("Open https://customer.example.net/index.php")
+
+    result = validate_evidence_safety(
+        _safe_packet(symptoms=["Open customer.example.net/index.php"])
+    )
+
+    assert result.ok is False
+    assert result.blockers == (SafetyBlocker.UNSAFE_TEXT.value,)
 
 
 def test_ensure_evidence_safe_raises_for_blocked_packet() -> None:
