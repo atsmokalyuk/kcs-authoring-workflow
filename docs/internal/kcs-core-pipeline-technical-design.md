@@ -79,6 +79,7 @@ CandidateSemanticExtraction {
     confirmed_facts[]
     supported_cause
     supported_resolution_or_workaround
+    resolution_steps[]
     question
     supported_answer
     open_questions[]
@@ -105,6 +106,13 @@ Rules:
   `blocked`.
 - Its free-text fields must follow the Data Handling Baseline and must be
   scanned before normalization.
+- `resolution_steps[]` must preserve executable operational detail when the
+  approved input contains it. The extractor must not collapse commands, file
+  paths, UI navigation, linked prerequisite articles, or verification actions
+  into vague instructions such as "disable the file" or "restart the service".
+  A resolution is complete only when the reviewer/customer can apply it from
+  the article without performing an additional search for the missing command,
+  path, product navigation, or prerequisite connection step.
 - EOL/supportability status must come from explicit sanitized input mention in
   this slice; KCS-9a does not perform online EOL lookup.
 

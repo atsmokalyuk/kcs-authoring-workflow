@@ -280,6 +280,7 @@ def test_allows_documentation_reserved_identifiers() -> None:
         "02component-feature.conf",
         "settings.yaml",
         "metadata.json",
+        "/var/www/vhosts",
     ],
 )
 def test_allows_standalone_safe_filenames_in_sanitized_summary(
@@ -304,6 +305,14 @@ def test_safe_filename_allowlist_does_not_allow_customer_domain_or_url() -> None
 
     assert result.ok is False
     assert result.blockers == (SafetyBlocker.UNSAFE_TEXT.value,)
+
+
+def test_sanitized_payload_allows_public_plesk_support_article_url() -> None:
+    ensure_safe_sanitized_payload(
+        "Reviewer HTML links to "
+        "https://support.plesk.com/hc/en-us/articles/"
+        "12377512781975-How-to-connect-to-a-Plesk-server-via-SSH."
+    )
 
 
 def test_ensure_evidence_safe_raises_for_blocked_packet() -> None:

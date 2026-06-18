@@ -58,11 +58,24 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert manifest["server"]["entry_point"] == "server/index.js"
     assert manifest["server"]["mcp_config"]["command"] == "node"
     assert {tool["name"] for tool in manifest["tools"]} == expected_tool_names
+    assert "draft an article" in manifest["long_description"]
+    assert "without asking the operator" in manifest["long_description"]
     assert all(
         not tool["name"].startswith("kcs_validate_")
         for tool in manifest["tools"]
     )
     assert all("." not in tool["name"] for tool in manifest["tools"])
+    draft_tool = next(
+        tool for tool in manifest["tools"] if tool["name"] == "kcs_draft_article"
+    )
+    assert "draft an article" in draft_tool["description"]
+    assert "Do not ask what kind of article" in draft_tool["description"]
+    assert "Do not invent reuse/search proof" in draft_tool["description"]
+    assert "item_candidates" in draft_tool["description"]
+    assert "reviewer-only KCS knowledge base article" in draft_tool["description"]
+    assert "technical_scr" in draft_tool["description"]
+    assert "howto_qa" in draft_tool["description"]
+    assert "break-fix" not in draft_tool["description"]
     assert manifest["prompts_generated"] is False
     assert manifest["tools_generated"] is False
 

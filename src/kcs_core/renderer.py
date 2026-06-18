@@ -70,7 +70,7 @@ _PRIVATE_PUBLIC_TEXT_PATTERNS = (
     re.compile(r"\b(?:PLSK|EXT)\.\d{8}\.\d{4}\b", re.I),
     re.compile(r"\b(?:ticket|zendesk|zd)[-_ #:]?\d{4,}\b", re.I),
     re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
-    re.compile(r"(?:/Users/|/home/|/var/www/vhosts/|C:\\Users\\)", re.I),
+    re.compile(r"(?:/Users/|/home/|C:\\Users\\)", re.I),
     re.compile(
         r"\b(?:password|passwd|api[_-]?key|token|secret)\s*[:=-]\s*\S+",
         re.I,
@@ -80,6 +80,23 @@ _PRIVATE_PUBLIC_TEXT_PATTERNS = (
 _SAFE_PUBLIC_TEXT_FILENAME_RE = re.compile(
     r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
     r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid)\b"
+)
+_PLESK_SSH_RESOLUTION_STEP = "Connect to the Plesk server via SSH."
+_PLESK_SSH_RESOLUTION_URL = (
+    "https://support.plesk.com/hc/en-us/articles/"
+    "12377512781975-How-to-connect-to-a-Plesk-server-via-SSH"
+)
+_PLESK_RDP_RESOLUTION_STEP = "Connect to the Plesk server via RDP."
+_PLESK_RDP_RESOLUTION_URL = (
+    "https://support.plesk.com/hc/en-us/articles/"
+    "12377247797271-How-to-connect-to-a-Plesk-server-via-RDP-with-available-credentials"
+)
+_PLESK_SSH_STEP_RE = re.compile(r"\b(?:connect|log in).{0,80}\bssh\b", re.I)
+_PLESK_RDP_STEP_RE = re.compile(r"\b(?:connect|log in).{0,80}\brdp\b", re.I)
+_WINDOWS_SERVER_STEP_RE = re.compile(
+    r"\b(?:powershell|cmd|iisreset|reg|sc|net|dir|plesk)\b|"
+    r"[A-Z]:\\|%plesk_dir%|%plesk_bin%|program files",
+    re.I,
 )
 _UNSAFE_METADATA_VALUE_FRAGMENTS = (
     "raw_ticket",
@@ -264,9 +281,25 @@ def _ordered_list(values: list[str], indent: int = 0) -> list[str]:
     _ensure_list_bound(values)
     prefix = " " * indent
     lines = [f"{prefix}<ol>"]
-    lines.extend(f"{prefix}  <li>{escape(value)}</li>" for value in values)
+    lines.extend(f"{prefix}  {_ordered_list_item(value)}" for value in values)
     lines.append(f"{prefix}</ol>")
     return lines
+
+
+def _ordered_list_item(value: str) -> str:
+    if value == _PLESK_SSH_RESOLUTION_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_SSH_RESOLUTION_URL}">{escape(value)}</a>'
+            "</li>"
+        )
+    if value == _PLESK_RDP_RESOLUTION_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_RDP_RESOLUTION_URL}">{escape(value)}</a>'
+            "</li>"
+        )
+    return f"<li>{escape(value)}</li>"
 
 
 def _unordered_list(values: list[str]) -> list[str]:
@@ -559,12 +592,53 @@ def _title(candidate: Mapping[str, Any], article_type: ArticleType) -> str:
 
 
 def _applicable_to(environment: Mapping[str, Any]) -> list[str]:
+    environment_text = _environment_text_from_mapping(environment)
+    if "plesk" in environment_text:
+        platform = _plesk_platform(environment_text)
+        if platform:
+            version = _string(environment.get("version"))
+            return [_plesk_applicable_to_label(platform=platform, version=version)]
     values: list[str] = []
     for key in ("product", "platform", "component", "version"):
         value = _string(environment.get(key))
         if value:
-            values.append(value)
+            values.extend(_applicable_to_values(value))
     return values
+
+
+def _applicable_to_values(value: str) -> list[str]:
+    parts = [part.strip() for part in re.split(r"[;,]", value) if part.strip()]
+    values = parts or [value]
+    return [_clean_applicable_to_value(item) for item in values]
+
+
+def _clean_applicable_to_value(value: str) -> str:
+    return value.strip().strip("[]").strip().strip("\"'")
+
+
+def _plesk_platform(environment_text: str) -> str:
+    if _looks_windows_environment(environment_text):
+        return "Windows"
+    if _looks_linux_environment(environment_text):
+        return "Linux"
+    return ""
+
+
+def _plesk_applicable_to_label(*, platform: str, version: str) -> str:
+    clean_version = _clean_applicable_to_value(version)
+    if clean_version:
+        if "plesk" in clean_version.casefold():
+            return f"{clean_version} for {platform}"
+        return f"Plesk {clean_version} for {platform}"
+    return f"Plesk for {platform}"
+
+
+def _environment_text_from_mapping(environment: Mapping[str, Any]) -> str:
+    return " ".join(
+        _string(value)
+        for value in environment.values()
+        if isinstance(value, str)
+    ).casefold()
 
 
 def _symptoms(
@@ -586,12 +660,76 @@ def _cause(
 def _resolution_steps(
     evidence: NormalizedTicketEvidencePacket, candidate: Mapping[str, Any]
 ) -> list[str]:
-    return (
+    steps = (
         _candidate_list(candidate, "resolution_steps")
         or _candidate_list(candidate, "supported_resolution_or_workaround")
         or _candidate_list(candidate, "supported_answer")
         or _string_as_list(evidence.supported_resolution_or_workaround)
     )
+    return _resolution_steps_with_required_entry_point(evidence, steps)
+
+
+def _resolution_steps_with_required_entry_point(
+    evidence: NormalizedTicketEvidencePacket, steps: list[str]
+) -> list[str]:
+    if not steps:
+        return steps
+    if _is_windows_plesk_resolution(evidence, steps):
+        if any(_PLESK_RDP_STEP_RE.search(step) for step in steps):
+            return steps
+        return [_PLESK_RDP_RESOLUTION_STEP, *steps]
+    if not _is_linux_plesk_resolution(evidence):
+        return steps
+    if any(_PLESK_SSH_STEP_RE.search(step) for step in steps):
+        return steps
+    return [_PLESK_SSH_RESOLUTION_STEP, *steps]
+
+
+def _is_linux_plesk_resolution(evidence: NormalizedTicketEvidencePacket) -> bool:
+    environment_values = _environment_text(evidence)
+    return "plesk" in environment_values and _looks_linux_environment(
+        environment_values
+    )
+
+
+def _is_windows_plesk_resolution(
+    evidence: NormalizedTicketEvidencePacket, steps: list[str]
+) -> bool:
+    environment_values = _environment_text(evidence)
+    if "plesk" not in environment_values or not _looks_windows_environment(
+        environment_values
+    ):
+        return False
+    return any(_WINDOWS_SERVER_STEP_RE.search(step) for step in steps)
+
+
+def _looks_linux_environment(value: str) -> bool:
+    return any(
+        marker in value
+        for marker in (
+            "linux",
+            "rpm-based",
+            "rpm based",
+            "centos",
+            "alma",
+            "almalinux",
+            "rhel",
+            "red hat",
+            "debian",
+            "ubuntu",
+            "sw-collectd",
+            "systemctl",
+            "/etc/",
+        )
+    )
+
+
+def _looks_windows_environment(value: str) -> bool:
+    return "windows" in value
+
+
+def _environment_text(evidence: NormalizedTicketEvidencePacket) -> str:
+    return _environment_text_from_mapping(evidence.environment)
 
 
 def _answer_steps(

@@ -9,6 +9,9 @@ import kcs_adapters
 from kcs_adapters import mcp_desktop
 from kcs_adapters.mcp_desktop import (
     MCP_PROTOCOL_VERSION,
+    TOOL_AUTHOR_APPROVED_SUMMARY,
+    TOOL_AUTHOR_TICKET,
+    TOOL_DRAFT_ARTICLE,
     TOOL_GET_POLICY_SUMMARY,
     TOOL_NAME_STYLE_CANONICAL,
     TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
@@ -42,6 +45,7 @@ from kcs_core.models import (
     ReadinessState,
     RecommendedAction,
 )
+from kcs_core.validation import EvidenceValidationResult
 
 
 def _handoff_request(**overrides: object) -> KcsClaudeHandoffRequestPacket:
@@ -205,9 +209,9 @@ def _approved_summary_args(**overrides: object) -> dict[str, object]:
             "product": "Plesk",
         },
         "resolution_steps": [
-            "Install the missing product-side package.",
-            "Restart the related product service.",
-            "Reload the module page.",
+            "Run rpm -q product-side-package to confirm the package status.",
+            "Run systemctl restart product-service to restart the related service.",
+            "Open the monitoring module page in the Plesk UI and confirm graphs load.",
         ],
         "summary": "Product monitoring graphs show no data after module load.",
         "supported_cause": "A required product-side package is missing.",
@@ -227,9 +231,29 @@ def _approved_summary_args(**overrides: object) -> dict[str, object]:
         ),
         "case_ref": "approved-summary-case-001",
         "item": item,
+        "reuse_search_checked": True,
+        "reuse_search_run_ref": "reuse-search-001",
     }
     payload.update(overrides)
     return payload
+
+
+def _write_approved_ticket_summary(
+    tmp_path,
+    *,
+    ticket_ref: str = "ticket-001",
+    **overrides: object,
+) -> None:
+    payload = _approved_summary_args()
+    payload["schema_version"] = "kcs_approved_ticket_summary_v1"
+    payload["ticket_ref"] = ticket_ref
+    payload.update(overrides)
+    source_dir = tmp_path / "local-data" / "approved-summaries"
+    source_dir.mkdir(parents=True)
+    (source_dir / f"{ticket_ref}.json").write_text(
+        json.dumps(payload, sort_keys=True),
+        encoding="utf-8",
+    )
 
 
 def test_initialize_lifecycle_and_capabilities_are_narrow() -> None:
@@ -253,6 +277,17 @@ def test_initialize_lifecycle_and_capabilities_are_narrow() -> None:
         "resources": {"subscribe": False, "listChanged": False},
         "prompts": {"listChanged": False},
     }
+    instructions = initialize["result"]["instructions"]
+    assert "kcs_draft_article" in instructions
+    assert "draft an article" in instructions
+    assert "напиши статью" in instructions
+    assert "me escreva um artigo" in instructions
+    assert "Do not ask what kind of article" in instructions
+    assert "Do not ask what language to use" in instructions
+    assert "Do not ask the operator to choose between reuse search" in instructions
+    assert "reviewer_only_html" in instructions
+    assert "fenced html block" in instructions
+    assert "validation tools only" not in instructions
     assert "logging" not in initialize["result"]["capabilities"]
     assert before_initialized is not None
     assert before_initialized["error"]["code"] == -32002
@@ -429,12 +464,91 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
     assert "kcs_validate_handoff_response" not in tool_names
     assert "kcs_validate_draft_request" not in tool_names
     assert "kcs_validate_draft_response" not in tool_names
-    assert "kcs_get_policy_summary" in tool_names
-    assert "kcs_get_mcp_readiness" in tool_names
-    assert "kcs_run_contract_smoke" in tool_names
-    assert "kcs_run_approved_summary_pipeline" in tool_names
-    assert len(tools) == 4
+    assert tool_names == {"kcs_draft_article"}
+    assert len(tools) == 1
     for tool in tools:
+        if tool["name"] == "kcs_draft_article":
+            assert "draft an article" in tool["description"]
+            assert "напиши статью" in tool["description"]
+            assert "me escreva um artigo" in tool["description"]
+            assert "Do not ask what kind of article" in tool["description"]
+            assert "Do not ask what language to use" in tool["description"]
+            assert "do not invent reuse/search status" in tool["description"]
+            assert "reviewer-only KCS knowledge base article" in tool["description"]
+            assert "technical_scr" in tool["description"]
+            assert "howto_qa" in tool["description"]
+            assert "break-fix" not in tool["description"]
+            schema = tool["inputSchema"]
+            assert set(schema["properties"]) == {
+                "approved_summary_text",
+                "auto_publish_allowed",
+                "case_ref",
+                "customer_replies",
+                "debug",
+                "item",
+                "item_candidates",
+                "network_calls",
+                "provider_calls",
+                "public_output_approved",
+                "publishes",
+                "ready_for_real_ticket_use",
+                "reference_article",
+                "reference_article_html",
+                "reference_article_text",
+                "reuse_search_checked",
+                "reuse_search_run_ref",
+                "ticket_ref",
+                "writes_files",
+            }
+            for hidden_alias in (
+                "article_title",
+                "commands",
+                "diagnosis",
+                "problem",
+                "solution",
+                "steps",
+            ):
+                assert hidden_alias not in schema["properties"]
+            item_schema = schema["properties"]["item"]
+            assert item_schema["additionalProperties"] is False
+            assert set(item_schema["properties"]) == {
+                "applicable_to",
+                "article_type",
+                "confirmed_facts",
+                "environment",
+                "resolution_steps",
+                "supported_answer",
+                "supported_cause",
+                "supported_resolution_or_workaround",
+                "symptoms",
+                "title",
+            }
+            assert item_schema["properties"]["article_type"]["enum"] == [
+                "technical_scr",
+                "howto_qa",
+            ]
+            assert "commands" not in item_schema["properties"]
+            assert "diagnosis" not in item_schema["properties"]
+            assert "problem_statement" not in item_schema["properties"]
+            assert "root_cause" not in item_schema["properties"]
+            assert "solution" not in item_schema["properties"]
+            environment_schema = item_schema["properties"]["environment"]
+            assert environment_schema["additionalProperties"] is False
+            assert set(environment_schema["properties"]) == {
+                "component",
+                "components",
+                "extension",
+                "operating_system",
+                "os",
+                "platform",
+                "product",
+                "version",
+            }
+            item_candidates_schema = schema["properties"]["item_candidates"]
+            candidate_schema = item_candidates_schema["items"]
+            assert candidate_schema["additionalProperties"] is False
+            assert "item_ref" in candidate_schema["properties"]
+            assert "reason" in candidate_schema["properties"]
         assert tool["annotations"]["readOnlyHint"] is True
         assert tool["annotations"]["destructiveHint"] is False
         assert tool["annotations"]["idempotentHint"] is True
@@ -488,6 +602,26 @@ def test_desktop_rejects_canonical_but_internal_accepts_it() -> None:
     )
 
 
+def test_policy_summary_lists_canonical_approved_summary_article_types() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_GET_POLICY_SUMMARY,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    article_type_check = next(
+        check
+        for check in structured["checks"]
+        if check["kind"] == "approved_summary_article_types"
+    )
+    assert article_type_check["canonical_values"] == [
+        ArticleType.TECHNICAL_SCR.value,
+        ArticleType.HOWTO_QA.value,
+    ]
+    assert "accepted_alias_examples" not in article_type_check
+
+
 def test_unknown_notifications_do_not_echo_params_or_write_response() -> None:
     response = _initialized_transport().handle_message(
         {
@@ -507,7 +641,7 @@ def test_tools_call_notification_does_not_execute_tool() -> None:
             "method": "tools/call",
             "params": {
                 "arguments": {},
-                "name": claude_desktop_tool_alias(TOOL_RUN_CONTRACT_SMOKE),
+                "name": claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
             },
         }
     )
@@ -602,8 +736,8 @@ def test_validate_draft_response_rejects_publish_or_invalid_provider_output(
 
 def test_run_approved_summary_pipeline_returns_compact_ready_status() -> None:
     response = _call_tool(
-        _initialized_transport(),
-        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
         _approved_summary_args(debug=True),
     )
 
@@ -630,10 +764,1225 @@ def test_run_approved_summary_pipeline_returns_compact_ready_status() -> None:
     assert "<h1>" not in result_text
 
 
-def test_run_approved_summary_pipeline_rejects_unknown_item_field() -> None:
+def test_run_approved_summary_pipeline_rejects_break_fix_article_type_alias() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        _approved_summary_args(item={"article_type": "break-fix"}, debug=True),
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "approved_summary_article_type_invalid"
+
+
+def test_author_approved_summary_returns_reviewer_only_draft() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_APPROVED_SUMMARY,
+        _approved_summary_args(
+            article_type=ArticleType.TECHNICAL_SCR.value,
+            reference_article_text=(
+                "Applicable to\nPlesk for Linux\nSymptoms\nGraphs show no data\n"
+                "Cause\nA required package is missing\nResolution\nInstall it"
+            ),
+        ),
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "approved_summary_authoring"
+    assert structured["pipeline_ok"] is True
+    assert structured["should_be_kcs_article"] is True
+    assert structured["article_type"] == ArticleType.TECHNICAL_SCR.value
+    assert structured["recommended_action"] == RecommendedAction.CREATE_CANDIDATE.value
+    assert structured["ready_for_reviewer"] is True
+    assert structured["draft_request_ready"] is True
+    assert structured["auto_publish_allowed"] is False
+    assert structured["public_output_approved"] is False
+    assert structured["provider_calls"] is False
+    assert structured["writes_files"] is False
+    assert (
+        structured["atomic_item"]["title"]
+        == "Monitoring graphs show no data in Plesk"
+    )
+    draft = structured["reviewer_only_draft"]
+    assert structured["draft_sections"] == draft
+    assert structured["reviewer_only_preview"] == draft
+    preview_text = structured["reviewer_only_preview_text"]
+    assert preview_text.startswith("Title: Monitoring graphs show no data in Plesk")
+    assert "Applicable to:\n- Plesk for Linux" in preview_text
+    assert "Symptoms:\n1. Product monitoring graphs show no data." in preview_text
+    assert "Cause:\nA required product-side package is missing." in preview_text
+    assert draft["status"] == "reviewer_only"
+    assert draft["title"] == "Monitoring graphs show no data in Plesk"
+    assert draft["symptoms"] == ["Product monitoring graphs show no data."]
+    assert draft["cause"] == "A required product-side package is missing."
+    assert (
+        draft["resolution"]
+        == "Install the missing package and restart the related service."
+    )
+    assert structured["quality_gaps"] == [
+        {"kind": "reference_section_coverage_ok", "severity": "info"}
+    ]
+    result_output = response["result"]["content"][0]["text"]
+    assert result_output.startswith(
+        "COPY THE FENCED HTML BLOCK BELOW VERBATIM IN THE FINAL ANSWER."
+    )
+    assert "Do not rewrite it, summarize it, convert it to Markdown" in result_output
+    assert "\n\nReviewer-only Zendesk HTML:\n```html\n" in result_output
+    assert "\n```\n\nReviewer preview for the tool panel only." in result_output
+    assert "Reviewer preview for the tool panel only." in result_output
+    assert preview_text in result_output
+    assert "\n\nCompact status:\n" in result_output
+    html = structured["reviewer_only_html"]
+    assert "<h1>Monitoring graphs show no data in Plesk</h1>" in html
+    assert html in result_output
+    assert "<h2>Applicable to</h2>" in html
+    assert "<h2>Symptoms</h2>" in html
+    assert "<h2>Cause</h2>" in html
+    assert "<h2>Resolution</h2>" in html
+    assert "zendesk_source_html" not in result_text
+    assert "evidence_basis" not in result_text
+    assert "reviewer_packet" not in result_text
+
+
+def test_author_approved_summary_returns_cli_entry_point_in_html() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_APPROVED_SUMMARY,
+        _approved_summary_args(
+            item={
+                "resolution_steps": [
+                    "Run rpm -qf /etc/sw-collectd/conf.d/custom.conf.",
+                    "Run systemctl restart sw-collectd.",
+                ],
+                "supported_cause": (
+                    "A custom collectd configuration overrides the data path."
+                ),
+                "supported_resolution_or_workaround": (
+                    "Disable the custom collectd configuration and restart "
+                    "sw-collectd."
+                ),
+            },
+        ),
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    draft = structured["reviewer_only_draft"]
+    assert draft["resolution_steps"][0] == "Connect to the Plesk server via SSH."
+    assert (
+        '<li><a href="https://support.plesk.com/hc/en-us/articles/'
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in structured["reviewer_only_html"]
+    )
+
+
+def test_author_approved_summary_normalizes_plesk_applicable_to() -> None:
+    arguments = _approved_summary_args()
+    assert isinstance(arguments["item"], dict)
+    arguments["item"].pop("applicable_to")
+    arguments["item"]["environment"] = (
+        "Plesk with Advanced Monitoring extension, "
+        "Grafana with plesk-json-backend-datasource plugin, "
+        "sw-collectd for metrics collection, RPM-based"
+    )
+
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_APPROVED_SUMMARY,
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    html = structured["reviewer_only_html"]
+    draft = structured["reviewer_only_draft"]
+    assert draft["applicable_to"] == ["Plesk for Linux"]
+    assert (
+        "<h2>Applicable to</h2>\n"
+        "<ul>\n"
+        "  <li>Plesk for Linux</li>\n"
+        "</ul>"
+    ) in html
+    assert (
+        '<li><a href="https://support.plesk.com/hc/en-us/articles/'
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in html
+    )
+
+
+def test_author_approved_summary_accepts_json_string_applicable_to() -> None:
+    arguments = _approved_summary_args()
+    assert isinstance(arguments["item"], dict)
+    arguments["item"]["applicable_to"] = (
+        '["Plesk with Advanced Monitoring extension", '
+        '"Grafana with plesk-json-backend-datasource plugin", '
+        '"sw-collectd for metrics collection", "RPM-based"]'
+    )
+    arguments["item"]["environment"] = (
+        '["Plesk with Advanced Monitoring extension", '
+        '"Grafana with plesk-json-backend-datasource plugin", '
+        '"sw-collectd for metrics collection", "RPM-based"]'
+    )
+
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_APPROVED_SUMMARY,
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    html = structured["reviewer_only_html"]
+    assert "<li>Plesk for Linux</li>" in html
+    assert "[&quot;" not in html
+    assert "&quot;" not in html
+    assert (
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in html
+    )
+
+
+def test_author_approved_summary_skips_missing_reuse_search_for_mvp_draft() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_APPROVED_SUMMARY,
+        _approved_summary_args(
+            debug=True,
+            reuse_search_checked=False,
+            reuse_search_run_ref="",
+        ),
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "approved_summary_authoring"
+    assert structured["pipeline_ok"] is True
+    assert structured["failure_stage"] == "none"
+    assert structured["debug_code"] == "none"
+    assert structured["reuse_search_status"] == "skipped"
+    assert structured["should_be_kcs_article"] is True
+    assert "reviewer_only_html" in structured
+    assert {"kind": "reuse_search_skipped", "severity": "warning"} in structured[
+        "quality_gaps"
+    ]
+    assert "possible_duplicate_not_checked" not in result_text
+
+
+def test_author_approved_summary_accepts_fixed_false_policy_flags() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_APPROVED_SUMMARY,
+        _approved_summary_args(
+            auto_publish_allowed=False,
+            customer_replies=False,
+            network_calls=False,
+            provider_calls=False,
+            public_output_approved=False,
+            publishes=False,
+            ready_for_real_ticket_use=False,
+            writes_files=False,
+        ),
+    )
+
+    assert response is not None
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "approved_summary_authoring"
+    assert structured["pipeline_ok"] is True
+    assert structured["auto_publish_allowed"] is False
+    assert structured["public_output_approved"] is False
+    assert structured["provider_calls"] is False
+    assert structured["writes_files"] is False
+
+
+def test_author_approved_summary_rejects_true_policy_flag() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_APPROVED_SUMMARY,
+        _approved_summary_args(auto_publish_allowed=True),
+    )
+
+    assert response is not None
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "approved_summary_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "approved_summary_policy_flag_invalid"
+
+
+def test_author_ticket_loads_local_approved_summary(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    _write_approved_ticket_summary(tmp_path)
+
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_TICKET,
+        {"ticket_ref": "ticket-001", "debug": True},
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "approved_ticket_authoring"
+    assert structured["ticket_ref"] == "ticket-001"
+    assert structured["approved_summary_source"] == "local_approved_summary"
+    assert structured["pipeline_ok"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert structured["draft_request_ready"] is True
+    assert structured["recommended_action"] == RecommendedAction.CREATE_CANDIDATE.value
+    assert "<h1>Monitoring graphs show no data in Plesk</h1>" in structured[
+        "reviewer_only_html"
+    ]
+    assert str(tmp_path) not in result_text
+    assert "zendesk_source_html" not in result_text
+    assert "evidence_basis" not in result_text
+
+
+def test_author_ticket_missing_summary_file_is_controlled_failure(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_TICKET,
+        {"ticket_ref": "ticket-001", "debug": True},
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "approved_ticket_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "approved_ticket_summary_not_found"
+    assert str(tmp_path) not in result_text
+
+
+def test_author_ticket_rejects_unsafe_ref_without_echo() -> None:
+    unsafe_ref = "../private-token"
+
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_AUTHOR_TICKET,
+        {"ticket_ref": unsafe_ref, "debug": True},
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "approved_ticket_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "approved_ticket_ref_invalid"
+    assert unsafe_ref not in result_text
+
+
+def test_draft_article_uses_ticket_ref_path(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    _write_approved_ticket_summary(tmp_path)
+
     response = _call_tool(
         _initialized_transport(),
-        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-001", "debug": True},
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["ticket_ref"] == "ticket-001"
+    assert structured["pipeline_ok"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert "reviewer_only_html" in structured
+    assert (
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in structured["reviewer_only_html"]
+    )
+
+
+def test_draft_article_uses_chat_summary_path() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        _approved_summary_args(debug=True),
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert "reviewer_only_draft" in structured
+    assert (
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in structured["reviewer_only_html"]
+    )
+
+
+def test_draft_article_rejects_top_level_structured_alias_fields() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {
+            "applicable_to": [
+                "Plesk with Advanced/360 Monitoring extension",
+                "sw-collectd statistics collector",
+            ],
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "case_ref": "96024747",
+            "confirmed_facts": [
+                "The diagnostic summary references grafana.log.",
+                "The collectd configuration file is not owned by any package.",
+            ],
+            "resolution_steps": [
+                "Run rpm -qf /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.",
+                (
+                    "Run cp -a /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                    "/root/monitoring-case-backup/."
+                ),
+                (
+                    "Run mv /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                    "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.disabled."
+                ),
+                "Run systemctl restart sw-collectd.",
+                "Confirm new graph data appears.",
+            ],
+            "supported_cause": (
+                "A leftover collectd configuration overrides the RRD data path."
+            ),
+            "supported_resolution_or_workaround": (
+                "Disable the override and restart sw-collectd."
+            ),
+            "symptoms": [
+                "Monitoring graphs show no data.",
+                "The datasource lists metric names but returns no datapoints.",
+            ],
+            "title": (
+                "Monitoring graphs show no data due to leftover collectd RRD "
+                "path override"
+            ),
+        },
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "draft_article_args_invalid"
+    assert "reviewer_only_html" not in structured
+    assert "02rrdtool-monitoring.conf" not in result_text
+
+
+def test_draft_article_skips_missing_reuse_search_for_mvp_draft() -> None:
+    arguments = _approved_summary_args(debug=True)
+    arguments.pop("reuse_search_checked")
+    arguments.pop("reuse_search_run_ref")
+
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is True
+    assert structured["failure_stage"] == "none"
+    assert structured["debug_code"] == "none"
+    assert structured["reuse_search_status"] == "skipped"
+    assert structured["ready_for_reviewer"] is True
+    assert structured["draft_request_ready"] is True
+    assert "reviewer_only_html" in structured
+    assert {"kind": "reuse_search_skipped", "severity": "warning"} in structured[
+        "quality_gaps"
+    ]
+
+
+def test_draft_article_promotes_explicit_resolution_steps() -> None:
+    arguments = _approved_summary_args(debug=True)
+    assert isinstance(arguments["item"], dict)
+    del arguments["item"]["supported_resolution_or_workaround"]
+
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert "reviewer_only_html" in structured
+    assert (
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in structured["reviewer_only_html"]
+    )
+
+
+def test_draft_article_accepts_common_admin_resolution_commands() -> None:
+    arguments = _approved_summary_args(debug=True)
+    assert isinstance(arguments["item"], dict)
+    arguments["item"]["resolution_steps"] = [
+        "Connect to the Plesk server via SSH.",
+        "Run ls -ld /usr/local/psa/var/modules/monitoring/.",
+        (
+            "Run cat /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+            "to review the DataDir setting."
+        ),
+        (
+            "Run chown psaadm:psaadm "
+            "/usr/local/psa/var/modules/monitoring/."
+        ),
+        "Run chmod 0750 /usr/local/psa/var/modules/monitoring/.",
+        "Run systemctl restart sw-collectd.",
+        "Confirm Monitoring graphs show new data in the Plesk UI.",
+    ]
+
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert "reviewer_only_html" in structured
+    assert "Run cat /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf" in (
+        structured["reviewer_only_html"]
+    )
+
+
+def test_draft_article_accepts_mixed_concrete_resolution_procedure() -> None:
+    arguments = _approved_summary_args(debug=True)
+    assert isinstance(arguments["item"], dict)
+    arguments["item"]["resolution_steps"] = [
+        "Connect to the Plesk server via SSH.",
+        (
+            "Run rpm -qf /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+            "to confirm the file is not owned by a package."
+        ),
+        (
+            "Run cat /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+            "to review the DataDir setting."
+        ),
+        "Move the conflicting file out of the active conf.d directory.",
+        "Run systemctl restart sw-collectd.",
+        "Confirm Monitoring graphs show new data in the Plesk UI.",
+        (
+            "Advise that historical data collected before the fix may not be "
+            "visible because graphs repopulate gradually."
+        ),
+    ]
+
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert "reviewer_only_html" in structured
+
+
+def test_draft_article_accepts_final_informational_resolution_note() -> None:
+    arguments = _approved_summary_args(debug=True)
+    assert isinstance(arguments["item"], dict)
+    arguments["item"]["resolution_steps"] = [
+        "Connect to the Plesk server via SSH.",
+        (
+            "Run rpm -qf "
+            "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf."
+        ),
+        (
+            "Run cat /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+            "to review the DataDir setting."
+        ),
+        (
+            "Run mv /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+            "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.disabled."
+        ),
+        "Run systemctl restart sw-collectd.",
+        "Confirm Monitoring graphs show new data in the Plesk UI.",
+        (
+            "Advise that historical data collected before the fix may not be "
+            "visible because graphs repopulate gradually."
+        ),
+    ]
+
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert "reviewer_only_html" in structured
+
+
+def test_draft_article_requires_ticket_ref_or_summary() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"debug": True},
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "draft_article_input_missing"
+
+
+def test_draft_article_returns_split_required_for_multiple_item_candidates() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {
+            "approved_summary_text": (
+                "Approved sanitized summary: one issue affects monitoring graphs "
+                "and another independent issue affects extension installation."
+            ),
+            "debug": True,
+            "item_candidates": [
+                {
+                    "item_ref": "candidate-001",
+                    "reason": "Monitoring graphs have no datapoints.",
+                    "title": "Monitoring graphs show no data",
+                },
+                {
+                    "item_ref": "candidate-002",
+                    "reason": "Extension post-install fails with permissions.",
+                    "title": "Monitoring extension post-install fails",
+                },
+            ],
+            "reuse_search_checked": True,
+            "reuse_search_run_ref": "reuse-search-001",
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "item_identification"
+    assert structured["debug_code"] == "multiple_kcs_items_detected"
+    assert structured["recommended_action"] == "split_required"
+    assert structured["next_required_action"] == "operator_select_single_item"
+    assert structured["manual_draft_allowed"] is False
+    assert structured["automatic_item_retry_allowed"] is False
+    assert structured["ready_for_reviewer"] is False
+    assert structured["draft_request_ready"] is False
+    assert len(structured["item_candidates"]) == 2
+    assert (
+        structured["review_summary"]["next_required_action"]
+        == "operator_select_single_item"
+    )
+    assert "reviewer_only_html" not in structured
+
+
+def test_draft_article_split_required_returns_compact_candidate_cards() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {
+            "approved_summary_text": (
+                "Approved sanitized summary: one issue affects monitoring graphs "
+                "and another independent issue affects extension installation."
+            ),
+            "item_candidates": [
+                {
+                    "article_type": ArticleType.TECHNICAL_SCR.value,
+                    "confirmed_facts": [
+                        "The candidate references service.log.",
+                        "The candidate references application.ini.",
+                    ],
+                    "item_ref": "candidate-001",
+                    "reason": "Monitoring graphs have no datapoints.",
+                    "resolution_steps": [
+                        (
+                            "Run rpm -qf "
+                            "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf."
+                        ),
+                        (
+                            "Run mv /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                            "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.disabled."
+                        ),
+                        "Run systemctl restart sw-collectd.",
+                    ],
+                    "supported_cause": (
+                        "A leftover collector config redirects metric data."
+                    ),
+                    "supported_resolution_or_workaround": (
+                        "Disable the override and restart the collector."
+                    ),
+                    "symptoms": [
+                        "Monitoring graphs show no data.",
+                    ],
+                    "title": "Monitoring graphs show no data",
+                },
+                {
+                    "article_type": ArticleType.TECHNICAL_SCR.value,
+                    "confirmed_facts": [
+                        "The candidate references post-install.php.",
+                    ],
+                    "item_ref": "candidate-002",
+                    "reason": "Extension post-install fails with permissions.",
+                    "resolution_steps": [
+                        (
+                            "Confirm /usr/local/psa/var/modules/monitoring/ "
+                            "ownership."
+                        ),
+                        "Reinstall the monitoring extension.",
+                    ],
+                    "supported_cause": (
+                        "A module directory has incorrect ownership."
+                    ),
+                    "supported_resolution_or_workaround": (
+                        "Recreate the directory with correct ownership."
+                    ),
+                    "symptoms": [
+                        "Monitoring extension post-install fails.",
+                    ],
+                    "title": "Monitoring extension post-install fails",
+                },
+            ],
+            "reuse_search_checked": True,
+            "reuse_search_run_ref": "reuse-search-001",
+        },
+    )
+
+    assert response is not None
+    text = json.dumps(response, sort_keys=True)
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "item_identification"
+    assert structured["debug_code"] == "multiple_kcs_items_detected"
+    assert structured["recommended_action"] == "split_required"
+    assert structured["item_candidates"] == [
+        {
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "item_ref": "candidate-001",
+            "title": "Monitoring graphs show no data",
+        },
+        {
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "item_ref": "candidate-002",
+            "title": "Monitoring extension post-install fails",
+        },
+    ]
+    assert "resolution_steps" not in text
+    assert "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf" not in text
+    assert "/usr/local/psa/var/modules/monitoring/" not in text
+    assert "tool_result_invalid" not in text
+
+
+def test_draft_article_split_required_omits_unsafe_candidate_reason() -> None:
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {
+            "approved_summary_text": (
+                "Approved sanitized summary: one issue affects monitoring graphs "
+                "and another independent issue affects extension installation."
+            ),
+            "item_candidates": [
+                {
+                    "item_ref": "candidate-001",
+                    "reason": (
+                        "The candidate references "
+                        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf."
+                    ),
+                    "title": "Monitoring graphs show no data",
+                },
+                {
+                    "item_ref": "candidate-002",
+                    "reason": "Extension post-install fails with permissions.",
+                    "title": "Monitoring extension post-install fails",
+                },
+            ],
+            "reuse_search_checked": True,
+            "reuse_search_run_ref": "reuse-search-001",
+        },
+    )
+
+    assert response is not None
+    text = json.dumps(response, sort_keys=True)
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["debug_code"] == "multiple_kcs_items_detected"
+    assert structured["item_candidates"][0] == {
+        "item_ref": "candidate-001",
+        "title": "Monitoring graphs show no data",
+    }
+    assert "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf" not in text
+    assert "tool_result_invalid" not in text
+
+
+def test_run_approved_summary_pipeline_skips_missing_reuse_search_for_mvp() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        _approved_summary_args(
+            debug=True,
+            reuse_search_checked=False,
+            reuse_search_run_ref="",
+        ),
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is True
+    assert structured["failure_stage"] == "none"
+    assert structured["debug_code"] == "none"
+    assert structured["reuse_search_status"] == "skipped"
+    assert structured["input_safety_ok"] is True
+    assert structured["evidence_valid"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert structured["draft_request_ready"] is True
+    assert "possible_duplicate_not_checked" not in result_text
+
+
+def test_run_approved_summary_pipeline_blocks_summary_only_without_evidence() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        {
+            "approved_summary_text": (
+                "Approved sanitized summary: a supported product module loads "
+                "but graphs show no data. The diagnostic summary references "
+                "setup.php, service.log, application.ini, worker-process.pid, "
+                "service.conf, 02component-feature.conf, settings.yaml, "
+                "metadata.json, /etc/vendor-agent/conf.d/02component-feature.conf, "
+                "and /usr/local/product/var/modules/component/rrd. The supported "
+                "cause and resolution are present in the approved summary."
+            ),
+            "debug": True,
+            "environment": (
+                "Supported Linux platform; product module; service collector; "
+                "embedded dashboard component"
+            ),
+        },
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "approved_summary_pipeline"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "approved_summary_resolution_steps_required"
+    assert structured["input_safety_ok"] is False
+    assert structured["evidence_valid"] is False
+    assert structured["draft_request_ready"] is False
+    assert structured["provider_calls"] is False
+    assert structured["writes_files"] is False
+    assert "zendesk_source_html" not in result_text
+    assert "evidence_basis" not in result_text
+
+
+def test_draft_article_rejects_missing_environment_without_placeholder_html() -> None:
+    arguments = _approved_summary_args(debug=True)
+    assert isinstance(arguments["item"], dict)
+    arguments["item"].pop("environment")
+    arguments["item"].pop("applicable_to")
+
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        arguments,
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "approved_summary_environment_required"
+    assert "reviewer_only_html" not in structured
+    assert "approved-summary-product" not in result_text
+    assert "approved-summary-platform" not in result_text
+    assert "approved-summary-component" not in result_text
+
+
+def test_draft_article_returns_controlled_result_for_bad_environment() -> None:
+    arguments = _approved_summary_args(debug=True)
+    assert isinstance(arguments["item"], dict)
+    arguments["item"]["environment"] = {"unsupported": "Plesk for Linux"}
+
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "draft_article_args_invalid"
+    assert "error" not in response
+
+
+def test_draft_article_rejects_scr_without_resolution_steps() -> None:
+    arguments = _approved_summary_args(debug=True)
+    assert isinstance(arguments["item"], dict)
+    arguments["item"].pop("resolution_steps")
+
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert (
+        structured["debug_code"]
+        == "approved_summary_resolution_steps_required"
+    )
+    assert "reviewer_only_html" not in structured
+
+
+def test_draft_article_rejects_non_executable_resolution_steps() -> None:
+    arguments = _approved_summary_args(debug=True)
+    assert isinstance(arguments["item"], dict)
+    arguments["item"]["resolution_steps"] = [
+        "Back up and disable the rogue collectd config file.",
+        "Restart the collector.",
+    ]
+
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        arguments,
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert (
+        structured["debug_code"]
+        == "approved_summary_resolution_steps_incomplete"
+    )
+    assert "reviewer_only_html" not in structured
+
+
+def test_run_approved_summary_pipeline_accepts_top_level_chat_item_fields() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        {
+            "approved_summary_text": (
+                "Approved sanitized summary: supported product monitoring graphs "
+                "show no data. The root cause is a leftover unowned collector "
+                "configuration file overriding the data directory. The supported "
+                "fix is to disable the override file, restart the collector, and "
+                "wait for new metric data."
+            ),
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "confirmed_facts": (
+                "The diagnostic summary references service.log and service.conf."
+            ),
+            "debug": True,
+            "environment": {
+                "components": ["monitoring component", "data source"],
+                "extension": "monitoring extension",
+                "os": "supported Linux platform",
+                "product": "supported product",
+            },
+            "resolution_steps": (
+                "Run mv /etc/product/conf.d/override.conf "
+                "/etc/product/conf.d/override.conf.disabled. Run systemctl "
+                "restart product-collector. Confirm new graph data."
+            ),
+            "reuse_search_checked": True,
+            "reuse_search_run_ref": "reuse-search-001",
+            "supported_cause": (
+                "A leftover unowned collector configuration file overrides the "
+                "data directory."
+            ),
+            "supported_resolution_or_workaround": (
+                "Disable the override file and restart the collector."
+            ),
+            "symptoms": "Product monitoring graphs show no data.",
+            "title": "Product monitoring graphs show no data",
+        },
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is True
+    assert structured["failure_stage"] == "none"
+    assert structured["input_safety_ok"] is True
+    assert structured["evidence_valid"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert structured["draft_request_ready"] is True
+    assert "zendesk_source_html" not in result_text
+    assert "evidence_basis" not in result_text
+
+
+def test_run_approved_summary_pipeline_accepts_chat_item_alias_fields() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        {
+            "approved_summary_text": (
+                "Approved sanitized summary: monitoring graphs show no data. "
+                "The confirmed cause is a leftover collector configuration "
+                "override. The supported fix is to disable the override file, "
+                "restart the collector, and verify new graph data."
+            ),
+            "debug": True,
+            "item": {
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "environment": {
+                    "components": ["collector", "dashboard data source"],
+                    "extension": "monitoring extension",
+                    "os": "supported Linux platform",
+                    "product": "supported product",
+                },
+                "evidence": "The sanitized diagnostic summary confirms the override.",
+                "resolution_summary": "Disable the override and restart the collector.",
+                "reuse_search_checked": True,
+                "reuse_search_run_ref": "reuse-search-001",
+                "root_cause": (
+                    "A leftover collector override writes data to the wrong path."
+                ),
+                "steps": (
+                    "Disable the override, restart the collector, and verify graphs."
+                ),
+                "symptom": "Monitoring graphs show no data.",
+                "title": "Monitoring graphs show no data",
+            },
+        },
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is True
+    assert structured["failure_stage"] == "none"
+    assert structured["input_safety_ok"] is True
+    assert structured["evidence_valid"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert "zendesk_source_html" not in result_text
+    assert "evidence_basis" not in result_text
+
+
+def test_run_approved_summary_pipeline_accepts_common_chat_alias_fields() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        {
+            "approved_summary_text": (
+                "Approved sanitized summary: product monitoring graphs show no "
+                "data. A diagnostic configuration override writes metric data "
+                "to a nonstandard path. The supported solution disables the "
+                "override and restarts the collector."
+            ),
+            "article_title": "Product monitoring graphs show no data",
+            "commands": [
+                "Run rpm -qf /etc/product/conf.d/override.conf.",
+                (
+                    "Run mv /etc/product/conf.d/override.conf "
+                    "/etc/product/conf.d/override.conf.disabled."
+                ),
+                "Run systemctl restart product-collector.",
+            ],
+            "debug": True,
+            "diagnosis": (
+                "A leftover collector override writes metrics to the wrong "
+                "location."
+            ),
+            "environment": {
+                "component": "monitoring component / collector",
+                "platform": "supported Linux platform",
+                "product": "supported product",
+            },
+            "log_evidence": [
+                "The diagnostic summary references service.log.",
+                "The diagnostic summary references application.ini.",
+            ],
+            "problem": "Product monitoring graphs show no data.",
+            "reuse_search_checked": True,
+            "reuse_search_run_ref": "reuse-search-001",
+            "secondary_issues": (
+                "A module directory ownership mismatch can cause reinstall "
+                "failure."
+            ),
+            "solution": (
+                "Disable the stale override file and restart the collector."
+            ),
+        },
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is True
+    assert structured["failure_stage"] == "none"
+    assert structured["input_safety_ok"] is True
+    assert structured["evidence_valid"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert structured["draft_request_ready"] is True
+    assert "zendesk_source_html" not in result_text
+    assert "evidence_basis" not in result_text
+
+
+def test_run_approved_summary_pipeline_accepts_chat_secondary_finding() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        {
+            "approved_summary_text": (
+                "Approved sanitized summary: product monitoring graphs show no "
+                "data after extension reinstall. A leftover unowned collector "
+                "configuration file overrides the metric data directory. The "
+                "diagnostic summary references /var/www/vhosts, "
+                "/usr/local/product/var/modules/monitoring/, "
+                "/etc/vendor-agent/conf.d/02component-feature.conf, service.log, "
+                "post-install.php, root:root ownership, and service restart. "
+                "Historical data written to the wrong path is not backfilled."
+            ),
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "confirmed_facts": [
+                "The collector override file is not owned by any package.",
+                "The override changes the metric data directory.",
+            ],
+            "debug": True,
+            "environment": {
+                "component": "collector / dashboard / data source",
+                "os": "supported Linux RPM platform",
+                "product": "supported product monitoring",
+            },
+            "resolution_steps": [
+                "Run rpm -qf /etc/vendor-agent/conf.d/02component-feature.conf.",
+                (
+                    "Run cp -a /etc/vendor-agent/conf.d/02component-feature.conf "
+                    "/root/monitoring-case-backup/."
+                ),
+                (
+                    "Run mv /etc/vendor-agent/conf.d/02component-feature.conf "
+                    "/etc/vendor-agent/conf.d/02component-feature.conf.disabled."
+                ),
+                "Run systemctl restart product-collector.",
+                "Confirm new graph data appears.",
+            ],
+            "reuse_search_checked": True,
+            "reuse_search_run_ref": "reuse-search-001",
+            "secondary_finding": (
+                "If the monitoring module directory is owned by root:root "
+                "instead of service-user:service-user, reinstall can fail with "
+                "Permission denied."
+            ),
+            "supported_cause": (
+                "A leftover collector configuration file writes metric data to "
+                "a nonstandard path."
+            ),
+            "supported_resolution_or_workaround": (
+                "Disable the override, restart the collector, and verify new "
+                "graph data."
+            ),
+            "symptoms": "Product monitoring graphs show no data.",
+            "title": "Product monitoring graphs show no data",
+        },
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is True
+    assert structured["failure_stage"] == "none"
+    assert structured["input_safety_ok"] is True
+    assert structured["evidence_valid"] is True
+    assert structured["ready_for_reviewer"] is True
+    assert structured["draft_request_ready"] is True
+    assert "zendesk_source_html" not in result_text
+    assert "evidence_basis" not in result_text
+
+
+def test_run_approved_summary_pipeline_rejects_unknown_item_field() -> None:
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
         _approved_summary_args(item={"raw_ticket": "safe-looking value"}),
     )
 
@@ -644,8 +1993,8 @@ def test_run_approved_summary_pipeline_rejects_unknown_item_field() -> None:
 
 def test_run_approved_summary_pipeline_rejects_private_value_without_echo() -> None:
     response = _call_tool(
-        _initialized_transport(),
-        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
         _approved_summary_args(
             approved_summary_text="Contact person@example.com for details."
         ),
@@ -657,14 +2006,14 @@ def test_run_approved_summary_pipeline_rejects_private_value_without_echo() -> N
     structured = response["result"]["structuredContent"]
     assert structured["pipeline_ok"] is False
     assert structured["failure_stage"] == "input_validation"
-    assert structured["debug_code"] == "approved_summary_input_invalid"
+    assert structured["debug_code"] == "approved_summary_text_invalid"
     assert "person@example.com" not in text
 
 
 def test_run_approved_summary_pipeline_rejects_non_string_summary_text() -> None:
     response = _call_tool(
-        _initialized_transport(),
-        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
         _approved_summary_args(approved_summary_text=["not", "a", "summary"]),
     )
 
@@ -673,13 +2022,13 @@ def test_run_approved_summary_pipeline_rejects_non_string_summary_text() -> None
     structured = response["result"]["structuredContent"]
     assert structured["pipeline_ok"] is False
     assert structured["failure_stage"] == "input_validation"
-    assert structured["debug_code"] == "approved_summary_input_invalid"
+    assert structured["debug_code"] == "approved_summary_text_invalid"
 
 
 def test_run_approved_summary_pipeline_reports_evidence_builder_stage() -> None:
     response = _call_tool(
-        _initialized_transport(),
-        claude_desktop_tool_alias(TOOL_RUN_APPROVED_SUMMARY_PIPELINE),
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
         _approved_summary_args(case_ref="person@example.com"),
     )
 
@@ -693,10 +2042,78 @@ def test_run_approved_summary_pipeline_reports_evidence_builder_stage() -> None:
     assert "person@example.com" not in text
 
 
+def test_run_approved_summary_pipeline_reports_evidence_validation_stage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_validate_evidence_packet(_packet: object) -> EvidenceValidationResult:
+        return EvidenceValidationResult(
+            ok=False,
+            blockers=("missing_supported_resolution",),
+        )
+
+    monkeypatch.setattr(
+        mcp_desktop,
+        "validate_evidence_packet",
+        fake_validate_evidence_packet,
+    )
+
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        _approved_summary_args(debug=True),
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "evidence_validation"
+    assert (
+        structured["debug_code"]
+        == "approved_summary_evidence_validation_blocked"
+    )
+    assert structured["input_safety_ok"] is True
+    assert structured["evidence_valid"] is False
+    checks = {check["kind"]: check["ok"] for check in structured["checks"]}
+    assert checks["input_validation"] is True
+    assert checks["evidence_builder"] is True
+    assert checks["input_safety"] is True
+    assert checks["evidence_validation"] is False
+
+
+def test_run_approved_summary_pipeline_reports_renderer_stage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_render_reviewer_packet(*_args: object, **_kwargs: object) -> object:
+        raise ContractValidationError("synthetic renderer failure")
+
+    monkeypatch.setattr(
+        mcp_desktop,
+        "render_reviewer_packet",
+        fake_render_reviewer_packet,
+    )
+
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        _approved_summary_args(debug=True),
+    )
+
+    text = json.dumps(response, sort_keys=True)
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "renderer"
+    assert structured["debug_code"] == "approved_summary_renderer_failed"
+    assert "synthetic renderer failure" not in text
+    checks = {check["kind"]: check["ok"] for check in structured["checks"]}
+    assert checks["decision"] is True
+    assert checks["renderer"] is False
+
+
 def test_unknown_tool_argument_is_json_rpc_error_not_tool_result() -> None:
     response = _call_tool(
-        _initialized_transport(),
-        claude_desktop_tool_alias(TOOL_GET_POLICY_SUMMARY),
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_GET_POLICY_SUMMARY,
         {
             "raw_note": "safe-looking value",
         },
@@ -715,8 +2132,8 @@ def test_contract_smoke_uses_in_memory_safe_packets(
 
     monkeypatch.setattr("builtins.open", fail_open)
     response = _call_tool(
-        _initialized_transport(),
-        claude_desktop_tool_alias(TOOL_RUN_CONTRACT_SMOKE),
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_CONTRACT_SMOKE,
         {},
     )
 
@@ -733,8 +2150,8 @@ def test_contract_smoke_uses_in_memory_safe_packets(
 
 def test_contract_smoke_rejects_arguments() -> None:
     response = _call_tool(
-        _initialized_transport(),
-        claude_desktop_tool_alias(TOOL_RUN_CONTRACT_SMOKE),
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_CONTRACT_SMOKE,
         {"case_ref": "case-001"},
     )
 
@@ -748,7 +2165,7 @@ def test_tools_call_rejects_unknown_raw_params_without_echo() -> None:
             "tools/call",
             {
                 "arguments": {},
-                "name": claude_desktop_tool_alias(TOOL_GET_POLICY_SUMMARY),
+                "name": claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
                 "raw_ticket": "person@example.com",
             },
         )
@@ -821,11 +2238,11 @@ def test_tool_result_builder_rejects_nested_forbidden_surfaces(
 
 
 def test_tool_result_text_matches_compact_structured_content_json() -> None:
-    transport = _initialized_transport()
+    transport = _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL)
 
     response = _call_tool(
         transport,
-        claude_desktop_tool_alias(TOOL_GET_POLICY_SUMMARY),
+        TOOL_GET_POLICY_SUMMARY,
         {},
     )
 
@@ -869,6 +2286,8 @@ def test_stdio_framing_rejects_oversized_lines_and_invalid_utf8() -> None:
 def test_root_exports_include_mcp_desktop_api() -> None:
     assert kcs_adapters.KcsDesktopMcpAdapter is KcsDesktopMcpAdapter
     assert kcs_adapters.McpStdioTransport is McpStdioTransport
+    assert kcs_adapters.TOOL_DRAFT_ARTICLE == TOOL_DRAFT_ARTICLE
+    assert kcs_adapters.TOOL_AUTHOR_TICKET == TOOL_AUTHOR_TICKET
     assert (
         kcs_adapters.TOOL_RUN_APPROVED_SUMMARY_PIPELINE
         == TOOL_RUN_APPROVED_SUMMARY_PIPELINE

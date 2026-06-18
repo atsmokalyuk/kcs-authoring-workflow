@@ -40,7 +40,7 @@ PRIVATE_VALUE_PATTERNS = (
         r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.[a-z]{2,63}\b",
         re.I,
     ),
-    re.compile(r"(?:/Users/|/home/|/var/www/vhosts/|C:\\Users\\)", re.I),
+    re.compile(r"(?:/Users/|/home/|C:\\Users\\)", re.I),
     re.compile(r"\b(?:PLSK|EXT)[-_.]?\d{4,}(?:[-_.]?\d+)*\b", re.I),
     re.compile(r"\b(?:ticket|zendesk|zd)[-_ #:]?\d{4,}\b", re.I),
     re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
@@ -49,6 +49,9 @@ PRIVATE_VALUE_PATTERNS = (
         re.I,
     ),
     re.compile(r"\bauthorization:\s*bearer\s+\S+", re.I),
+)
+SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
+    r"https://support\.plesk\.com/hc/en-us/articles/[0-9A-Za-z_-]+"
 )
 FORBIDDEN_FIXTURE_FRAGMENTS = (
     ".private",
@@ -585,5 +588,9 @@ def _contains_private_value(value: object) -> bool:
     if isinstance(value, list):
         return any(_contains_private_value(item) for item in value)
     if isinstance(value, str):
-        return any(pattern.search(value) for pattern in PRIVATE_VALUE_PATTERNS)
+        text_without_safe_public_urls = SAFE_PUBLIC_SUPPORT_URL_RE.sub("", value)
+        return any(
+            pattern.search(text_without_safe_public_urls)
+            for pattern in PRIVATE_VALUE_PATTERNS
+        )
     return False

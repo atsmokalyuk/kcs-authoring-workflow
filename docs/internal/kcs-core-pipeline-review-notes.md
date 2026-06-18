@@ -780,3 +780,151 @@ Validation evidence:
 - MCPB Node wrapper initialize smoke:
   passed.
 - `git diff --check`: passed.
+
+## KCS-12 Claude Desktop Article Drafting Smoke Progress
+
+Date: 2026-06
+
+Scope: local Claude Desktop MCPB smoke for the operator-facing article drafting
+workflow from an approved sanitized support-ticket attachment. This note tracks
+what improved during debugging and what remains blocked before treating the
+workflow as reliable.
+
+Observed operator goal:
+
+- Prompt shape: "draft me an article" plus an approved sanitized ticket
+  attachment.
+- Expected tool path: Claude Desktop should call `kcs_draft_article` directly,
+  not ask generic article-kind or language questions and not fall back to
+  manual drafting.
+- Expected output: compact reviewer-only status plus bounded
+  `reviewer_only_html` suitable for reviewer copy/paste. The extension must not
+  publish, write files, call providers, or approve public output.
+
+Progress made:
+
+- Installed MCPB extension is discoverable and exposes the KCS Authoring tool
+  surface in Claude Desktop.
+- The default Desktop tool surface was narrowed to operator-facing tools rather
+  than low-level handoff/draft validators.
+- `kcs_draft_article` became the primary operator tool for article-draft
+  prompts and is documented in MCPB README/manifest/skill references.
+- Desktop-visible schema was tightened so Claude sees a structured `item`
+  object with KCS fields instead of many broad aliases that encouraged
+  argument-shape guessing.
+- Nested schema preservation was fixed for Desktop `tools/list`, so Claude can
+  see item fields such as `title`, `article_type`, `symptoms`,
+  `confirmed_facts`, `supported_cause`,
+  `supported_resolution_or_workaround`, `resolution_steps`,
+  `applicable_to`, and `environment`.
+- `article_type` is constrained to canonical KCS values:
+  `technical_scr` and `howto_qa`. Non-canonical labels such as `break-fix`
+  are treated as aliases only at the input-normalization boundary, not as
+  stored article types.
+- Multiple semantic KCS items are now representable through
+  `item_candidates`. In the tested ticket, Claude correctly identified that the
+  ticket can be split into separate issues instead of forcing one combined
+  article.
+- The tool can return controlled `split_required` status for multiple item
+  candidates rather than producing a merged draft.
+- Resolution-step completeness was tightened so the draft path blocks thin
+  steps when the approved summary does not support enough executable detail.
+
+Errors encountered during manual Claude Desktop smoke:
+
+- Early runs asked generic writing questions such as article type/language
+  instead of using the KCS tool immediately.
+- Early tool calls failed because Claude guessed the wrong argument shape from
+  a broad schema.
+- Some failures surfaced as Desktop tool-call errors instead of compact
+  controlled tool results.
+- Drafts produced outside the tool path missed KCS requirements such as
+  reviewer-only HTML, canonical article type, proper `Applicable to` shape, and
+  concrete first connection step when supported by KCS article rules.
+- After schema improvements, Claude called `kcs_draft_article` more reliably
+  and performed semantic item identification, but it still attempted to continue
+  item-by-item after `split_required` instead of stopping for operator
+  selection.
+- Single-item retries hit `approved_summary_resolution_steps_incomplete`,
+  indicating that either the provided `approved_summary_text` did not contain
+  enough step detail to ground the submitted `resolution_steps`, or the
+  validator/debug output still needs refinement to explain the missing
+  evidence marker.
+- Follow-up analysis showed that part of this was an adapter false positive:
+  the executable-step detector accepted some commands but missed common
+  admin/diagnostic commands such as `cat`, `ls`, `chown`, `chmod`, `stat`,
+  `journalctl`, and `tail`.
+- A `ticket_ref` retry returned `approved_ticket_summary_invalid`, confirming
+  that `ticket_ref` means a local approved sanitized summary reference, not an
+  arbitrary uploaded file name or path.
+
+Latest Claude Desktop log check:
+
+- Current installed MCPB is active in Claude Desktop under the KCS Authoring
+  extension name, and `kcs_draft_article` is present in the live tool list.
+- The latest manual smoke confirmed that Claude can perform semantic item
+  identification from the sanitized attachment. For the tested ticket it
+  identified multiple candidate KCS items instead of forcing one combined
+  article.
+- The corrected terminal split behavior is visible when the tool returns
+  `multiple_kcs_items_detected`: the result includes `split_required`,
+  `automatic_item_retry_allowed=false`, `manual_draft_allowed=false`, and
+  `next_required_action=operator_select_single_item`.
+- The log showed one adapter bug before the successful controlled split
+  response: an earlier `kcs_draft_article` call with multiple item candidates
+  returned `tool_result_invalid`. This is now covered by a regression test:
+  split-required responses return compact candidate cards only, not the full
+  candidate evidence with commands, paths, and resolution steps.
+- A direct stdio smoke against the same command Claude Desktop runs
+  (`uv --project ... run kcs-desktop-mcp --tool-name-style
+  claude_desktop_aliases`) confirmed the fix outside unit tests: a
+  `kcs_draft_article` call with two detailed item candidates returned
+  `failure_stage=item_identification`,
+  `debug_code=multiple_kcs_items_detected`,
+  `recommended_action=split_required`, `isError=false`, and compact candidate
+  cards only, with no `tool_result_invalid`.
+- A second direct stdio smoke with a single selected item and concrete admin
+  commands confirmed the resolution-step false-positive fix: the result
+  returned `pipeline_ok=true`, `failure_stage=none`, `debug_code=none`,
+  `article_type=technical_scr`, `ready_for_reviewer=true`, and
+  `reviewer_only_html` present.
+- No current server crash, traceback, or fresh disconnect was observed for the
+  active KCS Authoring MCP process. Older disconnects belonged to the previous
+  extension name/version and are not evidence for the latest smoke run.
+
+Current reuse/search decision:
+
+- The local MCPB does not include local RAG/reuse search.
+- For the MVP, missing explicit reuse/search proof is not a blocker for
+  reviewer-only drafting. The tool marks `reuse_search_status=skipped`, adds a
+  `reuse_search_skipped` quality warning, and continues to produce bounded
+  reviewer-only HTML when the approved summary and single item are otherwise
+  valid.
+- This is an MVP workflow decision, not evidence that an actual reuse search
+  found no matches. A future local RAG/reuse adapter can replace the skipped
+  status with structured reuse/search results.
+
+Next engineering actions:
+
+- Make `split_required` terminal for the current turn: Claude should show item
+  candidates and ask the operator to choose or provide separated summaries,
+  not automatically draft each candidate.
+- Keep the regression test for the logged `tool_result_invalid` path: multiple
+  item candidates must always return the controlled `split_required` tool
+  result and must not surface as a Desktop tool-call failure.
+- Keep the regression test that common executable admin commands are valid
+  resolution-step detail while vague "disable/restart" steps remain blocked.
+- Improve value-safe debug output for any remaining
+  `approved_summary_resolution_steps_incomplete` cases so it identifies the
+  missing class of evidence without echoing raw ticket content.
+- Keep the current MVP behavior explicit in code, docs, and MCPB metadata:
+  missing reuse/search proof is skipped with a warning, not silently treated as
+  a completed search.
+- Add focused tests for:
+  - "draft me an article" visible schema shape;
+  - multiple item candidates -> `split_required`;
+  - no reuse proof -> `reuse_search_status=skipped`, quality warning, and
+    reviewer-only HTML when other gates pass;
+  - thin resolution steps -> controlled incomplete-resolution status;
+  - successful reviewer-only HTML when all required supported evidence and
+    allowed readiness conditions are present.

@@ -106,7 +106,7 @@ _SAFE_FILENAME_RE = re.compile(
     r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid)\b"
 )
 _PRIVATE_PATH_RE = re.compile(
-    r"(?:/Users/|/home/|/var/www/vhosts/|C:\\Users\\)", re.I
+    r"(?:/Users/|/home/|C:\\Users\\)", re.I
 )
 _LICENSE_RE = re.compile(r"\b(?:PLSK|EXT)\.\d{8}\.\d{4}\b", re.I)
 _RAW_TICKET_ID_RE = re.compile(r"\b(?:ticket|zendesk|zd)[-_ #:]?\d{4,}\b", re.I)

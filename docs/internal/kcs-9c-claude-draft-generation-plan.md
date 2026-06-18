@@ -301,6 +301,12 @@ Python validators enforce hard structural and safety rules:
 - GUI-first steps when a GUI path is explicitly available;
 - CLI/advanced steps are separated after GUI path when applicable;
 - Resolution/Answer steps are atomic ordered steps;
+- Resolution/Answer steps must be executable from the article when the ticket
+  history contains the operational details: each step should say not only what
+  to do, but how to do it with the relevant UI path, command, file path,
+  linked prerequisite article, or verification action. A draft is incomplete if
+  a reviewer or customer must perform an additional search to discover the
+  command, path, or product navigation needed to apply the resolution.
 - commands, paths, log files, and errors use approved formatting conventions.
 
 The style judge loop is optional reviewer-assist feedback, not authority:

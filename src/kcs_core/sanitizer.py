@@ -18,7 +18,7 @@ _PRIVATE_VALUE_PATTERNS = (
         r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.[a-z]{2,63}\b",
         re.I,
     ),
-    re.compile(r"(?:/Users/|/home/|/var/www/vhosts/|C:\\Users\\)", re.I),
+    re.compile(r"(?:/Users/|/home/|C:\\Users\\)", re.I),
     re.compile(r"\b(?:PLSK|EXT)[-_.]?\d{4,}(?:[-_.]?\d+)*\b", re.I),
     re.compile(r"\b(?:ticket|zendesk|zd)[-_ #:]?\d{4,}\b", re.I),
     re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
@@ -31,6 +31,9 @@ _PRIVATE_VALUE_PATTERNS = (
 _SAFE_FILENAME_RE = re.compile(
     r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
     r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid)\b"
+)
+_SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
+    r"https://support\.plesk\.com/hc/en-us/articles/[0-9A-Za-z_-]+"
 )
 _RAW_ID_VALUE_RE = re.compile(r"\d{6,}")
 _SAFE_REF_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,79}")
@@ -287,7 +290,10 @@ def _contains_private_raw_text(value: str) -> bool:
     normalized = value.casefold()
     if any(fragment in normalized for fragment in _UNSAFE_RAW_VALUE_FRAGMENTS):
         return True
-    text_without_safe_filenames = _SAFE_FILENAME_RE.sub("", value)
+    text_without_safe_public_urls = _SAFE_PUBLIC_SUPPORT_URL_RE.sub("", value)
+    text_without_safe_filenames = _SAFE_FILENAME_RE.sub(
+        "", text_without_safe_public_urls
+    )
     return any(
         pattern.search(text_without_safe_filenames)
         for pattern in _PRIVATE_VALUE_PATTERNS

@@ -255,6 +255,144 @@ def test_resolution_steps_are_ordered_inside_resolution_container() -> None:
     assert "<li>Enable the required mail setting.</li>" in html
 
 
+def test_linux_plesk_resolution_starts_with_ssh_entry_point() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk monitoring graphs show no data",
+                "summary": "Monitoring graphs show no data.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Disable the custom collectd configuration.",
+                    "Restart sw-collectd.",
+                ],
+            }
+        ],
+        supported_cause="A custom collectd configuration overrides the data path.",
+        supported_resolution_or_workaround=(
+            "Disable the custom collectd configuration and restart sw-collectd."
+        ),
+        symptoms=["Monitoring graphs show no data."],
+    )
+
+    packet = render_reviewer_packet(evidence, _decision())
+
+    assert packet.public_article_candidate is not None
+    assert packet.public_article_candidate["resolution_steps"] == [
+        "Connect to the Plesk server via SSH.",
+        "Disable the custom collectd configuration.",
+        "Restart sw-collectd.",
+    ]
+    assert packet.zendesk_source_html is not None
+    assert (
+        '<li><a href="https://support.plesk.com/hc/en-us/articles/'
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in packet.zendesk_source_html
+    )
+    assert "<li>Plesk for Linux</li>" in packet.zendesk_source_html
+
+
+def test_rpm_based_plesk_resolution_uses_linux_applicable_to_and_ssh() -> None:
+    evidence = _evidence(
+        environment={
+            "product": "Plesk with Advanced Monitoring extension",
+            "platform": "RPM-based",
+            "component": "Grafana / sw-collectd",
+        },
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk monitoring graphs show no data",
+                "summary": "Monitoring graphs show no data.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Disable the custom collectd configuration.",
+                    "Restart sw-collectd.",
+                ],
+            }
+        ],
+        supported_cause="A custom collectd configuration overrides the data path.",
+        supported_resolution_or_workaround=(
+            "Disable the custom collectd configuration and restart sw-collectd."
+        ),
+        symptoms=["Monitoring graphs show no data."],
+    )
+
+    packet = render_reviewer_packet(evidence, _decision())
+
+    assert packet.public_article_candidate is not None
+    assert packet.public_article_candidate["applicable_to"] == ["Plesk for Linux"]
+    assert packet.public_article_candidate["resolution_steps"][0] == (
+        "Connect to the Plesk server via SSH."
+    )
+    assert packet.zendesk_source_html is not None
+    assert "<li>Plesk for Linux</li>" in packet.zendesk_source_html
+    assert (
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in packet.zendesk_source_html
+    )
+
+
+def test_windows_resolution_starts_with_rdp_entry_point_link() -> None:
+    evidence = _evidence(
+        environment={
+            "product": "Plesk",
+            "platform": "Windows",
+            "component": "Mail",
+        },
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk mail task fails on Windows",
+                "summary": "Mail delivery returns a safe queue error.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Open cmd as Administrator.",
+                    "Run plesk repair mail.",
+                ],
+            }
+        ],
+        supported_cause="A required mail setting is disabled.",
+        supported_resolution_or_workaround="Repair the Plesk mail configuration.",
+        symptoms=["Mail delivery returns a safe queue error."],
+    )
+
+    packet = render_reviewer_packet(evidence, _decision())
+
+    assert packet.public_article_candidate is not None
+    assert packet.public_article_candidate["resolution_steps"] == [
+        "Connect to the Plesk server via RDP.",
+        "Open cmd as Administrator.",
+        "Run plesk repair mail.",
+    ]
+    assert packet.zendesk_source_html is not None
+    assert (
+        '<li><a href="https://support.plesk.com/hc/en-us/articles/'
+        "12377247797271-How-to-connect-to-a-Plesk-server-via-RDP-with-available-"
+        'credentials">Connect to the Plesk server via RDP.</a></li>'
+        in packet.zendesk_source_html
+    )
+    assert "<li>Plesk for Windows</li>" in packet.zendesk_source_html
+
+
 def test_howto_qa_renders_question_and_answer_sections() -> None:
     evidence = _evidence(
         supported_cause=None,

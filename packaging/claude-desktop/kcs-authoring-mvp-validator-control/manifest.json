@@ -13,7 +13,7 @@
       "node": ">=16.0.0"
     }
   },
-  "description": "Local read-only Claude Desktop validator/control adapter for KCS Authoring MVP.",
+  "description": "Local read-only Claude Desktop KCS article drafting adapter for KCS Authoring MVP.",
   "display_name": "KCS Authoring",
   "keywords": [
     "kcs",
@@ -22,7 +22,7 @@
     "validator",
     "claude-desktop"
   ],
-  "long_description": "Starts the repository-local KCS Authoring MVP stdio MCP server through uv. This extension exposes compact read-only validator/control tools for approved KCS packets, approved sanitized summary pipeline checks, and synthetic contract smoke only. It is not approved for raw Zendesk payloads, raw comments, internal notes, attachments, customer replies, Zendesk writes, Help Center publication, provider calls, or file-writing tools.",
+  "long_description": "Starts the repository-local KCS Authoring MVP stdio MCP server through uv. In Claude Desktop this extension exposes one primary read-only tool for reviewer-only KCS article drafting from approved sanitized summaries or local approved ticket refs. For prompts like \"draft an article\" with an approved sanitized support-ticket attachment, the default workflow is reviewer-only KCS knowledge base article drafting through kcs_draft_article, without asking the operator to choose a generic article type. Internal diagnostic tools remain available only in internal/canonical server mode. It is not approved for raw Zendesk payloads, raw comments, internal notes, attachments, customer replies, Zendesk writes, Help Center publication, provider calls, or file-writing tools.",
   "manifest_version": "0.3",
   "name": "kcs-authoring-mvp-validator-control",
   "prompts_generated": false,
@@ -42,20 +42,8 @@
   },
   "tools": [
     {
-      "description": "Return compact KCS Authoring MVP policy and boundary metadata.",
-      "name": "kcs_get_policy_summary"
-    },
-    {
-      "description": "Return compact Claude Desktop MCP readiness metadata.",
-      "name": "kcs_get_mcp_readiness"
-    },
-    {
-      "description": "Run in-memory synthetic KCS MCP contract smoke and return compact result.",
-      "name": "kcs_run_contract_smoke"
-    },
-    {
-      "description": "Run the KCS pipeline for one approved sanitized summary and return compact readiness/debug status.",
-      "name": "kcs_run_approved_summary_pipeline"
+      "description": "Primary operator tool for approved sanitized support-ticket prompts such as 'draft an article', 'draft me an article', 'write a KB article', or equivalent non-English requests such as 'напиши статью' or 'me escreva um artigo'. Do not ask what kind of article or what language to use; default to an English reviewer-only KCS knowledge base article. Do not invent reuse/search proof; if proof is absent, the MVP marks reuse search as skipped and continues with reviewer-only drafting. If article_type is provided, use only technical_scr or howto_qa. Returns reviewer_only_html for copy/paste when validation passes. Use with either ticket_ref for a local approved summary, or approved_summary_text plus one structured item from chat. If multiple semantic KCS items are present, pass item_candidates and treat split_required as terminal: show candidates and ask the operator to choose one item or provide separate summaries.",
+      "name": "kcs_draft_article"
     }
   ],
   "tools_generated": false,
