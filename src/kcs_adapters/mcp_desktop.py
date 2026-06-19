@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from collections.abc import Iterable, Mapping
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import IO, Any
 
@@ -14,9 +13,10 @@ from kcs_adapters import desktop_authoring_pipeline as _desktop_authoring_pipeli
 from kcs_adapters import desktop_contract_smoke as _desktop_contract_smoke
 from kcs_adapters import desktop_draft_arguments as _desktop_draft_arguments
 from kcs_adapters import desktop_jsonrpc as _desktop_jsonrpc
+from kcs_adapters import desktop_mcp_results as _desktop_mcp_results
 from kcs_adapters import desktop_payload as _desktop_payload
+from kcs_adapters import desktop_protocol as _desktop_protocol
 from kcs_adapters import desktop_ticket_ref as _desktop_ticket_ref
-from kcs_adapters import desktop_tool_results as _desktop_tool_results
 from kcs_adapters import desktop_tool_schemas as _desktop_tool_schemas
 from kcs_adapters import desktop_workflow as _desktop_workflow
 from kcs_adapters.desktop_reviewer_bundle import (
@@ -70,45 +70,12 @@ from kcs_core.json_payload import JsonDict
 from kcs_core.models import ArticleType
 from kcs_core.semantic_extraction import SemanticExtractionProvider
 
-MCP_PROTOCOL_VERSION = "2025-11-25"
-MCP_SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", MCP_PROTOCOL_VERSION)
-MCP_DESKTOP_SERVER_NAME = "kcs-authoring-desktop-mcp"
-MCP_DESKTOP_SERVER_VERSION = "0.1.0"
+MCP_PROTOCOL_VERSION = _desktop_protocol.MCP_PROTOCOL_VERSION
+MCP_SUPPORTED_PROTOCOL_VERSIONS = _desktop_protocol.MCP_SUPPORTED_PROTOCOL_VERSIONS
+MCP_DESKTOP_SERVER_NAME = _desktop_protocol.MCP_DESKTOP_SERVER_NAME
+MCP_DESKTOP_SERVER_VERSION = _desktop_protocol.MCP_DESKTOP_SERVER_VERSION
 MCP_TOOL_RESULT_SCHEMA_VERSION = "kcs_mcp_tool_result_v1"
 
-_RESOLUTION_EXECUTABLE_DETAIL_RE = re.compile(
-    r"(?:"
-    r"https?://|"
-    r"/[A-Za-z0-9._~:/%+\-]+|"
-    r"\b(?:"
-    r"awk|cat|chmod|chown|cp|curl|find|grep|head|journalctl|"
-    r"ls|mkdir|mv|plesk|rm|rpm|sed|service|stat|systemctl|tail|test"
-    r")\b(?:\s+[A-Za-z0-9_./:+%=-]+)+|"
-    r"\b(?:click|open|select|browse|navigate)\b.*\b(?:menu|page|screen|tab|ui)\b|"
-    r"\b(?:connect|log in|login)\b.*\b(?:plesk|rdp|server|ssh)\b|"
-    r"\b(?:check|confirm|verify)\b.*\b(?:"
-    r"data|directory|graphs?|log|metrics?|ownership|path|permissions?|"
-    r"service|status"
-    r")\b"
-    r")",
-    re.I,
-)
-_RESOLUTION_INFORMATIONAL_DETAIL_RE = re.compile(
-    r"\b(?:advise|inform|note|warn)\b|"
-    r"\b(?:historical|older|previous)\s+data\b|"
-    r"\b(?:will|may)\s+not\s+(?:appear|backfill|be\s+visible)\b|"
-    r"\b(?:repopulate|populate)\s+gradually\b",
-    re.I,
-)
-_RESOLUTION_DESTRUCTIVE_STEP_RE = re.compile(
-    r"\brm\s+(?:-[A-Za-z]*r[A-Za-z]*f[A-Za-z]*|"
-    r"-[A-Za-z]*f[A-Za-z]*r[A-Za-z]*|-[A-Za-z]*r[A-Za-z]*\s+-[A-Za-z]*f[A-Za-z]*)\s+/",
-    re.I,
-)
-_SUPPORTED_CAUSE_UNCERTAIN_RE = re.compile(
-    r"\b(?:appears?|likely|maybe|possibly|probably|seems?|suspected|unclear|unknown)\b",
-    re.I,
-)
 _REQUEST_ARG = frozenset({"request"})
 _REQUEST_RESPONSE_ARGS = frozenset({"request", "response"})
 _APPROVED_SUMMARY_FALSE_ONLY_ARGS = _desktop_payload.APPROVED_SUMMARY_FALSE_ONLY_ARGS
@@ -116,16 +83,6 @@ _NO_ARGS = frozenset()
 _DRAFT_SELECTION_TTL_SECONDS = 15 * 60
 _REVIEWER_BUNDLE_ROOT = DEFAULT_REVIEWER_BUNDLE_ROOT
 _DEFAULT_SEMANTIC_EXTRACTION_PROVIDER = object()
-
-
-@dataclass(frozen=True)
-class McpToolResult:
-    """Safe adapter tool result."""
-
-    ok: bool
-    result: JsonDict | None = None
-    error: str | None = None
-    error_code: str | None = None
 
 
 class McpArgumentError(ValueError):
@@ -136,6 +93,7 @@ ApprovedSummaryInputError = _desktop_payload.ApprovedSummaryInputError
 
 
 DraftArticleSemanticExtractionProvider = SemanticExtractionProvider
+McpToolResult = _desktop_mcp_results.McpToolResult
 
 
 class KcsDesktopMcpAdapter:
@@ -820,46 +778,9 @@ class McpStdioTransport:
     def _initialize(self, params: object) -> JsonDict:
         params_obj = _desktop_jsonrpc.require_initialize_params(params)
         protocol_version = params_obj.get("protocolVersion")
-        if protocol_version not in MCP_SUPPORTED_PROTOCOL_VERSIONS:
-            raise ValueError("Unsupported protocol version.")
+        result = _desktop_protocol.initialize_result(protocol_version)
         self._initialize_responded = True
-        return {
-            "capabilities": {
-                "tools": {"listChanged": False},
-                "resources": {"subscribe": False, "listChanged": False},
-                "prompts": {"listChanged": False},
-            },
-            "instructions": (
-                "KCS Authoring MCP server. For sanitized support-ticket article "
-                "requests, call kcs_draft_article. Prefer ticket_ref when a "
-                "trusted source has saved the cleaned ticket transcript under "
-                "the configured approved-summaries store. If no ref "
-                "exists for an operator-provided sanitized attachment or paste, "
-                "first call kcs_register_clean_ticket with the complete visible "
-                "sanitized transcript, then call kcs_draft_article with the "
-                "returned next_arguments. For short pasted sanitized text, "
-                "kcs_draft_article may use approved_summary_text directly. Do "
-                "not summarize or redact labeled sections before either tool "
-                "call. A Claude Desktop file card is not a filesystem path: "
-                "do not inspect upload directories, do not pass upload "
-                "filenames or paths, and do not ask the operator to re-upload "
-                "while visible text is available. If no visible file text is "
-                "available, report file_content_unavailable and do not draft "
-                "manually. Do not pass item, item_candidates, or aliases. "
-                "Python validates the input and owns semantic extraction, "
-                "decision, rendering, and local bundle output. The default "
-                "Desktop workflow does not require Claude CLI/Code or an API "
-                "key. Successful draft results return compact status plus "
-                "local reviewer bundle refs; reviewer-only Zendesk HTML is "
-                "written to the local bundle and returned inline only for "
-                "explicit debug/smoke compatibility."
-            ),
-            "protocolVersion": protocol_version,
-            "serverInfo": {
-                "name": MCP_DESKTOP_SERVER_NAME,
-                "version": MCP_DESKTOP_SERVER_VERSION,
-            },
-        }
+        return result
 
     def _call_tool(self, params: object) -> JsonDict:
         params_obj = _desktop_jsonrpc.require_object_params(params)
@@ -954,43 +875,8 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def _mcp_tool_response(
-    *,
-    descriptor: McpToolDescriptor,
-    result: McpToolResult,
-) -> JsonDict:
-    structured = (
-        result.result
-        if result.ok and result.result is not None
-        else {
-            "error": result.error or "KCS MCP tool failed.",
-            "error_code": result.error_code or "tool_error",
-            "ok": False,
-        }
-    )
-    _desktop_tool_results.validate_tool_structured_content(
-        structured,
-        descriptor.output_schema,
-    )
-    content = _desktop_tool_results.tool_result_content(structured)
-    structured_content = _desktop_tool_results.desktop_structured_content(
-        draft_tool_name=TOOL_DRAFT_ARTICLE,
-        descriptor_name=descriptor.name,
-        structured=structured,
-    )
-    return {
-        "content": content,
-        "isError": not result.ok,
-        "structuredContent": structured_content,
-    }
-
-
-def _tool_error(error_code: str) -> McpToolResult:
-    return McpToolResult(
-        ok=False,
-        error="KCS MCP tool validation failed.",
-        error_code=error_code,
-    )
+_mcp_tool_response = _desktop_mcp_results.mcp_tool_response
+_tool_error = _desktop_mcp_results.tool_error
 
 
 def _approved_ticket_author_arguments(arguments: Mapping[str, Any]) -> JsonDict:
