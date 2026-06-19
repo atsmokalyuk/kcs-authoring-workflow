@@ -29,11 +29,34 @@ Target behavior:
 
 ## Review Status
 
-Status: ready for external ChatGPT Pro review.
+Status: approved to move past `KCS-12d`.
 
-`KCS-12d` implementation evidence is prepared, but `KCS-12d` is not complete
-until external review is done and findings are fixed or recorded as explicit
-deferrals.
+External ChatGPT Pro review on 2026-06-19 found no P0/P1 blockers for Desktop
+smoke/install alignment. `KCS-12d` is complete.
+
+## External Review Verdict
+
+Verdict: approved to move past `KCS-12d`.
+
+No blocking fixes are required. The review confirmed that installed/source
+wrapper smoke is aligned, fixture provider use is explicit in stdio smoke,
+registry/cache checks exist for the installed wrapper, source-wrapper smoke
+skips registry checks, manifest wording does not promise native popup support
+as guaranteed behavior, and the Desktop-visible contract remains thin.
+
+Deferred findings from the review:
+
+- strengthen GUI log checker coverage for the full annotation set:
+  `destructiveHint=false` and `openWorldHint=false`;
+- later parse the latest `tools/list` JSON and assert the exact schema property
+  set:
+  `approved_summary_text`, `debug`, `operator_selection_ref`, and
+  `operator_selected_item_ref`;
+- optionally split registry validation reporting into manifest checked and hash
+  checked fields, or fail installed-wrapper smoke when package hash validation
+  is expected but the built MCPB package is absent;
+- optionally expand manual fallback detection in GUI smoke or add a stronger
+  positive assertion that the final observed result came from a tool result.
 
 ## Review Focus
 
@@ -194,6 +217,12 @@ Superseded by Node syntax check above.
 
 - Strengthen `scripts/check_claude_kcs_desktop_log.py` later to parse the latest
   `tools/list` JSON and assert the exact Desktop schema property set.
+- Strengthen GUI-log annotation checks to include `destructiveHint=false` and
+  `openWorldHint=false`.
+- Optionally split installed-wrapper registry validation reporting into
+  manifest and hash checks.
+- Optionally expand manual fallback detection in GUI smoke or assert that the
+  final observed result came from a tool result.
 - GUI submit remains manual when macOS automation is unavailable, rate-limited,
   or not needed for the current checkpoint.
 - Continue shrinking `kcs_adapters.mcp_desktop`; this checkpoint only reviews

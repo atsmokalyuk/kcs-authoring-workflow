@@ -213,7 +213,7 @@ Current review checkpoint artifact:
     regex semantic engine, no manual fallback, and validation of untrusted
     provider output.
 - `KCS-12d: Desktop smoke/install alignment`
-  - status: ready for external ChatGPT Pro review;
+  - status: complete after ChatGPT Pro review;
   - lighter review after install/cache/log checks pass;
   - findings must be fixed or explicitly recorded as deferred in the checkpoint
     artifact before `KCS-12d` is considered complete;
@@ -300,10 +300,10 @@ Current branch status:
   - installed-wrapper smoke checks registry/cache behavior;
   - Claude Desktop log check verifies the thin visible schema and tool
     annotations;
-  - external review checkpoint is ready in
-    `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12d-2026-06-19.md`;
-  - do not mark `KCS-12d` complete until external review findings are fixed or
-    recorded as explicit deferrals.
+  - ChatGPT Pro review on 2026-06-19 approved moving past `KCS-12d` with no
+    P0/P1 blockers;
+  - deferred hardening is recorded in
+    `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12d-2026-06-19.md`.
 
 ## Output Boundary
 
