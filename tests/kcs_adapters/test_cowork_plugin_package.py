@@ -79,8 +79,8 @@ def test_cowork_plugin_skill_names_expected_tools_and_boundaries() -> None:
     assert "kcs_validate_handoff_request" not in text
     assert "kcs_validate_draft_request" not in text
     for boundary in (
-        "raw Zendesk payloads",
-        "customer replies",
+        "Only operator-provided sanitized or approved ticket text",
+        "unapproved evidence",
         "credentials",
         "auto_publish_allowed=false",
         "public_output_approved=false",

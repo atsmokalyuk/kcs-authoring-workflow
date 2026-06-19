@@ -15,51 +15,74 @@ Use the local KCS Authoring MCP tool for reviewer-only KCS article drafting.
 ## Required First Step
 
 Before explaining that tools are unavailable, check the active tool list for
-this MCP tool:
+these MCP tools:
 
+- `kcs_register_clean_ticket`
 - `kcs_draft_article`
+- `support_get_behavior_instructions`
+
+`support_get_behavior_instructions` is a compatibility helper for legacy
+Plesk Support prompts. It only routes article-drafting work to
+`kcs_draft_article`; it is not an authoring tool.
 
 If the user asks to draft an article, draft me an article, write an article,
 create a KB article, or equivalent non-English requests such as `напиши статью`
 or `me escreva um artigo` from an approved sanitized support ticket summary,
-call `kcs_draft_article` immediately with only `approved_summary_text`.
-Despite the legacy field name, `approved_summary_text` must contain the
-complete visible sanitized ticket/context, not Claude's condensed summary.
-Do not summarize, rewrite, or omit visible symptoms, cause, resolution, config
-paths, commands, services, platform facts, or other sanitized evidence before
-the first tool call. Do not ask what kind of article the user wants; the
-default is a reviewer-only KCS knowledge base article. Do not ask what
-language to use; default to English unless the
+call `kcs_draft_article` immediately. Prefer `ticket_ref` when a trusted source
+has saved the cleaned ticket transcript under
+`local-data/approved-summaries/<ticket_ref>/clean.ticket.txt`. If no ref is
+available for an operator-provided sanitized attachment or paste, automatically
+first call `kcs_register_clean_ticket` with the complete visible sanitized
+transcript in `clean_ticket_text`, then call `kcs_draft_article` with the
+returned `next_arguments` exactly. Do not wait for the operator to ask for
+registration explicitly. For short chat-provided sanitized text, use
+`approved_summary_text` only when no clean-ticket registration is needed.
+Despite the legacy field name, `approved_summary_text` must contain the visible
+text from the operator-provided sanitized ticket/context, not Claude's
+condensed summary. Do not summarize, rewrite, redact labeled sections, or omit
+visible symptoms, cause, resolution, config paths, commands, services, platform
+facts, or other sanitized evidence before the first tool call. Do not ask what
+kind of article the user wants; the default is a reviewer-only KCS knowledge
+base article. Do not ask what language to use; default to English unless the
 operator explicitly requests another language. Do not ask the operator to
 choose between reuse search and manual drafting before the first tool call;
-call the tool and show its controlled status. Do not invent reuse/search
-proof. If no explicit reuse/search proof is available, the tool marks reuse
-search as skipped for the MVP and continues with reviewer-only drafting. Do
-not pass uploaded filenames, local paths, Claude upload paths, structured
-`item`, `item_candidates`, reference article bodies, or field aliases. Do not
-write a manual draft if this tool fails.
+call the tool and show its controlled status. Do not invent reuse/search proof.
+If no explicit reuse/search proof is available, the tool marks reuse search as
+skipped for the MVP and continues with reviewer-only drafting. Do not pass
+uploaded filenames, local paths, Claude upload paths, structured `item`,
+`item_candidates`, reference article bodies, or field aliases. If the operator
+says the content is not sanitized or approved, stop and ask for sanitized input
+instead of calling the tool. A Claude Desktop file card is not a filesystem
+path: do not inspect upload directories, and do not ask the operator to
+re-upload while visible file text is available. If no visible file text is
+available, report `file_content_unavailable` and do not write a manual draft.
+Do not write a manual draft if this tool fails.
 
 The Desktop-visible primary input is intentionally thin:
 
-- First call: `approved_summary_text`, optionally `debug` for explicit smoke
-  compatibility.
+- Optional registration call: `clean_ticket_text`, optionally `ticket_ref` and
+  `debug`.
+- Draft first call: `ticket_ref` or `approved_summary_text`, optionally `debug`
+  for explicit smoke compatibility.
 - Selected-item continuation: `operator_selection_ref` and
   `operator_selected_item_ref`, optionally `debug`.
 
-Do not provide `article_type`. Python owns semantic extraction and may use only
+Do not provide `article_type`. Python owns local semantic extraction and may use only
 canonical values `technical_scr` or `howto_qa`.
 
 Production semantic extraction is provider-owned inside Python. If the approved
 provider is not configured and the tool returns
-`semantic_extraction_provider_unavailable`, report that controlled status and
+`semantic_extraction_no_candidates`, report that controlled status and
 do not draft manually or ask Claude to infer `item`/`item_candidates`.
 
-Default successful authoring results return compact safe status and local
-reviewer bundle references. Show the returned `html_path`, `manifest_path`,
-`debug_code`, readiness flags, and reuse-search status. Do not expect full
-HTML in default output. If an explicit debug or smoke result includes
-`reviewer_only_html`, show it in one fenced `html` block without converting it
-to Markdown or rewriting it.
+Default successful authoring results return reviewer-only Zendesk HTML, compact
+safe status, and local reviewer bundle references. Show the generated HTML in
+one fenced `html` block together with the returned `html_path`, `manifest_path`,
+`debug_code`, readiness flags, and reuse-search status.
+
+Successful `kcs_draft_article` results include tool-generated reviewer-only
+Zendesk HTML. Use that HTML as the article draft; do not create a separate
+freehand draft.
 
 If the approved summary contains more than one semantic KCS item, the tool
 returns `split_required`, `operator_selection_ref`, candidate cards, and an
@@ -83,9 +106,9 @@ current session.
 
 ## Boundaries
 
-Do not send raw Zendesk payloads, raw comments, internal notes, attachments,
-customer replies, credentials, local private paths, or full evidence basis to
-the KCS tools.
+Only operator-provided sanitized or approved ticket text may be sent to the KCS
+tools. Do not use the tool on unsanitized Zendesk exports, credentials, local
+private paths, or unapproved evidence.
 
 Do not claim publication readiness from these tools. The MVP keeps:
 

@@ -1,8 +1,9 @@
 """Desktop-owned KCS draft workflow support.
 
 This module intentionally keeps semantic extraction behind the core
-``SemanticExtractionProvider`` contract. It does not implement a production
-local semantic engine.
+``SemanticExtractionProvider`` contract. The production Desktop default is a
+bounded local approved-summary provider that extracts only explicit facts from
+sanitized operator-approved text.
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ from kcs_core.semantic_extraction import (
 from kcs_core.validation import EvidenceValidationResult
 
 SEMANTIC_PROVIDER_ENV = "KCS_AUTHORING_SEMANTIC_PROVIDER"
+SEMANTIC_PROVIDER_APPROVED_SUMMARY = "approved_summary"
 SEMANTIC_PROVIDER_FIXTURE = "fixture"
 SEMANTIC_PROVIDER_APPROVED = "approved"
 
@@ -188,6 +190,27 @@ class ApprovedSemanticExtractionProvider:
         return self._client.propose_candidates(provider_context)
 
 
+class ApprovedSummarySemanticExtractionProvider:
+    """Local production provider for explicit approved sanitized summaries."""
+
+    def propose_candidates(
+        self, context: Mapping[str, Any]
+    ) -> CandidateSemanticExtraction | Mapping[str, Any]:
+        ensure_safe_sanitized_payload(context)
+        text = str(context.get("approved_summary_text", "")).strip()
+        if not text:
+            raise NoSemanticCandidatesError
+        from kcs_adapters.approved_summary_semantic import (
+            semantic_extraction_from_approved_summary_text,
+        )
+
+        extraction = semantic_extraction_from_approved_summary_text(text)
+        if extraction is None:
+            raise NoSemanticCandidatesError
+        ensure_safe_sanitized_payload(extraction)
+        return extraction
+
+
 class FixtureSemanticExtractionProvider:
     """Fixture-only provider for deterministic smoke and unit tests."""
 
@@ -258,12 +281,12 @@ class DesktopDraftWorkflow:
         provider = self._provider
         if provider is None:
             raise SemanticExtractionProviderUnavailableError
-        extraction = provider.propose_candidates(
-            {
-                "approved_summary_text": approved_summary_text,
-                "request_kind": "desktop_draft_article",
-            }
-        )
+        provider_context = {
+            "approved_summary_text": approved_summary_text,
+            "request_kind": "desktop_draft_article",
+        }
+        ensure_safe_sanitized_payload(provider_context)
+        extraction = provider.propose_candidates(provider_context)
         return desktop_item_candidates_from_semantic_extraction(extraction)
 
     def start_pending_selection(
@@ -312,14 +335,14 @@ def semantic_provider_from_environment() -> SemanticExtractionProvider:
     """Return the Desktop semantic provider selected by explicit environment."""
 
     provider_name = os.environ.get(SEMANTIC_PROVIDER_ENV, "").strip().casefold()
+    if provider_name in {
+        "",
+        SEMANTIC_PROVIDER_APPROVED_SUMMARY,
+        SEMANTIC_PROVIDER_APPROVED,
+    }:
+        return ApprovedSummarySemanticExtractionProvider()
     if provider_name == SEMANTIC_PROVIDER_FIXTURE:
         return FixtureSemanticExtractionProvider()
-    if provider_name == SEMANTIC_PROVIDER_APPROVED:
-        provider_ref = os.environ.get(
-            "KCS_AUTHORING_APPROVED_SEMANTIC_PROVIDER_REF",
-            "approved-semantic-provider",
-        )
-        return ApprovedSemanticExtractionProvider(provider_ref=provider_ref)
     return UnavailableSemanticExtractionProvider()
 
 
@@ -556,7 +579,12 @@ def approved_summary_html_quality_gaps(
 ) -> list[JsonDict]:
     """Return quality gaps from reviewer-only Zendesk HTML."""
 
-    return review_reviewer_only_html(approved_summary_reviewer_only_html(execution))
+    return review_reviewer_only_html(
+        approved_summary_reviewer_only_html(execution),
+        require_resolution_container=(
+            execution.decision.article_type == ArticleType.TECHNICAL_SCR.value
+        ),
+    )
 
 
 def approved_summary_reference_text(arguments: Mapping[str, Any]) -> str | None:
@@ -1085,6 +1113,10 @@ def compact_draft_result(
             "writes_files": True,
         }
     )
+    for storage_key in ("bundle_storage_hint", "bundle_storage_ref"):
+        storage_value = bundle.get(storage_key)
+        if isinstance(storage_value, str) and storage_value:
+            compact[storage_key] = storage_value
     if result.get("reuse_search_status") == "skipped":
         compact.update(
             {
@@ -1114,7 +1146,12 @@ def finalize_author_result_with_bundle(
     """Finalize an author result into compact Desktop draft output."""
 
     if not result.get("ready_for_reviewer"):
-        return dict(result)
+        compact = dict(result)
+        compact.pop("reviewer_only_html", None)
+        compact.pop("zendesk_source_html", None)
+        compact["reviewer_bundle_written"] = False
+        compact["writes_files"] = False
+        return compact
     html = result.get("reviewer_only_html")
     if not isinstance(html, str) or not html:
         return draft_author_failure_result(
@@ -1329,7 +1366,10 @@ def _fixture_extraction(items: list[JsonDict]) -> JsonDict:
 def _fixture_linux_monitoring_item(*, candidate_id: str) -> JsonDict:
     return _fixture_technical_item(
         candidate_id=candidate_id,
-        summary="Monitoring graphs show no data in Plesk",
+        summary=(
+            "Monitoring graphs show no data in Plesk due to custom collectd "
+            "RRD data directory"
+        ),
         symptoms=["Monitoring graphs show no data."],
         confirmed_facts=[
             (
@@ -1348,16 +1388,39 @@ def _fixture_linux_monitoring_item(*, candidate_id: str) -> JsonDict:
             "backend does not query."
         ),
         supported_resolution_or_workaround=(
-            "Back up and remove /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf, "
-            "restart sw-collectd, and confirm that Monitoring graphs start "
-            "displaying new data."
+            "Verify, back up, and disable "
+            "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf, restart "
+            "sw-collectd, and confirm that Monitoring graphs start displaying "
+            "new data."
         ),
         resolution_steps=[
-            "Back up and remove /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.",
+            (
+                "Run rpm -qf /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                "to verify that the file is not owned by any package."
+            ),
+            (
+                "Run cat /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                "to review the DataDir setting."
+            ),
+            "Run mkdir -p /root/monitoring-case-backup to create a backup directory.",
+            (
+                "Run cp -a /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                "/root/monitoring-case-backup/ to back up the custom collectd "
+                "configuration file."
+            ),
+            (
+                "Run mv /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.disabled "
+                "to disable the custom collectd configuration file."
+            ),
             "Run systemctl restart sw-collectd.",
             (
                 "Open the Monitoring page in Plesk and confirm graphs start "
                 "displaying data."
+            ),
+            (
+                "Wait for graphs to repopulate with newly collected metrics; "
+                "historical data from before the correction may not be visible."
             ),
         ],
         environment={
@@ -1378,7 +1441,10 @@ def _fixture_linux_extension_item(*, candidate_id: str) -> JsonDict:
             "Check module directory ownership and reinstall the Monitoring extension."
         ),
         resolution_steps=[
-            "Run ls -ld /usr/local/psa/var/modules/monitoring/.",
+            (
+                "Verify that /usr/local/psa/var/modules/monitoring/ is owned "
+                "by psaadm:psaadm."
+            ),
             "Reinstall the Monitoring extension from Plesk Extensions.",
         ],
         environment={

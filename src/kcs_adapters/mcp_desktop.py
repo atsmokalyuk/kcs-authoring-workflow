@@ -18,6 +18,7 @@ from kcs_adapters import desktop_ticket_ref as _desktop_ticket_ref
 from kcs_adapters import desktop_workflow as _desktop_workflow
 from kcs_adapters.desktop_reviewer_bundle import (
     DEFAULT_REVIEWER_BUNDLE_ROOT,
+    reviewer_bundle_root_from_environment,
 )
 from kcs_adapters.desktop_workflow import (
     ApprovedSummaryExecution,
@@ -135,10 +136,14 @@ TOOL_RUN_CONTRACT_SMOKE = "kcs.run_contract_smoke"
 TOOL_RUN_APPROVED_SUMMARY_PIPELINE = "kcs.run_approved_summary_pipeline"
 TOOL_AUTHOR_APPROVED_SUMMARY = "kcs.author_approved_summary"
 TOOL_AUTHOR_TICKET = "kcs.author_ticket"
+TOOL_REGISTER_CLEAN_TICKET = "kcs.register_clean_ticket"
 TOOL_DRAFT_ARTICLE = "kcs.draft_article"
+TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS = "support.get_behavior_instructions"
 DESKTOP_OPERATOR_TOOLS = frozenset(
     {
+        TOOL_REGISTER_CLEAN_TICKET,
         TOOL_DRAFT_ARTICLE,
+        TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS,
     }
 )
 
@@ -153,7 +158,9 @@ CLAUDE_DESKTOP_TOOL_ALIASES = {
     TOOL_RUN_APPROVED_SUMMARY_PIPELINE: "kcs_run_approved_summary_pipeline",
     TOOL_AUTHOR_APPROVED_SUMMARY: "kcs_author_approved_summary",
     TOOL_AUTHOR_TICKET: "kcs_author_ticket",
+    TOOL_REGISTER_CLEAN_TICKET: "kcs_register_clean_ticket",
     TOOL_DRAFT_ARTICLE: "kcs_draft_article",
+    TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS: "support_get_behavior_instructions",
 }
 CANONICAL_TOOL_BY_CLAUDE_DESKTOP_ALIAS = {
     alias: canonical for canonical, alias in CLAUDE_DESKTOP_TOOL_ALIASES.items()
@@ -255,6 +262,7 @@ _DRAFT_ARTICLE_DESKTOP_PRIMARY_ARGS = frozenset(
         "debug",
         "operator_selected_item_ref",
         "operator_selection_ref",
+        "ticket_ref",
     }
 )
 _DRAFT_ARTICLE_ITEM_CANDIDATE_FIELDS = frozenset(
@@ -396,7 +404,7 @@ class KcsDesktopMcpAdapter:
     def __init__(
         self,
         *,
-        reviewer_bundle_root: Path = _REVIEWER_BUNDLE_ROOT,
+        reviewer_bundle_root: Path | None = None,
         semantic_extraction_provider: DraftArticleSemanticExtractionProvider
         | None
         | object = _DEFAULT_SEMANTIC_EXTRACTION_PROVIDER,
@@ -404,7 +412,11 @@ class KcsDesktopMcpAdapter:
         visible_tools: Iterable[str] | None = None,
     ) -> None:
         self._tools: tuple[McpToolDescriptor, ...] | None = None
-        self._reviewer_bundle_root = reviewer_bundle_root
+        self._reviewer_bundle_root = (
+            reviewer_bundle_root
+            if reviewer_bundle_root is not None
+            else reviewer_bundle_root_from_environment()
+        )
         semantic_provider = (
             semantic_provider_from_environment()
             if semantic_extraction_provider is _DEFAULT_SEMANTIC_EXTRACTION_PROVIDER
@@ -428,7 +440,11 @@ class KcsDesktopMcpAdapter:
             TOOL_RUN_APPROVED_SUMMARY_PIPELINE: self._run_approved_summary_pipeline,
             TOOL_AUTHOR_APPROVED_SUMMARY: self._author_approved_summary,
             TOOL_AUTHOR_TICKET: self._author_ticket,
+            TOOL_REGISTER_CLEAN_TICKET: self._register_clean_ticket,
             TOOL_DRAFT_ARTICLE: self._draft_article,
+            TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS: (
+                self._support_get_behavior_instructions
+            ),
         }
 
     def list_tools(self) -> tuple[McpToolDescriptor, ...]:
@@ -446,7 +462,9 @@ class KcsDesktopMcpAdapter:
                 _approved_summary_pipeline_descriptor(),
                 _author_approved_summary_descriptor(),
                 _author_ticket_descriptor(),
+                _register_clean_ticket_descriptor(),
                 _draft_article_descriptor(),
+                _support_get_behavior_instructions_descriptor(),
             )
             if self._visible_tools is not None:
                 tools = tuple(
@@ -628,6 +646,27 @@ class KcsDesktopMcpAdapter:
         result["approved_summary_source"] = "local_approved_summary"
         return result
 
+    def _register_clean_ticket(self, arguments: Mapping[str, Any]) -> JsonDict:
+        try:
+            return _desktop_ticket_ref.register_clean_ticket_arguments(arguments)
+        except ApprovedSummaryInputError as exc:
+            debug_code = exc.debug_code
+        except ContractValidationError:
+            debug_code = "clean_ticket_text_invalid"
+        return {
+            "auto_publish_allowed": False,
+            "debug_code": debug_code,
+            "failure_stage": "input_validation",
+            "network_calls": False,
+            "ok": False,
+            "pipeline_ok": False,
+            "public_output_approved": False,
+            "ready_for_real_ticket_use": False,
+            "result_kind": "clean_ticket_registration",
+            "schema_version": MCP_TOOL_RESULT_SCHEMA_VERSION,
+            "writes_files": False,
+        }
+
     def _draft_article(self, arguments: Mapping[str, Any]) -> JsonDict:
         try:
             primary_result = self._draft_article_primary_surface_result(
@@ -687,9 +726,27 @@ class KcsDesktopMcpAdapter:
         has_summary = bool(arguments.get("approved_summary_text"))
         has_selection_ref = bool(arguments.get("operator_selection_ref"))
         has_selected_item_ref = bool(arguments.get("operator_selected_item_ref"))
-        if has_summary and not has_selection_ref and not has_selected_item_ref:
+        has_ticket_ref = bool(arguments.get("ticket_ref"))
+        if (
+            has_summary
+            and not has_selection_ref
+            and not has_selected_item_ref
+            and not has_ticket_ref
+        ):
             return self._draft_article_from_primary_summary(arguments)
-        if has_selection_ref and has_selected_item_ref and not has_summary:
+        if (
+            has_ticket_ref
+            and not has_summary
+            and not has_selection_ref
+            and not has_selected_item_ref
+        ):
+            return self._draft_article_from_primary_ticket_ref(arguments)
+        if (
+            has_selection_ref
+            and has_selected_item_ref
+            and not has_summary
+            and not has_ticket_ref
+        ):
             return self._draft_article_from_primary_selection(arguments)
         return _approved_summary_author_failure_result(
             failure_stage="input_validation",
@@ -755,6 +812,40 @@ class KcsDesktopMcpAdapter:
             )
         )
 
+    def _draft_article_from_primary_ticket_ref(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        ticket_ref = _approved_ticket_ref_from_arguments(arguments)
+        try:
+            approved_arguments = _approved_ticket_author_arguments(arguments)
+        except ApprovedSummaryPipelineStageError as exc:
+            return _approved_ticket_author_failure_result(
+                ticket_ref=ticket_ref,
+                failure_stage="input_validation",
+                debug_code=exc.debug_code,
+            )
+        if _has_structured_approved_summary_item_input(approved_arguments):
+            result = self._author_ticket(arguments)
+            finalized = finalize_author_result_with_bundle(
+                result,
+                bundle_root=self._reviewer_bundle_root,
+                include_reviewer_only_html=arguments.get("debug") is True,
+                schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+            )
+            finalized["approved_summary_source"] = "local_approved_summary"
+            finalized["ticket_ref"] = ticket_ref
+            return finalized
+        summary_arguments: JsonDict = {
+            "approved_summary_text": approved_arguments["approved_summary_text"],
+        }
+        if arguments.get("debug") is True:
+            summary_arguments["debug"] = True
+        result = self._draft_article_from_primary_summary(summary_arguments)
+        result["approved_summary_source"] = "local_clean_ticket"
+        result["ticket_ref"] = ticket_ref
+        return result
+
     def _draft_article_from_primary_selection(
         self,
         arguments: Mapping[str, Any],
@@ -800,6 +891,23 @@ class KcsDesktopMcpAdapter:
             include_reviewer_only_html=arguments.get("debug") is True,
             schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
         )
+
+    def _support_get_behavior_instructions(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        _require_args(arguments, _NO_ARGS, required=frozenset())
+        return {
+            "auto_publish_allowed": False,
+            "network_calls": False,
+            "ok": True,
+            "public_output_approved": False,
+            "result_kind": "behavior_instructions",
+            "schema_version": MCP_TOOL_RESULT_SCHEMA_VERSION,
+            "should_be_kcs_article": True,
+            "validation_ok": True,
+            "writes_files": False,
+        }
 
 
 def _draft_article_arguments(arguments: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -949,6 +1057,12 @@ def _draft_article_has_confirmed_operator_selection(
 def _has_approved_summary_authoring_input(arguments: Mapping[str, Any]) -> bool:
     if "approved_summary_text" in arguments:
         return True
+    if "item" in arguments:
+        return True
+    return any(key in arguments for key in _APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS)
+
+
+def _has_structured_approved_summary_item_input(arguments: Mapping[str, Any]) -> bool:
     if "item" in arguments:
         return True
     return any(key in arguments for key in _APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS)
@@ -1232,41 +1346,27 @@ class McpStdioTransport:
                 "prompts": {"listChanged": False},
             },
             "instructions": (
-                "KCS Authoring MCP server for approved sanitized KCS article "
-                "workflows. For any request like 'draft an article', "
-                "'draft me an article', 'write an article', or 'create a KB "
-                "article', or equivalent non-English requests such as "
-                "'напиши статью' or 'me escreva um artigo' with an approved "
-                "sanitized support-ticket summary "
-                "attachment or paste, call kcs_draft_article immediately. For "
-                "chat attachments or pasted text, read the "
-                "visible sanitized summary and pass it as approved_summary_text; "
-                "do not pass the uploaded filename, local path, or Claude upload "
-                "path. Repository-local approved summary refs are handled by a "
-                "separate internal/backward-compatible tool path and are not "
-                "part of the Claude Desktop article-drafting schema. Do not "
-                "pass item, item_candidates, reference article bodies, or "
-                "field aliases in Claude Desktop mode. Python owns semantic "
-                "extraction, workflow state, validation, KCS decisions, and "
-                "rendering. If the tool returns split_required, use a native "
-                "Claude Desktop choice popup when the client provides one; "
-                "otherwise present the returned candidates and wait for the "
-                "operator. After the operator chooses, call "
-                "kcs_draft_article with only operator_selection_ref and "
-                "operator_selected_item_ref. "
-                "Do not ask what kind of article to draft; the "
-                "default is a reviewer-only KCS knowledge base article. Do "
-                "not ask what language to use; default article language is "
-                "English unless the operator explicitly requests another "
-                "language. Do "
-                "not ask the operator to choose between reuse search and "
-                "manual drafting before the first tool call; call the tool "
-                "and show its controlled status. If "
-                "semantic extraction provider support is unavailable, show the "
-                "controlled semantic_extraction_provider_unavailable status. "
-                "Do not draft manually when the tool fails. Do not send raw "
-                "Zendesk data, internal notes, attachments, customer replies, "
-                "or credentials."
+                "KCS Authoring MCP server. For sanitized support-ticket article "
+                "requests, call kcs_draft_article. Prefer ticket_ref when a "
+                "trusted source has saved the cleaned ticket transcript under "
+                "the configured approved-summaries store. If no ref "
+                "exists for an operator-provided sanitized attachment or paste, "
+                "first call kcs_register_clean_ticket with the complete visible "
+                "sanitized transcript, then call kcs_draft_article with the "
+                "returned next_arguments. For short pasted sanitized text, "
+                "kcs_draft_article may use approved_summary_text directly. Do "
+                "not summarize or redact labeled sections before either tool "
+                "call. A Claude Desktop file card is not a filesystem path: "
+                "do not inspect upload directories, do not pass upload "
+                "filenames or paths, and do not ask the operator to re-upload "
+                "while visible text is available. If no visible file text is "
+                "available, report file_content_unavailable and do not draft "
+                "manually. Do not pass item, item_candidates, or aliases. "
+                "Python validates the input and owns semantic extraction, "
+                "decision, rendering, and local bundle output. The default "
+                "Desktop workflow does not require Claude CLI/Code or an API "
+                "key. Successful draft results include reviewer-only Zendesk "
+                "HTML and compact status."
             ),
             "protocolVersion": protocol_version,
             "serverInfo": {
@@ -1520,7 +1620,7 @@ def _author_ticket_descriptor() -> McpToolDescriptor:
         description=(
             "Author a reviewer-only KCS draft/status packet from one local "
             "approved sanitized ticket summary reference. Provide ticket_ref. "
-            "The tool reads only repository-local approved summary JSON files, "
+            "The tool reads only configured approved summary files, "
             "returns reviewer_only_html for copy/paste, does not read Zendesk, "
             "and does not publish, write files, call a provider, or return raw "
             "packet bodies."
@@ -1529,44 +1629,74 @@ def _author_ticket_descriptor() -> McpToolDescriptor:
     )
 
 
+def _register_clean_ticket_descriptor() -> McpToolDescriptor:
+    descriptor = _descriptor(
+        name=TOOL_REGISTER_CLEAN_TICKET,
+        description=(
+            "Register one approved sanitized support-ticket transcript as a "
+            "configured clean ticket file. Use this when Claude Desktop "
+            "receives a draft-article request with an operator-provided "
+            "sanitized attachment or long paste and no ticket_ref yet. This is "
+            "the automatic first step for attachment-based drafting. Pass the "
+            "complete visible sanitized transcript, even when long, in "
+            "clean_ticket_text and optionally an opaque ticket_ref; do not pass "
+            "uploaded filenames, "
+            "local paths, Claude upload paths, item, item_candidates, aliases, "
+            "or reference article bodies. A Claude Desktop file card is not a "
+            "filesystem path: do not inspect upload directories, and use the "
+            "visible file text as clean_ticket_text. The tool writes "
+            "clean.ticket.txt under the configured approved-summaries store "
+            "and returns exact next_arguments for kcs_draft_article."
+        ),
+        input_schema=_register_clean_ticket_input_schema(),
+    )
+    descriptor.annotations["idempotentHint"] = False
+    descriptor.annotations["readOnlyHint"] = False
+    return descriptor
+
+
 def _draft_article_descriptor() -> McpToolDescriptor:
     descriptor = _descriptor(
         name=TOOL_DRAFT_ARTICLE,
         description=(
-            "Primary operator tool for any approved sanitized support-ticket "
-            "article request, including 'draft an article', 'draft me an "
-            "article', 'write an article', 'create a KB article', or 'draft "
-            "article for ticket', including equivalent non-English requests "
-            "such as 'напиши статью' or 'me escreva um artigo'. Do not ask "
-            "what kind of article; default to "
-            "a reviewer-only KCS knowledge base article. Do not ask what "
-            "language to use; default to English unless the operator "
-            "explicitly requests another language. For a chat attachment or "
-            "pasted sanitized ticket, read the complete visible sanitized "
-            "content and pass only approved_summary_text; do not summarize, "
-            "condense, rewrite, or omit symptoms, cause, resolution, config "
-            "paths, commands, services, or platform facts before calling the "
-            "tool. Do not pass uploaded filenames, local paths, Claude upload "
-            "paths, item, item_candidates, or "
-            "reference article bodies. If the tool returns split_required, "
-            "use a native Claude Desktop choice popup when the client provides "
-            "one; otherwise present the returned candidates and wait for the "
-            "operator. After the operator chooses, call "
-            "this tool again with only operator_selection_ref and "
-            "operator_selected_item_ref. If a native popup is unavailable, use "
-            "operator_choice_request.options[*].submit_arguments exactly and "
-            "do not infer the selection payload. Python owns semantic extraction, "
-            "workflow state, validation, KCS decisions, rendering, local "
-            "reviewer bundle output, and output safety. If semantic extraction "
-            "provider support is unavailable, "
-            "the tool returns semantic_extraction_provider_unavailable instead "
-            "of drafting manually."
+            "Primary KCS authoring tool for sanitized support-ticket article "
+            "requests. Prefer ticket_ref when the cleaned ticket transcript "
+            "has been saved by a trusted source under the configured "
+            "approved-summaries store. For an operator-provided sanitized "
+            "attachment or long paste with no ticket_ref, call "
+            "kcs_register_clean_ticket first and then call this tool with the "
+            "returned next_arguments. Use approved_summary_text only as a "
+            "fallback for short inline sanitized text when clean-ticket "
+            "registration is not needed. Do not summarize, redact labeled "
+            "sections, or pass upload filenames, paths, item, item_candidates, "
+            "aliases, or reference article bodies. A Claude Desktop file card "
+            "is not a filesystem path; do not inspect upload directories or "
+            "ask the operator to re-upload while visible file text is "
+            "available. If no visible file text is available, report "
+            "file_content_unavailable and do not draft manually. "
+            "Python validates the input and owns semantic extraction, decision, "
+            "rendering, and local bundle output. Successful results return "
+            "reviewer-only Zendesk HTML plus compact status. If split_required "
+            "is returned, call again with only operator_selection_ref and "
+            "operator_selected_item_ref."
         ),
         input_schema=_draft_article_input_schema(),
     )
     descriptor.annotations["idempotentHint"] = False
     descriptor.annotations["readOnlyHint"] = False
     return descriptor
+
+
+def _support_get_behavior_instructions_descriptor() -> McpToolDescriptor:
+    return _descriptor(
+        name=TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS,
+        description=(
+            "Compatibility helper for legacy Plesk Support behavior-instruction "
+            "requests. Returns the minimal KCS Authoring route: use "
+            "kcs_draft_article for sanitized ticket article drafting."
+        ),
+        input_schema=_object_schema(),
+    )
 
 
 def _approved_summary_input_schema() -> JsonDict:
@@ -1586,11 +1716,9 @@ def _approved_summary_input_schema() -> JsonDict:
             "debug": {
                 "type": "boolean",
                 "description": (
-                    "Use true only for explicit debug or smoke compatibility "
-                    "when full reviewer_only_html must be returned in the "
-                    "Claude-visible tool result. Default successful drafts "
-                    "write reviewer-only HTML to the returned local html_path "
-                    "and return compact status only."
+                    "Use true only for explicit debug or smoke compatibility. "
+                    "Successful Desktop draft results already include "
+                    "reviewer-only Zendesk HTML and compact status."
                 ),
             },
             "diagnosis": {"type": "string"},
@@ -1661,32 +1789,61 @@ def _approved_ticket_input_schema() -> JsonDict:
     )
 
 
+def _register_clean_ticket_input_schema() -> JsonDict:
+    return _object_schema(
+        properties={
+            "clean_ticket_text": {
+                "type": "string",
+                "description": (
+                    "Complete visible approved sanitized ticket transcript. "
+                    "Do not summarize, condense, rewrite, redact labeled "
+                    "sections, or omit visible symptoms, cause, resolution, "
+                    "config paths, commands, services, platform facts, or other "
+                    "sanitized evidence. Do not include tool-call XML, "
+                    "parameter tags, or MCP argument markup inside this text."
+                ),
+            },
+            "debug": {
+                "type": "boolean",
+                "description": "Use true only for explicit debug or smoke runs.",
+            },
+            "ticket_ref": {
+                "type": "string",
+                "description": (
+                    "Optional opaque safe ref for the clean ticket file. Do not "
+                    "pass filenames, absolute paths, Claude upload paths, or "
+                    "arbitrary local paths."
+                ),
+            },
+        },
+        required=["clean_ticket_text"],
+    )
+
+
 def _draft_article_input_schema() -> JsonDict:
     return _object_schema(
         properties={
             "approved_summary_text": {
                 "type": "string",
                 "description": (
-                    "Complete approved sanitized support-ticket context text. "
-                    "Despite the legacy field name, do not summarize, condense, "
-                    "rewrite, or omit symptoms, cause, resolution, config paths, "
-                    "commands, services, platform facts, or other visible "
-                    "sanitized evidence before calling the tool. Do not pass raw "
-                    "Zendesk payloads, raw comments, internal notes, or "
-                    "attachments. For Claude Desktop uploaded sanitized .txt "
-                    "summaries, read the attachment content and pass that full "
-                    "text here. Do not pass uploaded filenames, local paths, or "
-                    "Claude upload paths."
+                    "Fallback for short inline sanitized support-ticket text "
+                    "when clean-ticket registration is not needed. For "
+                    "attachments, long pasted tickets, or any case where no "
+                    "ticket_ref exists yet, call kcs_register_clean_ticket "
+                    "first. If this field is used, pass the visible sanitized "
+                    "text as-is. Do not summarize, condense, rewrite, redact "
+                    "labeled sections, or omit symptoms, cause, resolution, "
+                    "config paths, commands, services, platform facts, or other "
+                    "visible evidence before calling the tool. Do not pass "
+                    "uploaded filenames, local paths, or Claude upload paths."
                 ),
             },
             "debug": {
                 "type": "boolean",
                 "description": (
-                    "Use true only for explicit debug or smoke compatibility "
-                    "when full reviewer_only_html must be returned in the "
-                    "Claude-visible tool result. Default successful drafts "
-                    "write reviewer-only HTML to the returned local html_path "
-                    "and return compact status only."
+                    "Use true only for explicit debug or smoke compatibility. "
+                    "Successful Desktop draft results already include "
+                    "reviewer-only Zendesk HTML and compact status."
                 ),
             },
             "operator_selected_item_ref": {
@@ -1701,6 +1858,16 @@ def _draft_article_input_schema() -> JsonDict:
                 "description": (
                     "Opaque selection ref returned by a previous split-required "
                     "result."
+                ),
+            },
+            "ticket_ref": {
+                "type": "string",
+                "description": (
+                    "Opaque ref for a configured cleaned ticket transcript. "
+                    "Use only refs prepared by a trusted source under "
+                    "local-data/approved-summaries; do not pass filenames, "
+                    "absolute paths, Claude upload paths, or arbitrary local "
+                    "paths."
                 ),
             },
         }
@@ -1850,8 +2017,15 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "atomic_item": {"type": "object"},
     "blockers": {"type": "array"},
     "bundle_ref": {"type": "string"},
+    "bundle_storage_hint": {"type": "string"},
+    "bundle_storage_ref": {"type": "string"},
+    "byte_length": {"type": "integer"},
     "case_ref": {"type": "string"},
     "checks": {"type": "array"},
+    "clean_ticket_sha256": {"type": "string"},
+    "clean_ticket_store_ref": {"type": "string"},
+    "clean_ticket_storage_hint": {"type": "string"},
+    "clean_ticket_storage_ref": {"type": "string"},
     "customer_replies": {"type": "boolean"},
     "debug_code": {"type": "string"},
     "draft_ref": {"type": "string"},
@@ -1871,7 +2045,9 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "manual_draft_allowed": {"type": "boolean"},
     "manifest_path": {"type": "string"},
     "network_calls": {"type": "boolean"},
+    "next_arguments": {"type": "object"},
     "next_required_action": {"type": "string"},
+    "next_tool_name": {"type": "string"},
     "ok": {"type": "boolean"},
     "open_questions": {"type": "array"},
     "operator_choice_options": {"type": "array"},
@@ -2003,15 +2179,213 @@ def _mcp_tool_response(
         }
     )
     _validate_tool_structured_content(structured, descriptor.output_schema)
-    text = _tool_result_text(structured)
+    content = _tool_result_content(structured)
+    structured_content = _desktop_structured_content(
+        descriptor=descriptor,
+        structured=structured,
+    )
     return {
-        "content": [{"text": text, "type": "text"}],
+        "content": content,
         "isError": not result.ok,
-        "structuredContent": structured,
+        "structuredContent": structured_content,
     }
 
 
+def _tool_result_content(structured: Mapping[str, Any]) -> list[JsonDict]:
+    return [{"text": _tool_result_text(structured), "type": "text"}]
+
+
+def _reviewer_html_resource_uri(structured: Mapping[str, Any]) -> str:
+    bundle_ref = structured.get("bundle_ref")
+    item_ref = structured.get("item_ref")
+    html_sha256 = structured.get("html_sha256")
+    safe_bundle = bundle_ref if isinstance(bundle_ref, str) else "bundle"
+    safe_item = item_ref if isinstance(item_ref, str) else "item"
+    safe_hash = html_sha256 if isinstance(html_sha256, str) else "html"
+    return f"kcs-reviewer-bundle://{safe_bundle}/{safe_item}/{safe_hash}.html"
+
+
 def _tool_result_text(structured: Mapping[str, Any]) -> str:
+    pre_draft_text = _pre_draft_tool_result_text(structured)
+    if pre_draft_text is not None:
+        return pre_draft_text
+    debug_text = _debug_tool_result_text(structured)
+    if debug_text is not None:
+        return debug_text
+    html = structured.get("reviewer_only_html")
+    if (
+        isinstance(html, str)
+        and html
+        and structured.get("result_kind")
+        in {
+            "approved_summary_authoring",
+            "approved_ticket_authoring",
+            "draft_article_authoring",
+        }
+    ):
+        status = {
+            "article_type": structured.get("article_type"),
+            "auto_publish_allowed": structured.get("auto_publish_allowed"),
+            "case_ref": structured.get("case_ref"),
+            "debug_code": structured.get("debug_code"),
+            "draft_request_ready": structured.get("draft_request_ready"),
+            "draft_generated": structured.get("draft_generated"),
+            "failure_stage": structured.get("failure_stage"),
+            "html_path": structured.get("html_path"),
+            "html_sha256": structured.get("html_sha256"),
+            "bundle_storage_hint": structured.get("bundle_storage_hint"),
+            "bundle_storage_ref": structured.get("bundle_storage_ref"),
+            "item_ref": structured.get("item_ref"),
+            "kcs_ready": structured.get("kcs_ready"),
+            "manifest_path": structured.get("manifest_path"),
+            "ok": structured.get("ok"),
+            "pipeline_ok": structured.get("pipeline_ok"),
+            "public_output_approved": structured.get("public_output_approved"),
+            "ready_for_reviewer": structured.get("ready_for_reviewer"),
+            "recommended_action": structured.get("recommended_action"),
+            "result_kind": structured.get("result_kind"),
+            "reuse_search_status": structured.get("reuse_search_status"),
+            "reviewer_bundle_written": structured.get("reviewer_bundle_written"),
+            "validation_ok": structured.get("validation_ok"),
+        }
+        return (
+            "```html\n"
+            f"{html}\n"
+            "```\n\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
+    if (
+        structured.get("result_kind") == "draft_article_authoring"
+        and structured.get("draft_generated") is True
+        and isinstance(structured.get("html_path"), str)
+    ):
+        status = {
+            "article_type": structured.get("article_type"),
+            "auto_publish_allowed": structured.get("auto_publish_allowed"),
+            "debug_code": structured.get("debug_code"),
+            "draft_generated": structured.get("draft_generated"),
+            "html_path": structured.get("html_path"),
+            "bundle_storage_hint": structured.get("bundle_storage_hint"),
+            "bundle_storage_ref": structured.get("bundle_storage_ref"),
+            "item_ref": structured.get("item_ref"),
+            "kcs_ready": structured.get("kcs_ready"),
+            "manifest_path": structured.get("manifest_path"),
+            "public_output_approved": structured.get("public_output_approved"),
+            "ready_for_reviewer": structured.get("ready_for_reviewer"),
+            "recommended_action": structured.get("recommended_action"),
+            "reuse_search_status": structured.get("reuse_search_status"),
+            "reviewer_bundle_written": structured.get("reviewer_bundle_written"),
+        }
+        return (
+            "Reviewer-only KCS draft generated by the KCS Authoring tool. "
+            "Zendesk HTML is saved on the operator's local machine in the "
+            "reviewer bundle at html_path. When bundle_storage_hint is present, "
+            "resolve html_path under that directory. Report the returned local "
+            "bundle location and status only; do not claim the file is "
+            "unavailable from this chat, do not inspect upload/sandbox paths, "
+            "and do not offer a separate chat-authored article.\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
+    if (
+        structured.get("result_kind") == "draft_article_authoring"
+        and structured.get("recommended_action") == "split_required"
+        and isinstance(structured.get("operator_choice_request"), Mapping)
+    ):
+        return _split_required_tool_result_text(structured)
+    return _compact_json(structured)
+
+
+def _pre_draft_tool_result_text(structured: Mapping[str, Any]) -> str | None:
+    if structured.get("result_kind") == "clean_ticket_registered":
+        status = {
+            "clean_ticket_sha256": structured.get("clean_ticket_sha256"),
+            "clean_ticket_store_ref": structured.get("clean_ticket_store_ref"),
+            "clean_ticket_storage_hint": structured.get(
+                "clean_ticket_storage_hint"
+            ),
+            "clean_ticket_storage_ref": structured.get("clean_ticket_storage_ref"),
+            "next_arguments": structured.get("next_arguments"),
+            "next_tool_name": structured.get("next_tool_name"),
+            "ok": structured.get("ok"),
+            "result_kind": structured.get("result_kind"),
+            "ticket_ref": structured.get("ticket_ref"),
+            "writes_files": structured.get("writes_files"),
+        }
+        return (
+            "Clean ticket transcript registered. Continue by calling "
+            "kcs_draft_article with next_arguments exactly as returned.\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
+    if structured.get("debug_code") == "clean_ticket_text_incomplete":
+        status = {
+            "debug_code": structured.get("debug_code"),
+            "draft_available": False,
+            "failure_stage": structured.get("failure_stage"),
+            "next_required_action": "register_complete_visible_clean_ticket_text",
+            "ok": structured.get("ok"),
+            "result_kind": structured.get("result_kind"),
+            "writes_files": structured.get("writes_files"),
+        }
+        return (
+            "Clean ticket registration is blocked because the provided text "
+            "appears to be an incomplete or truncated ticket excerpt. No clean "
+            "ticket was saved and no article draft is available.\n\n"
+            "Do not draft manually. Read the complete visible sanitized file "
+            "text, then call kcs_register_clean_ticket again with the complete "
+            "transcript.\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
+    if structured.get("debug_code") == "clean_ticket_text_invalid":
+        status = {
+            "debug_code": structured.get("debug_code"),
+            "draft_available": False,
+            "failure_stage": structured.get("failure_stage"),
+            "next_required_action": "register_original_visible_clean_ticket_text",
+            "ok": structured.get("ok"),
+            "result_kind": structured.get("result_kind"),
+            "writes_files": structured.get("writes_files"),
+        }
+        return (
+            "Clean ticket registration is blocked because the provided text is "
+            "not an acceptable clean ticket transcript. No clean ticket was "
+            "saved and no article draft is available.\n\n"
+            "Do not draft manually. Do not reconstruct, summarize, or invent "
+            "missing ticket sections. Call kcs_register_clean_ticket again only "
+            "with the original complete visible sanitized ticket text.\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
+    if structured.get("result_kind") == "behavior_instructions":
+        return (
+            "KCS Authoring behavior: for sanitized support-ticket article "
+            "requests, use KCS Authoring:kcs_draft_article with ticket_ref "
+            "when a cleaned ticket transcript already exists. If the user asks "
+            "to draft an article from a sanitized attachment or long paste and "
+            "no ticket_ref exists, first call kcs_register_clean_ticket, then "
+            "call kcs_draft_article with the returned next_arguments. A Claude "
+            "Desktop file card is not a filesystem path; use visible file text "
+            "instead of inspecting upload directories. If no visible file text "
+            "is available, report file_content_unavailable and do not draft "
+            "manually. Use the tool-generated reviewer-only Zendesk HTML as "
+            "the draft."
+        )
+    return None
+
+
+def _debug_tool_result_text(structured: Mapping[str, Any]) -> str | None:
     if structured.get("debug_code") == "semantic_extraction_provider_unavailable":
         status = {
             "auto_publish_allowed": structured.get("auto_publish_allowed"),
@@ -2026,98 +2400,56 @@ def _tool_result_text(structured: Mapping[str, Any]) -> str:
             "writes_files": structured.get("writes_files"),
         }
         return (
-            "COPY THE FINAL RESPONSE BELOW VERBATIM. Do not add a manual "
-            "draft, do not infer item/item_candidates, do not summarize the "
-            "ticket as an article, and do not write a fallback article.\n\n"
-            "Final response:\n"
-            "KCS article drafting is blocked because the approved semantic "
-            "extraction provider is not configured. No reviewer-only draft is "
-            "available from the KCS Authoring tool in this environment. Next "
-            "required action: configure the approved semantic extraction "
-            "provider, then retry with the same approved sanitized ticket "
-            "content.\n\n"
+            "KCS article drafting is blocked by the KCS Authoring tool because "
+            "the approved semantic extraction provider is not configured. No "
+            "reviewer-only draft was generated.\n\n"
             "Compact status:\n"
             "```json\n"
             f"{_compact_json(status)}\n"
             "```"
         )
-    html = structured.get("reviewer_only_html")
-    if (
-        isinstance(html, str)
-        and html
-        and structured.get("result_kind")
-        in {
-            "approved_summary_authoring",
-            "approved_ticket_authoring",
-            "draft_article_authoring",
-        }
-    ):
-        preview_text = structured.get("reviewer_only_preview_text")
+    if structured.get("debug_code") == "semantic_extraction_no_candidates":
         status = {
-            "article_type": structured.get("article_type"),
+            "approved_summary_source": structured.get("approved_summary_source"),
             "auto_publish_allowed": structured.get("auto_publish_allowed"),
-            "case_ref": structured.get("case_ref"),
             "debug_code": structured.get("debug_code"),
-            "draft_request_ready": structured.get("draft_request_ready"),
+            "draft_available": False,
             "failure_stage": structured.get("failure_stage"),
-            "item_ref": structured.get("item_ref"),
-            "ok": structured.get("ok"),
-            "pipeline_ok": structured.get("pipeline_ok"),
-            "public_output_approved": structured.get("public_output_approved"),
-            "ready_for_reviewer": structured.get("ready_for_reviewer"),
+            "manual_draft_allowed": structured.get("manual_draft_allowed"),
+            "next_required_action": (
+                "register_complete_clean_ticket_with_final_evidence"
+            ),
             "recommended_action": structured.get("recommended_action"),
             "result_kind": structured.get("result_kind"),
-            "validation_ok": structured.get("validation_ok"),
-        }
-        preview = preview_text if isinstance(preview_text, str) else ""
-        return (
-            "Reviewer-only Zendesk HTML draft:\n"
-            "```html\n"
-            f"{html}\n"
-            "```\n\n"
-            "Compact status:\n"
-            "```json\n"
-            f"{_compact_json(status)}\n"
-            "```\n\n"
-            "Reviewer preview:\n"
-            f"{preview}"
-        )
-    if (
-        structured.get("result_kind") == "draft_article_authoring"
-        and structured.get("draft_generated") is True
-        and isinstance(structured.get("html_path"), str)
-    ):
-        status = {
-            "article_type": structured.get("article_type"),
-            "auto_publish_allowed": structured.get("auto_publish_allowed"),
-            "debug_code": structured.get("debug_code"),
-            "draft_generated": structured.get("draft_generated"),
-            "html_path": structured.get("html_path"),
-            "item_ref": structured.get("item_ref"),
-            "kcs_ready": structured.get("kcs_ready"),
-            "manifest_path": structured.get("manifest_path"),
-            "public_output_approved": structured.get("public_output_approved"),
-            "ready_for_reviewer": structured.get("ready_for_reviewer"),
-            "recommended_action": structured.get("recommended_action"),
-            "reuse_search_status": structured.get("reuse_search_status"),
-            "reviewer_bundle_written": structured.get("reviewer_bundle_written"),
+            "should_be_kcs_article": structured.get("should_be_kcs_article"),
+            "ticket_ref": structured.get("ticket_ref"),
+            "writes_files": structured.get("writes_files"),
         }
         return (
-            "Reviewer-only KCS draft generated. Full Zendesk HTML is saved in "
-            "the local reviewer bundle at html_path. Do not draft manually or "
-            "retry the tool unless the operator asks for debug HTML.\n\n"
+            "KCS article drafting is blocked by the KCS Authoring tool because "
+            "Python did not find a complete semantic KCS item in the clean "
+            "ticket text. No reviewer-only draft was generated.\n\n"
+            "Do not draft manually. Register a complete sanitized clean ticket "
+            "that includes the final symptom, supported cause, and resolution "
+            "evidence, then call kcs_draft_article again with the returned "
+            "ticket_ref.\n\n"
             "Compact status:\n"
             "```json\n"
             f"{_compact_json(status)}\n"
             "```"
         )
-    if (
-        structured.get("result_kind") == "draft_article_authoring"
-        and structured.get("recommended_action") == "split_required"
-        and isinstance(structured.get("operator_choice_request"), Mapping)
-    ):
-        return _split_required_tool_result_text(structured)
-    return _compact_json(structured)
+    return None
+
+
+def _desktop_structured_content(
+    *,
+    descriptor: McpToolDescriptor,
+    structured: Mapping[str, Any],
+) -> JsonDict:
+    compact = dict(structured)
+    if descriptor.name == TOOL_DRAFT_ARTICLE:
+        compact.pop("reviewer_only_html", None)
+    return compact
 
 
 def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:

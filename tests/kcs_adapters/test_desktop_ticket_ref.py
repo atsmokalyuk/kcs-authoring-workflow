@@ -6,9 +6,11 @@ import pytest
 
 from kcs_adapters.desktop_payload import ApprovedSummaryInputError
 from kcs_adapters.desktop_ticket_ref import (
+    APPROVED_TICKET_CLEAN_TEXT_FILE_NAME,
     APPROVED_TICKET_FILE_SCHEMA_VERSION,
     approved_ticket_author_arguments,
     approved_ticket_ref_from_arguments,
+    register_clean_ticket_arguments,
 )
 from kcs_core.models import ArticleType
 
@@ -56,6 +58,20 @@ def _write_approved_ticket_summary(
     )
 
 
+def _write_clean_ticket_text(
+    root,
+    text: str,
+    *,
+    ticket_ref: str = "ticket-001",
+) -> None:
+    source_dir = root / "local-data" / "approved-summaries" / ticket_ref
+    source_dir.mkdir(parents=True)
+    (source_dir / APPROVED_TICKET_CLEAN_TEXT_FILE_NAME).write_text(
+        text,
+        encoding="utf-8",
+    )
+
+
 def test_desktop_ticket_ref_loads_and_merges_local_approved_summary(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
@@ -81,6 +97,298 @@ def test_desktop_ticket_ref_loads_and_merges_local_approved_summary(
     assert arguments["reuse_search_run_ref"] == "reuse-search-001"
     assert "schema_version" not in arguments
     assert "ticket_ref" not in arguments
+
+
+def test_desktop_ticket_ref_loads_clean_ticket_text_file(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    _write_clean_ticket_text(
+        tmp_path,
+        (
+            "Customer Ticket Content\n"
+            "Title: Monitoring graphs show no data in Plesk\n"
+            "Cause: Leftover collectd DataDir override.\n"
+            "Resolution: Disable the override and restart sw-collectd.\n"
+        ),
+    )
+
+    arguments = approved_ticket_author_arguments(
+        {
+            "ticket_ref": "ticket-001",
+            "debug": True,
+        }
+    )
+
+    assert arguments["approved_summary_text"].startswith("Customer Ticket Content")
+    assert arguments["case_ref"] == "approved-ticket-ticket-001"
+    assert arguments["debug"] is True
+    assert "schema_version" not in arguments
+    assert "ticket_ref" not in arguments
+    assert "item" not in arguments
+
+
+def test_register_clean_ticket_writes_clean_ticket_file(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    result = register_clean_ticket_arguments(
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Monitoring graphs show no data in Plesk.\n"
+                "Cause: custom collectd config.\n"
+                "Resolution: disable config and restart sw-collectd.\n"
+            ),
+            "ticket_ref": "monitoring-001",
+        }
+    )
+
+    clean_path = (
+        tmp_path
+        / "local-data"
+        / "approved-summaries"
+        / "monitoring-001"
+        / APPROVED_TICKET_CLEAN_TEXT_FILE_NAME
+    )
+    assert clean_path.read_text(encoding="utf-8").startswith(
+        "Customer Ticket Content"
+    )
+    assert result["ticket_ref"] == "monitoring-001"
+    assert result["next_arguments"] == {"ticket_ref": "monitoring-001"}
+    assert result["clean_ticket_store_ref"] == "approved-summary-clean-ticket"
+    assert "clean_ticket_text" not in result
+
+
+def test_register_clean_ticket_uses_configured_store_root(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root = tmp_path / "project"
+    storage_root = tmp_path / "documents" / "KCS Authoring"
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(project_root))
+    monkeypatch.setenv(
+        "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT",
+        str(storage_root),
+    )
+    monkeypatch.setenv(
+        "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT",
+        "~/Documents/KCS Authoring",
+    )
+    monkeypatch.setenv(
+        "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF",
+        "user_documents_kcs_authoring",
+    )
+
+    result = register_clean_ticket_arguments(
+        {
+            "clean_ticket_text": "Customer Ticket Content\nSafe sanitized text.",
+            "ticket_ref": "monitoring-001",
+        }
+    )
+
+    stored = (
+        storage_root
+        / "local-data"
+        / "approved-summaries"
+        / "monitoring-001"
+        / APPROVED_TICKET_CLEAN_TEXT_FILE_NAME
+    )
+    assert stored.is_file()
+    assert not (
+        project_root
+        / "local-data"
+        / "approved-summaries"
+        / "monitoring-001"
+        / APPROVED_TICKET_CLEAN_TEXT_FILE_NAME
+    ).exists()
+    assert result["clean_ticket_storage_hint"] == "~/Documents/KCS Authoring"
+    assert result["clean_ticket_storage_ref"] == "user_documents_kcs_authoring"
+
+
+def test_register_clean_ticket_generates_ref_from_text(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    result = register_clean_ticket_arguments(
+        {"clean_ticket_text": "Customer Ticket Content\nSafe sanitized text."}
+    )
+
+    assert isinstance(result["ticket_ref"], str)
+    assert result["ticket_ref"].startswith("ticket-")
+    assert result["next_arguments"] == {"ticket_ref": result["ticket_ref"]}
+
+
+def test_register_clean_ticket_accepts_large_complete_transcript(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    text = (
+        "Customer Ticket Content\n"
+        "Plesk Monitoring graphs show no data.\n"
+        + ("Safe sanitized investigation line with product facts.\n" * 6200)
+        + "Root cause: custom collectd configuration redirects metrics.\n"
+        + "Resolution: disabled the configuration and restarted sw-collectd.\n"
+    )
+    assert len(text.encode("utf-8")) > 300 * 1024
+
+    result = register_clean_ticket_arguments(
+        {
+            "clean_ticket_text": text,
+            "ticket_ref": "large-monitoring-001",
+        }
+    )
+    arguments = approved_ticket_author_arguments(
+        {"ticket_ref": "large-monitoring-001"}
+    )
+    saved_text = text.strip()
+
+    assert result["ticket_ref"] == "large-monitoring-001"
+    assert result["byte_length"] == len(saved_text.encode("utf-8"))
+    assert arguments["approved_summary_text"] == saved_text
+
+
+def test_register_clean_ticket_rejects_upload_path_ref_without_echo(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    unsafe_ref = "/mnt/user-data/uploads/ticket.txt"
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        register_clean_ticket_arguments(
+            {
+                "clean_ticket_text": "Customer Ticket Content\nSafe sanitized text.",
+                "ticket_ref": unsafe_ref,
+            }
+        )
+
+    assert exc_info.value.debug_code == "approved_ticket_ref_invalid"
+    assert not (tmp_path / "local-data").exists()
+
+
+def test_register_clean_ticket_rejects_tool_argument_markup_without_echo(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        register_clean_ticket_arguments(
+            {
+                "clean_ticket_text": (
+                    "Customer Ticket Content\n"
+                    "Plesk Monitoring graphs show no data.\n"
+                    '<parameter name="ticket_ref">'
+                    "monitoring-graphs-no-data-rrd-path\n"
+                    "Resolution: disable config and restart the service.\n"
+                ),
+                "ticket_ref": "monitoring-001",
+            }
+        )
+
+    assert exc_info.value.debug_code == "clean_ticket_text_invalid"
+    assert not (tmp_path / "local-data").exists()
+
+
+def test_register_clean_ticket_rejects_truncated_tail_without_echo(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        register_clean_ticket_arguments(
+            {
+                "clean_ticket_text": (
+                    "Customer Ticket Content\n"
+                    "Plesk Monitoring graphs show no data.\n"
+                    "Internal investigation notes continue.\n"
+                    "With grafana debug enabled:\n"
+                    "[debug output truncated]\n"
+                ),
+                "ticket_ref": "monitoring-001",
+            }
+        )
+
+    assert exc_info.value.debug_code == "clean_ticket_text_incomplete"
+    assert not (tmp_path / "local-data").exists()
+
+
+def test_register_clean_ticket_rejects_collapsed_investigation_tail_without_echo(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        register_clean_ticket_arguments(
+            {
+                "clean_ticket_text": (
+                    "Customer Ticket Content\n"
+                    + ("Safe sanitized investigation line.\n" * 80)
+                    + "Show more\n"
+                    + "So investigation continues and we'll update you once "
+                    "there's more information.\n"
+                    + "Looks like theres some issues when reinstalling.\n"
+                ),
+                "ticket_ref": "monitoring-001",
+            }
+        )
+
+    assert exc_info.value.debug_code == "clean_ticket_text_incomplete"
+    assert not (tmp_path / "local-data").exists()
+
+
+def test_register_clean_ticket_allows_truncated_log_with_later_final_evidence(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+
+    result = register_clean_ticket_arguments(
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Plesk Monitoring graphs show no data.\n"
+                "With grafana debug enabled:\n"
+                "[debug output truncated]\n"
+                "Root cause: custom collectd configuration redirects metrics.\n"
+                "Resolution: disabled the configuration and restarted "
+                "sw-collectd.\n"
+            ),
+            "ticket_ref": "monitoring-001",
+        }
+    )
+
+    assert result["ticket_ref"] == "monitoring-001"
+
+
+def test_register_clean_ticket_allows_show_more_with_later_final_evidence(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+
+    result = register_clean_ticket_arguments(
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                + ("Safe sanitized investigation line.\n" * 80)
+                + "Show more\n"
+                + "Root cause: custom configuration redirects metrics.\n"
+                + "Resolution: disabled the configuration and restarted the "
+                "service.\n"
+            ),
+            "ticket_ref": "monitoring-001",
+        }
+    )
+
+    assert result["ticket_ref"] == "monitoring-001"
 
 
 def test_desktop_ticket_ref_uses_default_case_ref_when_file_omits_it(

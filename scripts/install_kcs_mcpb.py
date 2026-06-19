@@ -30,6 +30,8 @@ _BUILD_MODULE = _load_build_module()
 ALLOWED_BUNDLE_FILES = _BUILD_MODULE.ALLOWED_BUNDLE_FILES
 DEFAULT_OUTPUT = _BUILD_MODULE.DEFAULT_OUTPUT
 build_mcpb = _BUILD_MODULE.build_mcpb
+expected_bundle_files = _BUILD_MODULE.expected_bundle_files
+package_member_allowed = _BUILD_MODULE.package_member_allowed
 
 BUNDLE_NAME = "kcs-authoring-mvp-validator-control"
 BUNDLE_SOURCE = Path("packaging/claude-desktop") / BUNDLE_NAME
@@ -131,10 +133,12 @@ def install_mcpb(
 def _validate_package(package: Path) -> None:
     if not package.is_file() or package.is_symlink():
         raise SystemExit(f"MCPB package not found: {package}")
-    expected_names = {path.as_posix() for path in ALLOWED_BUNDLE_FILES}
+    expected_names = {path.as_posix() for path in expected_bundle_files()}
     with zipfile.ZipFile(package) as archive:
         names = set(archive.namelist())
-        if names != expected_names:
+        if not expected_names.issubset(names):
+            raise SystemExit("MCPB package contains unexpected files")
+        if any(not package_member_allowed(Path(name)) for name in names):
             raise SystemExit("MCPB package contains unexpected files")
         for info in archive.infolist():
             path = Path(info.filename)

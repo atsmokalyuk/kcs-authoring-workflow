@@ -27,7 +27,7 @@ INSTALL_SCRIPT = REPO_ROOT / "scripts" / "install_kcs_mcpb.py"
 SMOKE_SCRIPT = REPO_ROOT / "scripts" / "smoke_kcs_mcpb_stdio.py"
 LOG_CHECK_SCRIPT = REPO_ROOT / "scripts" / "check_claude_kcs_desktop_log.py"
 UI_SMOKE_SCRIPT = REPO_ROOT / "scripts" / "smoke_claude_desktop_ui_prompt.py"
-EXPECTED_BUNDLE_FILES = {
+EXPECTED_STATIC_BUNDLE_FILES = {
     "README.md",
     "manifest.json",
     "server/index.js",
@@ -103,61 +103,109 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert manifest["server"]["entry_point"] == "server/index.js"
     assert manifest["server"]["mcp_config"]["command"] == "node"
     assert {tool["name"] for tool in manifest["tools"]} == expected_tool_names
-    assert "draft an article" in manifest["long_description"]
-    assert "without asking the operator" in manifest["long_description"]
+    assert "primary tool is kcs_draft_article" in manifest["long_description"]
+    assert "support_get_behavior_instructions compatibility helper" in (
+        manifest["long_description"]
+    )
     assert "Claude Desktop-owned provider calls" in manifest["long_description"]
-    assert "Python-owned approved semantic provider calls" in manifest[
-        "long_description"
-    ]
+    assert "Claude CLI/Code dependency" in manifest["long_description"]
+    assert "API-key dependency" in manifest["long_description"]
+    assert "Claude Desktop-owned provider calls" in manifest["long_description"]
     assert all(
         not tool["name"].startswith("kcs_validate_")
         for tool in manifest["tools"]
     )
     assert all("." not in tool["name"] for tool in manifest["tools"])
+    register_tool = next(
+        tool
+        for tool in manifest["tools"]
+        if tool["name"] == "kcs_register_clean_ticket"
+    )
+    assert "Register one approved sanitized" in register_tool["description"]
+    assert "automatic first step" in register_tool["description"]
+    assert "even when long" in register_tool["description"]
+    assert "clean_ticket_text" in register_tool["description"]
+    assert "clean.ticket.txt" in register_tool["description"]
+    assert "next_arguments for kcs_draft_article" in register_tool["description"]
     draft_tool = next(
         tool for tool in manifest["tools"] if tool["name"] == "kcs_draft_article"
     )
-    assert "draft an article" in draft_tool["description"]
-    assert "Do not ask what kind of article" in draft_tool["description"]
-    assert "pass only approved_summary_text" in draft_tool["description"]
-    assert "complete visible sanitized content" in draft_tool["description"]
-    assert "do not summarize" in draft_tool["description"]
-    assert "config paths" in draft_tool["description"]
-    assert "Python owns semantic extraction" in draft_tool["description"]
-    assert "Do not pass" in draft_tool["description"]
-    assert "item_candidates" in draft_tool["description"]
-    assert "reviewer-only KCS knowledge base article" in draft_tool["description"]
-    assert "when the client provides one" in draft_tool["description"]
-    assert "submit_arguments exactly" in draft_tool["description"]
+    assert "Primary KCS authoring tool" in draft_tool["description"]
+    assert "ticket_ref" in draft_tool["description"]
+    assert "approved_summary_text" in draft_tool["description"]
+    assert "operator-provided sanitized attachment or long paste" in (
+        draft_tool["description"]
+    )
+    assert "kcs_register_clean_ticket first" in draft_tool["description"]
+    assert "approved_summary_text only as a fallback" in draft_tool["description"]
+    assert "upload filenames, paths, item, item_candidates" in draft_tool[
+        "description"
+    ]
+    assert "Claude Desktop file card is not a filesystem path" in draft_tool[
+        "description"
+    ]
+    assert "do not inspect upload directories" in draft_tool["description"]
+    assert "file_content_unavailable" in draft_tool["description"]
+    assert "Python validates the input and owns semantic extraction" in (
+        draft_tool["description"]
+    )
+    assert "raw comments" not in draft_tool["description"]
+    assert "internal notes" not in draft_tool["description"]
     assert "operator_selection_ref" in draft_tool["description"]
     assert "operator_selected_item_ref" in draft_tool["description"]
-    assert "semantic_extraction_provider_unavailable" in draft_tool["description"]
+    assert "reviewer-only Zendesk HTML" in draft_tool["description"]
+    behavior_tool = next(
+        tool
+        for tool in manifest["tools"]
+        if tool["name"] == "support_get_behavior_instructions"
+    )
+    assert "Compatibility helper" in behavior_tool["description"]
+    assert "kcs_draft_article" in behavior_tool["description"]
+    assert "copy the tool content verbatim" not in draft_tool["description"]
+    assert "Do not rewrite it into a Markdown article" not in draft_tool["description"]
+    assert "let me know if you want adjustments" not in draft_tool["description"]
     assert "structured item" not in draft_tool["description"]
     assert "break-fix" not in draft_tool["description"]
     assert manifest["prompts_generated"] is False
     assert manifest["tools_generated"] is False
 
 
-def test_mcpb_manifest_uses_user_config_without_secrets_or_paths() -> None:
+def test_mcpb_manifest_requires_no_user_config_or_secrets() -> None:
     text = (MCPB_SOURCE / "manifest.json").read_text(encoding="utf-8")
     manifest = json.loads(text)
 
-    assert "${user_config.repository_root}" in text
-    assert "${user_config.uv_command}" in text
+    assert "user_config" not in manifest
+    assert "${user_config.repository_root}" not in text
+    assert "${user_config.uv_command}" not in text
+    assert manifest["server"]["mcp_config"]["env"] == {}
+    assert "Installing this MCPB is the only required Claude Desktop setup step" in (
+        manifest["long_description"]
+    )
+    assert "autodetected local runtime" in manifest["long_description"]
     assert "/Users/" not in text
     assert "api_key" not in text.casefold()
     assert "token" not in text.casefold()
     assert "secret" not in text.casefold()
-    assert manifest["user_config"]["repository_root"]["type"] == "directory"
-    assert manifest["user_config"]["repository_root"]["required"] is True
-    assert manifest["user_config"]["uv_command"]["type"] == "string"
 
 
-def test_mcpb_node_wrapper_launches_repo_local_stdio_server() -> None:
+def test_mcpb_node_wrapper_launches_bundled_or_source_stdio_server() -> None:
     text = (MCPB_SOURCE / "server" / "index.js").read_text(encoding="utf-8")
 
     assert "KCS_AUTHORING_MVP_REPO_ROOT" in text
+    assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT" in text
+    assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT" in text
+    assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF" in text
+    assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT" in text
+    assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_HINT" in text
+    assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_REF" in text
     assert "KCS_AUTHORING_MVP_UV_COMMAND" in text
+    assert "KCS_AUTHORING_MVP_PYTHON_COMMAND" in text
+    assert "KCS_AUTHORING_MVP_RUNTIME" in text
+    assert "bundledRoot" in text
+    assert '"python"' in text
+    assert '"python3.11"' in text
+    assert "PYTHONPATH" in text
+    assert "sourceRoot" in text
     assert 'name = "kcs-authoring-mvp"' in text
     assert "src\", \"kcs_adapters\", \"mcp_desktop.py" in text
     assert '"--project"' in text
@@ -169,10 +217,12 @@ def test_mcpb_node_wrapper_launches_repo_local_stdio_server() -> None:
     assert "child.stdout" in text
     assert "USERPROFILE" in text
     assert "APPDATA" in text
+    assert "Documents" in text
+    assert "KCS Authoring" in text
     assert "TMPDIR" in text
 
 
-def test_mcpb_node_wrapper_rejects_wrong_repo_root_without_spawn(
+def test_mcpb_node_wrapper_rejects_wrong_explicit_repo_root_without_spawn(
     tmp_path: Path,
 ) -> None:
     if NODE_COMMAND is None:
@@ -198,8 +248,9 @@ def test_mcpb_node_wrapper_rejects_wrong_repo_root_without_spawn(
     )
 
     assert completed.returncode != 0
-    assert "repository_root must point to the KCS Authoring MVP repository" in (
-        completed.stderr
+    assert (
+        "KCS_AUTHORING_MVP_REPO_ROOT must point to the KCS Authoring MVP project"
+        in completed.stderr
     )
     assert "not-kcs-authoring-mvp" not in completed.stderr
 
@@ -221,7 +272,10 @@ def test_mcpb_node_wrapper_rejects_uv_command_with_arguments() -> None:
     )
 
     assert completed.returncode != 0
-    assert "uv executable name or path without arguments" in completed.stderr
+    assert (
+        "KCS_AUTHORING_MVP_UV_COMMAND must be an executable name or path "
+        "without arguments" in completed.stderr
+    )
     assert "/private" not in completed.stderr
 
 
@@ -242,7 +296,13 @@ def test_build_script_creates_mcpb_archive(tmp_path: Path) -> None:
     assert output.is_file()
     with zipfile.ZipFile(output) as archive:
         names = set(archive.namelist())
-        assert names == EXPECTED_BUNDLE_FILES
+        assert names == {
+            path.as_posix() for path in module.expected_bundle_files()
+        }
+        assert EXPECTED_STATIC_BUNDLE_FILES.issubset(names)
+        assert "python/pyproject.toml" in names
+        assert "python/src/kcs_adapters/mcp_desktop.py" in names
+        assert "python/src/kcs_core/semantic_extraction.py" in names
         assert all(".venv" not in name for name in names)
         assert all("__pycache__" not in name for name in names)
         manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
@@ -261,23 +321,59 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "readOnlyHint": False,
                     },
                     "description": (
-                        "Python owns semantic extraction and local reviewer "
-                        "bundle output."
+                        "Register one approved sanitized transcript. "
+                        "Use clean_ticket_text. Writes clean.ticket.txt and "
+                        "returns next_arguments. A Claude Desktop file card is "
+                        "not a filesystem path; do not inspect upload "
+                        "directories."
+                    ),
+                    "inputSchema": {
+                        "properties": {
+                            "clean_ticket_text": {},
+                            "debug": {},
+                            "ticket_ref": {},
+                        },
+                        "required": ["clean_ticket_text"],
+                    },
+                    "name": "kcs_register_clean_ticket",
+                },
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": False,
+                        "readOnlyHint": False,
+                    },
+                    "description": (
+                        "Prefer ticket_ref. Python validates the input and "
+                        "owns semantic extraction. A Claude Desktop file card "
+                        "is not a filesystem path; do not inspect upload "
+                        "directories. file_content_unavailable."
                     ),
                     "inputSchema": {
                         "properties": {
                             "approved_summary_text": {},
                             "debug": {
                                 "description": (
-                                    "Use true only when full reviewer_only_html "
-                                    "must be returned; otherwise use html_path."
+                                    "Successful Desktop draft results already "
+                                    "include reviewer-only Zendesk HTML."
                                 )
                             },
                             "operator_selected_item_ref": {},
                             "operator_selection_ref": {},
+                            "ticket_ref": {},
                         }
                     },
                     "name": "kcs_draft_article",
+                },
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": True,
+                        "readOnlyHint": True,
+                    },
+                    "description": "Compatibility helper for kcs_draft_article.",
+                    "inputSchema": {"properties": {}},
+                    "name": "support_get_behavior_instructions",
                 }
             ]
         }
@@ -326,6 +422,15 @@ def test_mcpb_stdio_smoke_result_checks_controlled_statuses(tmp_path: Path) -> N
     bundle_file.write_text(html, encoding="utf-8")
     no_candidates = {
         "result": {
+            "content": [
+                {
+                    "text": (
+                        "KCS article drafting is blocked by the KCS Authoring "
+                        "tool. Do not draft manually."
+                    ),
+                    "type": "text",
+                }
+            ],
             "structuredContent": {
                 "debug_code": "semantic_extraction_no_candidates",
                 "failure_stage": "semantic_extraction",
@@ -353,6 +458,18 @@ def test_mcpb_stdio_smoke_result_checks_controlled_statuses(tmp_path: Path) -> N
     }
     labeled_draft = {
         "result": {
+            "content": [
+                {
+                    "text": "```html\n"
+                    f"{html}\n"
+                    "```\n\n"
+                    "```json\n"
+                    '{"html_path":"local-data/reviewer-bundles/run/item/'
+                    'reviewer_only.html"}\n'
+                    "```",
+                    "type": "text",
+                },
+            ],
             "isError": False,
             "structuredContent": {
                 "debug_code": "draft_only_reuse_search_missing",
@@ -362,7 +479,6 @@ def test_mcpb_stdio_smoke_result_checks_controlled_statuses(tmp_path: Path) -> N
                 "recommended_action": "draft_only",
                 "reuse_search_status": "skipped",
                 "reviewer_bundle_written": True,
-                "reviewer_only_html": html,
                 "writes_files": True,
             },
         }
@@ -380,7 +496,10 @@ def test_mcpb_stdio_smoke_result_checks_controlled_statuses(tmp_path: Path) -> N
 def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> None:
     module = _load_smoke_module()
     html_path = "local-data/reviewer-bundles/run/candidate-002/reviewer_only.html"
-    html = "<h1>Monitoring extension post-install fails</h1>"
+    html = (
+        "<h1>Monitoring extension post-install fails</h1>"
+        "<h2>Resolution</h2><ol><li>Restart the service.</li></ol>"
+    )
     old_repo_root = module.REPO_ROOT
     module.REPO_ROOT = tmp_path
     bundle_file = tmp_path / html_path
@@ -429,6 +548,18 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
     }
     selected = {
         "result": {
+            "content": [
+                {
+                    "text": "```html\n"
+                    f"{html}\n"
+                    "```\n\n"
+                    "```json\n"
+                    '{"html_path":"local-data/reviewer-bundles/run/'
+                    'candidate-002/reviewer_only.html"}\n'
+                    "```",
+                    "type": "text",
+                },
+            ],
             "structuredContent": {
                 "debug_code": "draft_only_reuse_search_missing",
                 "draft_generated": True,
@@ -1348,7 +1479,9 @@ def test_install_script_installs_built_mcpb(tmp_path: Path) -> None:
         path.relative_to(install_dir).as_posix()
         for path in install_dir.rglob("*")
         if path.is_file()
-    } == EXPECTED_BUNDLE_FILES
+    } == {
+        path.as_posix() for path in build_module.expected_bundle_files()
+    }
     registry_path = tmp_path / "extensions-installations.json"
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
     entry = registry["extensions"][install_dir.name]
@@ -1356,11 +1489,13 @@ def test_install_script_installs_built_mcpb(tmp_path: Path) -> None:
     assert entry["hash"] == sha256(package.read_bytes()).hexdigest()
     assert entry["source"] == "local"
     assert entry["signatureInfo"] == {"status": "unsigned"}
-    assert entry["manifest"]["tools"][0]["name"] == "kcs_draft_article"
-    assert "pass only approved_summary_text" in entry["manifest"]["tools"][0][
-        "description"
-    ]
-    assert "structured item" not in entry["manifest"]["tools"][0]["description"]
+    draft_tool = next(
+        tool
+        for tool in entry["manifest"]["tools"]
+        if tool["name"] == "kcs_draft_article"
+    )
+    assert "approved_summary_text" in draft_tool["description"]
+    assert "structured item" not in draft_tool["description"]
 
 
 def test_install_script_replaces_stale_claude_registry_manifest(
@@ -1421,8 +1556,14 @@ def test_install_script_replaces_stale_claude_registry_manifest(
     assert entry["manifest"]["long_description"] == json.loads(
         (MCPB_SOURCE / "manifest.json").read_text(encoding="utf-8")
     )["long_description"]
-    description = entry["manifest"]["tools"][0]["description"]
-    assert "pass only approved_summary_text" in description
+    draft_tool = next(
+        tool
+        for tool in entry["manifest"]["tools"]
+        if tool["name"] == "kcs_draft_article"
+    )
+    description = draft_tool["description"]
+    assert "ticket_ref" in description
+    assert "approved_summary_text" in description
     assert "structured item" not in description
     unrelated = registry["extensions"]["unrelated.extension"]
     assert unrelated["manifest"]["name"] == "keep-me"

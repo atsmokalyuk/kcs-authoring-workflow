@@ -22,7 +22,7 @@
     "validator",
     "claude-desktop"
   ],
-  "long_description": "Starts the repository-local KCS Authoring MVP stdio MCP server through uv. In Claude Desktop this extension exposes one primary non-destructive tool for reviewer-only KCS article drafting from approved sanitized summaries. Successful primary drafts may write reviewer-only bundle files under local-data/reviewer-bundles/. For prompts like \"draft an article\" with an approved sanitized support-ticket attachment, the default workflow is reviewer-only KCS knowledge base article drafting through kcs_draft_article, without asking the operator to choose a generic article type. Internal diagnostic tools remain available only in internal/canonical server mode. It is not approved for raw Zendesk payloads, raw comments, internal notes, attachments, customer replies, Zendesk writes, Help Center publication, Claude Desktop-owned provider calls, raw provider payloads, or arbitrary file-writing tools. Python-owned approved semantic provider calls may run only when explicitly configured, using sanitized bounded context.",
+  "long_description": "Starts the bundled KCS Authoring MVP stdio MCP server through an autodetected local runtime: uv first, then python3.11/python3 fallback. Installing this MCPB is the only required Claude Desktop setup step for the default local workflow; no repository path, Claude CLI/Code, API key, or semantic-provider configuration is required. The primary tool is kcs_draft_article for reviewer-only KCS article drafting from operator-provided sanitized ticket text. A small support_get_behavior_instructions compatibility helper exists for legacy Plesk Support prompts and only routes to kcs_draft_article. It performs no Zendesk writes, Help Center publication, Claude Desktop-owned provider calls, Claude CLI/Code dependency, or API-key dependency.",
   "manifest_version": "0.3",
   "name": "kcs-authoring-mvp-validator-control",
   "prompts_generated": false,
@@ -33,35 +33,24 @@
         "${__dirname}/server/index.js"
       ],
       "command": "node",
-      "env": {
-        "KCS_AUTHORING_MVP_REPO_ROOT": "${user_config.repository_root}",
-        "KCS_AUTHORING_MVP_UV_COMMAND": "${user_config.uv_command}"
-      }
+      "env": {}
     },
     "type": "node"
   },
   "tools": [
     {
-      "description": "Primary operator tool for approved sanitized support-ticket prompts such as 'draft an article', 'draft me an article', 'write a KB article', or equivalent non-English requests such as 'напиши статью' or 'me escreva um artigo'. Do not ask what kind of article or what language to use; default to an English reviewer-only KCS knowledge base article. For chat attachments or pasted summaries, read the complete visible sanitized content and pass only approved_summary_text; do not summarize, condense, rewrite, or omit symptoms, cause, resolution, config paths, commands, services, or platform facts before calling the tool. Do not pass uploaded filenames, local paths, Claude upload paths, item, item_candidates, reference article bodies, or field aliases. Python owns semantic extraction, workflow state, validation, KCS decisions, rendering, local reviewer bundle output, and output safety. If the tool returns split_required, use a native Claude Desktop choice popup when the client provides one; otherwise present the returned candidates and wait for the operator to choose one item. After a choice, call this tool again with only operator_selection_ref and operator_selected_item_ref. Use operator_choice_request.options[*].submit_arguments exactly and do not infer the selection payload. If semantic extraction provider support is unavailable, show the controlled semantic_extraction_provider_unavailable status instead of drafting manually.",
+      "description": "Register one approved sanitized support-ticket transcript as a repository-local clean ticket file. Use this when Claude Desktop receives a draft-article request with an operator-provided sanitized attachment or long paste and no ticket_ref yet. This is the automatic first step for attachment-based drafting. Pass the complete visible sanitized transcript, even when long, in clean_ticket_text and optionally an opaque ticket_ref; do not pass uploaded filenames, local paths, Claude upload paths, item, item_candidates, aliases, or reference article bodies. A Claude Desktop file card is not a filesystem path: do not inspect upload directories, and use the visible file text as clean_ticket_text. The tool writes clean.ticket.txt under local-data/approved-summaries and returns exact next_arguments for kcs_draft_article.",
+      "name": "kcs_register_clean_ticket"
+    },
+    {
+      "description": "Primary KCS authoring tool for sanitized support-ticket article requests. Prefer ticket_ref when a trusted source has saved the cleaned ticket transcript under the repository-local approved-summaries store. For an operator-provided sanitized attachment or long paste with no ticket_ref, call kcs_register_clean_ticket first and then call this tool with the returned next_arguments. Use approved_summary_text only as a fallback for short inline sanitized text when clean-ticket registration is not needed. Do not summarize, redact labeled sections, or pass upload filenames, paths, item, item_candidates, aliases, or reference article bodies. A Claude Desktop file card is not a filesystem path; do not inspect upload directories or ask the operator to re-upload while visible file text is available. If no visible file text is available, report file_content_unavailable and do not draft manually. Python validates the input and owns semantic extraction, decision, rendering, and local bundle output. Successful results return reviewer-only Zendesk HTML plus compact status. If split_required is returned, call again with only operator_selection_ref and operator_selected_item_ref.",
       "name": "kcs_draft_article"
+    },
+    {
+      "description": "Compatibility helper for legacy Plesk Support behavior-instruction requests. Returns the minimal KCS Authoring route: use kcs_draft_article for sanitized ticket article drafting.",
+      "name": "support_get_behavior_instructions"
     }
   ],
   "tools_generated": false,
-  "user_config": {
-    "repository_root": {
-      "default": "${HOME}/kcs-authoring-mvp",
-      "description": "Local KCS Authoring MVP checkout containing pyproject.toml.",
-      "required": true,
-      "title": "KCS Authoring MVP repository root",
-      "type": "directory"
-    },
-    "uv_command": {
-      "default": "uv",
-      "description": "uv executable or absolute path used to run the local MCP server.",
-      "required": true,
-      "title": "uv command",
-      "type": "string"
-    }
-  },
   "version": "0.1.0"
 }

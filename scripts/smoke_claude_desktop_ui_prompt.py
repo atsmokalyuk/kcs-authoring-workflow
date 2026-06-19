@@ -57,7 +57,7 @@ _PROVIDER_UNAVAILABLE_RE = re.compile(
     re.I,
 )
 _OLD_ARG_RE = re.compile(
-    r'"(?:item|item_candidates|reference_article_html|ticket_ref)"\s*:',
+    r'"(?:item|item_candidates|reference_article_html)"\s*:',
     re.I,
 )
 _SUMMARY_ARG_RE = re.compile(r'"approved_summary_text"\s*:', re.I)

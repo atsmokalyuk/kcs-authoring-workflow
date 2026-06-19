@@ -48,6 +48,10 @@ SUPPORTED_CAUSE_UNCERTAIN_RE = re.compile(
     r"\b(?:appears?|likely|maybe|possibly|probably|seems?|suspected|unclear|unknown)\b",
     re.I,
 )
+TOOL_ARGUMENT_ARTIFACT_RE = re.compile(
+    r"</?\s*(?:function|parameter|tool_call)\b|<\s*parameter\s+name\s*=",
+    re.I,
+)
 
 APPROVED_SUMMARY_FALSE_ONLY_ARGS = frozenset(
     {
@@ -311,6 +315,10 @@ def approved_summary_text_argument(arguments: Mapping[str, Any]) -> str:
         try:
             ensure_safe_sanitized_payload(value)
         except ContractValidationError:
+            raise ApprovedSummaryInputError(
+                "approved_summary_text_invalid"
+            ) from None
+        if TOOL_ARGUMENT_ARTIFACT_RE.search(value):
             raise ApprovedSummaryInputError(
                 "approved_summary_text_invalid"
             ) from None

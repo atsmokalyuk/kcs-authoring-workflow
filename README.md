@@ -158,14 +158,16 @@ content, write Zendesk, or generate customer replies.
 KCS-12 is implemented as adapter-layer `kcs_adapters.mcp_desktop` stdio MCP
 logic outside `kcs_core`, plus a reproducible Claude Desktop MCPB package
 source under `packaging/claude-desktop/`. The default Claude Desktop surface
-exposes one primary operator tool, `kcs_draft_article`, with a thin
-`approved_summary_text` / selection-ref schema. Python owns semantic
-extraction, workflow state, validation, KCS decisions, rendering, local
-reviewer bundle writing, and output safety. Default successful results return
-compact status plus local bundle refs and hashes; full `reviewer_only_html` is
-returned only in explicit debug/smoke compatibility mode. KCS-12 does not read
-raw tickets, call Claude/provider APIs, expose MCP resources/prompts, change
-KCS decisions, publish content, write Zendesk, or generate customer replies.
+exposes `kcs_register_clean_ticket` for sanitized attachment/long-paste
+registration, `kcs_draft_article` for authoring from `ticket_ref` or short
+inline sanitized text, and a compatibility behavior helper. Python owns
+semantic extraction, workflow state, validation, KCS decisions, rendering,
+local reviewer bundle writing, and output safety. Default successful results
+return compact status plus local bundle refs and hashes; full
+`reviewer_only_html` is returned only in explicit debug/smoke compatibility
+mode. KCS-12 does not read raw tickets, call Claude/provider APIs, expose MCP
+resources/prompts, change KCS decisions, publish content, write Zendesk, or
+generate customer replies.
 
 Local smoke accounting is implemented as adapter-layer
 `kcs_adapters.smoke_accounting` and the `kcs-smoke-account` console script. It
@@ -352,13 +354,15 @@ The generated package is written to:
 dist/kcs-authoring-mvp-validator-control.mcpb
 ```
 
-Install this MCPB in Claude Desktop, set `repository_root` to the local
-checkout, keep `uv_command=uv` unless a full path is required, enable the
-extension, and start a new chat. The package starts `kcs-desktop-mcp` through
-`uv --project <repository_root> run ...` and exposes one compact
-non-destructive operator tool. Successful primary article drafts may write
-reviewer-only bundle files under `local-data/reviewer-bundles/`; the tool still
-does not publish content or write Zendesk.
+Install this MCPB in Claude Desktop, enable the extension, and start a new
+chat. The package embeds the local Python workflow source and starts
+`kcs-desktop-mcp` through an autodetected local runtime (`uv` first, then
+`python3.11` / `python3` fallback) without requiring a configured repository
+path, Claude CLI/Code, an API key, or a semantic-provider setting. It exposes
+compact operator tools for clean-ticket registration and article drafting.
+Successful primary article drafts may write reviewer-only bundle files under
+`local-data/reviewer-bundles/`; the tool still does not publish content or
+write Zendesk.
 
 For local development after MCPB or adapter fixes, rebuild and replace the
 installed Claude Desktop extension in one step:

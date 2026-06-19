@@ -18,18 +18,27 @@ Do not ask the operator to choose between reuse search and manual drafting
 before the first tool call; call the tool and show its controlled status.
 Do not invent reuse/search proof; if proof is absent, the tool marks reuse
 search as skipped for the MVP and continues with reviewer-only drafting.
-Pass the complete visible sanitized ticket/context in `approved_summary_text`;
-despite the legacy field name, do not summarize, condense, rewrite, or omit
-visible symptoms, cause, resolution, config paths, commands, services, platform
-facts, or other sanitized evidence before the first tool call. Do not pass
-article type, upload filenames, local paths, Claude upload paths, structured
-`item`, `item_candidates`, reference article bodies, or field aliases. Python
-owns semantic extraction and may use only canonical KCS values: `technical_scr`
-or `howto_qa`.
+Prefer `ticket_ref` when a trusted source has saved the cleaned ticket
+transcript under `local-data/approved-summaries/<ticket_ref>/clean.ticket.txt`.
+If no ref is available for an operator-provided sanitized attachment or paste,
+automatically first call `kcs_register_clean_ticket` with the complete visible
+sanitized transcript in `clean_ticket_text`, then call `kcs_draft_article` with
+the returned `next_arguments` exactly. Do not wait for the operator to ask for
+registration explicitly. If no clean-ticket registration is needed and the
+sanitized content is short enough to pass directly, pass the visible text from
+the operator-provided sanitized ticket/context in
+`approved_summary_text`. Despite the legacy field name, do not summarize,
+condense, rewrite, redact labeled sections, or omit visible symptoms, cause,
+resolution, config paths, commands, services, platform facts, or other
+sanitized evidence before the first tool call. Do not pass article type, upload
+filenames, local paths, Claude upload paths, structured `item`,
+`item_candidates`, reference article bodies, or field aliases. Python owns
+semantic extraction and may use only canonical KCS values: `technical_scr` or
+`howto_qa`.
 
 Production semantic extraction is provider-owned inside Python. If the approved
 provider is not configured, `kcs_draft_article` returns
-`semantic_extraction_provider_unavailable`; report that controlled status and
+`semantic_extraction_no_candidates`; report that controlled status and
 do not draft manually or construct `item` / `item_candidates` in Claude.
 
 If the ticket contains more than one semantic KCS item, the tool returns
@@ -40,6 +49,10 @@ operator chooses one item, call the tool again using exactly the chosen
 option's `submit_arguments`. If a native popup is unavailable, present the same
 choices and still use the returned `submit_arguments` exactly. Do not infer,
 rewrite, or enrich the selection payload.
+
+Successful `kcs_draft_article` results include tool-generated reviewer-only
+Zendesk HTML and compact status. Use that HTML as the article draft; do not
+create a separate freehand draft.
 
 Low-level KCS-9b/KCS-9c packet validators, policy/readiness/smoke tools,
 pipeline status tools, and authoring sub-tools are internal development tools.

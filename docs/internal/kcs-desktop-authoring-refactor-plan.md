@@ -3,9 +3,11 @@
 ## Summary
 
 The Desktop drafting workflow must be tool-owned, not Claude-owned.
-Claude Desktop is a thin control surface: it passes either complete approved
-sanitized ticket context as `approved_summary_text`, or the exact selection
-refs returned by the previous tool call.
+Claude Desktop is a thin control surface: it can register a complete sanitized
+ticket transcript as a repo-local clean ticket file, then pass either the
+opaque `ticket_ref`, complete approved sanitized ticket context as
+`approved_summary_text` for short pasted text, or the exact selection refs
+returned by the previous tool call.
 
 Python owns:
 
@@ -14,16 +16,25 @@ Python owns:
 - validation, safety, decision, rendering, readiness, and acceptance;
 - local reviewer bundle output.
 
-The approved semantic source is an approved provider called from Python. The
-provider output is untrusted and accepted only when it validates as
+The production Desktop semantic source is a bundled local approved-summary
+provider called from Python. It extracts only explicit facts from
+`approved_summary_text` and does not require Claude CLI/Code, an API key, or a
+manually configured semantic provider. Any future external approved provider
+must remain Python-owned, explicit, bounded, and untrusted until it validates as
 `candidate_semantic_extraction_v1`.
 
 ## Desktop Tool Surface
 
 Keep the Desktop-visible MCP surface narrow:
 
-- one primary tool: `kcs_draft_article`;
-- input args only:
+- one registration tool: `kcs_register_clean_ticket`;
+- one primary authoring tool: `kcs_draft_article`;
+- `kcs_register_clean_ticket` input args only:
+  - `clean_ticket_text`;
+  - `ticket_ref`;
+  - `debug`;
+- `kcs_draft_article` input args only:
+  - `ticket_ref`;
   - `approved_summary_text`;
   - `operator_selection_ref`;
   - `operator_selected_item_ref`;
@@ -33,11 +44,33 @@ Keep the Desktop-visible MCP surface narrow:
 
 Valid call shapes:
 
-- first call: `approved_summary_text`, optionally `debug`;
+- optional clean-ticket registration call: `clean_ticket_text`, optionally
+  `ticket_ref` and `debug`;
+- first call: `ticket_ref`, optionally `debug`;
+- first call fallback for short pasted text: `approved_summary_text`,
+  optionally `debug`;
 - second call: `operator_selection_ref` and `operator_selected_item_ref`,
   optionally `debug`.
 
 Invalid call shapes return controlled tool results, not generic MCP failures.
+`ticket_ref` is an opaque ref, not a path. The canonical source-independent
+clean ticket file layout is:
+
+```text
+local-data/approved-summaries/<ticket_ref>/clean.ticket.txt
+```
+
+Zendesk cleanup, Claude attachment preparation, and web GUI cleanup should all
+write the same clean ticket file shape. Python reads that file and feeds the
+complete cleaned transcript through the same semantic extraction, validation,
+decision, renderer, and bundle pipeline.
+
+When Claude Desktop receives a sanitized attachment but no `ticket_ref`, it
+should automatically first call `kcs_register_clean_ticket` with the complete
+visible sanitized transcript in `clean_ticket_text`; the operator should not
+need to ask for registration explicitly. The registration result returns
+`next_arguments`, and Claude must call `kcs_draft_article` with those arguments
+exactly.
 
 ## Architecture Rule
 
@@ -47,18 +80,24 @@ structure.
 
 Allowed provider roles:
 
-- `UnavailableSemanticExtractionProvider`: production default when no approved
-  provider runtime config is present; returns a controlled
-  `semantic_extraction_provider_unavailable` workflow result.
-- `ApprovedSemanticExtractionProvider`: calls the approved provider/API/internal
-  service using safe refs and bounded payloads; accepts only
-  `candidate_semantic_extraction_v1`.
+- `ApprovedSummarySemanticExtractionProvider`: production default; bundled with
+  the MCPB; extracts explicit approved-summary facts locally and returns no
+  candidates when the summary lacks required semantic facts.
+- `UnavailableSemanticExtractionProvider`: controlled failure mode for explicit
+  unsupported provider configuration; returns
+  `semantic_extraction_provider_unavailable`.
+- Future external approved provider adapters: call an approved provider/API or
+  internal service only when explicitly configured, using safe refs and bounded
+  payloads; accept only `candidate_semantic_extraction_v1`.
 - `FixtureSemanticExtractionProvider`: smoke/test only, enabled explicitly by
   injection or smoke env; it is visibly fixture-only and must not become a
   product-specific production regex engine.
 
 No local Gemma/local LLM semantic implementation is in scope. No production
 Monitoring/DataDir or other product-specific regex semantic engine is allowed.
+The local approved-summary provider may parse generic labeled or narrative
+support-summary structure, but it must not become a product-specific ticket
+solver.
 
 ## Local RAG Reuse Search Boundary
 
@@ -165,8 +204,10 @@ Implement this as small reviewable slices, not as one large commit:
   - write only under `local-data/reviewer-bundles/`;
   - return only safe relative refs, paths, and hashes by default.
 - `KCS-12c: Semantic provider boundary`
-  - replace local semantic hacks with the approved provider/core semantic
-    extraction contract;
+  - replace local semantic hacks with the core semantic extraction contract and
+    the bundled local approved-summary provider;
+  - keep future external approved providers behind explicit safe configuration
+    boundaries;
   - keep fixture extraction opt-in for tests and smoke only;
   - do not add Gemma/local LLM semantics;
   - do not keep Monitoring/DataDir regex extraction as production semantics.
@@ -285,9 +326,11 @@ Current branch status:
   - deferred hardening is recorded in
     `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12b-2026-06-19.md`.
 - `KCS-12c` provider boundary is implemented for the Desktop draft path:
-  - production default is controlled
+  - production default is the bundled local
+    `ApprovedSummarySemanticExtractionProvider`;
+  - explicit unsupported provider configuration still returns controlled
     `semantic_extraction_provider_unavailable`;
-  - approved-provider adapter exists behind safe refs;
+  - future approved-provider adapters must stay behind safe refs;
   - fixture provider is explicit and used by smoke/tests;
   - production local Monitoring/DataDir regex semantics are not on the default
     path;
@@ -355,7 +398,8 @@ are detected.
 5. Remove the local label/raw Monitoring extractor from the production default
    path.
 6. Add an explicit fixture provider path for deterministic tests and smoke.
-7. Add the approved provider path with safe configuration boundaries.
+7. Add the bundled local approved-summary provider path and keep any future
+   external approved provider behind safe configuration boundaries.
 8. Implement `KCS-12d`: keep stdio and installed-wrapper smoke explicit about
    fixture usage.
 9. Keep GUI-log smoke focused on observable Desktop behavior:
@@ -368,7 +412,11 @@ Unit and regression coverage must verify:
 
 - Desktop schema exposes only thin args;
 - `mcp_desktop.py` delegates workflow instead of owning extraction/bundle state;
-- missing approved provider returns `semantic_extraction_provider_unavailable`;
+- default production provider extracts explicit approved-summary facts locally;
+- summaries without enough semantic facts return
+  `semantic_extraction_no_candidates`;
+- explicit unsupported provider configuration returns
+  `semantic_extraction_provider_unavailable`;
 - fixture provider output is validated and invalid/unsafe extraction blocks
   without raw echo;
 - multiple candidates return `split_required`, compact cards,

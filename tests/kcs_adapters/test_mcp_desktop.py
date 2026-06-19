@@ -4,13 +4,18 @@ import io
 import json
 import subprocess
 import sys
+from collections.abc import Mapping
 from hashlib import sha256
+from typing import Any
 
 import pytest
 
 import kcs_adapters
 from kcs_adapters import mcp_desktop
-from kcs_adapters.desktop_workflow import FixtureSemanticExtractionProvider
+from kcs_adapters.desktop_workflow import (
+    ApprovedSummarySemanticExtractionProvider,
+    FixtureSemanticExtractionProvider,
+)
 from kcs_adapters.mcp_desktop import (
     MCP_PROTOCOL_VERSION,
     TOOL_AUTHOR_APPROVED_SUMMARY,
@@ -18,6 +23,7 @@ from kcs_adapters.mcp_desktop import (
     TOOL_DRAFT_ARTICLE,
     TOOL_GET_POLICY_SUMMARY,
     TOOL_NAME_STYLE_CANONICAL,
+    TOOL_REGISTER_CLEAN_TICKET,
     TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
     TOOL_RUN_CONTRACT_SMOKE,
     TOOL_VALIDATE_DRAFT_RESPONSE,
@@ -296,6 +302,31 @@ def _call_tool(
     )
 
 
+def _tool_text(response: Mapping[str, Any]) -> str:
+    content = response.get("result", {}).get("content", [])
+    assert isinstance(content, list)
+    for item in content:
+        assert isinstance(item, Mapping)
+        if item.get("type") == "text":
+            text = item.get("text")
+            assert isinstance(text, str)
+            return text
+    raise AssertionError("missing text content")
+
+
+def _tool_html_resource_text(response: Mapping[str, Any]) -> str:
+    content = response.get("result", {}).get("content", [])
+    assert isinstance(content, list)
+    for item in content:
+        assert isinstance(item, Mapping)
+        if item.get("type") == "text":
+            text = item.get("text")
+            assert isinstance(text, str)
+            if text.startswith("```html\n") and "\n```\n\n```json\n" in text:
+                return text.split("```html\n", 1)[1].split("\n```\n\n```json\n", 1)[0]
+    raise AssertionError("missing html text block")
+
+
 def _call_author_approved_summary(arguments: object | None = None):
     return _call_tool(
         _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
@@ -540,6 +571,17 @@ def _write_approved_ticket_summary(
     )
 
 
+def _write_clean_ticket_text(
+    tmp_path,
+    text: str,
+    *,
+    ticket_ref: str = "ticket-001",
+) -> None:
+    source_dir = tmp_path / "local-data" / "approved-summaries" / ticket_ref
+    source_dir.mkdir(parents=True)
+    (source_dir / "clean.ticket.txt").write_text(text, encoding="utf-8")
+
+
 def test_initialize_lifecycle_and_capabilities_are_narrow() -> None:
     transport = McpStdioTransport()
 
@@ -563,25 +605,23 @@ def test_initialize_lifecycle_and_capabilities_are_narrow() -> None:
     }
     instructions = initialize["result"]["instructions"]
     assert "kcs_draft_article" in instructions
-    assert "draft an article" in instructions
-    assert "напиши статью" in instructions
-    assert "me escreva um artigo" in instructions
-    assert "Do not ask what kind of article" in instructions
-    assert "Do not ask what language to use" in instructions
-    assert "pass it as approved_summary_text" in instructions
-    assert "do not pass the uploaded filename" in instructions
-    assert "not part of the Claude Desktop article-drafting schema" in instructions
-    assert "Do not pass item, item_candidates" in instructions
-    assert "Python owns semantic extraction" in instructions
-    assert "Do not ask the operator to choose between reuse search" in instructions
-    assert "wait for the operator" in instructions
-    assert "native Claude Desktop choice popup" in instructions
-    assert "when the client provides one" in instructions
-    assert "operator_selection_ref" in instructions
-    assert "operator_selected_item_ref" in instructions
-    assert "semantic_extraction_provider_unavailable" in instructions
-    assert "reviewer_only_html" not in instructions
-    assert "fenced html block" not in instructions
+    assert "kcs_register_clean_ticket" in instructions
+    assert "approved_summary_text" in instructions
+    assert "ticket_ref" in instructions
+    assert "first call kcs_register_clean_ticket" in instructions
+    assert "configured approved-summaries store" in instructions
+    assert "Claude Desktop file card is not a filesystem path" in instructions
+    assert "do not inspect upload directories" in instructions
+    assert "file_content_unavailable" in instructions
+    assert "item, item_candidates" in instructions
+    assert "Python validates the input" in instructions
+    assert "does not require Claude CLI/Code or an API key" in instructions
+    assert "reviewer-only Zendesk HTML" in instructions
+    assert "raw comments" not in instructions
+    assert "internal notes" not in instructions
+    assert "attachments" not in instructions
+    assert "draft an article" not in instructions
+    assert "support_get_behavior_instructions" not in instructions
     assert "validation tools only" not in instructions
     assert "logging" not in initialize["result"]["capabilities"]
     assert before_initialized is not None
@@ -759,28 +799,53 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
     assert "kcs_validate_handoff_response" not in tool_names
     assert "kcs_validate_draft_request" not in tool_names
     assert "kcs_validate_draft_response" not in tool_names
-    assert tool_names == {"kcs_draft_article"}
-    assert len(tools) == 1
+    assert tool_names == {
+        "kcs_register_clean_ticket",
+        "kcs_draft_article",
+        "support_get_behavior_instructions",
+    }
+    assert len(tools) == 3
     for tool in tools:
-        if tool["name"] == "kcs_draft_article":
-            assert "draft an article" in tool["description"]
-            assert "напиши статью" in tool["description"]
-            assert "me escreva um artigo" in tool["description"]
-            assert "Do not ask what kind of article" in tool["description"]
-            assert "Do not ask what language to use" in tool["description"]
-            assert "pass only approved_summary_text" in tool["description"]
-            assert "complete visible sanitized content" in tool["description"]
-            assert "do not summarize" in tool["description"]
-            assert "config paths" in tool["description"]
-            assert "Python owns semantic extraction" in tool["description"]
+        if tool["name"] == "kcs_register_clean_ticket":
+            assert "Register one approved sanitized" in tool["description"]
+            assert "automatic first step" in tool["description"]
+            assert "even when long" in tool["description"]
+            assert "clean.ticket.txt" in tool["description"]
+            assert "next_arguments for kcs_draft_article" in tool["description"]
+            schema = tool["inputSchema"]
+            assert set(schema["properties"]) == {
+                "clean_ticket_text",
+                "debug",
+                "ticket_ref",
+            }
+            assert schema["required"] == ["clean_ticket_text"]
+            assert tool["annotations"]["readOnlyHint"] is False
+            assert tool["annotations"]["idempotentHint"] is False
+        elif tool["name"] == "kcs_draft_article":
+            assert "Primary KCS authoring tool" in tool["description"]
+            assert "Prefer ticket_ref" in tool["description"]
+            assert "operator-provided sanitized attachment or long paste" in (
+                tool["description"]
+            )
+            assert "kcs_register_clean_ticket first" in tool["description"]
+            assert "approved_summary_text only as a fallback" in tool[
+                "description"
+            ]
+            assert "upload filenames, paths, item, item_candidates" in (
+                tool["description"]
+            )
+            assert "Claude Desktop file card is not a filesystem path" in (
+                tool["description"]
+            )
+            assert "do not inspect upload directories" in tool["description"]
+            assert "file_content_unavailable" in tool["description"]
+            assert "Python validates the input and owns semantic extraction" in (
+                tool["description"]
+            )
             assert "split_required" in tool["description"]
-            assert "native Claude Desktop choice popup" in tool["description"]
-            assert "when the client provides one" in tool["description"]
-            assert "submit_arguments exactly" in tool["description"]
             assert "operator_selection_ref" in tool["description"]
             assert "operator_selected_item_ref" in tool["description"]
-            assert "semantic_extraction_provider_unavailable" in tool["description"]
-            assert "reviewer-only KCS knowledge base article" in tool["description"]
+            assert "reviewer-only Zendesk HTML" in tool["description"]
             assert "item object" not in tool["description"]
             assert "item_candidates only" not in tool["description"]
             assert "break-fix" not in tool["description"]
@@ -790,24 +855,44 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
                 "debug",
                 "operator_selected_item_ref",
                 "operator_selection_ref",
+                "ticket_ref",
             }
-            assert "uploaded filenames" in schema["properties"][
+            assert "clean-ticket registration" in schema["properties"][
                 "approved_summary_text"
             ]["description"]
-            assert "Complete approved sanitized support-ticket context" in schema[
-                "properties"
-            ]["approved_summary_text"]["description"]
-            assert "do not summarize" in schema["properties"][
+            assert "kcs_register_clean_ticket" in schema["properties"][
+                "approved_summary_text"
+            ]["description"]
+            assert "Do not summarize" in schema["properties"][
+                "approved_summary_text"
+            ]["description"]
+            assert "redact labeled sections" in schema["properties"][
                 "approved_summary_text"
             ]["description"]
             assert "config paths" in schema["properties"]["approved_summary_text"][
                 "description"
             ]
-            assert "full reviewer_only_html" in schema["properties"]["debug"][
+            assert "raw comments" not in schema["properties"][
+                "approved_summary_text"
+            ]["description"]
+            assert "internal notes" not in schema["properties"][
+                "approved_summary_text"
+            ]["description"]
+            assert "attachments" in schema["properties"]["approved_summary_text"][
                 "description"
             ]
-            assert "html_path" in schema["properties"]["debug"]["description"]
-            assert "ticket_ref" not in schema["properties"]
+            assert "explicit debug or smoke compatibility" in schema["properties"][
+                "debug"
+            ]["description"]
+            assert "reviewer-only Zendesk HTML" in schema["properties"]["debug"][
+                "description"
+            ]
+            assert "configured cleaned ticket transcript" in schema[
+                "properties"
+            ]["ticket_ref"]["description"]
+            assert "absolute paths" in schema["properties"]["ticket_ref"][
+                "description"
+            ]
             for hidden_alias in (
                 "auto_publish_allowed",
                 "case_ref",
@@ -825,9 +910,15 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
                 "steps",
             ):
                 assert hidden_alias not in schema["properties"]
-        assert tool["annotations"]["readOnlyHint"] is False
+            assert tool["annotations"]["readOnlyHint"] is False
+            assert tool["annotations"]["idempotentHint"] is False
+        elif tool["name"] == "support_get_behavior_instructions":
+            assert "Compatibility helper" in tool["description"]
+            assert "kcs_draft_article" in tool["description"]
+            assert tool["inputSchema"]["properties"] == {}
+            assert tool["annotations"]["readOnlyHint"] is True
+            assert tool["annotations"]["idempotentHint"] is True
         assert tool["annotations"]["destructiveHint"] is False
-        assert tool["annotations"]["idempotentHint"] is False
         assert tool["annotations"]["openWorldHint"] is False
         assert "inputSchema" in tool
         assert "outputSchema" not in tool
@@ -1106,15 +1197,16 @@ def test_author_approved_summary_returns_reviewer_only_draft() -> None:
         {"kind": "reference_section_coverage_ok", "severity": "info"}
     ]
     result_output = response["result"]["content"][0]["text"]
-    assert result_output.startswith("Reviewer-only Zendesk HTML draft:\n```html\n")
+    assert result_output.startswith("```html\n")
+    assert "```html\n" in result_output
+    assert "COPY THE FINAL RESPONSE BELOW VERBATIM" not in result_output
+    assert "Do not rewrite it into a Markdown article" not in result_output
+    assert "do not add follow-up wording" not in result_output
+    assert "Reviewer-only Zendesk HTML draft generated" not in result_output
     assert "COPY THE FENCED HTML BLOCK" not in result_output
-    assert (
-        "Do not rewrite it, summarize it, convert it to Markdown"
-        not in result_output
-    )
-    assert "\n```\n\nCompact status:\n```json\n" in result_output
-    assert "\n```\n\nReviewer preview:\n" in result_output
-    assert preview_text in result_output
+    assert "\n```\n\n```json\n" in result_output
+    assert "Reviewer preview:" not in result_output
+    assert preview_text not in result_output
     html = structured["reviewer_only_html"]
     assert "<h1>Monitoring graphs show no data in Plesk</h1>" in html
     assert html in result_output
@@ -1383,26 +1475,241 @@ def test_draft_article_uses_ticket_ref_path(
 ) -> None:
     monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
     _write_approved_ticket_summary(tmp_path)
-
-    structured = _assert_draft_article_call_shape_invalid(
-        {"ticket_ref": "ticket-001", "debug": True}
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
     )
 
-    assert "ticket_ref" not in structured
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-001", "debug": True},
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["draft_generated"] is True
+    assert structured["ticket_ref"] == "ticket-001"
+    assert structured["approved_summary_source"] == "local_approved_summary"
+    assert structured["reviewer_bundle_written"] is True
+    assert "reviewer_only_html" not in structured
+    assert structured["html_path"].endswith("/reviewer_only.html")
+    assert str(tmp_path) not in result_text
+
+
+def test_draft_article_uses_clean_ticket_ref_file(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    _write_clean_ticket_text(
+        tmp_path,
+        _raw_monitoring_ticket_summary(),
+        ticket_ref="monitoring-001",
+    )
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "monitoring-001", "debug": True},
+    )
+
+    assert response is not None
+    result_text = json.dumps(response, sort_keys=True)
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["draft_generated"] is True
+    assert structured["pipeline_ok"] is False
+    assert structured["recommended_action"] == "draft_only"
+    assert structured["debug_code"] == "draft_only_reuse_search_missing"
+    assert structured["ticket_ref"] == "monitoring-001"
+    assert structured["approved_summary_source"] == "local_clean_ticket"
+    assert structured["article_type"] == ArticleType.TECHNICAL_SCR.value
+    assert structured["reviewer_bundle_written"] is True
+    assert "reviewer_only_html" not in structured
+    html_path = tmp_path / structured["html_path"]
+    assert "Connect to the Plesk server via SSH" in html_path.read_text(
+        encoding="utf-8"
+    )
+    assert str(tmp_path) not in result_text
+
+
+def test_register_clean_ticket_then_draft_article_from_ref(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+
+    register_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": _raw_monitoring_ticket_summary(),
+            "ticket_ref": "monitoring-001",
+        },
+    )
+
+    assert register_response is not None
+    registered = register_response["result"]["structuredContent"]
+    register_text = json.dumps(register_response, sort_keys=True)
+    assert register_response["result"]["isError"] is False
+    assert registered["result_kind"] == "clean_ticket_registered"
+    assert registered["ticket_ref"] == "monitoring-001"
+    assert registered["next_arguments"] == {"ticket_ref": "monitoring-001"}
+    assert "clean_ticket_text" not in register_text
+
+    draft_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        registered["next_arguments"],
+    )
+
+    assert draft_response is not None
+    draft = draft_response["result"]["structuredContent"]
+    assert draft["result_kind"] == "draft_article_authoring"
+    assert draft["draft_generated"] is True
+    assert draft["ticket_ref"] == "monitoring-001"
+    assert draft["approved_summary_source"] == "local_clean_ticket"
+    assert draft["reviewer_bundle_written"] is True
+
+
+def test_register_clean_ticket_rejects_truncated_visible_text(tmp_path) -> None:
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Plesk Monitoring graphs show no data.\n"
+                "With grafana debug enabled:\n"
+                "[debug output truncated]\n"
+            ),
+            "ticket_ref": "monitoring-001",
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    result_output = response["result"]["content"][0]["text"]
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "clean_ticket_registration"
+    assert structured["debug_code"] == "clean_ticket_text_incomplete"
+    assert structured["writes_files"] is False
+    assert "Clean ticket registration is blocked" in result_output
+    assert "Do not draft manually" in result_output
+    assert "debug output truncated" not in result_text
+
+
+def test_register_clean_ticket_rejects_invalid_visible_text_without_retry_drafting(
+    tmp_path,
+) -> None:
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Plesk Monitoring graphs show no data.\n"
+                "Contact person@example.com for details.\n"
+            ),
+            "ticket_ref": "monitoring-001",
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    result_output = response["result"]["content"][0]["text"]
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "clean_ticket_registration"
+    assert structured["debug_code"] == "clean_ticket_text_invalid"
+    assert structured["writes_files"] is False
+    assert "Do not draft manually" in result_output
+    assert "Do not reconstruct, summarize, or invent" in result_output
+    assert "person@example.com" not in result_text
+
+
+def test_register_clean_ticket_rejects_embedded_tool_argument_markup(
+    tmp_path,
+) -> None:
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Plesk Monitoring graphs show no data.\n"
+                '<parameter name="ticket_ref">'
+                "monitoring-graphs-no-data-rrd-path\n"
+                "Resolution: disable config and restart the service.\n"
+            ),
+            "ticket_ref": "monitoring-001",
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    result_output = response["result"]["content"][0]["text"]
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "clean_ticket_registration"
+    assert structured["debug_code"] == "clean_ticket_text_invalid"
+    assert structured["writes_files"] is False
+    assert "Do not draft manually" in result_output
+    assert "parameter" not in result_text
+    assert "monitoring-graphs-no-data-rrd-path" not in result_text
 
 
 def test_draft_article_upload_path_ticket_ref_returns_retry_instruction() -> None:
     uploaded_path = "/mnt/user-data/uploads/sanitized_ticket_for_test.txt"
 
-    _assert_draft_article_call_shape_invalid(
-        {"ticket_ref": uploaded_path, "debug": True}
+    response = _call_tool(
+        _initialized_transport(),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": uploaded_path, "debug": True},
     )
-    result_text = json.dumps(
-        _assert_draft_article_call_shape_invalid(
-            {"ticket_ref": uploaded_path, "debug": True}
-        ),
-        sort_keys=True,
-    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    result_text = json.dumps(structured, sort_keys=True)
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "approved_ticket_ref_invalid"
     assert uploaded_path not in result_text
 
 
@@ -1410,7 +1717,7 @@ def test_draft_article_prefers_summary_text_over_ticket_ref() -> None:
     _assert_draft_article_call_shape_invalid(
         {
             **_approved_summary_args(debug=True),
-            "ticket_ref": "/mnt/user-data/uploads/sanitized_ticket_for_test.txt",
+            "ticket_ref": "ticket-001",
         },
     )
     result_text = json.dumps(
@@ -1571,8 +1878,11 @@ def test_draft_article_accepts_common_admin_resolution_commands() -> None:
     assert structured["pipeline_ok"] is True
     assert structured["ready_for_reviewer"] is True
     assert "reviewer_only_html" in structured
-    assert "Run cat /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf" in (
-        structured["reviewer_only_html"]
+    assert (
+        "<p>Review the <code>DataDir</code> setting:</p>\n"
+        "      <p><code># cat "
+        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf</code></p>"
+        in structured["reviewer_only_html"]
     )
 
 
@@ -1717,10 +2027,10 @@ def test_draft_article_primary_summary_blocks_when_provider_missing() -> None:
     assert structured["provider_calls"] is False
     assert "reviewer_only_html" not in structured
     result_output = response["result"]["content"][0]["text"]
-    assert result_output.startswith("COPY THE FINAL RESPONSE BELOW VERBATIM.")
+    assert result_output.startswith("KCS article drafting is blocked")
     assert "approved semantic extraction provider is not configured" in result_output
-    assert "do not write a fallback article" in result_output
-    assert "do not infer item/item_candidates" in result_output
+    assert "do not write a fallback article" not in result_output
+    assert "do not infer item/item_candidates" not in result_output
 
 
 def test_draft_article_primary_summary_without_labels_has_no_candidates() -> None:
@@ -1748,12 +2058,49 @@ def test_draft_article_primary_summary_without_labels_has_no_candidates() -> Non
     assert structured["failure_stage"] == "semantic_extraction"
     assert structured["debug_code"] == "semantic_extraction_no_candidates"
     assert "reviewer_only_html" not in structured
+    result_output = response["result"]["content"][0]["text"]
+    assert result_output.startswith("KCS article drafting is blocked")
+    assert "complete semantic KCS item" in result_output
+    assert "Do not draft manually" in result_output
+    assert "final symptom, supported cause, and resolution evidence" in result_output
+
+
+def test_draft_article_primary_summary_rejects_embedded_tool_argument_markup() -> None:
+    response = _call_tool(
+        _initialized_transport(
+            adapter=KcsDesktopMcpAdapter(
+                semantic_extraction_provider=FixtureSemanticExtractionProvider(),
+                visible_tools={TOOL_DRAFT_ARTICLE},
+            )
+        ),
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {
+            "approved_summary_text": (
+                "Customer Ticket Content\n"
+                "Plesk Monitoring graphs show no data.\n"
+                '<parameter name="debug">false'
+            ),
+            "debug": True,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    result_text = json.dumps(response, sort_keys=True)
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "input_validation"
+    assert structured["debug_code"] == "draft_article_args_invalid"
+    assert structured["writes_files"] is False
+    assert "parameter" not in result_text
 
 
 def test_draft_article_primary_fixture_provider_writes_bundle(tmp_path) -> None:
+    bundle_root = tmp_path / "local-data" / "reviewer-bundles"
     transport = _initialized_transport(
         adapter=KcsDesktopMcpAdapter(
-            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles",
+            reviewer_bundle_root=bundle_root,
             semantic_extraction_provider=FixtureSemanticExtractionProvider(),
             visible_tools={TOOL_DRAFT_ARTICLE},
         )
@@ -1778,11 +2125,19 @@ def test_draft_article_primary_fixture_provider_writes_bundle(tmp_path) -> None:
     assert structured["reuse_search_status"] == "skipped"
     assert structured["writes_files"] is True
     assert "reviewer_only_html" not in structured
-    result_output = response["result"]["content"][0]["text"]
-    assert result_output.startswith("Reviewer-only KCS draft generated.")
+    html_path = bundle_root / structured["bundle_ref"] / "candidate-001" / (
+        "reviewer_only.html"
+    )
+    html = html_path.read_text(encoding="utf-8")
+    result_output = _tool_text(response)
+    assert "<h2>Resolution</h2>" in html
+    assert not result_output.startswith("```html\n")
+    assert "Reviewer-only KCS draft generated" in result_output
+    assert "Do not rewrite it into a Markdown article" not in result_output
+    assert "COPY THE FINAL RESPONSE BELOW VERBATIM" not in result_output
+    assert "do not claim the file is unavailable from this chat" in result_output
+    assert "do not offer a separate chat-authored article" in result_output
     assert "html_path" in result_output
-    assert "Do not draft manually or retry the tool" in result_output
-    assert "Reviewer-only Zendesk HTML draft:" not in result_output
 
 
 def test_draft_article_primary_fixture_provider_supports_narrative_summary(
@@ -1818,16 +2173,17 @@ def test_draft_article_primary_fixture_provider_supports_narrative_summary(
         if gap.get("severity") == "blocker"
     }
     assert blocker_gap_kinds == set()
-    assert "<li>Plesk for Linux</li>" in structured["reviewer_only_html"]
+    html = _tool_html_resource_text(response)
+    assert "<li>Plesk for Linux</li>" in html
     assert (
         '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
         "Connect to the Plesk server via SSH.</a></li>"
-    ) in structured["reviewer_only_html"]
-    assert "systemctl restart sw-collectd" in structured["reviewer_only_html"]
+    ) in html
+    assert "systemctl restart sw-collectd" in html
     html_path = bundle_root / structured["bundle_ref"] / "candidate-001" / (
         "reviewer_only.html"
     )
-    assert html_path.read_text(encoding="utf-8") == structured["reviewer_only_html"]
+    assert html_path.read_text(encoding="utf-8") in html
 
 
 def test_draft_article_primary_fixture_provider_supports_compact_summary(
@@ -1855,9 +2211,10 @@ def test_draft_article_primary_fixture_provider_supports_compact_summary(
     assert structured["draft_generated"] is True
     assert structured["debug_code"] == "draft_only_reuse_search_missing"
     assert structured["article_type"] == ArticleType.TECHNICAL_SCR.value
-    assert "<li>Plesk for Linux</li>" in structured["reviewer_only_html"]
-    assert "systemctl restart sw-collectd" in structured["reviewer_only_html"]
-    assert "Monitoring graphs show no data" in structured["reviewer_only_html"]
+    html = _tool_html_resource_text(response)
+    assert "<li>Plesk for Linux</li>" in html
+    assert "systemctl restart sw-collectd" in html
+    assert "Monitoring graphs show no data" in html
 
 
 def test_draft_article_primary_fixture_provider_supports_raw_ticket_summary(
@@ -1893,25 +2250,101 @@ def test_draft_article_primary_fixture_provider_supports_raw_ticket_summary(
         if gap.get("severity") == "blocker"
     }
     assert blocker_gap_kinds == set()
-    assert "<li>Plesk for Linux</li>" in structured["reviewer_only_html"]
-    assert "<h2>Cause</h2>" in structured["reviewer_only_html"]
+    html = _tool_html_resource_text(response)
+    assert "<li>Plesk for Linux</li>" in html
+    assert "<h2>Cause</h2>" in html
     assert (
         "The collectd configuration file "
-        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf pointed Monitoring "
-        "metric data to a location that the Plesk Monitoring backend does not "
-        "query."
-    ) in structured["reviewer_only_html"]
-    assert "PERSON_NAME" not in structured["reviewer_only_html"]
-    assert "SHELL_USERHOST" not in structured["reviewer_only_html"]
+        "<code>/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf</code> "
+        "pointed Monitoring metric data to a location that the Plesk Monitoring "
+        "backend does not query."
+    ) in html
+    assert "PERSON_NAME" not in html
+    assert "SHELL_USERHOST" not in html
     assert (
         '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
         "Connect to the Plesk server via SSH.</a></li>"
-    ) in structured["reviewer_only_html"]
+    ) in html
     assert (
-        "Back up and remove /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf."
-        in structured["reviewer_only_html"]
+        "<p>Back up the custom collectd configuration file:</p>\n"
+        "      <p><code># cp -a "
+        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+        "/root/monitoring-case-backup/</code></p>"
+    ) in html
+    assert (
+        "<p>Disable the custom collectd configuration file:</p>\n"
+        "      <p><code># mv "
+        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.disabled</code></p>"
+    ) in html
+    assert "systemctl restart sw-collectd" in html
+
+
+def test_draft_article_primary_local_provider_uses_final_fix_not_diagnostics(
+    tmp_path,
+) -> None:
+    bundle_root = tmp_path / "local-data" / "reviewer-bundles"
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=bundle_root,
+            semantic_extraction_provider=ApprovedSummarySemanticExtractionProvider(),
+            visible_tools={TOOL_DRAFT_ARTICLE},
+        )
     )
-    assert "systemctl restart sw-collectd" in structured["reviewer_only_html"]
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {
+            "approved_summary_text": (
+                "# Customer Ticket Content\n\n"
+                "When loading the monitoring module in Plesk, none of the graphs "
+                "show any data.\n"
+                "logger=example level=error msg=\"plugin process exited\" "
+                "plugin=/var/lib/grafana/plugins/plesk-json-backend-datasource/"
+                "dist/bin error=\"signal: terminated\"\n"
+                "[root@server modules]# ls -ld /var/lib/grafana/\n"
+                "drwxrwxr-x 3 root root 18 Jun 17 2021 "
+                "plesk-json-backend-datasource grafana:grafana 750 Disabled\n"
+                "Test server\n"
+                "file /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf is not "
+                "owned by any package\n"
+                "DataDir \"/usr/local/psa/var/modules/monitoring/rrd\"\n"
+                "Root cause: leftover/custom unowned collectd override caused "
+                "RRD files to be written to a path that Monitoring backend does "
+                "not query correctly.\n"
+                "I backed up and disabled the incorrect configuration file "
+                "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf, restarted "
+                "the statistics collector, and confirmed that new metric data "
+                "is now being written to the expected location. The Monitoring "
+                "graphs have started displaying data again.\n"
+                "systemctl restart sw-collectd\n"
+            ),
+            "debug": True,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["debug_code"] == "draft_only_reuse_search_missing"
+    assert structured["draft_generated"] is True
+    html = _tool_html_resource_text(response)
+    assert (
+        "<h1>Monitoring graphs show no data in Plesk due to custom unowned "
+        "collectd configuration file</h1>"
+    ) in html
+    assert "Plesk Monitoring graphs show no data." in html
+    assert "02rrdtool-monitoring.conf" in html
+    assert (
+        "<p>Restart <code>sw-collectd</code>:</p>\n"
+        "      <p><code># systemctl restart sw-collectd</code></p>"
+        in html
+    )
+    assert "Connect to the Plesk server via SSH" in html
+    assert "plugin process exited" not in html
+    assert "drwxrwxr-x" not in html
+    assert "Test server" not in html
+    assert "ls -ld" not in html
 
 
 def test_draft_article_primary_fixture_provider_supports_live_raw_ticket_shape(
@@ -1945,16 +2378,25 @@ def test_draft_article_primary_fixture_provider_supports_live_raw_ticket_shape(
     assert structured["article_type"] == ArticleType.TECHNICAL_SCR.value
     assert structured["reuse_search_status"] == "skipped"
     assert structured["kcs_ready"] is False
-    assert "<li>Plesk for Linux</li>" in structured["reviewer_only_html"]
+    html = _tool_html_resource_text(response)
+    assert "<li>Plesk for Linux</li>" in html
     assert (
         '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
         "Connect to the Plesk server via SSH.</a></li>"
-    ) in structured["reviewer_only_html"]
+    ) in html
     assert (
-        "Back up and remove /etc/sw-collectd/conf.d/02rrdtool-monitoring.conf."
-        in structured["reviewer_only_html"]
-    )
-    assert "systemctl restart sw-collectd" in structured["reviewer_only_html"]
+        "<p>Back up the custom collectd configuration file:</p>\n"
+        "      <p><code># cp -a "
+        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+        "/root/monitoring-case-backup/</code></p>"
+    ) in html
+    assert (
+        "<p>Disable the custom collectd configuration file:</p>\n"
+        "      <p><code># mv "
+        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.disabled</code></p>"
+    ) in html
+    assert "systemctl restart sw-collectd" in html
 
 
 def test_draft_article_primary_debug_includes_reviewer_only_html(tmp_path) -> None:
@@ -1978,16 +2420,17 @@ def test_draft_article_primary_debug_includes_reviewer_only_html(tmp_path) -> No
     assert response["result"]["isError"] is False
     assert structured["result_kind"] == "draft_article_authoring"
     assert structured["draft_generated"] is True
-    assert "reviewer_only_html" in structured
-    assert "<h2>Resolution</h2>" in structured["reviewer_only_html"]
+    assert "reviewer_only_html" not in structured
+    html = _tool_html_resource_text(response)
+    assert "<h2>Resolution</h2>" in html
     assert (
         '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
         "Connect to the Plesk server via SSH.</a></li>"
-    ) in structured["reviewer_only_html"]
+    ) in html
     html_path = bundle_root / structured["bundle_ref"] / "candidate-001" / (
         "reviewer_only.html"
     )
-    assert html_path.read_text(encoding="utf-8") == structured["reviewer_only_html"]
+    assert html_path.read_text(encoding="utf-8") in html
 
 
 def test_draft_article_primary_debug_links_windows_rdp_step(tmp_path) -> None:
@@ -2011,12 +2454,13 @@ def test_draft_article_primary_debug_links_windows_rdp_step(tmp_path) -> None:
     assert response["result"]["isError"] is False
     assert structured["result_kind"] == "draft_article_authoring"
     assert structured["draft_generated"] is True
-    assert "reviewer_only_html" in structured
-    assert "<li>Plesk for Windows</li>" in structured["reviewer_only_html"]
+    assert "reviewer_only_html" not in structured
+    html = _tool_html_resource_text(response)
+    assert "<li>Plesk for Windows</li>" in html
     assert (
         '12377247797271-How-to-connect-to-a-Plesk-server-via-RDP-with-'
         'available-credentials">Connect to the Plesk server via RDP.</a></li>'
-    ) in structured["reviewer_only_html"]
+    ) in html
 
 
 def test_draft_article_primary_fixture_provider_supports_howto_qa(tmp_path) -> None:
@@ -2041,9 +2485,10 @@ def test_draft_article_primary_fixture_provider_supports_howto_qa(tmp_path) -> N
     assert structured["draft_generated"] is True
     assert structured["article_type"] == ArticleType.HOWTO_QA.value
     assert structured["debug_code"] == "draft_only_reuse_search_missing"
-    assert "reviewer_only_html" in structured
-    assert "<h2>Question</h2>" in structured["reviewer_only_html"]
-    assert "<h2>Answer</h2>" in structured["reviewer_only_html"]
+    assert "reviewer_only_html" not in structured
+    html = _tool_html_resource_text(response)
+    assert "<h2>Question</h2>" in html
+    assert "<h2>Answer</h2>" in html
     assert "break-fix" not in json.dumps(structured, sort_keys=True)
 
 
@@ -2080,11 +2525,14 @@ def test_draft_article_primary_fixture_provider_splits_items(tmp_path) -> None:
         "operator_selection_ref": split["operator_selection_ref"],
     }
     assert split["item_candidates"] == [
-        {
-            "article_type": ArticleType.TECHNICAL_SCR.value,
-            "item_ref": "candidate-001",
-            "title": "Monitoring graphs show no data in Plesk",
-        },
+            {
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "item_ref": "candidate-001",
+                "title": (
+                    "Monitoring graphs show no data in Plesk due to custom "
+                    "collectd RRD data directory"
+                ),
+            },
         {
             "article_type": ArticleType.TECHNICAL_SCR.value,
             "item_ref": "candidate-002",
@@ -2108,8 +2556,10 @@ def test_draft_article_primary_fixture_provider_splits_items(tmp_path) -> None:
     assert selected_response["result"]["isError"] is False
     assert structured["draft_generated"] is True
     assert structured["item_ref"] == "candidate-002"
-    assert "reviewer_only_html" in structured
-    assert "Monitoring extension post-install fails" in structured["reviewer_only_html"]
+    assert "reviewer_only_html" not in structured
+    assert "Monitoring extension post-install fails" in _tool_html_resource_text(
+        selected_response
+    )
 
 
 def test_draft_article_primary_summary_uses_provider_for_split_required() -> None:
@@ -2252,6 +2702,7 @@ def test_draft_article_primary_selection_uses_pending_provider_candidate(
     )
     manifest_path = bundle_root / structured["bundle_ref"] / "manifest.json"
     assert html_path.is_file()
+    assert "<h2>Resolution</h2>" in html_path.read_text(encoding="utf-8")
     assert manifest_path.is_file()
     assert sha256(html_path.read_bytes()).hexdigest() == structured["html_sha256"]
 
@@ -2298,12 +2749,14 @@ def test_draft_article_primary_summary_continues_for_single_candidate(tmp_path) 
     assert structured["ready_for_reviewer"] is False
     assert structured["reviewer_bundle_written"] is True
     assert "reviewer_only_html" not in structured
-    assert (
+    html_path = (
         bundle_root
         / structured["bundle_ref"]
         / "candidate-001"
         / "reviewer_only.html"
-    ).is_file()
+    )
+    assert html_path.is_file()
+    assert "<h2>Resolution</h2>" in html_path.read_text(encoding="utf-8")
 
 
 def test_draft_article_primary_quality_blocker_does_not_write_bundle(
@@ -3549,6 +4002,7 @@ def test_root_exports_include_mcp_desktop_api() -> None:
     assert kcs_adapters.McpStdioTransport is McpStdioTransport
     assert kcs_adapters.TOOL_DRAFT_ARTICLE == TOOL_DRAFT_ARTICLE
     assert kcs_adapters.TOOL_AUTHOR_TICKET == TOOL_AUTHOR_TICKET
+    assert kcs_adapters.TOOL_REGISTER_CLEAN_TICKET == TOOL_REGISTER_CLEAN_TICKET
     assert (
         kcs_adapters.TOOL_RUN_APPROVED_SUMMARY_PIPELINE
         == TOOL_RUN_APPROVED_SUMMARY_PIPELINE

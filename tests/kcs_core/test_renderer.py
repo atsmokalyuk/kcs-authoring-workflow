@@ -255,6 +255,67 @@ def test_resolution_steps_are_ordered_inside_resolution_container() -> None:
     assert "<li>Enable the required mail setting.</li>" in html
 
 
+def test_renderer_formats_commands_and_paths_as_inline_code() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Monitoring graphs show no data in Plesk",
+                "summary": "Monitoring graphs show no data.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Run rpm -qf "
+                        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                        "to verify that the file is not owned by any package."
+                    ),
+                    (
+                        "Back up and disable "
+                        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf."
+                    ),
+                    "Run systemctl restart sw-collectd.",
+                ],
+            }
+        ],
+        supported_cause=(
+            "The DataDir setting points sw-collectd to "
+            "/usr/local/psa/var/modules/monitoring/rrd."
+        ),
+        symptoms=["Monitoring graphs show no data."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>Verify that the file is not owned by any package:</p>\n"
+        "      <p><code># rpm -qf "
+        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf</code></p>"
+        in html
+    )
+    assert (
+        "Back up and disable "
+        "<code>/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf</code>."
+        in html
+    )
+    assert (
+        "<p>Restart <code>sw-collectd</code>:</p>\n"
+        "      <p><code># systemctl restart sw-collectd</code></p>"
+        in html
+    )
+    assert "<code>DataDir</code>" in html
+    assert "<code>sw-collectd</code>" in html
+    assert (
+        "<code>/usr/local/psa/var/modules/monitoring/rrd</code>."
+        in html
+    )
+
+
 def test_linux_plesk_resolution_starts_with_ssh_entry_point() -> None:
     evidence = _evidence(
         issue_candidates=[

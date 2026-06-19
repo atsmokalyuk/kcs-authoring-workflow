@@ -82,6 +82,28 @@ _SAFE_PUBLIC_TEXT_FILENAME_RE = re.compile(
     r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid|bak|backup|disabled|orig|old)"
     r"(?:\.(?:bak|backup|disabled|orig|old))?\b"
 )
+_INLINE_CODE_PATH_RE = re.compile(
+    r"(?<![\w<])/(?:etc|usr|var|opt|root|tmp)/[A-Za-z0-9_./%:+-]+"
+)
+_INLINE_CODE_TOKEN_RE = re.compile(r"\b(?:DataDir|sw-collectd)\b")
+_INLINE_CODE_COMMAND_RE = re.compile(
+    r"\bRun\s+"
+    r"(?P<command>"
+    r"[A-Za-z0-9_./%-]+"
+    r"(?:\s+(?:"
+    r"-[A-Za-z0-9_.-]+|"
+    r"/[A-Za-z0-9_./%:+-]+|"
+    r"(?!(?:to|and|then)\b)[A-Za-z0-9_.:%=+-]+"
+    r")){0,12}"
+    r")"
+    r"(?=(?:\s+to\b|\.|,|$))",
+    re.I,
+)
+_SYSTEMCTL_RESTART_RE = re.compile(
+    r"^systemctl\s+restart\s+(?P<service>[A-Za-z0-9_.@-]+)$",
+    re.I,
+)
+_RUN_COMMAND_DESCRIPTION_SPLIT_RE = re.compile(r"\s+to\s+", re.I)
 _PLESK_SSH_RESOLUTION_STEP = "Connect to the Plesk server via SSH."
 _PLESK_SSH_RESOLUTION_URL = (
     "https://support.plesk.com/hc/en-us/articles/"
@@ -241,7 +263,7 @@ def _technical_scr_html(candidate: Mapping[str, object]) -> str:
         lines.append(_paragraph(cause, "cause"))
     lines.append("<h2>Resolution</h2>")
     lines.append('<div class="resolution">')
-    lines.extend(_ordered_list(_string_list(candidate.get("resolution_steps")), 2))
+    lines.extend(_resolution_ordered_list(_string_list(candidate.get("resolution_steps"))))
     lines.append("</div>")
     return "\n".join(lines)
 
@@ -269,7 +291,7 @@ def _h1(value: str) -> str:
 
 def _paragraph(value: str, field_name: str) -> str:
     _ensure_text_bound(field_name, value, _MAX_PARAGRAPH_LENGTH)
-    return f"<p>{escape(value)}</p>"
+    return f"<p>{_inline_markup(value)}</p>"
 
 
 def _applicable_to_html(values: list[str]) -> list[str]:
@@ -287,6 +309,15 @@ def _ordered_list(values: list[str], indent: int = 0) -> list[str]:
     return lines
 
 
+def _resolution_ordered_list(values: list[str]) -> list[str]:
+    _ensure_list_bound(values)
+    lines = ["  <ol>"]
+    for value in values:
+        lines.extend(_resolution_ordered_list_item(value))
+    lines.append("  </ol>")
+    return lines
+
+
 def _ordered_list_item(value: str) -> str:
     if value == _PLESK_SSH_RESOLUTION_STEP:
         return (
@@ -300,12 +331,123 @@ def _ordered_list_item(value: str) -> str:
             f'<a href="{_PLESK_RDP_RESOLUTION_URL}">{escape(value)}</a>'
             "</li>"
         )
-    return f"<li>{escape(value)}</li>"
+    return f"<li>{_inline_markup(value)}</li>"
+
+
+def _resolution_ordered_list_item(value: str) -> list[str]:
+    linked = _linked_resolution_list_item(value)
+    if linked is not None:
+        return [f"    {linked}"]
+    command_step = _run_command_step(value)
+    if command_step is None:
+        return [f"    {_ordered_list_item(value)}"]
+    description, command = command_step
+    return [
+        "    <li>",
+        f"      <p>{_inline_markup(description)}</p>",
+        f"      <p><code># {escape(command)}</code></p>",
+        "    </li>",
+    ]
+
+
+def _linked_resolution_list_item(value: str) -> str | None:
+    if value == _PLESK_SSH_RESOLUTION_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_SSH_RESOLUTION_URL}">{escape(value)}</a>'
+            "</li>"
+        )
+    if value == _PLESK_RDP_RESOLUTION_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_RDP_RESOLUTION_URL}">{escape(value)}</a>'
+            "</li>"
+        )
+    return None
+
+
+def _run_command_step(value: str) -> tuple[str, str] | None:
+    text = value.strip()
+    if not text.casefold().startswith("run "):
+        return None
+    command_text = text[4:].strip().rstrip(".")
+    if not command_text:
+        return None
+    parts = _RUN_COMMAND_DESCRIPTION_SPLIT_RE.split(command_text, maxsplit=1)
+    command = parts[0].strip()
+    description_source = parts[1].strip() if len(parts) == 2 else None
+    if not command:
+        return None
+    description = _command_step_description(command, description_source)
+    return description, command
+
+
+def _command_step_description(command: str, description: str | None) -> str:
+    if description:
+        return f"{_sentence_case(description.strip().rstrip('.'))}:"
+    restart_match = _SYSTEMCTL_RESTART_RE.fullmatch(command)
+    if restart_match is not None:
+        return f"Restart {restart_match.group('service')}:"
+    return "Run the following command:"
+
+
+def _sentence_case(value: str) -> str:
+    if not value:
+        return value
+    return value[0].upper() + value[1:]
 
 
 def _unordered_list(values: list[str]) -> list[str]:
     _ensure_list_bound(values)
-    return ["<ul>", *[f"  <li>{escape(value)}</li>" for value in values], "</ul>"]
+    return [
+        "<ul>",
+        *[f"  <li>{_inline_markup(value)}</li>" for value in values],
+        "</ul>",
+    ]
+
+
+def _inline_markup(value: str) -> str:
+    spans = _inline_code_spans(value)
+    if not spans:
+        return escape(value)
+    parts: list[str] = []
+    position = 0
+    for start, end in spans:
+        if start > position:
+            parts.append(escape(value[position:start]))
+        parts.append(f"<code>{escape(value[start:end])}</code>")
+        position = end
+    if position < len(value):
+        parts.append(escape(value[position:]))
+    return "".join(parts)
+
+
+def _inline_code_spans(value: str) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
+    for match in _INLINE_CODE_COMMAND_RE.finditer(value):
+        spans.append(_trim_inline_code_span(value, match.span("command")))
+    for pattern in (_INLINE_CODE_PATH_RE, _INLINE_CODE_TOKEN_RE):
+        for match in pattern.finditer(value):
+            span = _trim_inline_code_span(value, match.span())
+            if _span_overlaps(span, spans):
+                continue
+            spans.append(span)
+    return sorted(spans)
+
+
+def _trim_inline_code_span(value: str, span: tuple[int, int]) -> tuple[int, int]:
+    start, end = span
+    while end > start and value[end - 1] in ".,;:":
+        end -= 1
+    return start, end
+
+
+def _span_overlaps(span: tuple[int, int], spans: list[tuple[int, int]]) -> bool:
+    start, end = span
+    return any(
+        start < existing_end and end > existing_start
+        for existing_start, existing_end in spans
+    )
 
 
 def _ensure_list_bound(values: list[str]) -> None:

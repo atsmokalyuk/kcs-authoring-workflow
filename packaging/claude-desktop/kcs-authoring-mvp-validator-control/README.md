@@ -2,11 +2,14 @@
 
 This directory is the source for the Claude Desktop MCPB package.
 
-The extension starts the repository-local `kcs-desktop-mcp` stdio server
-through `uv`. In Claude Desktop it exposes one primary non-destructive operator
-tool for reviewer-only KCS article drafting from approved sanitized summaries.
-Successful primary drafts may write reviewer-only bundle files under
-`local-data/reviewer-bundles/`.
+The extension starts the bundled `kcs-desktop-mcp` stdio server through an
+autodetected local runtime: `uv` first, then `python3.11` / `python3` fallback.
+Installing the MCPB is the only required Claude Desktop setup step for the
+default local workflow; the operator does not configure a repository path,
+Claude CLI/Code, an API key, or a semantic provider. In Claude Desktop it
+exposes one primary non-destructive operator tool for reviewer-only KCS article
+drafting from approved sanitized summaries. Successful primary drafts may write
+reviewer-only bundle files under `local-data/reviewer-bundles/`.
 
 Build:
 
@@ -32,42 +35,84 @@ Output:
 dist/kcs-authoring-mvp-validator-control.mcpb
 ```
 
-Install the generated MCPB in Claude Desktop, configure the local repository
-root, enable the extension, then start a new Claude Desktop chat.
+Install the generated MCPB in Claude Desktop, enable the extension, then start a
+new Claude Desktop chat.
 
 For normal operator prompts such as "draft an article", "draft me an article",
 or "write a KB article" with a pasted or attached approved sanitized summary,
-Claude Desktop should use:
+Claude Desktop should use the clean-ticket registration tool first when no
+`ticket_ref` exists yet:
+
+```text
+kcs_register_clean_ticket
+```
+
+Then Claude Desktop should use:
 
 ```text
 kcs_draft_article
 ```
 
-It accepts chat-provided `approved_summary_text` as the primary first-call
-input. Despite the legacy field name, Claude Desktop must read attached
-sanitized text and pass the complete visible sanitized content as
-`approved_summary_text`; it must not summarize, condense, rewrite, or omit
-symptoms, cause, resolution, config paths, commands, services, platform facts,
-or other visible sanitized evidence. It must not pass uploaded filenames, local
-paths, Claude upload paths, structured `item`, `item_candidates`, reference
-article bodies, or field aliases.
+For production-like long tickets, prefer an opaque `ticket_ref` that points to a
+cleaned ticket transcript prepared by a trusted source. The canonical file
+layout inside the configured clean-ticket store is:
 
-Python owns semantic extraction, workflow state, validation, KCS decisions,
-rendering, and output safety. If the tool returns `split_required`, treat that
-result as terminal for the current turn: show the Python-returned candidate
-items in a native Claude Desktop choice popup when the client provides one and
-wait for the operator to choose one item. Do not automatically call the tool
-again for each candidate. If a native popup is not available, the tool result
-text includes the same
-candidate choices and exact `submit_arguments`; present those choices to the
-operator and use the selected option's returned
+```text
+local-data/approved-summaries/<ticket_ref>/clean.ticket.txt
+```
+
+Installed MCPB runs store those clean ticket files under
+`~/Documents/KCS Authoring`. Source/dev runs without a storage hint keep using
+the project-local `local-data/approved-summaries` directory.
+
+Claude Desktop must pass only the opaque ref, for example:
+
+```json
+{"ticket_ref": "monitoring-001"}
+```
+
+If the operator provided a sanitized attachment or paste but no `ticket_ref`,
+Claude Desktop should automatically first call `kcs_register_clean_ticket` with
+the complete visible sanitized transcript in `clean_ticket_text`; the operator
+does not need to ask for registration explicitly. The registration result
+returns `next_arguments`; Claude Desktop must call `kcs_draft_article` with
+those exact `next_arguments`.
+
+It must not pass uploaded filenames, local paths, Claude upload paths,
+structured `item`, `item_candidates`, reference article bodies, or field
+aliases.
+
+A Claude Desktop file card is not a filesystem path. Claude Desktop must not
+inspect upload directories or ask the operator to re-upload while visible file
+text is available. If no visible file text is available, it should report
+`file_content_unavailable` and must not draft manually.
+
+For short chat-provided sanitized text, Claude Desktop may pass
+`approved_summary_text`. Despite the legacy field name, that value must contain
+the visible sanitized content as-is; Claude must not summarize, condense,
+rewrite, redact labeled sections, or omit symptoms, cause, resolution, config
+paths, commands, services, platform facts, or other visible sanitized evidence.
+
+Python owns local semantic extraction, workflow state, validation, KCS decisions,
+rendering, and output safety. The workflow does not branch on Claude Desktop
+Free vs Enterprise; client capabilities are observed from the MCP initialize
+message, and the same tool contract is used for both. If the tool returns
+`split_required`, treat that result as terminal for the current turn: show the
+Python-returned candidate items in a native Claude Desktop choice popup when the
+client provides one and wait for the operator to choose one item. Do not
+automatically call the tool again for each candidate. If a native popup is not
+available, the tool result text includes the same candidate choices and exact
+`submit_arguments`; present those choices to the operator and use the selected
+option's returned
 `operator_choice_request.options[*].submit_arguments` as the deterministic
 fallback for the next tool call. Do not infer or rewrite the selection payload.
 
-Semantic extraction is provider-owned inside Python. Production Desktop
-sessions require an approved semantic provider configuration; when that
-provider is absent, the tool returns the controlled
-`semantic_extraction_provider_unavailable` status instead of drafting manually.
+Semantic extraction is provider-owned inside Python. The default Desktop path
+uses local approved-summary semantic extraction and does not require Claude
+CLI/Code or an API key, so it can be smoke-tested from Claude Desktop Free or
+Enterprise Desktop. If no semantic candidate can be extracted from the approved
+summary, the tool returns the controlled `semantic_extraction_no_candidates`
+status instead of drafting manually.
 Deterministic smoke tests may explicitly enable the fixture-only provider for
 synthetic labeled, narrative, raw-ticket-shaped, and split-selection cases.
 That fixture is not production semantic extraction.
@@ -75,13 +120,21 @@ That fixture is not production semantic extraction.
 After the operator chooses one candidate, the next `kcs_draft_article` call
 must pass only `operator_selection_ref` and `operator_selected_item_ref`.
 
-Default successful authoring results return compact safe status plus local
-reviewer bundle references. Full `reviewer_only_html` is returned only when
-`debug=true` is used for explicit debug/smoke compatibility; otherwise the HTML
-is written to the local bundle path returned as `html_path`.
+Default successful authoring results return reviewer-only Zendesk HTML, compact
+safe status, and local reviewer bundle references. The same HTML is written to
+the local bundle path returned as `html_path`. Installed MCPB runs write reviewer
+bundles under `~/Documents/KCS Authoring` and return that location as
+`bundle_storage_hint`; resolve `html_path` below that directory. Source/dev runs
+without that hint keep using the project-local `local-data/reviewer-bundles`
+directory.
 
-If semantic extraction provider support is unavailable, show the controlled
-`semantic_extraction_provider_unavailable` status instead of drafting manually.
+If semantic extraction cannot identify a supported candidate from the approved
+summary, show the controlled `semantic_extraction_no_candidates` status instead
+of drafting manually.
+
+Successful `kcs_draft_article` results include tool-generated reviewer-only
+Zendesk HTML. Use that HTML as the article draft; do not create a separate
+freehand draft.
 
 The active refactor target is tracked in:
 
@@ -89,16 +142,22 @@ The active refactor target is tracked in:
 docs/internal/kcs-desktop-authoring-refactor-plan.md
 ```
 
-Repository-local ticket references are an internal/backward-compatible path,
-not the Claude Desktop attachment workflow. They read only repository-local
-approved sanitized summary JSON from:
+Configured clean-ticket references are the source-independent production path.
+Zendesk export cleanup, web GUI cleanup, and Claude attachment preparation
+should all produce the same clean ticket file under:
+
+```text
+local-data/approved-summaries/<ticket_ref>/clean.ticket.txt
+```
+
+The adapter also accepts the older approved sanitized summary JSON format from:
 
 ```text
 local-data/approved-summaries/<ticket_ref>.json
 ```
 
-It does not read Zendesk. The ticket reference must already point to approved
-cleanup-form output or another approved sanitized summary source.
+It does not read Zendesk directly. The ticket reference must already point to
+approved cleanup-form output or another approved sanitized source.
 
 The default article kind for an approved sanitized support-ticket summary is a
 reviewer-only KCS knowledge base article. Claude should not ask the operator to
@@ -117,6 +176,8 @@ The tool returns compact reviewer-only draft/status metadata:
 ```text
 article_type
 bundle_ref
+bundle_storage_hint
+bundle_storage_ref
 manifest_path
 html_path
 recommended_action
@@ -128,6 +189,7 @@ safe refs/paths returned by the tool. Full HTML is written to the local
 reviewer bundle and is not part of the default Desktop-visible structured
 response unless `debug: true` is used for smoke/debug compatibility. Draft
 output is reviewer-only and is never publication approved by the extension.
+Claude must not render its own Markdown article from that status.
 
 For chat smoke tests, pass
 `approved_summary_text` plus explicit supported cause/resolution evidence.
@@ -143,5 +205,6 @@ Internal diagnostic tools are available only when the stdio server is started
 in internal/canonical mode; they are not part of the default Claude Desktop
 operator surface.
 
-The package does not embed raw tickets, fixtures, local paths, credentials,
-provider configuration, or generated artifacts.
+The package embeds only the local Python workflow source needed by the MCP
+server. It does not embed raw tickets, fixtures, private local paths,
+credentials, provider configuration, or generated artifacts.

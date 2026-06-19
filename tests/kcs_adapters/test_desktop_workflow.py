@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -26,6 +27,7 @@ from kcs_adapters.desktop_workflow import (
     quality_blocked_result,
     quality_blocker_gaps,
     selection_error_result,
+    semantic_provider_from_environment,
     split_required_result,
 )
 from kcs_core.errors import ContractValidationError
@@ -262,8 +264,11 @@ def test_desktop_workflow_builds_reviewer_draft_preview_and_quality_gaps() -> No
                 "<h2>Applicable to</h2><ul><li>Plesk for Linux</li></ul>"
                 "<h2>Symptoms</h2><ol><li>A safe Plesk task fails.</li></ol>"
                 "<h2>Cause</h2><p>A required product service is stopped.</p>"
-                "<h2>Resolution</h2><ol><li>Run systemctl restart "
-                "product-service.</li></ol>"
+                "<h2>Resolution</h2><div class=\"resolution\"><ol>"
+                "<li><a href=\"https://support.plesk.com/hc/en-us/articles/"
+                "12377512781975-How-to-connect-to-a-Plesk-server-via-SSH\">"
+                "Connect to the Plesk server via SSH.</a></li>"
+                "<li>Run systemctl restart product-service.</li></ol></div>"
             ),
         ),
     )
@@ -287,6 +292,41 @@ def test_desktop_workflow_builds_reviewer_draft_preview_and_quality_gaps() -> No
     assert approved_summary_quality_gaps(execution, draft) == [
         {"kind": "reference_not_provided", "severity": "info"}
     ]
+
+
+def test_desktop_workflow_blocks_diagnostic_transcript_in_resolution_html() -> None:
+    execution = SimpleNamespace(
+        arguments={"item": {"reuse_search_checked": True}},
+        decision=SimpleNamespace(article_type=ArticleType.TECHNICAL_SCR.value),
+        payload={"issue_candidates": [{"supported_resolution_or_workaround": ""}]},
+        reviewer_packet=SimpleNamespace(
+            public_article_candidate={
+                "applicable_to": ["Plesk for Linux"],
+                "cause": "A custom collectd configuration points metrics elsewhere.",
+                "resolution_steps": [
+                    "drwxrwxr-x 3 root root 18 Jun 17 2021 plugin data.",
+                ],
+                "symptoms": ["Plesk Monitoring graphs show no data."],
+                "title": "Monitoring graphs show no data in Plesk",
+            },
+            zendesk_source_html=(
+                "<h1>Monitoring graphs show no data in Plesk</h1>"
+                "<h2>Applicable to</h2><ul><li>Plesk for Linux</li></ul>"
+                "<h2>Symptoms</h2>"
+                "<ol><li>Plesk Monitoring graphs show no data.</li></ol>"
+                "<h2>Cause</h2>"
+                "<p>A custom collectd configuration points metrics elsewhere.</p>"
+                "<h2>Resolution</h2>"
+                "<ol><li>drwxrwxr-x 3 root root 18 Jun 17 2021 "
+                "plugin data.</li></ol>"
+            ),
+        ),
+    )
+
+    assert {
+        "kind": "diagnostic_transcript_in_resolution",
+        "severity": "blocker",
+    } in approved_summary_quality_gaps(execution, {})
 
 
 def test_desktop_workflow_calls_provider_and_converts_candidates() -> None:
@@ -497,6 +537,31 @@ def test_desktop_workflow_unavailable_provider_is_controlled() -> None:
         workflow.item_candidates_from_summary("Approved sanitized summary.")
 
 
+def test_desktop_workflow_validates_context_before_provider_call() -> None:
+    provider = _Provider(_extraction_payload())
+    workflow = DesktopDraftWorkflow(provider=provider, selection_ttl_seconds=60)
+
+    with pytest.raises(ContractValidationError):
+        workflow.item_candidates_from_summary("api_key=secret-value")
+
+    assert provider.contexts == []
+
+
+def test_approved_provider_from_environment_uses_local_summary_provider(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv(desktop_workflow.SEMANTIC_PROVIDER_ENV, "approved")
+    provider = semantic_provider_from_environment()
+
+    with pytest.raises(desktop_workflow.NoSemanticCandidatesError):
+        provider.propose_candidates(
+            {
+                "approved_summary_text": "Approved sanitized summary.",
+                "request_kind": "desktop_draft_article",
+            }
+        )
+
+
 def test_compact_draft_result_keeps_html_out_by_default() -> None:
     result = {
         "article_type": ArticleType.TECHNICAL_SCR.value,
@@ -535,9 +600,49 @@ def test_compact_draft_result_keeps_html_out_by_default() -> None:
     assert "reviewer_only_html" not in compact
 
 
+def test_compact_draft_result_carries_configured_bundle_storage_hint() -> None:
+    compact = compact_draft_result(
+        {
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "ok": True,
+            "pipeline_ok": True,
+            "ready_for_reviewer": True,
+            "recommended_action": "create_candidate",
+            "reuse_search_status": "checked",
+            "schema_version": "kcs_mcp_tool_result_v1",
+            "should_be_kcs_article": True,
+        },
+        {
+            "bundle_ref": "reviewer-bundle-run-001",
+            "bundle_storage_hint": "~/Documents/KCS Authoring",
+            "bundle_storage_ref": "user_documents_kcs_authoring",
+            "html_path": (
+                "local-data/reviewer-bundles/run-001/item-001/reviewer_only.html"
+            ),
+            "html_sha256": "a" * 64,
+            "manifest_path": "local-data/reviewer-bundles/run-001/manifest.json",
+        },
+        include_reviewer_only_html=False,
+        reviewer_only_html="<h1>Reviewer only</h1>",
+    )
+
+    assert compact["bundle_storage_hint"] == "~/Documents/KCS Authoring"
+    assert compact["bundle_storage_ref"] == "user_documents_kcs_authoring"
+    assert "reviewer_only_html" not in compact
+
+
 def test_finalize_author_result_writes_bundle_and_keeps_html_out_by_default(
+    monkeypatch,
     tmp_path,
 ) -> None:
+    monkeypatch.setenv(
+        "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_HINT",
+        "~/Documents/KCS Authoring",
+    )
+    monkeypatch.setenv(
+        "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_REF",
+        "user_documents_kcs_authoring",
+    )
     bundle_root = tmp_path / "local-data" / "reviewer-bundles"
     compact = finalize_author_result_with_bundle(
         {
@@ -561,9 +666,78 @@ def test_finalize_author_result_writes_bundle_and_keeps_html_out_by_default(
     assert len(html_files) == 1
     assert html_files[0].read_text(encoding="utf-8") == "<h1>Reviewer only</h1>"
     assert compact["reviewer_bundle_written"] is True
+    assert compact["bundle_storage_hint"] == "~/Documents/KCS Authoring"
+    assert compact["bundle_storage_ref"] == "user_documents_kcs_authoring"
     assert compact["html_path"].startswith("local-data/reviewer-bundles/run-")
     assert compact["html_sha256"]
     assert "reviewer_only_html" not in compact
+    manifest_files = list(bundle_root.glob("run-*/manifest.json"))
+    assert len(manifest_files) == 1
+    manifest = json.loads(manifest_files[0].read_text(encoding="utf-8"))
+    assert manifest["bundle_storage_hint"] == "~/Documents/KCS Authoring"
+    assert manifest["bundle_storage_ref"] == "user_documents_kcs_authoring"
+
+
+def test_finalize_author_result_strips_html_from_not_ready_result(tmp_path) -> None:
+    compact = finalize_author_result_with_bundle(
+        {
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "item_ref": "candidate-001",
+            "ok": False,
+            "pipeline_ok": False,
+            "ready_for_reviewer": False,
+            "recommended_action": "blocked",
+            "reuse_search_status": "checked",
+            "reviewer_only_html": "<h1>Do not expose</h1>",
+            "schema_version": "kcs_mcp_tool_result_v1",
+            "should_be_kcs_article": True,
+            "writes_files": True,
+            "zendesk_source_html": "<h1>Do not expose source</h1>",
+        },
+        bundle_root=tmp_path / "local-data" / "reviewer-bundles",
+        include_reviewer_only_html=True,
+        schema_version="kcs_mcp_tool_result_v1",
+    )
+
+    assert compact["reviewer_bundle_written"] is False
+    assert compact["writes_files"] is False
+    assert "reviewer_only_html" not in compact
+    assert "zendesk_source_html" not in compact
+
+
+def test_finalize_author_result_manifest_marks_missing_reuse_as_draft_only(
+    tmp_path,
+) -> None:
+    bundle_root = tmp_path / "local-data" / "reviewer-bundles"
+
+    compact = finalize_author_result_with_bundle(
+        {
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "item_ref": "candidate-001",
+            "ok": True,
+            "pipeline_ok": True,
+            "ready_for_reviewer": True,
+            "recommended_action": "create_candidate",
+            "reuse_search_status": "skipped",
+            "reviewer_only_html": "<h1>Reviewer only</h1>",
+            "schema_version": "kcs_mcp_tool_result_v1",
+            "should_be_kcs_article": True,
+        },
+        bundle_root=bundle_root,
+        include_reviewer_only_html=False,
+        schema_version="kcs_mcp_tool_result_v1",
+    )
+
+    manifest_files = list(bundle_root.glob("run-*/manifest.json"))
+    assert len(manifest_files) == 1
+    manifest = json.loads(manifest_files[0].read_text(encoding="utf-8"))
+    assert compact["debug_code"] == "draft_only_reuse_search_missing"
+    assert compact["ready_for_reviewer"] is False
+    assert compact["kcs_ready"] is False
+    assert manifest["debug_code"] == "draft_only_reuse_search_missing"
+    assert manifest["ready_for_reviewer"] is False
+    assert manifest["kcs_ready"] is False
+    assert manifest["recommended_action"] == "draft_only"
 
 
 def test_finalize_author_result_rejects_bundle_root_outside_boundary(

@@ -46,7 +46,9 @@ DEFAULT_CODEX_NODE = (
 )
 PROTOCOL_VERSION = "2025-11-25"
 TOOL_NAME = "kcs_draft_article"
+REGISTER_TOOL_NAME = "kcs_register_clean_ticket"
 CALL_REQUEST_IDS = (3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+_BUNDLE_FILE_ROOTS = (REPO_ROOT,)
 
 
 class SmokeError(RuntimeError):
@@ -84,84 +86,101 @@ def run_smoke(
 ) -> dict[str, Any]:
     """Run initialize, tools/list, split, and selected draft calls."""
 
+    global _BUNDLE_FILE_ROOTS
     node = _node_command(node_command)
     if not wrapper.is_file():
         raise SmokeError("wrapper_not_found")
-    responses = _run_jsonrpc_session(
-        node=node,
-        wrapper=wrapper,
-        uv_command=uv_command,
-        messages=_smoke_messages(),
-    )
-    by_id = _responses_by_id(responses)
-    initialize = by_id[1]
-    tools = by_id[2]
-    no_candidates = by_id[3]
-    selection_invalid = by_id[4]
-    mixed_invalid = by_id[5]
-    labeled_draft = by_id[6]
-    selection_ref_only_invalid = by_id[7]
-    selected_item_only_invalid = by_id[8]
-    narrative_draft = by_id[9]
-    raw_ticket_draft = by_id[10]
-    live_raw_ticket_draft = by_id[11]
-    non_debug_labeled_draft = by_id[12]
-    checks = {
-        "initialize_ok": _initialize_ok(initialize),
-        "registry_cache_ok": _registry_cache_ok(wrapper),
-        "tool_surface_ok": _tool_surface_ok(tools),
-        "no_candidates_ok": _no_candidates_ok(no_candidates),
-        "selection_invalid_ok": _selection_invalid_ok(selection_invalid),
-        "mixed_call_shape_invalid_ok": _mixed_call_shape_invalid_ok(mixed_invalid),
-        "labeled_draft_ok": _labeled_draft_ok(labeled_draft),
-        "narrative_draft_ok": _labeled_draft_ok(narrative_draft),
-        "raw_ticket_draft_ok": _labeled_draft_ok(raw_ticket_draft),
-        "live_raw_ticket_draft_ok": _labeled_draft_ok(live_raw_ticket_draft),
-        "non_debug_labeled_draft_text_ok": _non_debug_labeled_draft_text_ok(
-            non_debug_labeled_draft
-        ),
-        "selection_ref_only_invalid_ok": _mixed_call_shape_invalid_ok(
-            selection_ref_only_invalid
-        ),
-        "selected_item_only_invalid_ok": _mixed_call_shape_invalid_ok(
-            selected_item_only_invalid
-        ),
-    }
-    split_choice = _run_split_choice_smoke(
-        node=node,
-        wrapper=wrapper,
-        uv_command=uv_command,
-    )
-    checks["split_choice_ok"] = _split_choice_ok(split_choice)
-    return {
-        "checks": checks,
-        "ok": all(checks.values()),
-        "schema_version": "kcs_mcpb_stdio_smoke_v1",
-        "debug_codes": [
-            _structured(response).get("debug_code", "")
-            for response in (
-                no_candidates,
-                selection_invalid,
-                mixed_invalid,
-                labeled_draft,
-                selection_ref_only_invalid,
-                selected_item_only_invalid,
-                narrative_draft,
-                raw_ticket_draft,
-                live_raw_ticket_draft,
-                non_debug_labeled_draft,
-            )
-        ],
-        "split_choice_debug_codes": [
-            _structured(split_choice["split"]).get("debug_code", ""),
-            _structured(split_choice["selected"]).get("debug_code", ""),
-        ],
-        "registry_cache_checked": _registry_cache_path(wrapper) is not None,
-        "tool_count": len(tools.get("result", {}).get("tools", [])),
-        "wrapper_kind": (
-            "installed" if wrapper == DEFAULT_INSTALLED_WRAPPER else "custom"
-        ),
-    }
+    previous_bundle_roots = _BUNDLE_FILE_ROOTS
+    _BUNDLE_FILE_ROOTS = _runtime_bundle_file_roots(wrapper)
+    try:
+        responses = _run_jsonrpc_session(
+            node=node,
+            wrapper=wrapper,
+            uv_command=uv_command,
+            messages=_smoke_messages(),
+        )
+        by_id = _responses_by_id(responses)
+        initialize = by_id[1]
+        tools = by_id[2]
+        no_candidates = by_id[3]
+        selection_invalid = by_id[4]
+        mixed_invalid = by_id[5]
+        labeled_draft = by_id[6]
+        selection_ref_only_invalid = by_id[7]
+        selected_item_only_invalid = by_id[8]
+        narrative_draft = by_id[9]
+        raw_ticket_draft = by_id[10]
+        live_raw_ticket_draft = by_id[11]
+        non_debug_labeled_draft = by_id[12]
+        checks = {
+            "initialize_ok": _initialize_ok(initialize),
+            "registry_cache_ok": _registry_cache_ok(wrapper),
+            "tool_surface_ok": _tool_surface_ok(tools),
+            "no_candidates_ok": _no_candidates_ok(no_candidates),
+            "selection_invalid_ok": _selection_invalid_ok(selection_invalid),
+            "mixed_call_shape_invalid_ok": _mixed_call_shape_invalid_ok(mixed_invalid),
+            "labeled_draft_ok": _labeled_draft_ok(labeled_draft),
+            "narrative_draft_ok": _labeled_draft_ok(narrative_draft),
+            "raw_ticket_draft_ok": _labeled_draft_ok(raw_ticket_draft),
+            "live_raw_ticket_draft_ok": _labeled_draft_ok(live_raw_ticket_draft),
+            "non_debug_labeled_draft_text_ok": _non_debug_labeled_draft_text_ok(
+                non_debug_labeled_draft
+            ),
+            "selection_ref_only_invalid_ok": _mixed_call_shape_invalid_ok(
+                selection_ref_only_invalid
+            ),
+            "selected_item_only_invalid_ok": _mixed_call_shape_invalid_ok(
+                selected_item_only_invalid
+            ),
+        }
+        split_choice = _run_split_choice_smoke(
+            node=node,
+            wrapper=wrapper,
+            uv_command=uv_command,
+        )
+        registered_ticket = _run_register_then_draft_smoke(
+            node=node,
+            wrapper=wrapper,
+            uv_command=uv_command,
+        )
+        checks["split_choice_ok"] = _split_choice_ok(split_choice)
+        checks["register_then_draft_ok"] = _register_then_draft_ok(
+            registered_ticket
+        )
+        return {
+            "checks": checks,
+            "ok": all(checks.values()),
+            "schema_version": "kcs_mcpb_stdio_smoke_v1",
+            "debug_codes": [
+                _structured(response).get("debug_code", "")
+                for response in (
+                    no_candidates,
+                    selection_invalid,
+                    mixed_invalid,
+                    labeled_draft,
+                    selection_ref_only_invalid,
+                    selected_item_only_invalid,
+                    narrative_draft,
+                    raw_ticket_draft,
+                    live_raw_ticket_draft,
+                    non_debug_labeled_draft,
+                )
+            ],
+            "split_choice_debug_codes": [
+                _structured(split_choice["split"]).get("debug_code", ""),
+                _structured(split_choice["selected"]).get("debug_code", ""),
+            ],
+            "registered_ticket_debug_code": _structured(
+                registered_ticket["draft"]
+            ).get("debug_code", ""),
+            "registry_cache_checked": _registry_cache_path(wrapper) is not None,
+            "tool_count": len(tools.get("result", {}).get("tools", [])),
+            "wrapper_kind": (
+                "installed" if wrapper == DEFAULT_INSTALLED_WRAPPER else "custom"
+            ),
+        }
+    finally:
+        _BUNDLE_FILE_ROOTS = previous_bundle_roots
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -209,10 +228,10 @@ def _run_jsonrpc_session(
 ) -> list[dict[str, Any]]:
     env = {
         **os.environ,
-        "KCS_AUTHORING_MVP_REPO_ROOT": str(REPO_ROOT),
         "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
         "KCS_AUTHORING_SEMANTIC_PROVIDER": "fixture",
     }
+    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     payload = "".join(
         json.dumps(message, separators=(",", ":")) + "\n"
         for message in messages
@@ -246,10 +265,10 @@ def _run_split_choice_smoke(
 ) -> dict[str, dict[str, Any]]:
     env = {
         **os.environ,
-        "KCS_AUTHORING_MVP_REPO_ROOT": str(REPO_ROOT),
         "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
         "KCS_AUTHORING_SEMANTIC_PROVIDER": "fixture",
     }
+    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     try:
         process = subprocess.Popen(
             [node, str(wrapper)],
@@ -287,6 +306,69 @@ def _run_split_choice_smoke(
             ),
         )
         return {"initialize": initialize, "selected": selected, "split": split}
+    finally:
+        _close_process(process)
+
+
+def _run_register_then_draft_smoke(
+    *,
+    node: str,
+    wrapper: Path,
+    uv_command: str,
+) -> dict[str, dict[str, Any]]:
+    env = {
+        **os.environ,
+        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
+        "KCS_AUTHORING_SEMANTIC_PROVIDER": "fixture",
+    }
+    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
+    try:
+        process = subprocess.Popen(
+            [node, str(wrapper)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            text=True,
+        )
+    except OSError as exc:
+        raise SmokeError("wrapper_failed") from exc
+    try:
+        initialize = _send_jsonrpc(
+            process,
+            _request(10, "initialize", {"protocolVersion": PROTOCOL_VERSION}),
+        )
+        _write_process_message(
+            process,
+            {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        )
+        register = _send_jsonrpc(
+            process,
+            _request(
+                11,
+                "tools/call",
+                {
+                    "name": REGISTER_TOOL_NAME,
+                    "arguments": {
+                        "clean_ticket_text": _raw_ticket_summary_text(),
+                        "ticket_ref": "smoke-monitoring-001",
+                    },
+                },
+            ),
+        )
+        registered = _structured(register)
+        next_arguments = registered.get("next_arguments")
+        if not isinstance(next_arguments, dict):
+            raise SmokeError("register_then_draft_missing_next_arguments")
+        draft = _send_jsonrpc(
+            process,
+            _request(
+                12,
+                "tools/call",
+                {"name": TOOL_NAME, "arguments": dict(next_arguments)},
+            ),
+        )
+        return {"draft": draft, "initialize": initialize, "register": register}
     finally:
         _close_process(process)
 
@@ -599,6 +681,7 @@ def _initialize_ok(response: dict[str, Any]) -> bool:
     return (
         result.get("protocolVersion") == PROTOCOL_VERSION
         and "kcs_draft_article" in str(result.get("instructions", ""))
+        and "kcs_register_clean_ticket" in str(result.get("instructions", ""))
     )
 
 
@@ -658,63 +741,131 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
     if not isinstance(value, dict):
         return False
     tools = value.get("tools")
-    if not isinstance(tools, list) or len(tools) != 1:
+    if not isinstance(tools, list) or len(tools) != 3:
         return False
-    tool = tools[0]
-    if not isinstance(tool, dict) or tool.get("name") != TOOL_NAME:
+    register_tool = next(
+        (
+            item
+            for item in tools
+            if isinstance(item, dict) and item.get("name") == REGISTER_TOOL_NAME
+        ),
+        None,
+    )
+    tool = next(
+        (
+            item
+            for item in tools
+            if isinstance(item, dict) and item.get("name") == TOOL_NAME
+        ),
+        None,
+    )
+    behavior_tool = next(
+        (
+            item
+            for item in tools
+            if isinstance(item, dict)
+            and item.get("name") == "support_get_behavior_instructions"
+        ),
+        None,
+    )
+    if register_tool is None or tool is None or behavior_tool is None:
         return False
+    register_description = str(register_tool.get("description", ""))
     description = str(tool.get("description", ""))
     long_description = str(value.get("long_description", ""))
     return (
-        "pass only approved_summary_text" in description
-        and "Python owns semantic extraction" in description
-        and "local reviewer bundle output" in description
-        and "when the client provides one" in description
-        and "submit_arguments exactly" in description
+        "clean_ticket_text" in register_description
+        and "clean.ticket.txt" in register_description
+        and "automatic first step" in register_description
+        and "next_arguments" in register_description
+        and "Claude Desktop file card is not a filesystem path"
+        in register_description
+        and "do not inspect upload directories" in register_description
+        and "approved_summary_text" in description
+        and "Python validates the input and owns semantic extraction" in description
         and "structured item" not in description
-        and "Use with either ticket_ref" not in description
+        and "Prefer ticket_ref" in description
+        and "kcs_register_clean_ticket first" in description
+        and "approved_summary_text only as a fallback" in description
+        and "Claude Desktop file card is not a filesystem path" in description
+        and "do not inspect upload directories" in description
+        and "file_content_unavailable" in description
+        and "raw comments" not in description
+        and "internal notes" not in description
         and "show the returned candidates in a native Claude Desktop choice popup"
         not in description
-        and "Returns reviewer_only_html" not in description
+        and "reviewer-only Zendesk HTML" in description
         and "one primary read-only tool" not in long_description
     )
 
 
 def _tool_surface_ok(response: dict[str, Any]) -> bool:
     tools = response.get("result", {}).get("tools", [])
-    if len(tools) != 1 or tools[0].get("name") != TOOL_NAME:
+    if len(tools) != 3:
         return False
-    properties = tools[0].get("inputSchema", {}).get("properties", {})
-    annotations = tools[0].get("annotations", {})
-    description = str(tools[0].get("description", ""))
+    register_tool = next(
+        (item for item in tools if item.get("name") == REGISTER_TOOL_NAME),
+        None,
+    )
+    tool = next((item for item in tools if item.get("name") == TOOL_NAME), None)
+    behavior_tool = next(
+        (
+            item
+            for item in tools
+            if item.get("name") == "support_get_behavior_instructions"
+        ),
+        None,
+    )
+    if register_tool is None or tool is None or behavior_tool is None:
+        return False
+    register_properties = register_tool.get("inputSchema", {}).get("properties", {})
+    register_annotations = register_tool.get("annotations", {})
+    properties = tool.get("inputSchema", {}).get("properties", {})
+    annotations = tool.get("annotations", {})
+    description = str(tool.get("description", ""))
     debug_description = str(properties.get("debug", {}).get("description", ""))
     return (
-        set(properties)
+        set(register_properties) == {"clean_ticket_text", "debug", "ticket_ref"}
+        and register_tool.get("inputSchema", {}).get("required") == [
+            "clean_ticket_text"
+        ]
+        and register_annotations.get("destructiveHint") is False
+        and register_annotations.get("idempotentHint") is False
+        and register_annotations.get("readOnlyHint") is False
+        and set(properties)
         == {
             "approved_summary_text",
             "debug",
             "operator_selected_item_ref",
             "operator_selection_ref",
+            "ticket_ref",
         }
         and "item" not in properties
         and "item_candidates" not in properties
         and annotations.get("destructiveHint") is False
         and annotations.get("idempotentHint") is False
         and annotations.get("readOnlyHint") is False
-        and "Python owns semantic extraction" in description
-        and "local reviewer bundle output" in description
-        and "reviewer_only_html" in debug_description
-        and "html_path" in debug_description
+        and "Python validates the input and owns semantic extraction" in description
+        and "Claude Desktop file card is not a filesystem path" in description
+        and "do not inspect upload directories" in description
+        and "file_content_unavailable" in description
+        and "raw comments" not in description
+        and "internal notes" not in description
+        and "reviewer-only Zendesk HTML" in debug_description
+        and behavior_tool.get("inputSchema", {}).get("properties", {}) == {}
     )
 
 
 def _no_candidates_ok(response: dict[str, Any]) -> bool:
     structured = _structured(response)
+    text = _response_text(response)
     return (
         structured.get("pipeline_ok") is False
         and structured.get("failure_stage") == "semantic_extraction"
         and structured.get("debug_code") == "semantic_extraction_no_candidates"
         and "reviewer_only_html" not in structured
+        and "KCS article drafting is blocked" in text
+        and "Do not draft manually" in text
     )
 
 
@@ -738,9 +889,47 @@ def _mixed_call_shape_invalid_ok(response: dict[str, Any]) -> bool:
     )
 
 
+def _response_text(response: dict[str, Any]) -> str:
+    content = response.get("result", {}).get("content", [])
+    if isinstance(content, list):
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                return str(item.get("text", ""))
+    return ""
+
+
+def _response_html_resource_text(response: dict[str, Any]) -> str:
+    content = response.get("result", {}).get("content", [])
+    if isinstance(content, list):
+        for item in content:
+            if not isinstance(item, dict) or item.get("type") != "text":
+                continue
+            text = str(item.get("text", ""))
+            if text.startswith("```html\n") and "\n```\n\n```json\n" in text:
+                return text.split("```html\n", 1)[1].split(
+                    "\n```\n\n```json\n",
+                    1,
+                )[0]
+    return ""
+
+
+def _response_bundle_html_text(response: dict[str, Any]) -> str:
+    html_path = _structured(response).get("html_path")
+    if not isinstance(html_path, str):
+        return ""
+    roots = tuple(dict.fromkeys((REPO_ROOT, *_BUNDLE_FILE_ROOTS)))
+    for root in roots:
+        path = root / html_path
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+    return ""
+
+
 def _labeled_draft_ok(response: dict[str, Any]) -> bool:
     structured = _structured(response)
-    html = structured.get("reviewer_only_html")
+    html = _response_html_resource_text(response)
     html_path = structured.get("html_path")
     return (
         response.get("result", {}).get("isError") is False
@@ -753,26 +942,28 @@ def _labeled_draft_ok(response: dict[str, Any]) -> bool:
         and isinstance(html_path, str)
         and html_path.startswith("local-data/reviewer-bundles/")
         and _bundle_file_ok(html_path, structured.get("html_sha256"))
-        and isinstance(html, str)
+        and "reviewer_only_html" not in structured
         and "Connect to the Plesk server via SSH.</a>" in html
     )
 
 
 def _non_debug_labeled_draft_text_ok(response: dict[str, Any]) -> bool:
     structured = _structured(response)
-    content = response.get("result", {}).get("content", [])
-    text = ""
-    if isinstance(content, list) and content and isinstance(content[0], dict):
-        text = str(content[0].get("text", ""))
+    text = _response_text(response)
+    html = _response_bundle_html_text(response)
     return (
         response.get("result", {}).get("isError") is False
         and structured.get("draft_generated") is True
         and structured.get("debug_code") == "draft_only_reuse_search_missing"
         and "reviewer_only_html" not in structured
-        and text.startswith("Reviewer-only KCS draft generated.")
+        and "<h2>Resolution</h2>" in html
+        and not text.startswith("```html\n")
+        and "Reviewer-only Zendesk HTML draft generated" not in text
+        and "COPY THE FINAL RESPONSE BELOW VERBATIM" not in text
+        and "Do not rewrite it into a Markdown article" not in text
+        and "do not claim the file is unavailable from this chat" in text
+        and "do not offer a separate chat-authored article" in text
         and "html_path" in text
-        and "Do not draft manually or retry the tool" in text
-        and "Reviewer-only Zendesk HTML draft:" not in text
     )
 
 
@@ -800,7 +991,7 @@ def _split_choice_ok(responses: dict[str, dict[str, Any]]) -> bool:
     if not isinstance(choice_request, dict):
         return False
     options = choice_request.get("options")
-    selected_html = selected.get("reviewer_only_html")
+    selected_html = _response_bundle_html_text(responses["selected"])
     return (
         split.get("debug_code") == "multiple_kcs_items_detected"
         and split.get("recommended_action") == "split_required"
@@ -823,8 +1014,41 @@ def _split_choice_ok(responses: dict[str, dict[str, Any]]) -> bool:
             str(selected.get("html_path")),
             selected.get("html_sha256"),
         )
-        and selected_html is None
+        and "reviewer_only_html" not in selected
+        and "<h2>Resolution</h2>" in selected_html
         and _split_choice_text_ok(responses["split"])
+    )
+
+
+def _register_then_draft_ok(responses: dict[str, dict[str, Any]]) -> bool:
+    registered = _structured(responses["register"])
+    draft = _structured(responses["draft"])
+    register_text = json.dumps(responses["register"], sort_keys=True)
+    draft_text = _response_text(responses["draft"])
+    draft_html = _response_bundle_html_text(responses["draft"])
+    html_path = draft.get("html_path")
+    return (
+        responses["register"].get("result", {}).get("isError") is False
+        and responses["draft"].get("result", {}).get("isError") is False
+        and registered.get("result_kind") == "clean_ticket_registered"
+        and registered.get("ticket_ref") == "smoke-monitoring-001"
+        and registered.get("next_tool_name") == TOOL_NAME
+        and registered.get("next_arguments") == {"ticket_ref": "smoke-monitoring-001"}
+        and "clean_ticket_text" not in register_text
+        and "When loading the monitoring module" not in register_text
+        and draft.get("result_kind") == "draft_article_authoring"
+        and draft.get("ticket_ref") == "smoke-monitoring-001"
+        and draft.get("approved_summary_source") == "local_clean_ticket"
+        and draft.get("draft_generated") is True
+        and draft.get("debug_code") == "draft_only_reuse_search_missing"
+        and draft.get("reviewer_bundle_written") is True
+        and draft.get("writes_files") is True
+        and isinstance(html_path, str)
+        and html_path.startswith("local-data/reviewer-bundles/")
+        and _bundle_file_ok(html_path, draft.get("html_sha256"))
+        and "reviewer_only_html" not in draft
+        and not draft_text.startswith("```html\n")
+        and "<h2>Resolution</h2>" in draft_html
     )
 
 
@@ -846,12 +1070,25 @@ def _split_choice_text_ok(response: dict[str, Any]) -> bool:
 def _bundle_file_ok(html_path: str, expected_sha256: object) -> bool:
     if not isinstance(expected_sha256, str) or len(expected_sha256) != 64:
         return False
-    path = REPO_ROOT / html_path
-    try:
-        content = path.read_bytes()
-    except OSError:
-        return False
-    return sha256(content).hexdigest() == expected_sha256
+    roots = tuple(dict.fromkeys((REPO_ROOT, *_BUNDLE_FILE_ROOTS)))
+    for root in roots:
+        path = root / html_path
+        try:
+            content = path.read_bytes()
+        except OSError:
+            continue
+        if sha256(content).hexdigest() == expected_sha256:
+            return True
+    return False
+
+
+def _runtime_bundle_file_roots(wrapper: Path) -> tuple[Path, ...]:
+    roots = [REPO_ROOT]
+    bundled_root = wrapper.parent.parent / "python"
+    if (bundled_root / "pyproject.toml").is_file():
+        roots.insert(0, Path.home() / "Documents" / "KCS Authoring")
+        roots.insert(1, bundled_root)
+    return tuple(dict.fromkeys(root.resolve() for root in roots))
 
 
 def _structured(response: dict[str, Any]) -> dict[str, Any]:

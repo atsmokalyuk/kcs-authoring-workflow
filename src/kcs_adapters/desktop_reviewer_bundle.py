@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import secrets
 import time
@@ -15,6 +16,9 @@ from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
 
 DEFAULT_REVIEWER_BUNDLE_ROOT = Path("local-data") / "reviewer-bundles"
+REVIEWER_BUNDLE_ROOT_ENV = "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT"
+REVIEWER_BUNDLE_STORAGE_HINT_ENV = "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_HINT"
+REVIEWER_BUNDLE_STORAGE_REF_ENV = "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_REF"
 
 _SAFE_BUNDLE_SEGMENT_RE = re.compile(r"[^A-Za-z0-9_.-]+")
 
@@ -40,19 +44,37 @@ def write_desktop_reviewer_bundle(
     relative_bundle_dir = reviewer_bundle_relative_path(bundle_ref)
     relative_html_path = f"{relative_bundle_dir}/{item_dir_name}/reviewer_only.html"
     relative_manifest_path = f"{relative_bundle_dir}/manifest.json"
+    reuse_search_status = result.get("reuse_search_status")
+    draft_only = reuse_search_status == "skipped"
+    ready_for_reviewer = result.get("ready_for_reviewer") is True and not draft_only
     manifest: JsonDict = {
         "article_type": result.get("article_type"),
         "auto_publish_allowed": False,
         "bundle_ref": bundle_ref,
+        "debug_code": (
+            "draft_only_reuse_search_missing"
+            if draft_only
+            else result.get("debug_code")
+        ),
         "html_path": relative_html_path,
         "html_sha256": html_sha256,
         "item_ref": item_ref,
+        "kcs_ready": ready_for_reviewer,
         "manifest_path": relative_manifest_path,
         "public_output_approved": False,
-        "ready_for_reviewer": result.get("ready_for_reviewer") is True,
-        "reuse_search_status": result.get("reuse_search_status"),
+        "ready_for_reviewer": ready_for_reviewer,
+        "recommended_action": (
+            "draft_only" if draft_only else result.get("recommended_action")
+        ),
+        "reuse_search_status": reuse_search_status,
         "schema_version": "kcs_reviewer_bundle_v1",
     }
+    storage_hint = reviewer_bundle_storage_hint()
+    storage_ref = reviewer_bundle_storage_ref()
+    if storage_hint:
+        manifest["bundle_storage_hint"] = storage_hint
+    if storage_ref:
+        manifest["bundle_storage_ref"] = storage_ref
     (bundle_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -64,6 +86,27 @@ def reviewer_bundle_relative_path(bundle_ref: str) -> str:
     """Return the Claude-visible relative path for a reviewer bundle."""
 
     return f"local-data/reviewer-bundles/{bundle_ref}"
+
+
+def reviewer_bundle_root_from_environment() -> Path:
+    """Return the configured reviewer bundle root for this Desktop process."""
+
+    configured = os.environ.get(REVIEWER_BUNDLE_ROOT_ENV, "").strip()
+    if not configured:
+        return DEFAULT_REVIEWER_BUNDLE_ROOT
+    return Path(configured).expanduser()
+
+
+def reviewer_bundle_storage_hint() -> str:
+    """Return a Claude-visible storage hint without expanding the user home."""
+
+    return os.environ.get(REVIEWER_BUNDLE_STORAGE_HINT_ENV, "").strip()
+
+
+def reviewer_bundle_storage_ref() -> str:
+    """Return a stable storage ref for the configured reviewer bundle root."""
+
+    return os.environ.get(REVIEWER_BUNDLE_STORAGE_REF_ENV, "").strip()
 
 
 def _require_reviewer_bundle_root(root: Path) -> None:
