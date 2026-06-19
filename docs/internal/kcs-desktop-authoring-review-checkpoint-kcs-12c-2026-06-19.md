@@ -28,15 +28,44 @@ Target behavior:
 
 ## Review Status
 
-Status: ready for external ChatGPT Pro review.
+Status: approved to move past `KCS-12c`.
 
-`KCS-12c` implementation evidence is prepared, but `KCS-12c` is not complete
-until external review is done and findings are fixed or recorded as explicit
-deferrals.
+External ChatGPT Pro review on 2026-06-19 found no P0/P1 blockers for the
+semantic provider boundary. `KCS-12c` is complete.
 
-Do not start the next implementation slice from
-`docs/internal/kcs-desktop-authoring-refactor-plan.md` until this checkpoint is
-reviewed.
+The next implementation slice may start from
+`docs/internal/kcs-desktop-authoring-refactor-plan.md`.
+
+## External Review Verdict
+
+Verdict: approved to move past `KCS-12c`.
+
+No blocking fixes are required before starting `KCS-12d`. The review confirmed
+that Claude Desktop remains a thin control surface, Python owns provider
+selection/state/validation/decision/rendering/acceptance, the default provider
+state is controlled unavailable, provider output is untrusted, and Desktop does
+not own `item` / `item_candidates` payloads.
+
+Deferred findings from the review:
+
+- add explicit semantic-provider status fields, for example
+  `semantic_provider_mode`, `semantic_provider_called`,
+  `semantic_provider_owner=python`, and `provider_payload_exposed=false`;
+- add workflow-level provider-context pre-validation before calling any
+  injected provider;
+- keep fixture provider smoke/test-only and consider requiring a second smoke
+  guard later;
+- continue shrinking `kcs_adapters.mcp_desktop`;
+- keep future local RAG strictly as a Search/reuse adapter after accepted
+  evidence.
+
+Local `gpt-5.3-codex-spark` pre-review also found no P0/P1 blockers. Its
+additional deferred findings are:
+
+- clarify the non-operational `approved` env path when no approved provider
+  client is injected;
+- clear stale pending selection state after a non-split primary summary path;
+- add tests for env-approved behavior and stale selection cleanup.
 
 ## Review Focus
 
@@ -182,6 +211,12 @@ ok=true
 - Clarify compact provider-call status fields before real approved provider
   rollout, for example `semantic_provider_mode`,
   `semantic_provider_called`, and `provider_call_owner=python`.
+- Add workflow-level provider-context pre-validation before calling injected
+  providers.
+- Clarify the env-selected `approved` provider behavior when no approved
+  provider client is configured.
+- Clear stale pending selection state after a non-split primary summary path.
+- Add tests for env-approved provider behavior and stale selection cleanup.
 - Consider requiring an additional explicit smoke marker before
   `FixtureSemanticExtractionProvider` can be selected from environment.
 - Continue shrinking `kcs_adapters.mcp_desktop`; this checkpoint only reviews
