@@ -183,6 +183,8 @@ review checkpoints after each meaningful PR/slice:
 Current review checkpoint artifact:
 
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-2026-06-19.md`
+- `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12b-2026-06-19.md`
+- `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12c-2026-06-19.md`
 
 - `KCS-12a: Desktop schema diet + workflow service`
   - status: complete after final ChatGPT Pro follow-up review;
@@ -202,7 +204,10 @@ Current review checkpoint artifact:
   - focus on local write boundaries, relative refs/paths/hashes, no absolute
     paths, no full packets/HTML by default, and no hidden publish behavior.
 - `KCS-12c: Semantic provider boundary`
+  - status: ready for external ChatGPT Pro review;
   - review required after provider-state-machine tests and smoke pass;
+  - findings must be fixed or explicitly recorded as deferred in the checkpoint
+    artifact before `KCS-12c` is considered complete;
   - focus on approved-provider ownership, fixture-only semantics, no production
     regex semantic engine, no manual fallback, and validation of untrusted
     provider output.
@@ -281,7 +286,11 @@ Current branch status:
   - approved-provider adapter exists behind safe refs;
   - fixture provider is explicit and used by smoke/tests;
   - production local Monitoring/DataDir regex semantics are not on the default
-    path.
+    path;
+  - external review checkpoint is ready in
+    `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12c-2026-06-19.md`;
+  - do not mark `KCS-12c` complete or start `KCS-12d` until external review
+    findings are fixed or recorded as explicit deferrals.
 - `KCS-12d` smoke/install alignment is implemented for stdio and log checks:
   - stdio smoke uses the fixture provider explicitly;
   - installed-wrapper smoke checks registry/cache behavior;
