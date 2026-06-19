@@ -2026,10 +2026,16 @@ def _tool_result_text(structured: Mapping[str, Any]) -> str:
             "writes_files": structured.get("writes_files"),
         }
         return (
+            "COPY THE FINAL RESPONSE BELOW VERBATIM. Do not add a manual "
+            "draft, do not infer item/item_candidates, do not summarize the "
+            "ticket as an article, and do not write a fallback article.\n\n"
+            "Final response:\n"
             "KCS article drafting is blocked because the approved semantic "
-            "extraction provider is not configured. Do not draft manually, do "
-            "not infer item/item_candidates, and do not write a fallback "
-            "article. Report this controlled status to the operator.\n\n"
+            "extraction provider is not configured. No reviewer-only draft is "
+            "available from the KCS Authoring tool in this environment. Next "
+            "required action: configure the approved semantic extraction "
+            "provider, then retry with the same approved sanitized ticket "
+            "content.\n\n"
             "Compact status:\n"
             "```json\n"
             f"{_compact_json(status)}\n"

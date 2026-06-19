@@ -1717,8 +1717,9 @@ def test_draft_article_primary_summary_blocks_when_provider_missing() -> None:
     assert structured["provider_calls"] is False
     assert "reviewer_only_html" not in structured
     result_output = response["result"]["content"][0]["text"]
+    assert result_output.startswith("COPY THE FINAL RESPONSE BELOW VERBATIM.")
     assert "approved semantic extraction provider is not configured" in result_output
-    assert "Do not draft manually" in result_output
+    assert "do not write a fallback article" in result_output
     assert "do not infer item/item_candidates" in result_output
 
 
