@@ -24,6 +24,32 @@ from kcs_adapters.desktop_reviewer_bundle import (
     DEFAULT_REVIEWER_BUNDLE_ROOT,
     reviewer_bundle_root_from_environment,
 )
+from kcs_adapters.desktop_tool_descriptors import (
+    McpToolDescriptor,
+    tool_descriptors,
+)
+from kcs_adapters.desktop_tool_names import (
+    CANONICAL_TOOL_BY_CLAUDE_DESKTOP_ALIAS,
+    CLAUDE_DESKTOP_TOOL_ALIASES,
+    DESKTOP_OPERATOR_TOOLS,
+    TOOL_AUTHOR_APPROVED_SUMMARY,
+    TOOL_AUTHOR_TICKET,
+    TOOL_DRAFT_ARTICLE,
+    TOOL_GET_MCP_READINESS,
+    TOOL_GET_POLICY_SUMMARY,
+    TOOL_NAME_STYLE_CANONICAL,
+    TOOL_NAME_STYLE_DESKTOP_ALIASES,
+    TOOL_REGISTER_CLEAN_TICKET,
+    TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+    TOOL_RUN_CONTRACT_SMOKE,
+    TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS,
+    TOOL_VALIDATE_DRAFT_REQUEST,
+    TOOL_VALIDATE_DRAFT_RESPONSE,
+    TOOL_VALIDATE_HANDOFF_REQUEST,
+    TOOL_VALIDATE_HANDOFF_RESPONSE,
+    canonical_tool_name_from_claude_desktop_alias,
+    claude_desktop_tool_alias,
+)
 from kcs_adapters.desktop_workflow import (
     ApprovedSummaryPipelineStageError,
     DesktopDraftWorkflow,
@@ -51,49 +77,6 @@ MCP_SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", MCP_PROTOCOL_VERSION)
 MCP_DESKTOP_SERVER_NAME = "kcs-authoring-desktop-mcp"
 MCP_DESKTOP_SERVER_VERSION = "0.1.0"
 MCP_TOOL_RESULT_SCHEMA_VERSION = "kcs_mcp_tool_result_v1"
-
-TOOL_NAME_STYLE_DESKTOP_ALIASES = "claude_desktop_aliases"
-TOOL_NAME_STYLE_CANONICAL = "canonical"
-
-TOOL_GET_POLICY_SUMMARY = "kcs.get_policy_summary"
-TOOL_GET_MCP_READINESS = "kcs.get_mcp_readiness"
-TOOL_VALIDATE_HANDOFF_REQUEST = "kcs.validate_handoff_request"
-TOOL_VALIDATE_HANDOFF_RESPONSE = "kcs.validate_handoff_response"
-TOOL_VALIDATE_DRAFT_REQUEST = "kcs.validate_draft_request"
-TOOL_VALIDATE_DRAFT_RESPONSE = "kcs.validate_draft_response"
-TOOL_RUN_CONTRACT_SMOKE = "kcs.run_contract_smoke"
-TOOL_RUN_APPROVED_SUMMARY_PIPELINE = "kcs.run_approved_summary_pipeline"
-TOOL_AUTHOR_APPROVED_SUMMARY = "kcs.author_approved_summary"
-TOOL_AUTHOR_TICKET = "kcs.author_ticket"
-TOOL_REGISTER_CLEAN_TICKET = "kcs.register_clean_ticket"
-TOOL_DRAFT_ARTICLE = "kcs.draft_article"
-TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS = "support.get_behavior_instructions"
-DESKTOP_OPERATOR_TOOLS = frozenset(
-    {
-        TOOL_REGISTER_CLEAN_TICKET,
-        TOOL_DRAFT_ARTICLE,
-        TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS,
-    }
-)
-
-CLAUDE_DESKTOP_TOOL_ALIASES = {
-    TOOL_GET_POLICY_SUMMARY: "kcs_get_policy_summary",
-    TOOL_GET_MCP_READINESS: "kcs_get_mcp_readiness",
-    TOOL_VALIDATE_HANDOFF_REQUEST: "kcs_validate_handoff_request",
-    TOOL_VALIDATE_HANDOFF_RESPONSE: "kcs_validate_handoff_response",
-    TOOL_VALIDATE_DRAFT_REQUEST: "kcs_validate_draft_request",
-    TOOL_VALIDATE_DRAFT_RESPONSE: "kcs_validate_draft_response",
-    TOOL_RUN_CONTRACT_SMOKE: "kcs_run_contract_smoke",
-    TOOL_RUN_APPROVED_SUMMARY_PIPELINE: "kcs_run_approved_summary_pipeline",
-    TOOL_AUTHOR_APPROVED_SUMMARY: "kcs_author_approved_summary",
-    TOOL_AUTHOR_TICKET: "kcs_author_ticket",
-    TOOL_REGISTER_CLEAN_TICKET: "kcs_register_clean_ticket",
-    TOOL_DRAFT_ARTICLE: "kcs_draft_article",
-    TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS: "support_get_behavior_instructions",
-}
-CANONICAL_TOOL_BY_CLAUDE_DESKTOP_ALIAS = {
-    alias: canonical for canonical, alias in CLAUDE_DESKTOP_TOOL_ALIASES.items()
-}
 
 JSONRPC_VERSION = "2.0"
 PARSE_ERROR = -32700
@@ -180,17 +163,6 @@ class _ParsedJsonRpcMessage:
 
 
 @dataclass(frozen=True)
-class McpToolDescriptor:
-    """MCP-compatible tool descriptor subset."""
-
-    name: str
-    description: str
-    input_schema: JsonDict
-    output_schema: JsonDict
-    annotations: JsonDict
-
-
-@dataclass(frozen=True)
 class McpToolResult:
     """Safe adapter tool result."""
 
@@ -263,21 +235,7 @@ class KcsDesktopMcpAdapter:
         """Return the fixed KCS-12 tool surface."""
 
         if self._tools is None:
-            tools = (
-                _policy_summary_descriptor(),
-                _readiness_descriptor(),
-                _validate_handoff_request_descriptor(),
-                _validate_handoff_response_descriptor(),
-                _validate_draft_request_descriptor(),
-                _validate_draft_response_descriptor(),
-                _contract_smoke_descriptor(),
-                _approved_summary_pipeline_descriptor(),
-                _author_approved_summary_descriptor(),
-                _author_ticket_descriptor(),
-                _register_clean_ticket_descriptor(),
-                _draft_article_descriptor(),
-                _support_get_behavior_instructions_descriptor(),
-            )
+            tools = tool_descriptors()
             if self._visible_tools is not None:
                 tools = tuple(
                     tool for tool in tools if tool.name in self._visible_tools
@@ -1026,24 +984,6 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def claude_desktop_tool_alias(tool_name: str) -> str:
-    """Return the Claude Desktop-safe alias for a canonical tool name."""
-
-    try:
-        return CLAUDE_DESKTOP_TOOL_ALIASES[tool_name]
-    except KeyError:
-        raise ValueError("Tool has no Claude Desktop alias mapping.") from None
-
-
-def canonical_tool_name_from_claude_desktop_alias(tool_name: str) -> str:
-    """Return the canonical name for a Claude Desktop alias."""
-
-    try:
-        return CANONICAL_TOOL_BY_CLAUDE_DESKTOP_ALIAS[tool_name]
-    except KeyError:
-        raise ValueError("Unknown Claude Desktop tool alias.") from None
-
-
 def _handle_stdio_line(
     transport: McpStdioTransport,
     raw_line: str | bytes,
@@ -1068,215 +1008,6 @@ def _decode_stdio_line(raw_line: str | bytes) -> str:
 
 def _reject_json_constant(value: str) -> None:
     raise ValueError(f"Invalid JSON constant: {value}")
-
-
-def _policy_summary_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_GET_POLICY_SUMMARY,
-        description="Return KCS Desktop MCP safety and scope metadata.",
-        input_schema=_desktop_tool_schemas.object_schema(),
-    )
-
-
-def _readiness_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_GET_MCP_READINESS,
-        description="Return KCS Desktop MCP readiness metadata and visible tools.",
-        input_schema=_desktop_tool_schemas.object_schema(),
-    )
-
-
-def _validate_handoff_request_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_VALIDATE_HANDOFF_REQUEST,
-        description="Validate one KCS-9b handoff request packet.",
-        input_schema=_desktop_tool_schemas.object_schema(
-            properties={"request": {"type": "object"}},
-            required=["request"],
-        ),
-    )
-
-
-def _validate_handoff_response_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_VALIDATE_HANDOFF_RESPONSE,
-        description="Validate one KCS-9b handoff response against its request.",
-        input_schema=_desktop_tool_schemas.object_schema(
-            properties={"request": {"type": "object"}, "response": {"type": "object"}},
-            required=["request", "response"],
-        ),
-    )
-
-
-def _validate_draft_request_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_VALIDATE_DRAFT_REQUEST,
-        description="Validate one KCS-9c draft request packet.",
-        input_schema=_desktop_tool_schemas.object_schema(
-            properties={"request": {"type": "object"}},
-            required=["request"],
-        ),
-    )
-
-
-def _validate_draft_response_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_VALIDATE_DRAFT_RESPONSE,
-        description="Validate one KCS-9c draft response against its request.",
-        input_schema=_desktop_tool_schemas.object_schema(
-            properties={"request": {"type": "object"}, "response": {"type": "object"}},
-            required=["request", "response"],
-        ),
-    )
-
-
-def _contract_smoke_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_RUN_CONTRACT_SMOKE,
-        description="Run an in-memory synthetic KCS-9b/KCS-9c validation smoke.",
-        input_schema=_desktop_tool_schemas.object_schema(),
-    )
-
-
-def _approved_summary_pipeline_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
-        description=(
-            "Run the local KCS pipeline for one approved sanitized summary. "
-            "Provide approved_summary_text. Optional structured item fields can "
-            "be passed either as item or top-level fields; common aliases like "
-            "problem, diagnosis, solution, commands, and secondary_finding are "
-            "accepted. Explicit supported cause/resolution evidence is required "
-            "before evidence-ready status. This MVP does not perform live reuse "
-            "search; if reuse_search_checked is not provided, reuse search is "
-            "marked skipped and drafting may continue. Set debug=true to receive "
-            "value-safe failure_stage and debug_code. The tool returns compact "
-            "status only."
-        ),
-        input_schema=_desktop_tool_schemas.approved_summary_input_schema(),
-    )
-
-
-def _author_approved_summary_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_AUTHOR_APPROVED_SUMMARY,
-        description=(
-            "Author a reviewer-only KCS draft/status packet from one approved "
-            "sanitized support summary. Requires explicit supported cause or "
-            "answer evidence, explicit supported resolution or answer evidence, "
-            "and a single atomic item. This MVP marks reuse search skipped when "
-            "reuse_search_checked is not provided. Returns compact reviewer-only "
-            "draft sections, reviewer_only_html for copy/paste, and deterministic "
-            "quality-gap status; does not publish, write files, call a provider, "
-            "or return full packet bodies."
-        ),
-        input_schema=_desktop_tool_schemas.approved_summary_input_schema(),
-    )
-
-
-def _author_ticket_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_AUTHOR_TICKET,
-        description=(
-            "Author a reviewer-only KCS draft/status packet from one local "
-            "approved sanitized ticket summary reference. Provide ticket_ref. "
-            "The tool reads only configured approved summary files, "
-            "returns reviewer_only_html for copy/paste, does not read Zendesk, "
-            "and does not publish, write files, call a provider, or return raw "
-            "packet bodies."
-        ),
-        input_schema=_desktop_tool_schemas.approved_ticket_input_schema(),
-    )
-
-
-def _register_clean_ticket_descriptor() -> McpToolDescriptor:
-    descriptor = _descriptor(
-        name=TOOL_REGISTER_CLEAN_TICKET,
-        description=(
-            "Register one approved sanitized support-ticket transcript as a "
-            "configured clean ticket file. Use this when Claude Desktop "
-            "receives a draft-article request with an operator-provided "
-            "sanitized attachment or long paste and no ticket_ref yet. This is "
-            "the automatic first step for attachment-based drafting. Pass the "
-            "complete visible sanitized transcript, even when long, in "
-            "clean_ticket_text and optionally an opaque ticket_ref; do not pass "
-            "uploaded filenames, "
-            "local paths, Claude upload paths, item, item_candidates, aliases, "
-            "or reference article bodies. A Claude Desktop file card is not a "
-            "filesystem path: do not inspect upload directories, and use the "
-            "visible file text as clean_ticket_text. The tool writes "
-            "clean.ticket.txt under the configured approved-summaries store "
-            "and returns exact next_arguments for kcs_draft_article."
-        ),
-        input_schema=_desktop_tool_schemas.register_clean_ticket_input_schema(),
-    )
-    descriptor.annotations["idempotentHint"] = False
-    descriptor.annotations["readOnlyHint"] = False
-    return descriptor
-
-
-def _draft_article_descriptor() -> McpToolDescriptor:
-    descriptor = _descriptor(
-        name=TOOL_DRAFT_ARTICLE,
-        description=(
-            "Primary KCS authoring tool for sanitized support-ticket article "
-            "requests. Prefer ticket_ref when the cleaned ticket transcript "
-            "has been saved by a trusted source under the configured "
-            "approved-summaries store. For an operator-provided sanitized "
-            "attachment or long paste with no ticket_ref, call "
-            "kcs_register_clean_ticket first and then call this tool with the "
-            "returned next_arguments. Use approved_summary_text only as a "
-            "fallback for short inline sanitized text when clean-ticket "
-            "registration is not needed. Do not summarize, redact labeled "
-            "sections, or pass upload filenames, paths, item, item_candidates, "
-            "aliases, or reference article bodies. A Claude Desktop file card "
-            "is not a filesystem path; do not inspect upload directories or "
-            "ask the operator to re-upload while visible file text is "
-            "available. If no visible file text is available, report "
-            "file_content_unavailable and do not draft manually. "
-            "Python validates the input and owns semantic extraction, decision, "
-            "rendering, and local bundle output. Successful results return "
-            "reviewer-only Zendesk HTML plus compact status. If split_required "
-            "is returned, call again with only operator_selection_ref and "
-            "operator_selected_item_ref."
-        ),
-        input_schema=_desktop_tool_schemas.draft_article_input_schema(),
-    )
-    descriptor.annotations["idempotentHint"] = False
-    descriptor.annotations["readOnlyHint"] = False
-    return descriptor
-
-
-def _support_get_behavior_instructions_descriptor() -> McpToolDescriptor:
-    return _descriptor(
-        name=TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS,
-        description=(
-            "Compatibility helper for legacy Plesk Support behavior-instruction "
-            "requests. Returns the minimal KCS Authoring route: use "
-            "kcs_draft_article for sanitized ticket article drafting."
-        ),
-        input_schema=_desktop_tool_schemas.object_schema(),
-    )
-
-
-def _descriptor(
-    *,
-    name: str,
-    description: str,
-    input_schema: JsonDict,
-) -> McpToolDescriptor:
-    return McpToolDescriptor(
-        name=name,
-        description=description,
-        input_schema=input_schema,
-        output_schema=_desktop_tool_schemas.tool_output_schema(),
-        annotations={
-            "destructiveHint": False,
-            "idempotentHint": True,
-            "openWorldHint": False,
-            "readOnlyHint": True,
-        },
-    )
 
 
 def _mcp_tool_response(
