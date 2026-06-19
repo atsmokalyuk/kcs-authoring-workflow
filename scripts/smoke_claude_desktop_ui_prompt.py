@@ -52,6 +52,10 @@ _DRAFT_RE = re.compile(
     r'\\?"recommended_action\\?"\s*:\s*\\?"draft_only',
     re.I,
 )
+_PROVIDER_UNAVAILABLE_RE = re.compile(
+    r"semantic_extraction_provider_unavailable",
+    re.I,
+)
 _OLD_ARG_RE = re.compile(
     r'"(?:item|item_candidates|reference_article_html|ticket_ref)"\s*:',
     re.I,
@@ -60,8 +64,9 @@ _SUMMARY_ARG_RE = re.compile(r'"approved_summary_text"\s*:', re.I)
 _SELECTION_REF_ARG_RE = re.compile(r'"operator_selection_ref"\s*:', re.I)
 _SELECTED_ITEM_ARG_RE = re.compile(r'"operator_selected_item_ref"\s*:', re.I)
 _MANUAL_FALLBACK_RE = re.compile(
-    r"\b(?:manual draft|drafted this directly|without the KCS tool|"
-    r"tool .*not respond)\b",
+    r"\b(?:manual draft|drafted this directly|draft directly|"
+    r"I can draft (?:a |the )?KCS-style|"
+    r"I can draft .* directly|without the KCS tool|tool .*not respond)\b",
     re.I,
 )
 _TIMEOUT_OR_DISCONNECT_RE = re.compile(
@@ -562,10 +567,17 @@ def _report_from_log(
     tool_activity_text = _tool_activity_text(text)
     tool_result_summary = _tool_result_summary(text)
     web_diagnostics = _web_diagnostics(web_text)
+    manual_fallback_text = f"{text}\n{web_text}"
     timeout_or_disconnect_observed = (
         _TIMEOUT_OR_DISCONNECT_RE.search(tool_activity_text) is not None
     )
     draft_result_observed = _DRAFT_RE.search(text) is not None
+    provider_unavailable_result_observed = (
+        _PROVIDER_UNAVAILABLE_RE.search(text) is not None
+    )
+    terminal_result_observed = (
+        draft_result_observed or provider_unavailable_result_observed
+    )
     post_success_disconnect_observed = _post_success_disconnect_observed(
         text=text,
         prompt_kind=prompt_kind,
@@ -587,7 +599,9 @@ def _report_from_log(
         "old_structured_arguments_absent": (
             _OLD_ARG_RE.search(client_call_text) is None
         ),
-        "manual_fallback_absent": _MANUAL_FALLBACK_RE.search(text) is None,
+        "manual_fallback_absent": (
+            _MANUAL_FALLBACK_RE.search(manual_fallback_text) is None
+        ),
         "timeout_or_disconnect_absent": (
             not timeout_or_disconnect_observed or post_success_disconnect_observed
         ),
@@ -611,7 +625,7 @@ def _report_from_log(
             )
             checks["selected_draft_result_observed"] = draft_result_observed
     else:
-        checks["draft_result_observed"] = draft_result_observed
+        checks["terminal_result_observed"] = terminal_result_observed
     ok = all(checks.values())
     failure_stage = _failure_stage(
         checks,
@@ -638,6 +652,8 @@ def _report_from_log(
         "ok": ok,
         "post_success_disconnect_observed": post_success_disconnect_observed,
         "prompt_kind": prompt_kind,
+        "draft_result_observed": draft_result_observed,
+        "provider_unavailable_result_observed": provider_unavailable_result_observed,
         "schema_version": SCHEMA_VERSION,
         "since": since.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
         "mcp_result_debug_codes": tool_result_summary["debug_codes"],
@@ -717,6 +733,10 @@ def _failure_stage(
             "mcp_semantic_extraction_no_candidates",
         ),
         (
+            not checks["manual_fallback_absent"],
+            "manual_fallback_observed",
+        ),
+        (
             prompt_kind == "split" and not checks.get("split_result_observed", True),
             "expected_split_result_not_observed",
         ),
@@ -726,8 +746,9 @@ def _failure_stage(
             "expected_split_fallback_text_not_observed",
         ),
         (
-            prompt_kind != "split" and not checks.get("draft_result_observed", True),
-            "expected_draft_result_not_observed",
+            prompt_kind != "split"
+            and not checks.get("terminal_result_observed", True),
+            "expected_terminal_result_not_observed",
         ),
     )
     for failed, stage in stages:
@@ -774,25 +795,26 @@ def _next_steps(
         ]
     if ok:
         return ["Treat the KCS draft tool call as passed for this log window."]
-    if failure_stage == "mcp_tool_call_not_observed":
-        return [
-            "Do not treat the run as passed: kcs_draft_article was not called.",
-        ]
-    if failure_stage == "mcp_tool_result_not_observed":
-        return [
-            "Do not treat the run as passed: no kcs_draft_article result was observed.",
-        ]
-    if failure_stage == "mcp_semantic_extraction_no_candidates":
-        return [
-            "Do not draft manually; fix semantic extraction coverage or input routing.",
-        ]
-    if failure_stage == "expected_split_fallback_text_not_observed":
-        return [
-            (
-                "Do not treat the split run as passed: fallback choice text "
-                "was not observed."
-            ),
-        ]
+    failure_steps = {
+        "mcp_tool_call_not_observed": (
+            "Do not treat the run as passed: kcs_draft_article was not called."
+        ),
+        "mcp_tool_result_not_observed": (
+            "Do not treat the run as passed: no kcs_draft_article result was observed."
+        ),
+        "mcp_semantic_extraction_no_candidates": (
+            "Do not draft manually; fix semantic extraction coverage or input routing."
+        ),
+        "manual_fallback_observed": (
+            "Do not treat the run as passed: Claude produced a manual fallback draft."
+        ),
+        "expected_split_fallback_text_not_observed": (
+            "Do not treat the split run as passed: fallback choice text "
+            "was not observed."
+        ),
+    }
+    if failure_stage in failure_steps:
+        return [failure_steps[failure_stage]]
     return ["Do not treat the Claude Desktop MCPB prompt run as passed."]
 
 

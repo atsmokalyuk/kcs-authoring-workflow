@@ -2012,6 +2012,29 @@ def _mcp_tool_response(
 
 
 def _tool_result_text(structured: Mapping[str, Any]) -> str:
+    if structured.get("debug_code") == "semantic_extraction_provider_unavailable":
+        status = {
+            "auto_publish_allowed": structured.get("auto_publish_allowed"),
+            "debug_code": structured.get("debug_code"),
+            "draft_available": False,
+            "failure_stage": structured.get("failure_stage"),
+            "manual_draft_allowed": structured.get("manual_draft_allowed"),
+            "next_required_action": structured.get("next_required_action"),
+            "recommended_action": structured.get("recommended_action"),
+            "result_kind": structured.get("result_kind"),
+            "should_be_kcs_article": structured.get("should_be_kcs_article"),
+            "writes_files": structured.get("writes_files"),
+        }
+        return (
+            "KCS article drafting is blocked because the approved semantic "
+            "extraction provider is not configured. Do not draft manually, do "
+            "not infer item/item_candidates, and do not write a fallback "
+            "article. Report this controlled status to the operator.\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
     html = structured.get("reviewer_only_html")
     if (
         isinstance(html, str)

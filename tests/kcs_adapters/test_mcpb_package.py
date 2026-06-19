@@ -686,7 +686,86 @@ def test_claude_desktop_ui_prompt_smoke_accepts_single_draft_log() -> None:
     assert report["ok"] is True
     assert all(report["checks"].values())
     assert report["latest_log_timestamp"] == "2026-06-18T22:33:03.200Z"
+    assert report["checks"]["terminal_result_observed"] is True
+    assert report["draft_result_observed"] is True
+    assert report["provider_unavailable_result_observed"] is False
     assert report["mcp_result_debug_codes"] == ["draft_only_reuse_search_missing"]
+
+
+def test_claude_desktop_ui_prompt_smoke_accepts_prod_provider_unavailable() -> None:
+    module = _load_ui_smoke_module()
+    since = module.datetime.fromisoformat("2026-06-18T22:32:53+00:00")
+    text = "\n".join(
+        [
+            (
+                '2026-06-18T22:33:01.100Z [KCS Authoring] [info] '
+                'Message from client: {"method":"tools/call","params":{'
+                '"name":"kcs_draft_article","arguments":{'
+                '"approved_summary_text":"Title: Monitoring graphs show no data"}}}'
+            ),
+            (
+                '2026-06-18T22:33:03.200Z [KCS Authoring] [info] '
+                'Message from server: {"id":4,"result":{"content":[{"text":'
+                '"{\\"blockers\\":[\\"semantic_extraction_provider_unavailable\\"],'
+                '\\"failure_stage\\":\\"semantic_extraction\\",'
+                '\\"schema_version\\":\\"kcs_mcp_tool_result_v1\\"}"}]}}'
+            ),
+        ]
+    )
+
+    report = module._report_from_log(
+        text=text,
+        prompt_kind="raw-ticket",
+        sent=True,
+        since=since,
+        log_path=Path("mcp-server-KCS Authoring.log"),
+    )
+
+    assert report["ok"] is True
+    assert report["checks"]["terminal_result_observed"] is True
+    assert report["draft_result_observed"] is False
+    assert report["provider_unavailable_result_observed"] is True
+
+
+def test_claude_desktop_ui_prompt_smoke_rejects_manual_fallback_after_blocker() -> None:
+    module = _load_ui_smoke_module()
+    since = module.datetime.fromisoformat("2026-06-18T22:32:53+00:00")
+    text = "\n".join(
+        [
+            (
+                '2026-06-18T22:33:01.100Z [KCS Authoring] [info] '
+                'Message from client: {"method":"tools/call","params":{'
+                '"name":"kcs_draft_article","arguments":{'
+                '"approved_summary_text":"Title: Monitoring graphs show no data"}}}'
+            ),
+            (
+                '2026-06-18T22:33:03.200Z [KCS Authoring] [info] '
+                'Message from server: {"id":4,"result":{"content":[{"text":'
+                '"{\\"blockers\\":[\\"semantic_extraction_provider_unavailable\\"],'
+                '\\"schema_version\\":\\"kcs_mcp_tool_result_v1\\"}"}]}}'
+            ),
+        ]
+    )
+    web_text = (
+        "2026-06-18T22:33:05.000Z [info] It looks like the KCS Authoring "
+        "tool is not able to complete the draft right now. That said, I can "
+        "draft a KCS-style knowledge base article for you directly based on "
+        "the ticket."
+    )
+
+    report = module._report_from_log(
+        text=text,
+        web_text=web_text,
+        prompt_kind="raw-ticket",
+        sent=True,
+        since=since,
+        log_path=Path("mcp-server-KCS Authoring.log"),
+    )
+
+    assert report["ok"] is False
+    assert report["checks"]["terminal_result_observed"] is True
+    assert report["checks"]["manual_fallback_absent"] is False
+    assert "manual_fallback_absent" in report["failed_checks"]
 
 
 def test_claude_desktop_ui_prompt_smoke_ignores_stale_disconnect_before_call() -> None:
@@ -838,7 +917,8 @@ def test_claude_desktop_ui_prompt_smoke_accepts_truncated_draft_status() -> None
     )
 
     assert report["ok"] is True
-    assert report["checks"]["draft_result_observed"] is True
+    assert report["checks"]["terminal_result_observed"] is True
+    assert report["draft_result_observed"] is True
     assert report["mcp_result_debug_codes"] == ["draft_only_reuse_search_mi"]
 
 
