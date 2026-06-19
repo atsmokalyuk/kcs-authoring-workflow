@@ -195,7 +195,10 @@ Current review checkpoint artifact:
   - focus on Desktop schema thinness, Claude/provider ownership, Python-owned
     validation/decision workflow, state boundaries, and scope drift.
 - `KCS-12b: Local reviewer bundle boundary`
+  - status: complete after ChatGPT Pro review;
   - review required after bundle writer/finalizer tests and smoke pass;
+  - findings must be fixed or explicitly recorded as deferred in the checkpoint
+    artifact before `KCS-12b` is considered complete;
   - focus on local write boundaries, relative refs/paths/hashes, no absolute
     paths, no full packets/HTML by default, and no hidden publish behavior.
 - `KCS-12c: Semantic provider boundary`
@@ -262,12 +265,16 @@ Current branch status:
   - repo-local approved ticket summary ref loading lives in
     `kcs_adapters.desktop_ticket_ref`;
   - remaining MCP transport glue stays in `kcs_adapters.mcp_desktop`.
-- `KCS-12b` is implemented for the Desktop draft path:
+- `KCS-12b` is complete:
   - local reviewer bundle writing lives in
     `kcs_adapters.desktop_reviewer_bundle`;
   - Desktop draft finalization and bundle-result shaping live in
     `kcs_adapters.desktop_workflow`;
-  - default output returns compact refs, relative paths, and hashes.
+  - default output returns compact refs, relative paths, and hashes;
+  - ChatGPT Pro review on 2026-06-19 approved moving past `KCS-12b` with no
+    P0/P1 blockers;
+  - deferred hardening is recorded in
+    `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12b-2026-06-19.md`.
 - `KCS-12c` provider boundary is implemented for the Desktop draft path:
   - production default is controlled
     `semantic_extraction_provider_unavailable`;
