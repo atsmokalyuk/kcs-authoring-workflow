@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
-import math
 import re
 import sys
 from collections.abc import Iterable, Mapping
@@ -15,6 +13,7 @@ from typing import IO, Any
 from kcs_adapters import desktop_authoring_pipeline as _desktop_authoring_pipeline
 from kcs_adapters import desktop_contract_smoke as _desktop_contract_smoke
 from kcs_adapters import desktop_draft_arguments as _desktop_draft_arguments
+from kcs_adapters import desktop_jsonrpc as _desktop_jsonrpc
 from kcs_adapters import desktop_payload as _desktop_payload
 from kcs_adapters import desktop_ticket_ref as _desktop_ticket_ref
 from kcs_adapters import desktop_tool_results as _desktop_tool_results
@@ -69,7 +68,6 @@ from kcs_adapters.desktop_workflow import (
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
 from kcs_core.models import ArticleType
-from kcs_core.sanitizer import ensure_safe_sanitized_payload
 from kcs_core.semantic_extraction import SemanticExtractionProvider
 
 MCP_PROTOCOL_VERSION = "2025-11-25"
@@ -78,16 +76,6 @@ MCP_DESKTOP_SERVER_NAME = "kcs-authoring-desktop-mcp"
 MCP_DESKTOP_SERVER_VERSION = "0.1.0"
 MCP_TOOL_RESULT_SCHEMA_VERSION = "kcs_mcp_tool_result_v1"
 
-JSONRPC_VERSION = "2.0"
-PARSE_ERROR = -32700
-INVALID_REQUEST = -32600
-METHOD_NOT_FOUND = -32601
-INVALID_PARAMS = -32602
-INTERNAL_ERROR = -32603
-SERVER_NOT_INITIALIZED = -32002
-
-_MAX_JSONRPC_LINE_BYTES = 96 * 1024
-_SAFE_REQUEST_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,80}")
 _RESOLUTION_EXECUTABLE_DETAIL_RE = re.compile(
     r"(?:"
     r"https?://|"
@@ -121,45 +109,13 @@ _SUPPORTED_CAUSE_UNCERTAIN_RE = re.compile(
     r"\b(?:appears?|likely|maybe|possibly|probably|seems?|suspected|unclear|unknown)\b",
     re.I,
 )
-_JSONRPC_ALLOWED_KEYS = frozenset({"id", "jsonrpc", "method", "params"})
-_INITIALIZE_PARAM_KEYS = frozenset({"capabilities", "clientInfo", "protocolVersion"})
-_INITIALIZE_FORBIDDEN_TEXT_FRAGMENTS = (
-    "/users/",
-    "api_key",
-    "apikey",
-    "attachment_url",
-    "attachmenturl",
-    "authorization",
-    "bearer ",
-    "internal_comment",
-    "internalcomment",
-    "raw_ticket",
-    "rawticket",
-    "secret=",
-    "token=",
-)
 _REQUEST_ARG = frozenset({"request"})
 _REQUEST_RESPONSE_ARGS = frozenset({"request", "response"})
 _APPROVED_SUMMARY_FALSE_ONLY_ARGS = _desktop_payload.APPROVED_SUMMARY_FALSE_ONLY_ARGS
 _NO_ARGS = frozenset()
-_EMPTY_PARAM_METHOD_RESULTS: Mapping[str, JsonDict] = {
-    "ping": {},
-    "resources/list": {"resources": []},
-    "resources/templates/list": {"resourceTemplates": []},
-    "prompts/list": {"prompts": []},
-}
 _DRAFT_SELECTION_TTL_SECONDS = 15 * 60
 _REVIEWER_BUNDLE_ROOT = DEFAULT_REVIEWER_BUNDLE_ROOT
 _DEFAULT_SEMANTIC_EXTRACTION_PROVIDER = object()
-
-
-@dataclass(frozen=True)
-class _ParsedJsonRpcMessage:
-    request_id: object
-    method: str
-    params: object
-    is_notification: bool
-    error_code: int | None = None
 
 
 @dataclass(frozen=True)
@@ -767,11 +723,11 @@ class McpStdioTransport:
     def handle_message(self, message: object) -> JsonDict | None:
         """Handle one JSON-RPC message."""
 
-        parsed = _parse_jsonrpc_message(message)
+        parsed = _desktop_jsonrpc.parse_jsonrpc_message(message)
         if parsed.error_code is not None:
             if parsed.is_notification:
                 return None
-            return _error_response(
+            return _desktop_jsonrpc.error_response(
                 parsed.request_id,
                 parsed.error_code,
                 "Invalid JSON-RPC request.",
@@ -783,9 +739,9 @@ class McpStdioTransport:
         if is_notification:
             return self._handle_notification(method)
         if not self._ready and method not in {"initialize", "ping"}:
-            return _error_response(
+            return _desktop_jsonrpc.error_response(
                 request_id,
-                SERVER_NOT_INITIALIZED,
+                _desktop_jsonrpc.SERVER_NOT_INITIALIZED,
                 "MCP transport is not initialized.",
             )
 
@@ -794,11 +750,19 @@ class McpStdioTransport:
             params=params,
             request_id=request_id,
         )
-        if _is_error_response(result):
+        if _desktop_jsonrpc.is_error_response(result):
             return result
         if result is _METHOD_NOT_FOUND:
-            return _error_response(request_id, METHOD_NOT_FOUND, "Unknown method.")
-        return {"jsonrpc": JSONRPC_VERSION, "id": request_id, "result": result}
+            return _desktop_jsonrpc.error_response(
+                request_id,
+                _desktop_jsonrpc.METHOD_NOT_FOUND,
+                "Unknown method.",
+            )
+        return {
+            "jsonrpc": _desktop_jsonrpc.JSONRPC_VERSION,
+            "id": request_id,
+            "result": result,
+        }
 
     def _handle_request(
         self,
@@ -810,17 +774,21 @@ class McpStdioTransport:
         try:
             return self._dispatch(method=method, params=params)
         except McpArgumentError:
-            return _error_response(
+            return _desktop_jsonrpc.error_response(
                 request_id,
-                INVALID_PARAMS,
+                _desktop_jsonrpc.INVALID_PARAMS,
                 "Invalid tool arguments.",
             )
         except ValueError:
-            return _error_response(request_id, INVALID_PARAMS, "Invalid params.")
-        except Exception:  # pragma: no cover - defensive transport boundary
-            return _error_response(
+            return _desktop_jsonrpc.error_response(
                 request_id,
-                INTERNAL_ERROR,
+                _desktop_jsonrpc.INVALID_PARAMS,
+                "Invalid params.",
+            )
+        except Exception:  # pragma: no cover - defensive transport boundary
+            return _desktop_jsonrpc.error_response(
+                request_id,
+                _desktop_jsonrpc.INTERNAL_ERROR,
                 "Internal transport error.",
             )
 
@@ -834,11 +802,11 @@ class McpStdioTransport:
     def _dispatch(self, *, method: str, params: object) -> object:
         if method == "initialize":
             return self._initialize(params)
-        if method in _EMPTY_PARAM_METHOD_RESULTS:
-            _require_empty_params(params)
-            return dict(_EMPTY_PARAM_METHOD_RESULTS[method])
+        if method in _desktop_jsonrpc.EMPTY_PARAM_METHOD_RESULTS:
+            _desktop_jsonrpc.require_empty_params(params)
+            return dict(_desktop_jsonrpc.EMPTY_PARAM_METHOD_RESULTS[method])
         if method == "tools/list":
-            _require_empty_params(params)
+            _desktop_jsonrpc.require_empty_params(params)
             return {
                 "tools": [
                     self._tool_descriptor_payload(tool)
@@ -850,7 +818,7 @@ class McpStdioTransport:
         return _METHOD_NOT_FOUND
 
     def _initialize(self, params: object) -> JsonDict:
-        params_obj = _require_initialize_params(params)
+        params_obj = _desktop_jsonrpc.require_initialize_params(params)
         protocol_version = params_obj.get("protocolVersion")
         if protocol_version not in MCP_SUPPORTED_PROTOCOL_VERSIONS:
             raise ValueError("Unsupported protocol version.")
@@ -881,8 +849,10 @@ class McpStdioTransport:
                 "Python validates the input and owns semantic extraction, "
                 "decision, rendering, and local bundle output. The default "
                 "Desktop workflow does not require Claude CLI/Code or an API "
-                "key. Successful draft results include reviewer-only Zendesk "
-                "HTML and compact status."
+                "key. Successful draft results return compact status plus "
+                "local reviewer bundle refs; reviewer-only Zendesk HTML is "
+                "written to the local bundle and returned inline only for "
+                "explicit debug/smoke compatibility."
             ),
             "protocolVersion": protocol_version,
             "serverInfo": {
@@ -892,7 +862,7 @@ class McpStdioTransport:
         }
 
     def _call_tool(self, params: object) -> JsonDict:
-        params_obj = _require_object_params(params)
+        params_obj = _desktop_jsonrpc.require_object_params(params)
         if any(key not in {"arguments", "name"} for key in params_obj):
             raise McpArgumentError("Unexpected tool call parameter.")
         name = params_obj.get("name")
@@ -960,9 +930,9 @@ def serve_stdio(
     input_stream = input_stream or sys.stdin
     output_stream = output_stream or sys.stdout
     for raw_line in input_stream:
-        response = _handle_stdio_line(transport, raw_line)
+        response = _desktop_jsonrpc.handle_stdio_line(transport, raw_line)
         if response is not None:
-            output_stream.write(_compact_json(response) + "\n")
+            output_stream.write(_desktop_jsonrpc.compact_json(response) + "\n")
             output_stream.flush()
 
 
@@ -982,32 +952,6 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     serve_stdio(tool_name_style=args.tool_name_style)
     return 0
-
-
-def _handle_stdio_line(
-    transport: McpStdioTransport,
-    raw_line: str | bytes,
-) -> JsonDict | None:
-    try:
-        line = _decode_stdio_line(raw_line)
-        if len(line.encode("utf-8")) > _MAX_JSONRPC_LINE_BYTES:
-            return _error_response(None, PARSE_ERROR, "Parse error.")
-        if not line.strip():
-            return None
-        message = json.loads(line, parse_constant=_reject_json_constant)
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
-        return _error_response(None, PARSE_ERROR, "Parse error.")
-    return transport.handle_message(message)
-
-
-def _decode_stdio_line(raw_line: str | bytes) -> str:
-    if isinstance(raw_line, bytes):
-        return raw_line.decode("utf-8")
-    return raw_line
-
-
-def _reject_json_constant(value: str) -> None:
-    raise ValueError(f"Invalid JSON constant: {value}")
 
 
 def _mcp_tool_response(
@@ -1071,123 +1015,6 @@ def _require_args(
     if any(key not in arguments for key in required):
         raise McpArgumentError("Missing tool argument.")
 
-
-def _require_object_params(params: object) -> JsonDict:
-    if params is None:
-        return {}
-    if not isinstance(params, dict):
-        raise ValueError("JSON-RPC params must be an object.")
-    return params
-
-
-def _require_empty_params(params: object) -> None:
-    params_obj = _require_object_params(params)
-    if params_obj:
-        raise ValueError("JSON-RPC params must be empty.")
-
-
-def _require_initialize_params(params: object) -> JsonDict:
-    params_obj = _require_object_params(params)
-    if any(key not in _INITIALIZE_PARAM_KEYS for key in params_obj):
-        raise ValueError("Invalid initialize params.")
-    _ensure_safe_initialize_metadata(params_obj)
-    return params_obj
-
-
-def _ensure_safe_initialize_metadata(value: object) -> None:
-    if isinstance(value, Mapping):
-        for key, item in value.items():
-            if not isinstance(key, str):
-                raise ValueError("Invalid initialize params.")
-            _ensure_no_initialize_private_marker(key)
-            _ensure_safe_initialize_metadata(item)
-        return
-    if isinstance(value, list):
-        for item in value:
-            _ensure_safe_initialize_metadata(item)
-        return
-    _ensure_safe_initialize_scalar(value)
-
-
-def _ensure_safe_initialize_scalar(value: object) -> None:
-    if value is None or isinstance(value, bool | int):
-        return
-    if isinstance(value, str):
-        _ensure_no_initialize_private_marker(value)
-        return
-    if isinstance(value, float) and math.isfinite(value):
-        return
-    raise ValueError("Invalid initialize params.")
-
-
-def _ensure_no_initialize_private_marker(value: str) -> None:
-    normalized = value.casefold()
-    if "@" in normalized or "://" in normalized:
-        raise ValueError("Invalid initialize params.")
-    if any(fragment in normalized for fragment in _INITIALIZE_FORBIDDEN_TEXT_FRAGMENTS):
-        raise ValueError("Invalid initialize params.")
-
-
-def _compact_json(payload: Mapping[str, Any]) -> str:
-    return json.dumps(payload, sort_keys=True, allow_nan=False, separators=(",", ":"))
-
-
-def _is_supported_request_id(request_id: object) -> bool:
-    if isinstance(request_id, bool):
-        return False
-    if isinstance(request_id, int):
-        return True
-    if isinstance(request_id, str):
-        if not _SAFE_REQUEST_ID_RE.fullmatch(request_id):
-            return False
-        try:
-            ensure_safe_sanitized_payload(request_id)
-        except ContractValidationError:
-            return False
-        return True
-    return False
-
-
-def _parse_jsonrpc_message(message: object) -> _ParsedJsonRpcMessage:
-    if not isinstance(message, dict):
-        return _ParsedJsonRpcMessage(None, "", {}, False, INVALID_REQUEST)
-    if any(key not in _JSONRPC_ALLOWED_KEYS for key in message):
-        return _ParsedJsonRpcMessage(None, "", {}, False, INVALID_REQUEST)
-    request_id = message.get("id")
-    is_notification = "id" not in message
-    if "id" in message and not _is_supported_request_id(request_id):
-        return _ParsedJsonRpcMessage(None, "", {}, False, INVALID_REQUEST)
-    method = message.get("method")
-    if message.get("jsonrpc") != JSONRPC_VERSION or not isinstance(method, str):
-        return _ParsedJsonRpcMessage(
-            request_id,
-            "",
-            {},
-            is_notification,
-            INVALID_REQUEST,
-        )
-    return _ParsedJsonRpcMessage(
-        request_id,
-        method,
-        message.get("params", {}),
-        is_notification,
-    )
-
-
-def _is_error_response(value: object) -> bool:
-    return (
-        isinstance(value, dict)
-        and "error" in value
-        and value.get("jsonrpc") == "2.0"
-    )
-
-
-def _error_response(request_id: object, code: int, message: str) -> JsonDict:
-    return {
-        "error": {"code": code, "message": message},
-        "id": request_id,
-        "jsonrpc": JSONRPC_VERSION,
-    }
 
 
 __all__ = [
