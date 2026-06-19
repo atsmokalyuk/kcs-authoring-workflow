@@ -78,6 +78,7 @@ def _contract_item_with_malformed_fields(**overrides: object) -> CandidateKcsIte
         "open_questions": (),
         "product_relation": ProductRelation.PLESK_OWNED.value,
         "question": None,
+        "resolution_steps": (),
         "source_refs": ("semantic-source-item-001",),
         "summary": "Plesk backup task fails with a synthetic safe status.",
         "supportability": Supportability.SUPPORTED.value,

@@ -538,11 +538,20 @@ KCS-12:
 - Claude Desktop MCP validator/control adapter under `kcs_adapters`;
 - installable local Claude Desktop MCPB package source under
   `packaging/claude-desktop/`;
-- exposes read-only stdio MCP tools for KCS-9b/KCS-9c packet validation,
-  synthetic contract smoke, and approved sanitized summary pipeline checks;
-- returns compact safe summaries only, with no resources, prompts, file writes,
-  network calls, provider calls, raw Zendesk data, publication behavior, or
-  customer replies.
+- default Claude Desktop surface exposes one primary operator tool,
+  `kcs_draft_article`, with a thin workflow-owned schema:
+  `approved_summary_text`, `operator_selection_ref`,
+  `operator_selected_item_ref`, and `debug`;
+- internal/canonical server mode may still expose diagnostic validation and
+  synthetic contract-smoke tools for local engineering checks;
+- the operator draft tool is non-read-only and may write reviewer-only bundle
+  files only under
+  `local-data/reviewer-bundles/`;
+- returns compact safe summaries and local bundle refs/relative paths by
+  default; full reviewer HTML is limited to explicit debug/smoke compatibility
+  mode;
+- includes no resources, prompts, network calls, provider calls, raw Zendesk
+  data, publication behavior, or customer replies.
 
 Future remote MCP / intranet deployment:
 

@@ -2,8 +2,7 @@
 name: kcs-authoring-control
 description: >
   Use this skill when the user asks to draft a KCS article from an approved
-  sanitized summary or local approved ticket reference with the local KCS
-  Authoring MCP tool from Claude/Cowork.
+  sanitized summary with the local KCS Authoring MCP tool from Claude/Cowork.
 metadata:
   version: "0.1.0"
   author: "KCS Authoring MVP"
@@ -23,50 +22,54 @@ this MCP tool:
 If the user asks to draft an article, draft me an article, write an article,
 create a KB article, or equivalent non-English requests such as `напиши статью`
 or `me escreva um artigo` from an approved sanitized support ticket summary,
-call `kcs_draft_article` with `debug: true`. Do not ask what kind of article
-the user wants; the default is a reviewer-only KCS knowledge
-base article. Do not ask what language to use; default to English unless the
+call `kcs_draft_article` immediately with only `approved_summary_text`.
+Despite the legacy field name, `approved_summary_text` must contain the
+complete visible sanitized ticket/context, not Claude's condensed summary.
+Do not summarize, rewrite, or omit visible symptoms, cause, resolution, config
+paths, commands, services, platform facts, or other sanitized evidence before
+the first tool call. Do not ask what kind of article the user wants; the
+default is a reviewer-only KCS knowledge base article. Do not ask what
+language to use; default to English unless the
 operator explicitly requests another language. Do not ask the operator to
 choose between reuse search and manual drafting before the first tool call;
 call the tool and show its controlled status. Do not invent reuse/search
 proof. If no explicit reuse/search proof is available, the tool marks reuse
-search as skipped for the MVP and continues with reviewer-only drafting. Use
-`ticket_ref` when the user provides a local approved ticket reference. Use
-`approved_summary_text` plus structured supported evidence when the user pasted
-or attached an approved sanitized summary. Do not write a manual draft if this
-tool fails.
+search as skipped for the MVP and continues with reviewer-only drafting. Do
+not pass uploaded filenames, local paths, Claude upload paths, structured
+`item`, `item_candidates`, reference article bodies, or field aliases. Do not
+write a manual draft if this tool fails.
 
-If you provide `article_type`, use only canonical values:
+The Desktop-visible primary input is intentionally thin:
 
-- `technical_scr`
-- `howto_qa`
+- First call: `approved_summary_text`, optionally `debug` for explicit smoke
+  compatibility.
+- Selected-item continuation: `operator_selection_ref` and
+  `operator_selected_item_ref`, optionally `debug`.
 
-When `kcs_draft_article` succeeds and returns `reviewer_only_html`, show that
-field as the primary article output in one fenced `html` block. Do not convert
-it into Markdown, do not rewrite the HTML manually, and do not omit the HTML
-when the operator asked to draft an article. Show compact status metadata after
-the HTML.
+Do not provide `article_type`. Python owns semantic extraction and may use only
+canonical values `technical_scr` or `howto_qa`.
 
-If the user provides an approved sanitized support summary in chat or as an
-attachment, call `kcs_draft_article` with `debug: true`. Extract a single
-structured `item` from the approved summary with:
+Production semantic extraction is provider-owned inside Python. If the approved
+provider is not configured and the tool returns
+`semantic_extraction_provider_unavailable`, report that controlled status and
+do not draft manually or ask Claude to infer `item`/`item_candidates`.
 
-- `title`
-- `article_type`
-- `symptoms`
-- `confirmed_facts`
-- `supported_cause`
-- `supported_resolution_or_workaround`
-- `resolution_steps`
-- `applicable_to`
-- `environment`
+Default successful authoring results return compact safe status and local
+reviewer bundle references. Show the returned `html_path`, `manifest_path`,
+`debug_code`, readiness flags, and reuse-search status. Do not expect full
+HTML in default output. If an explicit debug or smoke result includes
+`reviewer_only_html`, show it in one fenced `html` block without converting it
+to Markdown or rewriting it.
 
-If the approved summary contains more than one semantic KCS item, pass
-`item_candidates` instead of combining them into one article. The tool should
-return `split_required`. When it does, stop the current drafting attempt:
-show the candidate items and ask the operator to choose one item or provide
-separate approved summaries. Do not automatically retry `kcs_draft_article`
-for each candidate and do not write a manual draft.
+If the approved summary contains more than one semantic KCS item, the tool
+returns `split_required`, `operator_selection_ref`, candidate cards, and an
+`operator_choice_request`. Use a native single-choice popup when the client
+provides one. After the operator chooses one item, call `kcs_draft_article`
+again using exactly the chosen option's `submit_arguments`. If a native popup
+is unavailable, present the same choices and still use the returned
+`submit_arguments` exactly. Do not infer, rewrite, or enrich the selected-item
+payload. Do not automatically retry the tool for each candidate and do not
+write a manual draft.
 
 If the tool returns `pipeline_ok: false`, report the returned `failure_stage`
 and `debug_code` instead of guessing KCS-9b or KCS-9c packet schemas.

@@ -18,15 +18,28 @@ Do not ask the operator to choose between reuse search and manual drafting
 before the first tool call; call the tool and show its controlled status.
 Do not invent reuse/search proof; if proof is absent, the tool marks reuse
 search as skipped for the MVP and continues with reviewer-only drafting.
-If an `article_type` is provided, use only canonical KCS values:
-`technical_scr` or `howto_qa`.
+Pass the complete visible sanitized ticket/context in `approved_summary_text`;
+despite the legacy field name, do not summarize, condense, rewrite, or omit
+visible symptoms, cause, resolution, config paths, commands, services, platform
+facts, or other sanitized evidence before the first tool call. Do not pass
+article type, upload filenames, local paths, Claude upload paths, structured
+`item`, `item_candidates`, reference article bodies, or field aliases. Python
+owns semantic extraction and may use only canonical KCS values: `technical_scr`
+or `howto_qa`.
 
-For chat-provided summaries, pass one structured `item`. If the ticket contains
-more than one semantic KCS item, pass `item_candidates` and let the tool return
-`split_required`; do not merge multiple article scopes into one draft. Treat
-`split_required` as terminal for the current turn: show candidate items and ask
-the operator to choose one item or provide separate approved summaries. Do not
-automatically call the tool again for each candidate.
+Production semantic extraction is provider-owned inside Python. If the approved
+provider is not configured, `kcs_draft_article` returns
+`semantic_extraction_provider_unavailable`; report that controlled status and
+do not draft manually or construct `item` / `item_candidates` in Claude.
+
+If the ticket contains more than one semantic KCS item, the tool returns
+`split_required`, `operator_selection_ref`, candidate cards, and an
+`operator_choice_request`; do not merge multiple article scopes into one draft.
+Use a native single-choice popup when the client provides one. After the
+operator chooses one item, call the tool again using exactly the chosen
+option's `submit_arguments`. If a native popup is unavailable, present the same
+choices and still use the returned `submit_arguments` exactly. Do not infer,
+rewrite, or enrich the selection payload.
 
 Low-level KCS-9b/KCS-9c packet validators, policy/readiness/smoke tools,
 pipeline status tools, and authoring sub-tools are internal development tools.
@@ -34,12 +47,13 @@ They are intentionally hidden from the Claude Desktop operator-facing tool
 list because the supported ticket-summary workflow must go through
 `kcs_draft_article`.
 
-Successful authoring results include `reviewer_only_html`. For article-draft
-requests, show that field as the primary copy/paste Zendesk source in one
-fenced `html` block, then show compact status. Do not convert the reviewer HTML
-into Markdown or manually rewrite article sections.
+Default successful authoring results include compact safe status and local
+reviewer bundle references, not full HTML. For article-draft requests, show the
+returned `html_path`, `manifest_path`, `debug_code`, readiness flags, and
+reuse-search status. Full `reviewer_only_html` may appear only in explicit
+debug or smoke compatibility mode; if present, show it in one fenced `html`
+block without converting or rewriting it.
 
-The tool is read-only. It does not perform network calls, provider calls, file
-writes, Zendesk writes, Help Center publication, or customer replies. When a
-local `ticket_ref` is used, the server reads only repository-local approved
-sanitized summary JSON and does not read Zendesk.
+The draft tool writes local reviewer bundles under
+`local-data/reviewer-bundles/`. It does not perform network calls, Zendesk
+writes, Help Center publication, or customer replies.

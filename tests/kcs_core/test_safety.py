@@ -280,6 +280,13 @@ def test_allows_documentation_reserved_identifiers() -> None:
         "02component-feature.conf",
         "settings.yaml",
         "metadata.json",
+        "service.bak",
+        "service.disabled",
+        "service.conf.disabled",
+        "service.conf.bak",
+        "component.orig",
+        "component.old",
+        "/var/lib/application/service.bak",
         "/var/www/vhosts",
     ],
 )

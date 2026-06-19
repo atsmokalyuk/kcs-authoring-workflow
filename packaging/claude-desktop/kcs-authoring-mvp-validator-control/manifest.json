@@ -13,7 +13,7 @@
       "node": ">=16.0.0"
     }
   },
-  "description": "Local read-only Claude Desktop KCS article drafting adapter for KCS Authoring MVP.",
+  "description": "Local Claude Desktop KCS article drafting adapter for KCS Authoring MVP.",
   "display_name": "KCS Authoring",
   "keywords": [
     "kcs",
@@ -22,7 +22,7 @@
     "validator",
     "claude-desktop"
   ],
-  "long_description": "Starts the repository-local KCS Authoring MVP stdio MCP server through uv. In Claude Desktop this extension exposes one primary read-only tool for reviewer-only KCS article drafting from approved sanitized summaries or local approved ticket refs. For prompts like \"draft an article\" with an approved sanitized support-ticket attachment, the default workflow is reviewer-only KCS knowledge base article drafting through kcs_draft_article, without asking the operator to choose a generic article type. Internal diagnostic tools remain available only in internal/canonical server mode. It is not approved for raw Zendesk payloads, raw comments, internal notes, attachments, customer replies, Zendesk writes, Help Center publication, provider calls, or file-writing tools.",
+  "long_description": "Starts the repository-local KCS Authoring MVP stdio MCP server through uv. In Claude Desktop this extension exposes one primary non-destructive tool for reviewer-only KCS article drafting from approved sanitized summaries. Successful primary drafts may write reviewer-only bundle files under local-data/reviewer-bundles/. For prompts like \"draft an article\" with an approved sanitized support-ticket attachment, the default workflow is reviewer-only KCS knowledge base article drafting through kcs_draft_article, without asking the operator to choose a generic article type. Internal diagnostic tools remain available only in internal/canonical server mode. It is not approved for raw Zendesk payloads, raw comments, internal notes, attachments, customer replies, Zendesk writes, Help Center publication, Claude Desktop-owned provider calls, raw provider payloads, or arbitrary file-writing tools. Python-owned approved semantic provider calls may run only when explicitly configured, using sanitized bounded context.",
   "manifest_version": "0.3",
   "name": "kcs-authoring-mvp-validator-control",
   "prompts_generated": false,
@@ -42,7 +42,7 @@
   },
   "tools": [
     {
-      "description": "Primary operator tool for approved sanitized support-ticket prompts such as 'draft an article', 'draft me an article', 'write a KB article', or equivalent non-English requests such as 'напиши статью' or 'me escreva um artigo'. Do not ask what kind of article or what language to use; default to an English reviewer-only KCS knowledge base article. Do not invent reuse/search proof; if proof is absent, the MVP marks reuse search as skipped and continues with reviewer-only drafting. If article_type is provided, use only technical_scr or howto_qa. Returns reviewer_only_html for copy/paste when validation passes. Use with either ticket_ref for a local approved summary, or approved_summary_text plus one structured item from chat. If multiple semantic KCS items are present, pass item_candidates and treat split_required as terminal: show candidates and ask the operator to choose one item or provide separate summaries.",
+      "description": "Primary operator tool for approved sanitized support-ticket prompts such as 'draft an article', 'draft me an article', 'write a KB article', or equivalent non-English requests such as 'напиши статью' or 'me escreva um artigo'. Do not ask what kind of article or what language to use; default to an English reviewer-only KCS knowledge base article. For chat attachments or pasted summaries, read the complete visible sanitized content and pass only approved_summary_text; do not summarize, condense, rewrite, or omit symptoms, cause, resolution, config paths, commands, services, or platform facts before calling the tool. Do not pass uploaded filenames, local paths, Claude upload paths, item, item_candidates, reference article bodies, or field aliases. Python owns semantic extraction, workflow state, validation, KCS decisions, rendering, local reviewer bundle output, and output safety. If the tool returns split_required, use a native Claude Desktop choice popup when the client provides one; otherwise present the returned candidates and wait for the operator to choose one item. After a choice, call this tool again with only operator_selection_ref and operator_selected_item_ref. Use operator_choice_request.options[*].submit_arguments exactly and do not infer the selection payload. If semantic extraction provider support is unavailable, show the controlled semantic_extraction_provider_unavailable status instead of drafting manually.",
       "name": "kcs_draft_article"
     }
   ],

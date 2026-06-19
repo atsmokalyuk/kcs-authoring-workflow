@@ -50,6 +50,10 @@ const childEnv = {
   HOME: process.env.HOME || "",
   KCS_AUTHORING_MVP_REPO_ROOT: repoRoot,
   KCS_AUTHORING_MVP_UV_COMMAND: uvCommand,
+  KCS_AUTHORING_APPROVED_SEMANTIC_PROVIDER_REF:
+    process.env.KCS_AUTHORING_APPROVED_SEMANTIC_PROVIDER_REF || "",
+  KCS_AUTHORING_SEMANTIC_PROVIDER:
+    process.env.KCS_AUTHORING_SEMANTIC_PROVIDER || "",
   LANG: process.env.LANG || "C.UTF-8",
   LC_ALL: process.env.LC_ALL || "",
   LOCALAPPDATA: process.env.LOCALAPPDATA || "",

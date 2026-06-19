@@ -103,7 +103,8 @@ _DOMAIN_RE = re.compile(
 )
 _SAFE_FILENAME_RE = re.compile(
     r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
-    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid)\b"
+    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid|bak|backup|disabled|orig|old)"
+    r"(?:\.(?:bak|backup|disabled|orig|old))?\b"
 )
 _PRIVATE_PATH_RE = re.compile(
     r"(?:/Users/|/home/|C:\\Users\\)", re.I

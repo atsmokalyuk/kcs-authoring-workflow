@@ -157,13 +157,24 @@ content, write Zendesk, or generate customer replies.
 
 KCS-12 is implemented as adapter-layer `kcs_adapters.mcp_desktop` stdio MCP
 logic outside `kcs_core`, plus a reproducible Claude Desktop MCPB package
-source under `packaging/claude-desktop/`. It exposes Claude Desktop-safe
-read-only validation tools for KCS-9b/KCS-9c request and response packets plus
-a synthetic contract smoke and a compact approved-sanitized-summary pipeline
-check. Tool outputs are compact summaries only. KCS-12 does not read raw
-tickets, call Claude/provider APIs, write files through MCP, expose MCP
-resources/prompts, change KCS decisions, publish content, write Zendesk, or
-generate customer replies.
+source under `packaging/claude-desktop/`. The default Claude Desktop surface
+exposes one primary operator tool, `kcs_draft_article`, with a thin
+`approved_summary_text` / selection-ref schema. Python owns semantic
+extraction, workflow state, validation, KCS decisions, rendering, local
+reviewer bundle writing, and output safety. Default successful results return
+compact status plus local bundle refs and hashes; full `reviewer_only_html` is
+returned only in explicit debug/smoke compatibility mode. KCS-12 does not read
+raw tickets, call Claude/provider APIs, expose MCP resources/prompts, change
+KCS decisions, publish content, write Zendesk, or generate customer replies.
+
+Local smoke accounting is implemented as adapter-layer
+`kcs_adapters.smoke_accounting` and the `kcs-smoke-account` console script. It
+reads an operator-provided Claude Desktop/MCP transcript or log file and returns
+a value-safe JSON estimate of observed transcript size, approximate token
+count, estimated Sonnet-style cost proxy, tool-call count, failure markers, and
+manual-fallback markers. It does not provide exact provider billing usage,
+read raw tickets, call providers, write artifacts, or log transcript content.
+Exact billing requires provider API usage fields from a direct API transport.
 
 Longer-term managed deployment may replace the local MCPB stdio wrapper with
 an intranet remote MCP service. In that model Claude Desktop would connect to
@@ -344,8 +355,118 @@ dist/kcs-authoring-mvp-validator-control.mcpb
 Install this MCPB in Claude Desktop, set `repository_root` to the local
 checkout, keep `uv_command=uv` unless a full path is required, enable the
 extension, and start a new chat. The package starts `kcs-desktop-mcp` through
-`uv --project <repository_root> run ...` and exposes only compact read-only
-validator/control tools.
+`uv --project <repository_root> run ...` and exposes one compact
+non-destructive operator tool. Successful primary article drafts may write
+reviewer-only bundle files under `local-data/reviewer-bundles/`; the tool still
+does not publish content or write Zendesk.
+
+For local development after MCPB or adapter fixes, rebuild and replace the
+installed Claude Desktop extension in one step:
+
+```bash
+python scripts/install_kcs_mcpb.py
+```
+
+The installer updates both the unpacked extension files under Claude
+Extensions and Claude Desktop's `extensions-installations.json` registry cache.
+This matters because Claude reads tool descriptions from that cache; if it is
+stale, Desktop can keep showing the old wide `item` / `item_candidates` schema
+even when the unpacked MCPB files are current. After reinstalling, restart
+Claude Desktop or reload the extension before running the next UI smoke.
+
+Run the deterministic stdio smoke against the installed MCPB wrapper before
+opening Claude Desktop:
+
+```bash
+uv run python scripts/smoke_kcs_mcpb_stdio.py
+```
+
+This smoke launches the same Node wrapper used by Claude Desktop with the
+fixture-only semantic provider explicitly enabled. It verifies the visible thin
+`kcs_draft_article` tool surface, Claude Desktop registry cache alignment when
+using the installed wrapper, controlled no-candidate, invalid-selection, and
+invalid mixed-call statuses, plus fixture labeled-summary, narrative-summary,
+raw-ticket, and live raw-ticket-shaped draft paths that write local reviewer
+bundles and return debug-only `reviewer_only_html`. It also runs a stateful
+split -> selected-draft flow in one MCP process using
+`operator_choice_request.options[*].submit_arguments` and verifies that the
+split result includes deterministic operator-facing fallback text for cases
+where Claude Desktop does not render a native choice popup.
+For the installed wrapper, expect `registry_cache_checked=true` and
+`registry_cache_ok=true`. It does not validate Claude Desktop model rendering,
+but it verifies the server-side choice contract, cache alignment, and bundle
+artifacts without manual UI work.
+
+The Desktop authoring refactor target and delivery slices are tracked in
+`docs/internal/kcs-desktop-authoring-refactor-plan.md`.
+
+After restarting Claude Desktop, verify that the live Desktop log reflects the
+same thin tool surface:
+
+```bash
+uv run python scripts/check_claude_kcs_desktop_log.py
+```
+
+Pass `--since <UTC ISO timestamp>` when checking a specific restart window.
+The check is value-safe: it reports only booleans, the latest matching
+`tools/list` timestamp, a compact client capability summary, and a log
+filename. If `client_capabilities.elicitation_declared=false`, Claude Desktop
+has not advertised MCP-native elicitation for that session, so split selection
+relies on the returned `operator_choice_request` and deterministic fallback
+text.
+
+Before running an end-to-end Claude Desktop UI prompt smoke, check whether
+macOS is allowing Codex.app to drive the UI:
+
+```bash
+uv run python scripts/smoke_claude_desktop_ui_prompt.py --check-accessibility
+```
+
+If that preflight passes, a GUI automation smoke can be attempted with:
+
+```bash
+uv run python scripts/smoke_claude_desktop_ui_prompt.py --send --prompt-kind single
+```
+
+This UI smoke sends a synthetic sanitized article prompt and then verifies the
+fresh Claude MCP log for a `kcs_draft_article` call and result. It is separate
+from the deterministic stdio smoke because it depends on macOS GUI automation
+permissions. If it returns
+`send_error_code=codex_accessibility_permission_required`, macOS is blocking
+Codex.app from controlling the computer through Accessibility; grant that
+permission in System Settings before using the GUI smoke. The script fails
+fast for this state and writes a diagnostic screenshot path instead of hanging
+or retrying blindly.
+
+The GUI-send path is best-effort because Claude Desktop rate limits and macOS
+focus behavior are outside the MCP server contract. For the preferred manual UI
+smoke, print a synthetic prompt plus the matching follow-up verifier command:
+
+```bash
+uv run python scripts/smoke_claude_desktop_ui_prompt.py \
+  --print-manual-prompt \
+  --prompt-kind raw-ticket \
+  --copy-manual-prompt
+```
+
+Paste and send the clipboard text in Claude Desktop, or send the raw text
+written to the returned `manual_prompt_path`, then run the returned
+`follow_up_command`. The verifier checks the fresh MCP log window without
+driving the UI. It is equivalent to:
+
+```bash
+uv run python scripts/smoke_claude_desktop_ui_prompt.py \
+  --since 2026-06-18T23:45:00Z \
+  --assume-sent \
+  --prompt-kind raw-ticket
+```
+
+Use `--prompt-kind raw-ticket` for the primary Claude Desktop MVP smoke because
+it exercises a pasted approved sanitized ticket transcript rather than a neat
+field-labeled packet. Use `--prompt-kind single` for a strict labeled one-item
+smoke, `--prompt-kind split` for a split-required manual smoke window, or
+`--prompt-kind narrative` to cover approved summaries shaped as `Summary` /
+`Investigation` / `Resolution` instead of strict field labels.
 
 ### Claude/Cowork Plugin
 

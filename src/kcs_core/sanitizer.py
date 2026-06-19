@@ -30,7 +30,8 @@ _PRIVATE_VALUE_PATTERNS = (
 )
 _SAFE_FILENAME_RE = re.compile(
     r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
-    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid)\b"
+    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid|bak|backup|disabled|orig|old)"
+    r"(?:\.(?:bak|backup|disabled|orig|old))?\b"
 )
 _SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
     r"https://support\.plesk\.com/hc/en-us/articles/[0-9A-Za-z_-]+"

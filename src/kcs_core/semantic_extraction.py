@@ -47,6 +47,7 @@ _ALLOWED_ITEM_FIELDS = frozenset(
         "open_questions",
         "product_relation",
         "question",
+        "resolution_steps",
         "source_refs",
         "summary",
         "supportability",
@@ -146,6 +147,7 @@ class CandidateKcsItem:
     confirmed_facts: tuple[str, ...] = ()
     supported_cause: str | None = None
     supported_resolution_or_workaround: str | None = None
+    resolution_steps: tuple[str, ...] = ()
     question: str | None = None
     supported_answer: str | None = None
     open_questions: tuple[str, ...] = ()
@@ -182,6 +184,7 @@ class CandidateKcsItem:
             supported_resolution_or_workaround=normalize_optional_string(
                 data.get("supported_resolution_or_workaround")
             ),
+            resolution_steps=tuple(normalize_string_list(data.get("resolution_steps"))),
             question=normalize_optional_string(data.get("question")),
             supported_answer=normalize_optional_string(data.get("supported_answer")),
             open_questions=tuple(normalize_string_list(data.get("open_questions"))),
@@ -208,6 +211,7 @@ class CandidateKcsItem:
             "supported_resolution_or_workaround": (
                 self.supported_resolution_or_workaround
             ),
+            "resolution_steps": list(self.resolution_steps),
             "symptoms": list(self.symptoms),
             "visibility_hint": self.visibility_hint,
         }
@@ -410,6 +414,7 @@ def _validate_item(item: CandidateKcsItem) -> None:
         item.supported_resolution_or_workaround,
         field_name="supported_resolution_or_workaround",
     )
+    _ensure_string_tuple(item.resolution_steps, field_name="resolution_steps")
     _ensure_optional_text(item.question, field_name="question")
     _ensure_optional_text(item.supported_answer, field_name="supported_answer")
     if not isinstance(item.environment, Mapping):
@@ -523,6 +528,7 @@ def _export_candidate(
         ),
         "question": item.question,
         "resolution_state": _resolution_state(item),
+        "resolution_steps": list(item.resolution_steps),
         "source_refs": list(source_refs),
         "summary": item.summary,
         "supported_answer": item.supported_answer,

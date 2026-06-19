@@ -1,5 +1,8 @@
 """Runtime adapter package for KCS Authoring MVP."""
 
+from importlib import import_module
+from typing import TYPE_CHECKING, Any
+
 from kcs_adapters.claude_provider import (
     CLAUDE_PROVIDER_ATTEMPT_SCHEMA_VERSION,
     CLAUDE_PROVIDER_CONFIG_SCHEMA_VERSION,
@@ -23,32 +26,79 @@ from kcs_adapters.claude_provider import (
     build_claude_provider_preflight,
     run_claude_provider_smoke,
 )
-from kcs_adapters.mcp_desktop import (
-    MCP_DESKTOP_SERVER_NAME,
-    MCP_DESKTOP_SERVER_VERSION,
-    MCP_PROTOCOL_VERSION,
-    MCP_TOOL_RESULT_SCHEMA_VERSION,
-    TOOL_AUTHOR_APPROVED_SUMMARY,
-    TOOL_AUTHOR_TICKET,
-    TOOL_DRAFT_ARTICLE,
-    TOOL_GET_MCP_READINESS,
-    TOOL_GET_POLICY_SUMMARY,
-    TOOL_NAME_STYLE_CANONICAL,
-    TOOL_NAME_STYLE_DESKTOP_ALIASES,
-    TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
-    TOOL_RUN_CONTRACT_SMOKE,
-    TOOL_VALIDATE_DRAFT_REQUEST,
-    TOOL_VALIDATE_DRAFT_RESPONSE,
-    TOOL_VALIDATE_HANDOFF_REQUEST,
-    TOOL_VALIDATE_HANDOFF_RESPONSE,
-    KcsDesktopMcpAdapter,
-    McpStdioTransport,
-    McpToolDescriptor,
-    McpToolResult,
-    canonical_tool_name_from_claude_desktop_alias,
-    claude_desktop_tool_alias,
-    serve_stdio,
+from kcs_adapters.smoke_accounting import (
+    SMOKE_ACCOUNTING_SCHEMA_VERSION,
+    SmokeAccountingReport,
+    build_smoke_accounting_report,
 )
+
+_MCP_DESKTOP_EXPORTS = frozenset(
+    {
+        "DraftArticleSemanticExtractionProvider",
+        "MCP_DESKTOP_SERVER_NAME",
+        "MCP_DESKTOP_SERVER_VERSION",
+        "MCP_PROTOCOL_VERSION",
+        "MCP_TOOL_RESULT_SCHEMA_VERSION",
+        "TOOL_AUTHOR_APPROVED_SUMMARY",
+        "TOOL_AUTHOR_TICKET",
+        "TOOL_DRAFT_ARTICLE",
+        "TOOL_GET_MCP_READINESS",
+        "TOOL_GET_POLICY_SUMMARY",
+        "TOOL_NAME_STYLE_CANONICAL",
+        "TOOL_NAME_STYLE_DESKTOP_ALIASES",
+        "TOOL_RUN_APPROVED_SUMMARY_PIPELINE",
+        "TOOL_RUN_CONTRACT_SMOKE",
+        "TOOL_VALIDATE_DRAFT_REQUEST",
+        "TOOL_VALIDATE_DRAFT_RESPONSE",
+        "TOOL_VALIDATE_HANDOFF_REQUEST",
+        "TOOL_VALIDATE_HANDOFF_RESPONSE",
+        "KcsDesktopMcpAdapter",
+        "McpStdioTransport",
+        "McpToolDescriptor",
+        "McpToolResult",
+        "canonical_tool_name_from_claude_desktop_alias",
+        "claude_desktop_tool_alias",
+        "serve_stdio",
+    }
+)
+
+
+def __getattr__(name: str) -> Any:
+    if name in _MCP_DESKTOP_EXPORTS:
+        value = getattr(import_module("kcs_adapters.mcp_desktop"), name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+if TYPE_CHECKING:  # pragma: no cover - type-checker-only re-export hints.
+    from kcs_adapters.mcp_desktop import (
+        MCP_DESKTOP_SERVER_NAME,
+        MCP_DESKTOP_SERVER_VERSION,
+        MCP_PROTOCOL_VERSION,
+        MCP_TOOL_RESULT_SCHEMA_VERSION,
+        TOOL_AUTHOR_APPROVED_SUMMARY,
+        TOOL_AUTHOR_TICKET,
+        TOOL_DRAFT_ARTICLE,
+        TOOL_GET_MCP_READINESS,
+        TOOL_GET_POLICY_SUMMARY,
+        TOOL_NAME_STYLE_CANONICAL,
+        TOOL_NAME_STYLE_DESKTOP_ALIASES,
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        TOOL_RUN_CONTRACT_SMOKE,
+        TOOL_VALIDATE_DRAFT_REQUEST,
+        TOOL_VALIDATE_DRAFT_RESPONSE,
+        TOOL_VALIDATE_HANDOFF_REQUEST,
+        TOOL_VALIDATE_HANDOFF_RESPONSE,
+        DraftArticleSemanticExtractionProvider,
+        KcsDesktopMcpAdapter,
+        McpStdioTransport,
+        McpToolDescriptor,
+        McpToolResult,
+        canonical_tool_name_from_claude_desktop_alias,
+        claude_desktop_tool_alias,
+        serve_stdio,
+    )
 
 __all__ = [
     "CLAUDE_PROVIDER_ATTEMPT_SCHEMA_VERSION",
@@ -69,6 +119,7 @@ __all__ = [
     "DirectHttpRuntimeConfig",
     "FakeClaudeProviderClient",
     "UrlLibClaudeHttpTransport",
+    "DraftArticleSemanticExtractionProvider",
     "MCP_DESKTOP_SERVER_NAME",
     "MCP_DESKTOP_SERVER_VERSION",
     "MCP_PROTOCOL_VERSION",
@@ -77,6 +128,8 @@ __all__ = [
     "McpStdioTransport",
     "McpToolDescriptor",
     "McpToolResult",
+    "SMOKE_ACCOUNTING_SCHEMA_VERSION",
+    "SmokeAccountingReport",
     "TOOL_GET_MCP_READINESS",
     "TOOL_GET_POLICY_SUMMARY",
     "TOOL_AUTHOR_APPROVED_SUMMARY",
@@ -92,6 +145,7 @@ __all__ = [
     "TOOL_VALIDATE_HANDOFF_RESPONSE",
     "build_claude_provider_attempt_packet",
     "build_claude_provider_preflight",
+    "build_smoke_accounting_report",
     "canonical_tool_name_from_claude_desktop_alias",
     "claude_desktop_tool_alias",
     "run_claude_provider_smoke",

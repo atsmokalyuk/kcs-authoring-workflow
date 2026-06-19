@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
 import re
 import sys
 from collections.abc import Iterable, Mapping
@@ -14,6 +13,35 @@ from hashlib import sha256
 from pathlib import Path
 from typing import IO, Any
 
+from kcs_adapters import desktop_payload as _desktop_payload
+from kcs_adapters import desktop_ticket_ref as _desktop_ticket_ref
+from kcs_adapters import desktop_workflow as _desktop_workflow
+from kcs_adapters.desktop_reviewer_bundle import (
+    DEFAULT_REVIEWER_BUNDLE_ROOT,
+)
+from kcs_adapters.desktop_workflow import (
+    ApprovedSummaryExecution,
+    ApprovedSummaryPipelineHooks,
+    ApprovedSummaryPipelineStageError,
+    DesktopDraftWorkflow,
+    NoSemanticCandidatesError,
+    OperatorSelectionExpiredError,
+    OperatorSelectionInvalidError,
+    OperatorSelectionUnavailableError,
+    PendingDraftSelection,
+    SemanticExtractionProviderUnavailableError,
+    approved_summary_pipeline_status,
+    attach_pending_selection,
+    draft_author_failure_result,
+    execute_approved_summary_pipeline,
+    finalize_author_result_with_bundle,
+    operator_selection_expired_result,
+    operator_selection_unavailable_result,
+    selection_error_result,
+    semantic_provider_from_environment,
+    semantic_provider_unavailable_result,
+    split_required_result,
+)
 from kcs_core.claude_draft import (
     CLAUDE_DRAFT_REQUEST_SCHEMA_VERSION,
     CLAUDE_DRAFT_RESPONSE_SCHEMA_VERSION,
@@ -29,13 +57,11 @@ from kcs_core.claude_handoff import (
     ClaudeHandoffProviderErrorCode,
     ClaudeHandoffProviderStatus,
     KcsClaudeHandoffRequestPacket,
-    build_claude_handoff_request,
     validate_claude_handoff_response,
 )
 from kcs_core.decision import decide_kcs_action
 from kcs_core.errors import ContractValidationError
 from kcs_core.evidence_builder import (
-    APPROVED_EVIDENCE_EXPORT_SCHEMA_VERSION,
     EvidenceBuildPolicy,
     build_evidence_packet_from_zendesk_export,
 )
@@ -58,14 +84,37 @@ from kcs_core.models import (
 )
 from kcs_core.readiness import build_validation_report
 from kcs_core.renderer import render_reviewer_packet
-from kcs_core.safety import (
-    EvidenceVisibility,
-    InputClass,
-    SafetyGateResult,
-    validate_evidence_safety,
-)
+from kcs_core.safety import InputClass, SafetyGateResult, validate_evidence_safety
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
+from kcs_core.semantic_extraction import SemanticExtractionProvider
 from kcs_core.validation import EvidenceValidationResult, validate_evidence_packet
+
+_approved_summary_open_questions = _desktop_workflow.approved_summary_open_questions
+_approved_summary_public_candidate = _desktop_workflow.approved_summary_public_candidate
+_approved_summary_quality_gaps = _desktop_workflow.approved_summary_quality_gaps
+_approved_summary_reuse_search_status = (
+    _desktop_workflow.approved_summary_reuse_search_status
+)
+_approved_summary_reuse_was_checked = (
+    _desktop_workflow.approved_summary_reuse_was_checked
+)
+_approved_summary_reviewer_only_draft = (
+    _desktop_workflow.approved_summary_reviewer_only_draft
+)
+_approved_summary_reviewer_only_html = (
+    _desktop_workflow.approved_summary_reviewer_only_html
+)
+_approved_summary_reviewer_only_preview = (
+    _desktop_workflow.approved_summary_reviewer_only_preview
+)
+_approved_summary_reviewer_only_preview_text = (
+    _desktop_workflow.approved_summary_reviewer_only_preview_text
+)
+_require_approved_summary_false_only_args = (
+    _desktop_payload.require_approved_summary_false_only_args
+)
+_safe_candidate_list = _desktop_workflow.safe_candidate_list
+_safe_candidate_string = _desktop_workflow.safe_candidate_string
 
 MCP_PROTOCOL_VERSION = "2025-11-25"
 MCP_SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", MCP_PROTOCOL_VERSION)
@@ -121,7 +170,6 @@ SERVER_NOT_INITIALIZED = -32002
 _MAX_JSONRPC_LINE_BYTES = 96 * 1024
 _MAX_TOOL_RESULT_BYTES = 32 * 1024
 _SAFE_REQUEST_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,80}")
-_SAFE_APPROVED_TICKET_REF_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}")
 _RESOLUTION_EXECUTABLE_DETAIL_RE = re.compile(
     r"(?:"
     r"https?://|"
@@ -146,6 +194,15 @@ _RESOLUTION_INFORMATIONAL_DETAIL_RE = re.compile(
     r"\b(?:repopulate|populate)\s+gradually\b",
     re.I,
 )
+_RESOLUTION_DESTRUCTIVE_STEP_RE = re.compile(
+    r"\brm\s+(?:-[A-Za-z]*r[A-Za-z]*f[A-Za-z]*|"
+    r"-[A-Za-z]*f[A-Za-z]*r[A-Za-z]*|-[A-Za-z]*r[A-Za-z]*\s+-[A-Za-z]*f[A-Za-z]*)\s+/",
+    re.I,
+)
+_SUPPORTED_CAUSE_UNCERTAIN_RE = re.compile(
+    r"\b(?:appears?|likely|maybe|possibly|probably|seems?|suspected|unclear|unknown)\b",
+    re.I,
+)
 _JSONRPC_ALLOWED_KEYS = frozenset({"id", "jsonrpc", "method", "params"})
 _INITIALIZE_PARAM_KEYS = frozenset({"capabilities", "clientInfo", "protocolVersion"})
 _INITIALIZE_FORBIDDEN_TEXT_FRAGMENTS = (
@@ -165,18 +222,7 @@ _INITIALIZE_FORBIDDEN_TEXT_FRAGMENTS = (
 )
 _REQUEST_ARG = frozenset({"request"})
 _REQUEST_RESPONSE_ARGS = frozenset({"request", "response"})
-_APPROVED_SUMMARY_FALSE_ONLY_ARGS = frozenset(
-    {
-        "auto_publish_allowed",
-        "customer_replies",
-        "network_calls",
-        "provider_calls",
-        "public_output_approved",
-        "publishes",
-        "ready_for_real_ticket_use",
-        "writes_files",
-    }
-)
+_APPROVED_SUMMARY_FALSE_ONLY_ARGS = _desktop_payload.APPROVED_SUMMARY_FALSE_ONLY_ARGS
 _DRAFT_ARTICLE_ARGS = frozenset(
     {
         "approved_summary_text",
@@ -187,6 +233,9 @@ _DRAFT_ARTICLE_ARGS = frozenset(
         "item",
         "item_candidates",
         "network_calls",
+        "operator_choice_confirmed",
+        "operator_selected_item_ref",
+        "operator_selection_ref",
         "provider_calls",
         "public_output_approved",
         "publishes",
@@ -198,6 +247,14 @@ _DRAFT_ARTICLE_ARGS = frozenset(
         "reuse_search_run_ref",
         "ticket_ref",
         "writes_files",
+    }
+)
+_DRAFT_ARTICLE_DESKTOP_PRIMARY_ARGS = frozenset(
+    {
+        "approved_summary_text",
+        "debug",
+        "operator_selected_item_ref",
+        "operator_selection_ref",
     }
 )
 _DRAFT_ARTICLE_ITEM_CANDIDATE_FIELDS = frozenset(
@@ -207,175 +264,28 @@ _DRAFT_ARTICLE_ITEM_CANDIDATE_FIELDS = frozenset(
         "confirmed_facts",
         "environment",
         "item_ref",
+        "question",
         "reason",
         "resolution_steps",
         "supported_answer",
         "supported_cause",
         "supported_resolution_or_workaround",
-        "symptoms",
-        "title",
-    }
-)
-_APPROVED_SUMMARY_PIPELINE_ARGS = frozenset(
-    {
-        "applicable_to",
-        "approved_summary_text",
-        "article_type",
-        "article_title",
-        "auto_publish_allowed",
-        "candidate_id",
-        "cause",
-        "case_ref",
-        "commands",
-        "confirmed_facts",
-        "customer_replies",
-        "debug",
-        "diagnosis",
-        "environment",
-        "evidence",
-        "facts",
-        "fix",
-        "item",
-        "log_evidence",
-        "logs",
-        "notes",
-        "open_questions",
-        "problem",
-        "problem_statement",
-        "provider_calls",
-        "public_output_approved",
-        "publishes",
-        "question",
-        "ready_for_real_ticket_use",
-        "reuse_search_checked",
-        "reuse_search_run_ref",
-        "reference_article",
-        "reference_article_text",
-        "reference_article_html",
-        "resolution",
-        "resolution_procedure",
-        "root_cause",
-        "root_cause_analysis",
-        "resolution_steps",
-        "resolution_summary",
-        "secondary_finding",
-        "secondary_findings",
-        "secondary_issue",
-        "secondary_issues",
-        "solution",
         "summary",
-        "steps",
-        "supported_answer",
-        "supported_cause",
-        "supported_resolution_or_workaround",
-        "symptom",
-        "symptoms",
-        "title",
-        "network_calls",
-        "writes_files",
-    }
-)
-_APPROVED_TICKET_ARGS = frozenset(
-    {
-        "debug",
-        "reference_article",
-        "reference_article_html",
-        "reference_article_text",
-        "reuse_search_checked",
-        "reuse_search_run_ref",
-        "ticket_ref",
-        *_APPROVED_SUMMARY_FALSE_ONLY_ARGS,
-    }
-)
-_APPROVED_TICKET_FILE_KEYS = frozenset(
-    {
-        "approved_summary_text",
-        "case_ref",
-        "item",
-        "reference_article",
-        "reference_article_html",
-        "reference_article_text",
-        "reuse_search_checked",
-        "reuse_search_run_ref",
-        "schema_version",
-        "ticket_ref",
-    }
-)
-_APPROVED_TICKET_FILE_SCHEMA_VERSION = "kcs_approved_ticket_summary_v1"
-_APPROVED_TICKET_SUMMARY_DIR = Path("local-data") / "approved-summaries"
-_MAX_APPROVED_TICKET_FILE_BYTES = 64 * 1024
-_APPROVED_SUMMARY_ITEM_FIELDS = frozenset(
-    {
-        "answer_steps",
-        "applicable_to",
-        "article_type",
-        "article_title",
-        "candidate_id",
-        "cause",
-        "commands",
-        "confirmed_facts",
-        "diagnosis",
-        "environment",
-        "evidence",
-        "facts",
-        "fix",
-        "log_evidence",
-        "logs",
-        "notes",
-        "open_questions",
-        "problem",
-        "problem_statement",
-        "question",
-        "reuse_search_checked",
-        "reuse_search_run_ref",
-        "resolution",
-        "resolution_procedure",
-        "resolution_steps",
-        "resolution_summary",
-        "root_cause",
-        "root_cause_analysis",
-        "secondary_finding",
-        "secondary_findings",
-        "secondary_issue",
-        "secondary_issues",
-        "solution",
-        "summary",
-        "steps",
-        "supported_answer",
-        "supported_cause",
-        "supported_resolution_or_workaround",
-        "symptom",
         "symptoms",
         "title",
     }
 )
-_APPROVED_SUMMARY_ENVIRONMENT_FIELDS = frozenset(
-    {
-        "component",
-        "components",
-        "extension",
-        "operating_system",
-        "os",
-        "platform",
-        "product",
-        "version",
-    }
+_DRAFT_ARTICLE_ITEM_METADATA_FIELDS = frozenset({"item_ref", "reason"})
+_APPROVED_SUMMARY_PIPELINE_ARGS = _desktop_payload.APPROVED_SUMMARY_PIPELINE_ARGS
+_APPROVED_SUMMARY_ITEM_FIELDS = _desktop_payload.APPROVED_SUMMARY_ITEM_FIELDS
+_APPROVED_SUMMARY_ENVIRONMENT_FIELDS = (
+    _desktop_payload.APPROVED_SUMMARY_ENVIRONMENT_FIELDS
 )
-_APPROVED_SUMMARY_NORMALIZED_ENVIRONMENT_FIELDS = frozenset(
-    {"component", "platform", "product", "version"}
+_APPROVED_SUMMARY_NORMALIZED_ENVIRONMENT_FIELDS = (
+    _desktop_payload.APPROVED_SUMMARY_NORMALIZED_ENVIRONMENT_FIELDS
 )
-_APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS = frozenset(
-    _APPROVED_SUMMARY_PIPELINE_ARGS
-    - {
-        "approved_summary_text",
-        "case_ref",
-        "debug",
-        "item",
-        *_APPROVED_SUMMARY_FALSE_ONLY_ARGS,
-        "reference_article",
-        "reference_article_html",
-        "reference_article_text",
-    }
+_APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS = (
+    _desktop_payload.APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS
 )
 _NO_ARGS = frozenset()
 _EMPTY_PARAM_METHOD_RESULTS: Mapping[str, JsonDict] = {
@@ -427,6 +337,13 @@ _APPROVED_HTML_URL_REFS = {
     ): "approved-rdp-kb-ref",
 }
 _HTML_URL_RE = re.compile(r"https?://[^\"'\\s<>]+", re.I)
+_FORBIDDEN_TEXT_HTML_TAG_RE = re.compile(
+    r"</\s*[a-z][a-z0-9:-]*\b|<\s*(?:a|br|div|h1|h2|h3|li|ol|p|pre|ul)\b",
+    re.I,
+)
+_DRAFT_SELECTION_TTL_SECONDS = 15 * 60
+_REVIEWER_BUNDLE_ROOT = DEFAULT_REVIEWER_BUNDLE_ROOT
+_DEFAULT_SEMANTIC_EXTRACTION_PROVIDER = object()
 
 
 @dataclass(frozen=True)
@@ -463,43 +380,40 @@ class McpArgumentError(ValueError):
     """Tool argument shape error that maps to JSON-RPC invalid params."""
 
 
-class ApprovedSummaryInputError(ContractValidationError):
-    """Value-safe approved summary input error with a compact debug code."""
-
-    def __init__(self, debug_code: str) -> None:
-        super().__init__("approved summary input invalid")
-        self.debug_code = debug_code
+ApprovedSummaryInputError = _desktop_payload.ApprovedSummaryInputError
+ApprovedSummaryPayloadArgumentError = (
+    _desktop_payload.ApprovedSummaryPayloadArgumentError
+)
 
 
-class ApprovedSummaryPipelineStageError(ContractValidationError):
-    """Value-safe approved summary pipeline stage error."""
-
-    def __init__(self, *, failure_stage: str, debug_code: str) -> None:
-        super().__init__("approved summary pipeline stage failed")
-        self.failure_stage = failure_stage
-        self.debug_code = debug_code
-
-
-@dataclass(frozen=True)
-class _ApprovedSummaryExecution:
-    arguments: Mapping[str, Any]
-    payload: JsonDict
-    evidence: NormalizedTicketEvidencePacket
-    safety: SafetyGateResult
-    evidence_validation: EvidenceValidationResult
-    decision: KcsActionDecisionPacket
-    reviewer_packet: KcsReviewerPacket
-    readiness: KcsValidationReportPacket
-    handoff_request: KcsClaudeHandoffRequestPacket
-    draft_request_ready: bool
-    item_ref: str
+DraftArticleSemanticExtractionProvider = SemanticExtractionProvider
+_ApprovedSummaryExecution = ApprovedSummaryExecution
 
 
 class KcsDesktopMcpAdapter:
     """Read-only validator/control tool facade for Claude Desktop."""
 
-    def __init__(self, *, visible_tools: Iterable[str] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        reviewer_bundle_root: Path = _REVIEWER_BUNDLE_ROOT,
+        semantic_extraction_provider: DraftArticleSemanticExtractionProvider
+        | None
+        | object = _DEFAULT_SEMANTIC_EXTRACTION_PROVIDER,
+        selection_ttl_seconds: float = _DRAFT_SELECTION_TTL_SECONDS,
+        visible_tools: Iterable[str] | None = None,
+    ) -> None:
         self._tools: tuple[McpToolDescriptor, ...] | None = None
+        self._reviewer_bundle_root = reviewer_bundle_root
+        semantic_provider = (
+            semantic_provider_from_environment()
+            if semantic_extraction_provider is _DEFAULT_SEMANTIC_EXTRACTION_PROVIDER
+            else semantic_extraction_provider
+        )
+        self._draft_workflow = DesktopDraftWorkflow(
+            provider=semantic_provider,
+            selection_ttl_seconds=selection_ttl_seconds,
+        )
         self._visible_tools = frozenset(visible_tools) if visible_tools else None
         self._handlers: dict[
             str, Any
@@ -544,7 +458,7 @@ class KcsDesktopMcpAdapter:
     def call_tool(
         self, name: str, arguments: Mapping[str, Any] | None = None
     ) -> McpToolResult:
-        """Dispatch a known read-only tool."""
+        """Dispatch a known local MCP tool."""
 
         arguments = arguments or {}
         handler = self._handlers.get(name)
@@ -716,19 +630,17 @@ class KcsDesktopMcpAdapter:
 
     def _draft_article(self, arguments: Mapping[str, Any]) -> JsonDict:
         try:
-            draft_arguments = _draft_article_arguments(arguments)
-            split_result = _draft_article_split_required_result(draft_arguments)
-            if split_result is not None:
-                result = split_result
-            elif "ticket_ref" in draft_arguments:
-                result = self._author_ticket(draft_arguments)
-            elif _has_approved_summary_authoring_input(draft_arguments):
-                result = self._author_approved_summary(draft_arguments)
-            else:
-                result = _approved_summary_author_failure_result(
+            primary_result = self._draft_article_primary_surface_result(
+                arguments
+            )
+            result = (
+                primary_result
+                if primary_result is not None
+                else _approved_summary_author_failure_result(
                     failure_stage="input_validation",
-                    debug_code="draft_article_input_missing",
+                    debug_code="draft_article_call_shape_invalid",
                 )
+            )
         except (ContractValidationError, McpArgumentError):
             result = _approved_summary_author_failure_result(
                 failure_stage="input_validation",
@@ -737,14 +649,166 @@ class KcsDesktopMcpAdapter:
         result["result_kind"] = "draft_article_authoring"
         return result
 
+    def _draft_article_after_selection(
+        self,
+        draft_arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        draft_arguments = _draft_article_without_operator_selection_fields(
+            draft_arguments
+        )
+        if _has_approved_summary_authoring_input(draft_arguments):
+            return self._author_approved_summary(
+                _draft_article_without_uploaded_ticket_ref(draft_arguments)
+            )
+        if "ticket_ref" in draft_arguments:
+            return self._author_ticket(draft_arguments)
+        return _approved_summary_author_failure_result(
+            failure_stage="input_validation",
+            debug_code="draft_article_input_missing",
+        )
+
+    def _new_pending_draft_selection(
+        self,
+        item_candidates: list[JsonDict],
+        *,
+        approved_summary_text: str,
+    ) -> PendingDraftSelection:
+        return self._draft_workflow.start_pending_selection(
+            item_candidates,
+            approved_summary_text=approved_summary_text,
+        )
+
+    def _draft_article_primary_surface_result(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict | None:
+        if not set(arguments).issubset(_DRAFT_ARTICLE_DESKTOP_PRIMARY_ARGS):
+            return None
+        has_summary = bool(arguments.get("approved_summary_text"))
+        has_selection_ref = bool(arguments.get("operator_selection_ref"))
+        has_selected_item_ref = bool(arguments.get("operator_selected_item_ref"))
+        if has_summary and not has_selection_ref and not has_selected_item_ref:
+            return self._draft_article_from_primary_summary(arguments)
+        if has_selection_ref and has_selected_item_ref and not has_summary:
+            return self._draft_article_from_primary_selection(arguments)
+        return _approved_summary_author_failure_result(
+            failure_stage="input_validation",
+            debug_code="draft_article_call_shape_invalid",
+        )
+
+    def _draft_article_from_primary_summary(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        approved_summary_text = _desktop_payload.approved_summary_text_argument(
+            arguments
+        )
+        try:
+            candidates = _draft_article_candidates_with_refs(
+                self._draft_workflow.item_candidates_from_summary(
+                    approved_summary_text
+                )
+            )
+        except SemanticExtractionProviderUnavailableError:
+            return semantic_provider_unavailable_result(
+                schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+            )
+        except NoSemanticCandidatesError:
+            return _approved_summary_author_failure_result(
+                failure_stage="semantic_extraction",
+                debug_code="semantic_extraction_no_candidates",
+            )
+        except (ContractValidationError, McpArgumentError, ValueError):
+            return _approved_summary_author_failure_result(
+                failure_stage="semantic_extraction",
+                debug_code="semantic_extraction_output_invalid",
+            )
+        if not candidates:
+            return _approved_summary_author_failure_result(
+                failure_stage="semantic_extraction",
+                debug_code="semantic_extraction_no_candidates",
+            )
+        if len(candidates) > 1:
+            result = _draft_article_split_required_result(
+                {"item_candidates": candidates}
+            )
+            if result is None:  # pragma: no cover - defensive invariant
+                return _approved_summary_author_failure_result(
+                    failure_stage="semantic_extraction",
+                    debug_code="semantic_extraction_output_invalid",
+                )
+            pending_selection = self._new_pending_draft_selection(
+                candidates,
+                approved_summary_text=approved_summary_text,
+            )
+            attach_pending_selection(
+                result,
+                pending_selection,
+                submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+            )
+            return result
+        return self._draft_article_primary_author_result(
+            _draft_article_authoring_args_from_candidate(
+                approved_summary_text=approved_summary_text,
+                candidate=candidates[0],
+                debug=arguments.get("debug") is True,
+            )
+        )
+
+    def _draft_article_from_primary_selection(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        pending_selection = self._draft_workflow.pending_selection
+        if pending_selection is None:
+            return operator_selection_unavailable_result(
+                schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+            )
+        selection_ref = arguments.get("operator_selection_ref")
+        selected_item_ref = arguments.get("operator_selected_item_ref")
+        try:
+            candidate = self._draft_workflow.selected_candidate(
+                selection_ref=selection_ref,
+                selected_item_ref=selected_item_ref,
+            )
+        except OperatorSelectionExpiredError:
+            return operator_selection_expired_result(
+                schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+            )
+        except OperatorSelectionUnavailableError:
+            return operator_selection_unavailable_result(
+                schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+            )
+        except OperatorSelectionInvalidError:
+            return _draft_article_selection_error_result(arguments, pending_selection)
+        return self._draft_article_primary_author_result(
+            _draft_article_authoring_args_from_candidate(
+                approved_summary_text=pending_selection.approved_summary_text,
+                candidate=candidate,
+                debug=arguments.get("debug") is True,
+            )
+        )
+
+    def _draft_article_primary_author_result(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        result = self._author_approved_summary(arguments)
+        return finalize_author_result_with_bundle(
+            result,
+            bundle_root=self._reviewer_bundle_root,
+            include_reviewer_only_html=arguments.get("debug") is True,
+            schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+        )
+
 
 def _draft_article_arguments(arguments: Mapping[str, Any]) -> Mapping[str, Any]:
     _require_args(arguments, _DRAFT_ARTICLE_ARGS, required=frozenset())
     _require_approved_summary_false_only_args(arguments)
+    normalized = _draft_article_with_normalized_item(arguments)
     if "item_candidates" not in arguments:
-        return arguments
+        return normalized
     candidates = _draft_article_item_candidates(arguments["item_candidates"])
-    normalized = dict(arguments)
     normalized["item_candidates"] = candidates
     if len(candidates) == 1 and "item" not in normalized:
         candidate_item = {
@@ -755,6 +819,92 @@ def _draft_article_arguments(arguments: Mapping[str, Any]) -> Mapping[str, Any]:
         if candidate_item:
             normalized["item"] = candidate_item
     return normalized
+
+
+def _draft_article_authoring_args_from_candidate(
+    *,
+    approved_summary_text: str,
+    candidate: Mapping[str, Any],
+    debug: bool,
+) -> JsonDict:
+    return _draft_article_with_normalized_item(
+        {
+            "approved_summary_text": approved_summary_text,
+            "debug": debug,
+            "item": dict(candidate),
+        }
+    )
+
+
+def _draft_article_candidates_with_refs(
+    candidates: list[JsonDict],
+) -> list[JsonDict]:
+    normalized: list[JsonDict] = []
+    for index, candidate in enumerate(candidates, start=1):
+        candidate_with_ref = dict(candidate)
+        item_ref = candidate_with_ref.get("item_ref")
+        if not isinstance(item_ref, str) or not item_ref:
+            candidate_with_ref["item_ref"] = f"candidate-{index:03d}"
+        normalized.append(candidate_with_ref)
+    return normalized
+
+
+def _draft_article_with_normalized_item(
+    arguments: Mapping[str, Any],
+) -> JsonDict:
+    normalized = dict(arguments)
+    if "item" not in normalized:
+        return normalized
+    item = dict(require_json_object(normalized["item"]))
+    item_ref = item.pop("item_ref", None)
+    for metadata_field in _DRAFT_ARTICLE_ITEM_METADATA_FIELDS - {"item_ref"}:
+        item.pop(metadata_field, None)
+    if (
+        isinstance(item_ref, str)
+        and item_ref
+        and "candidate_id" not in item
+    ):
+        item["candidate_id"] = item_ref
+    normalized["item"] = item
+    return normalized
+
+
+def _draft_article_without_operator_selection_fields(
+    arguments: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    return {
+        key: value
+        for key, value in arguments.items()
+        if key
+        not in {
+            "operator_choice_confirmed",
+            "operator_selected_item_ref",
+            "operator_selection_ref",
+            "item_candidates",
+        }
+    }
+
+
+def _draft_article_without_uploaded_ticket_ref(
+    arguments: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    if "approved_summary_text" not in arguments or "ticket_ref" not in arguments:
+        return arguments
+    cleaned = dict(arguments)
+    cleaned.pop("ticket_ref", None)
+    return cleaned
+
+
+def _draft_article_selection_error_result(
+    arguments: Mapping[str, Any],
+    pending_selection: PendingDraftSelection,
+) -> JsonDict | None:
+    return selection_error_result(
+        arguments,
+        pending_selection,
+        schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+        submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+    )
 
 
 def _draft_article_item_candidates(value: object) -> list[JsonDict]:
@@ -775,58 +925,25 @@ def _draft_article_item_candidates(value: object) -> list[JsonDict]:
 def _draft_article_split_required_result(
     arguments: Mapping[str, Any],
 ) -> JsonDict | None:
+    if _draft_article_has_confirmed_operator_selection(arguments):
+        return None
     candidates = arguments.get("item_candidates")
     if not isinstance(candidates, list) or len(candidates) <= 1:
         return None
-    result = _approved_summary_author_failure_result(
-        failure_stage="item_identification",
-        debug_code="multiple_kcs_items_detected",
+    return split_required_result(
+        candidates,
+        schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
     )
-    result["item_candidates"] = _draft_article_split_candidate_cards(candidates)
-    result["automatic_item_retry_allowed"] = False
-    result["manual_draft_allowed"] = False
-    result["next_required_action"] = "operator_select_single_item"
-    result["recommended_action"] = "split_required"
-    result["review_summary"] = {
-        "draft_available": False,
-        "next_required_action": "operator_select_single_item",
-        "reason": "multiple_kcs_items_detected",
-    }
-    return result
 
 
-def _draft_article_split_candidate_cards(
-    candidates: list[JsonDict],
-) -> list[JsonDict]:
-    cards: list[JsonDict] = []
-    for index, candidate in enumerate(candidates, start=1):
-        item_ref = candidate.get("item_ref")
-        title = candidate.get("title")
-        card: JsonDict = {
-            "item_ref": (
-                item_ref if isinstance(item_ref, str) and item_ref else f"item-{index}"
-            ),
-            "title": _safe_split_candidate_text(title, fallback=f"Item {index}"),
-        }
-        article_type = candidate.get("article_type")
-        if isinstance(article_type, str) and article_type:
-            card["article_type"] = article_type
-        ensure_safe_sanitized_payload(card)
-        cards.append(card)
-    return cards
-
-
-def _safe_split_candidate_text(value: object, *, fallback: str) -> str:
-    if not isinstance(value, str):
-        return fallback
-    text = _approved_summary_snippet(value, max_length=140)
-    if not text:
-        return fallback
-    try:
-        ensure_safe_sanitized_payload(text)
-    except ContractValidationError:
-        return fallback
-    return text
+def _draft_article_has_confirmed_operator_selection(
+    arguments: Mapping[str, Any],
+) -> bool:
+    return (
+        arguments.get("operator_choice_confirmed") is True
+        and isinstance(arguments.get("operator_selection_ref"), str)
+        and isinstance(arguments.get("operator_selected_item_ref"), str)
+    )
 
 
 def _has_approved_summary_authoring_input(arguments: Mapping[str, Any]) -> bool:
@@ -846,104 +963,42 @@ def _append_quality_gap(result: JsonDict, gap: JsonDict) -> None:
 def _execute_approved_summary_pipeline(
     arguments: Mapping[str, Any],
 ) -> _ApprovedSummaryExecution:
-    payload = _checked_approved_summary_pipeline_payload(arguments)
-    evidence = _build_approved_summary_evidence(arguments, payload)
-    safety = _validate_approved_summary_safety(evidence)
-    evidence_validation = _validate_approved_summary_evidence(evidence)
-    decision = _decide_approved_summary_action(arguments, evidence)
-    reviewer_packet = _render_approved_summary_reviewer_packet(evidence, decision)
-    readiness = _build_approved_summary_readiness(evidence, decision, reviewer_packet)
-    item_ref = decision.candidate_id or _approved_summary_item_ref(arguments)
-    handoff_request = build_claude_handoff_request(
-        decision,
-        readiness,
-        handoff_ref=f"handoff-{item_ref}",
-        safe_context={
-            "short_public_safe_summary": _approved_summary_short_summary(arguments),
-            "title_hint": _approved_summary_title(arguments),
-        },
-    )
-    draft_request_ready = _approved_summary_draft_request_ready(
-        handoff_request, item_ref, readiness
-    )
-    return _ApprovedSummaryExecution(
-        arguments=arguments,
-        payload=payload,
-        evidence=evidence,
-        safety=safety,
-        evidence_validation=evidence_validation,
-        decision=decision,
-        reviewer_packet=reviewer_packet,
-        readiness=readiness,
-        handoff_request=handoff_request,
-        draft_request_ready=draft_request_ready,
-        item_ref=item_ref,
+    return execute_approved_summary_pipeline(
+        arguments,
+        hooks=ApprovedSummaryPipelineHooks(
+            build_payload=_checked_approved_summary_pipeline_payload,
+            build_evidence=_build_approved_summary_evidence,
+            validate_safety=_validate_approved_summary_safety,
+            validate_evidence=_validate_approved_summary_evidence,
+            decide=_decide_approved_summary_action,
+            render=_render_approved_summary_reviewer_packet,
+            build_readiness=_build_approved_summary_readiness,
+            item_ref=_approved_summary_pipeline_item_ref,
+            short_summary=_desktop_payload.approved_summary_short_summary,
+            title=_desktop_payload.approved_summary_title,
+        ),
     )
 
 
-def _approved_summary_draft_request_ready(
-    handoff_request: KcsClaudeHandoffRequestPacket,
-    item_ref: str,
-    readiness: KcsValidationReportPacket,
-) -> bool:
-    if not readiness.ready_for_reviewer:
-        return False
-    try:
-        build_claude_draft_request(handoff_request, draft_ref=f"draft-{item_ref}")
-    except ContractValidationError:
-        return False
-    return True
+def _approved_summary_pipeline_item_ref(
+    arguments: Mapping[str, Any],
+    decision: KcsActionDecisionPacket,
+) -> str:
+    return decision.candidate_id or _desktop_payload.approved_summary_item_ref(
+        arguments
+    )
 
 
 def _approved_summary_pipeline_status(
     execution: _ApprovedSummaryExecution,
 ) -> JsonDict:
-    decision = execution.decision
-    readiness = execution.readiness
-    safety = execution.safety
-    evidence_validation = execution.evidence_validation
-    return {
-        "auto_publish_allowed": False,
-        "case_ref": execution.evidence.case_ref,
-        "checks": [
-            {"kind": "input_validation", "ok": True},
-            {"kind": "evidence_builder", "ok": True},
-            {"kind": "input_safety", "ok": safety.ok},
-            {"kind": "evidence_validation", "ok": evidence_validation.ok},
-            {
-                "kind": "decision",
-                "ok": decision.status == DecisionStatus.DECISION_READY.value,
-            },
-            {"kind": "renderer", "ok": True},
-            {"kind": "readiness", "ok": readiness.ready_for_reviewer},
-            {"kind": "draft_request_ready", "ok": execution.draft_request_ready},
-        ],
-        "debug_code": "none",
-        "draft_request_ready": execution.draft_request_ready,
-        "evidence_valid": evidence_validation.ok,
-        "failure_stage": "none",
-        "handoff_ref": execution.handoff_request.handoff_ref,
-        "input_safety_ok": safety.ok,
-        "item_ref": execution.item_ref,
-        "network_calls": False,
-        "ok": safety.ok and readiness.ready_for_reviewer,
-        "original_article_type": decision.article_type,
-        "original_decision_status": decision.status,
-        "original_readiness_state": readiness.state,
-        "original_recommended_action": decision.recommended_action,
-        "pipeline_ok": safety.ok and readiness.ready_for_reviewer,
-        "provider_calls": False,
-        "public_output_approved": False,
-        "ready_for_real_ticket_use": False,
-        "ready_for_reviewer": readiness.ready_for_reviewer,
-        "result_kind": "approved_summary_pipeline",
-        "reuse_search_status": _approved_summary_reuse_search_status(
+    return approved_summary_pipeline_status(
+        execution,
+        schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+        reuse_search_status=_approved_summary_reuse_search_status(
             execution.arguments
         ),
-        "schema_version": MCP_TOOL_RESULT_SCHEMA_VERSION,
-        "validation_ok": evidence_validation.ok,
-        "writes_files": False,
-    }
+    )
 
 
 def _approved_summary_author_result(
@@ -977,24 +1032,11 @@ def _approved_summary_author_failure_result(
     failure_stage: str,
     debug_code: str,
 ) -> JsonDict:
-    return {
-        **_approved_summary_failure_result(
-            failure_stage=failure_stage,
-            debug_code=debug_code,
-        ),
-        "article_type": "none",
-        "atomic_item": {},
-        "blockers": [debug_code],
-        "open_questions": [],
-        "quality_gaps": [],
-        "recommended_action": "blocked",
-        "result_kind": "approved_summary_authoring",
-        "review_summary": {
-            "draft_available": False,
-            "reason": debug_code,
-        },
-        "should_be_kcs_article": False,
-    }
+    return draft_author_failure_result(
+        failure_stage=failure_stage,
+        debug_code=debug_code,
+        schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+    )
 
 
 def _approved_ticket_author_failure_result(
@@ -1010,6 +1052,23 @@ def _approved_ticket_author_failure_result(
     result["result_kind"] = "approved_ticket_authoring"
     result["ticket_ref"] = ticket_ref
     result["approved_summary_source"] = "local_approved_summary"
+    if debug_code in {
+        "approved_ticket_ref_invalid",
+        "approved_ticket_summary_invalid",
+        "approved_ticket_summary_not_found",
+    }:
+        result["automatic_item_retry_allowed"] = True
+        result["manual_draft_allowed"] = False
+        result["next_required_action"] = (
+            "retry_with_approved_summary_text_from_attachment"
+        )
+        result["review_summary"] = {
+            "draft_available": False,
+            "next_required_action": (
+                "retry_with_approved_summary_text_from_attachment"
+            ),
+            "reason": debug_code,
+        }
     return result
 
 
@@ -1049,200 +1108,6 @@ def _approved_summary_review_status(
         "recommended_action": execution.decision.recommended_action,
         "review_required": execution.reviewer_packet.review_required,
     }
-
-
-def _approved_summary_reviewer_only_draft(
-    execution: _ApprovedSummaryExecution,
-) -> JsonDict:
-    candidate = _approved_summary_public_candidate(execution.reviewer_packet)
-    source_candidate = _approved_summary_source_candidate(execution)
-    resolution_steps = _safe_candidate_list(candidate, "resolution_steps")
-    return {
-        "applicable_to": _approved_summary_applicable_to(candidate),
-        "cause": _safe_candidate_string(candidate, "cause"),
-        "resolution": _safe_candidate_string(
-            source_candidate, "supported_resolution_or_workaround"
-        )
-        or _safe_candidate_string(source_candidate, "supported_answer")
-        or _safe_candidate_string(candidate, "resolution")
-        or " ".join(resolution_steps),
-        "resolution_steps": resolution_steps,
-        "status": "reviewer_only",
-        "symptoms": _safe_candidate_list(candidate, "symptoms"),
-        "title": _safe_candidate_string(candidate, "title"),
-    }
-
-
-def _approved_summary_reviewer_only_html(
-    execution: _ApprovedSummaryExecution,
-) -> str:
-    html = execution.reviewer_packet.zendesk_source_html
-    if not isinstance(html, str):
-        return ""
-    return html
-
-
-def _approved_summary_reviewer_only_preview(draft: Mapping[str, Any]) -> JsonDict:
-    return {
-        "applicable_to": _safe_candidate_list(draft, "applicable_to"),
-        "cause": _safe_candidate_string(draft, "cause"),
-        "resolution": _safe_candidate_string(draft, "resolution"),
-        "resolution_steps": _safe_candidate_list(draft, "resolution_steps"),
-        "status": _safe_candidate_string(draft, "status"),
-        "symptoms": _safe_candidate_list(draft, "symptoms"),
-        "title": _safe_candidate_string(draft, "title"),
-    }
-
-
-def _approved_summary_reviewer_only_preview_text(
-    draft: Mapping[str, Any],
-) -> str:
-    preview = _approved_summary_reviewer_only_preview(draft)
-    lines = [
-        f"Title: {preview['title']}",
-        f"Status: {preview['status']}",
-        "",
-        "Applicable to:",
-        *_numbered_or_bulleted_lines(preview["applicable_to"], bullet="-"),
-        "",
-        "Symptoms:",
-        *_numbered_or_bulleted_lines(preview["symptoms"], bullet="1."),
-        "",
-        "Cause:",
-        str(preview["cause"]),
-        "",
-        "Resolution:",
-        str(preview["resolution"]),
-        "",
-        "Resolution steps:",
-        *_numbered_or_bulleted_lines(preview["resolution_steps"], bullet="1."),
-    ]
-    return "\n".join(line for line in lines if line is not None).strip()
-
-
-def _numbered_or_bulleted_lines(values: object, *, bullet: str) -> list[str]:
-    if not isinstance(values, list) or not values:
-        return ["-"]
-    if bullet == "1.":
-        return [f"{index}. {value}" for index, value in enumerate(values, start=1)]
-    return [f"{bullet} {value}" for value in values]
-
-
-def _approved_summary_quality_gaps(
-    execution: _ApprovedSummaryExecution,
-    draft: Mapping[str, Any],
-) -> list[JsonDict]:
-    gaps: list[JsonDict] = []
-    if not _safe_candidate_list(draft, "applicable_to"):
-        gaps.append({"kind": "missing_applicable_to", "severity": "blocker"})
-    if not _safe_candidate_list(draft, "symptoms"):
-        gaps.append({"kind": "missing_symptoms", "severity": "blocker"})
-    if not _safe_candidate_string(draft, "cause"):
-        gaps.append({"kind": "missing_cause", "severity": "blocker"})
-    if not _safe_candidate_string(draft, "resolution"):
-        gaps.append({"kind": "missing_resolution", "severity": "blocker"})
-    reference_text = _approved_summary_reference_text(execution.arguments)
-    if reference_text is None:
-        gaps.append({"kind": "reference_not_provided", "severity": "info"})
-    else:
-        gaps.extend(_approved_summary_reference_section_gaps(reference_text, draft))
-    if not _approved_summary_reuse_was_checked(execution.arguments):
-        gaps.append({"kind": "reuse_search_skipped", "severity": "warning"})
-    return gaps
-
-
-def _approved_summary_reference_text(arguments: Mapping[str, Any]) -> str | None:
-    reference_keys = (
-        "reference_article",
-        "reference_article_text",
-        "reference_article_html",
-    )
-    for key in reference_keys:
-        value = arguments.get(key)
-        if isinstance(value, str) and value.strip():
-            ensure_safe_sanitized_payload(value)
-            return value.strip()
-    return None
-
-
-def _approved_summary_reference_section_gaps(
-    reference_text: str,
-    draft: Mapping[str, Any],
-) -> list[JsonDict]:
-    gaps: list[JsonDict] = []
-    reference = reference_text.casefold()
-    section_checks = (
-        (
-            "applicable_to",
-            "applicable to",
-            _safe_candidate_list(draft, "applicable_to"),
-        ),
-        ("symptoms", "symptoms", _safe_candidate_list(draft, "symptoms")),
-        ("cause", "cause", [_safe_candidate_string(draft, "cause")]),
-        ("resolution", "resolution", [_safe_candidate_string(draft, "resolution")]),
-    )
-    for kind, marker, values in section_checks:
-        if marker in reference and not any(values):
-            gaps.append(
-                {
-                    "kind": f"reference_section_missing_{kind}",
-                    "severity": "warning",
-                }
-            )
-    if not gaps:
-        gaps.append({"kind": "reference_section_coverage_ok", "severity": "info"})
-    return gaps
-
-
-def _approved_summary_open_questions(
-    execution: _ApprovedSummaryExecution,
-) -> list[str]:
-    candidate = _approved_summary_public_candidate(execution.reviewer_packet)
-    return _safe_candidate_list(candidate, "open_questions")
-
-
-def _approved_summary_public_candidate(packet: KcsReviewerPacket) -> JsonDict:
-    candidate = packet.public_article_candidate
-    if not isinstance(candidate, Mapping):
-        return {}
-    return dict(candidate)
-
-
-def _approved_summary_applicable_to(candidate: Mapping[str, Any]) -> list[str]:
-    values = _safe_candidate_list(candidate, "applicable_to")
-    return [
-        value
-        for value in values
-        if not value.casefold().startswith("approved-summary-")
-    ]
-
-
-def _approved_summary_source_candidate(
-    execution: _ApprovedSummaryExecution,
-) -> JsonDict:
-    candidates = execution.payload.get("issue_candidates")
-    if not isinstance(candidates, list) or not candidates:
-        return {}
-    candidate = candidates[0]
-    if not isinstance(candidate, Mapping):
-        return {}
-    return dict(candidate)
-
-
-def _safe_candidate_string(candidate: Mapping[str, Any], key: str) -> str:
-    value = candidate.get(key)
-    if isinstance(value, str):
-        return value
-    return ""
-
-
-def _safe_candidate_list(candidate: Mapping[str, Any], key: str) -> list[str]:
-    value = candidate.get(key)
-    if isinstance(value, str) and value:
-        return [value]
-    if isinstance(value, list):
-        return [item for item in value if isinstance(item, str) and item]
-    return []
 
 
 class McpStdioTransport:
@@ -1373,8 +1238,23 @@ class McpStdioTransport:
                 "article', or equivalent non-English requests such as "
                 "'напиши статью' or 'me escreva um artigo' with an approved "
                 "sanitized support-ticket summary "
-                "attachment or local ticket_ref, call kcs_draft_article "
-                "immediately. Do not ask what kind of article to draft; the "
+                "attachment or paste, call kcs_draft_article immediately. For "
+                "chat attachments or pasted text, read the "
+                "visible sanitized summary and pass it as approved_summary_text; "
+                "do not pass the uploaded filename, local path, or Claude upload "
+                "path. Repository-local approved summary refs are handled by a "
+                "separate internal/backward-compatible tool path and are not "
+                "part of the Claude Desktop article-drafting schema. Do not "
+                "pass item, item_candidates, reference article bodies, or "
+                "field aliases in Claude Desktop mode. Python owns semantic "
+                "extraction, workflow state, validation, KCS decisions, and "
+                "rendering. If the tool returns split_required, use a native "
+                "Claude Desktop choice popup when the client provides one; "
+                "otherwise present the returned candidates and wait for the "
+                "operator. After the operator chooses, call "
+                "kcs_draft_article with only operator_selection_ref and "
+                "operator_selected_item_ref. "
+                "Do not ask what kind of article to draft; the "
                 "default is a reviewer-only KCS knowledge base article. Do "
                 "not ask what language to use; default article language is "
                 "English unless the operator explicitly requests another "
@@ -1382,10 +1262,11 @@ class McpStdioTransport:
                 "not ask the operator to choose between reuse search and "
                 "manual drafting before the first tool call; call the tool "
                 "and show its controlled status. If "
-                "the tool succeeds, show reviewer_only_html as one fenced "
-                "html block and then compact status. Do not draft manually "
-                "when the tool fails. Do not send raw Zendesk data, internal "
-                "notes, attachments, customer replies, or credentials."
+                "semantic extraction provider support is unavailable, show the "
+                "controlled semantic_extraction_provider_unavailable status. "
+                "Do not draft manually when the tool fails. Do not send raw "
+                "Zendesk data, internal notes, attachments, customer replies, "
+                "or credentials."
             ),
             "protocolVersion": protocol_version,
             "serverInfo": {
@@ -1649,7 +1530,7 @@ def _author_ticket_descriptor() -> McpToolDescriptor:
 
 
 def _draft_article_descriptor() -> McpToolDescriptor:
-    return _descriptor(
+    descriptor = _descriptor(
         name=TOOL_DRAFT_ARTICLE,
         description=(
             "Primary operator tool for any approved sanitized support-ticket "
@@ -1660,35 +1541,32 @@ def _draft_article_descriptor() -> McpToolDescriptor:
             "what kind of article; default to "
             "a reviewer-only KCS knowledge base article. Do not ask what "
             "language to use; default to English unless the operator "
-            "explicitly requests another language. Provide either "
-            "ticket_ref for a local approved sanitized summary file, or "
-            "approved_summary_text plus one structured item object from a "
-            "chat attachment/paste. If the ticket contains more than one "
-            "semantic KCS item, pass item_candidates instead of combining "
-            "items; the tool will return split_required. For single-item "
-            "chat attachment/paste input, extract and pass item.title, "
-            "item.symptoms, item.confirmed_facts, item.environment or "
-            "item.applicable_to, item.supported_cause, "
-            "item.supported_resolution_or_workaround, and executable "
-            "item.resolution_steps. Resolution steps must include the "
-            "how-to detail present in the ticket, such as UI navigation, "
-            "commands, file paths, service names, verification actions, or "
-            "approved prerequisite links; do not pass high-level steps that "
-            "require the reviewer to search for how to apply them. Do not pass "
-            "a partial one-line summary as "
-            "a draft request; the tool will fail closed instead of producing "
-            "placeholder or thin HTML. Do not ask what kind of article and "
-            "do not invent reuse/search status. If reuse/search proof is not "
-            "provided, this MVP marks reuse search as skipped and continues "
-            "with reviewer-only drafting. If article_type is "
-            "provided, use only technical_scr or howto_qa. The tool returns "
-            "reviewer_only_html plus reviewer-only draft/status output when "
-            "validation passes and never publishes, "
-            "writes files, reads Zendesk, calls a provider, or replies to "
-            "customers."
+            "explicitly requests another language. For a chat attachment or "
+            "pasted sanitized ticket, read the complete visible sanitized "
+            "content and pass only approved_summary_text; do not summarize, "
+            "condense, rewrite, or omit symptoms, cause, resolution, config "
+            "paths, commands, services, or platform facts before calling the "
+            "tool. Do not pass uploaded filenames, local paths, Claude upload "
+            "paths, item, item_candidates, or "
+            "reference article bodies. If the tool returns split_required, "
+            "use a native Claude Desktop choice popup when the client provides "
+            "one; otherwise present the returned candidates and wait for the "
+            "operator. After the operator chooses, call "
+            "this tool again with only operator_selection_ref and "
+            "operator_selected_item_ref. If a native popup is unavailable, use "
+            "operator_choice_request.options[*].submit_arguments exactly and "
+            "do not infer the selection payload. Python owns semantic extraction, "
+            "workflow state, validation, KCS decisions, rendering, local "
+            "reviewer bundle output, and output safety. If semantic extraction "
+            "provider support is unavailable, "
+            "the tool returns semantic_extraction_provider_unavailable instead "
+            "of drafting manually."
         ),
         input_schema=_draft_article_input_schema(),
     )
+    descriptor.annotations["idempotentHint"] = False
+    descriptor.annotations["readOnlyHint"] = False
+    return descriptor
 
 
 def _approved_summary_input_schema() -> JsonDict:
@@ -1705,7 +1583,16 @@ def _approved_summary_input_schema() -> JsonDict:
             "commands": {"type": ["array", "string"]},
             "confirmed_facts": {"type": ["array", "string"]},
             "customer_replies": {"type": "boolean"},
-            "debug": {"type": "boolean"},
+            "debug": {
+                "type": "boolean",
+                "description": (
+                    "Use true only for explicit debug or smoke compatibility "
+                    "when full reviewer_only_html must be returned in the "
+                    "Claude-visible tool result. Default successful drafts "
+                    "write reviewer-only HTML to the returned local html_path "
+                    "and return compact status only."
+                ),
+            },
             "diagnosis": {"type": "string"},
             "environment": {"type": ["object", "string"]},
             "evidence": {"type": ["array", "string"]},
@@ -1780,37 +1667,42 @@ def _draft_article_input_schema() -> JsonDict:
             "approved_summary_text": {
                 "type": "string",
                 "description": (
-                    "Approved sanitized support-ticket summary text. Do not pass "
-                    "raw Zendesk payloads, raw comments, internal notes, or "
-                    "attachments."
+                    "Complete approved sanitized support-ticket context text. "
+                    "Despite the legacy field name, do not summarize, condense, "
+                    "rewrite, or omit symptoms, cause, resolution, config paths, "
+                    "commands, services, platform facts, or other visible "
+                    "sanitized evidence before calling the tool. Do not pass raw "
+                    "Zendesk payloads, raw comments, internal notes, or "
+                    "attachments. For Claude Desktop uploaded sanitized .txt "
+                    "summaries, read the attachment content and pass that full "
+                    "text here. Do not pass uploaded filenames, local paths, or "
+                    "Claude upload paths."
                 ),
             },
-            "auto_publish_allowed": {"type": "boolean"},
-            "case_ref": {"type": "string"},
-            "customer_replies": {"type": "boolean"},
-            "debug": {"type": "boolean"},
-            "item": _draft_article_item_schema(),
-            "item_candidates": {
-                "type": "array",
+            "debug": {
+                "type": "boolean",
                 "description": (
-                    "Use when the approved summary appears to contain multiple "
-                    "semantic KCS items. Do not combine multiple issues into one "
-                    "article."
+                    "Use true only for explicit debug or smoke compatibility "
+                    "when full reviewer_only_html must be returned in the "
+                    "Claude-visible tool result. Default successful drafts "
+                    "write reviewer-only HTML to the returned local html_path "
+                    "and return compact status only."
                 ),
-                "items": _draft_article_item_candidate_schema(),
             },
-            "network_calls": {"type": "boolean"},
-            "provider_calls": {"type": "boolean"},
-            "public_output_approved": {"type": "boolean"},
-            "publishes": {"type": "boolean"},
-            "ready_for_real_ticket_use": {"type": "boolean"},
-            "reference_article": {"type": "string"},
-            "reference_article_html": {"type": "string"},
-            "reference_article_text": {"type": "string"},
-            "reuse_search_checked": {"type": "boolean"},
-            "reuse_search_run_ref": {"type": "string"},
-            "ticket_ref": {"type": "string"},
-            "writes_files": {"type": "boolean"},
+            "operator_selected_item_ref": {
+                "type": "string",
+                "description": (
+                    "Opaque item ref selected by the operator from a previous "
+                    "split-required result."
+                ),
+            },
+            "operator_selection_ref": {
+                "type": "string",
+                "description": (
+                    "Opaque selection ref returned by a previous split-required "
+                    "result."
+                ),
+            },
         }
     )
 
@@ -1841,7 +1733,10 @@ def _draft_article_item_schema() -> JsonDict:
                 "description": (
                     "Executable reviewer-ready steps. Include concrete how-to "
                     "detail present in the summary: approved prerequisite links, "
-                    "UI navigation, commands, paths, services, and verification."
+                    "UI navigation, commands, paths, services, and verification. "
+                    "Use safe backup or move-aside steps such as mv ... .bak "
+                    "when cleanup is needed; do not pass rm -rf, delete, remove, "
+                    "or destructive cleanup steps."
                 ),
             },
             "supported_answer": {
@@ -1850,7 +1745,11 @@ def _draft_article_item_schema() -> JsonDict:
             },
             "supported_cause": {
                 "type": "string",
-                "description": "Supported cause for technical_scr.",
+                "description": (
+                    "Confirmed supported cause for technical_scr. Do not use "
+                    "speculative wording such as likely, suspected, appears, "
+                    "maybe, probably, unclear, or unknown."
+                ),
             },
             "supported_resolution_or_workaround": {
                 "type": "string",
@@ -1950,25 +1849,38 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "article_type": {"type": "string"},
     "atomic_item": {"type": "object"},
     "blockers": {"type": "array"},
+    "bundle_ref": {"type": "string"},
     "case_ref": {"type": "string"},
     "checks": {"type": "array"},
     "customer_replies": {"type": "boolean"},
     "debug_code": {"type": "string"},
     "draft_ref": {"type": "string"},
+    "draft_generated": {"type": "boolean"},
     "draft_request_ready": {"type": "boolean"},
     "draft_sections": {"type": "object"},
     "evidence_valid": {"type": "boolean"},
     "draft_status": {"type": "string"},
     "failure_stage": {"type": "string"},
     "handoff_ref": {"type": "string"},
+    "html_path": {"type": "string"},
+    "html_sha256": {"type": "string"},
     "input_safety_ok": {"type": "boolean"},
     "item_candidates": {"type": "array"},
     "item_ref": {"type": "string"},
+    "kcs_ready": {"type": "boolean"},
     "manual_draft_allowed": {"type": "boolean"},
+    "manifest_path": {"type": "string"},
     "network_calls": {"type": "boolean"},
     "next_required_action": {"type": "string"},
     "ok": {"type": "boolean"},
     "open_questions": {"type": "array"},
+    "operator_choice_options": {"type": "array"},
+    "operator_choice_confirmed": {"type": "boolean"},
+    "operator_choice_request": {"type": "object"},
+    "operator_prompt": {"type": "string"},
+    "operator_prompt_style": {"type": "string"},
+    "operator_selected_item_ref": {"type": "string"},
+    "operator_selection_ref": {"type": "string"},
     "original_article_type": {"type": "string"},
     "original_decision_status": {"type": "string"},
     "original_readiness_state": {"type": "string"},
@@ -1996,6 +1908,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "reviewer_only_draft": {"type": "object"},
     "reviewer_only_preview": {"type": "object"},
     "reviewer_only_preview_text": {"type": "string"},
+    "reviewer_bundle_written": {"type": "boolean"},
     "reuse_search_run_ref": {"type": "string"},
     "reuse_search_status": {"type": "string"},
     "schema_version": {"type": "string"},
@@ -2127,21 +2040,106 @@ def _tool_result_text(structured: Mapping[str, Any]) -> str:
             "result_kind": structured.get("result_kind"),
             "validation_ok": structured.get("validation_ok"),
         }
+        preview = preview_text if isinstance(preview_text, str) else ""
         return (
-            "COPY THE FENCED HTML BLOCK BELOW VERBATIM IN THE FINAL ANSWER. "
-            "Do not rewrite it, summarize it, convert it to Markdown, change "
-            "section names, change the article type, or change Applicable to.\n\n"
-            "Reviewer-only Zendesk HTML:\n"
+            "Reviewer-only Zendesk HTML draft:\n"
             "```html\n"
             f"{html}\n"
             "```\n\n"
-            "Reviewer preview for the tool panel only. Do not copy this "
-            "preview into the final answer:\n"
-            f"{preview_text if isinstance(preview_text, str) else ''}\n\n"
             "Compact status:\n"
-            f"{_compact_json(status)}"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```\n\n"
+            "Reviewer preview:\n"
+            f"{preview}"
         )
+    if (
+        structured.get("result_kind") == "draft_article_authoring"
+        and structured.get("draft_generated") is True
+        and isinstance(structured.get("html_path"), str)
+    ):
+        status = {
+            "article_type": structured.get("article_type"),
+            "auto_publish_allowed": structured.get("auto_publish_allowed"),
+            "debug_code": structured.get("debug_code"),
+            "draft_generated": structured.get("draft_generated"),
+            "html_path": structured.get("html_path"),
+            "item_ref": structured.get("item_ref"),
+            "kcs_ready": structured.get("kcs_ready"),
+            "manifest_path": structured.get("manifest_path"),
+            "public_output_approved": structured.get("public_output_approved"),
+            "ready_for_reviewer": structured.get("ready_for_reviewer"),
+            "recommended_action": structured.get("recommended_action"),
+            "reuse_search_status": structured.get("reuse_search_status"),
+            "reviewer_bundle_written": structured.get("reviewer_bundle_written"),
+        }
+        return (
+            "Reviewer-only KCS draft generated. Full Zendesk HTML is saved in "
+            "the local reviewer bundle at html_path. Do not draft manually or "
+            "retry the tool unless the operator asks for debug HTML.\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
+    if (
+        structured.get("result_kind") == "draft_article_authoring"
+        and structured.get("recommended_action") == "split_required"
+        and isinstance(structured.get("operator_choice_request"), Mapping)
+    ):
+        return _split_required_tool_result_text(structured)
     return _compact_json(structured)
+
+
+def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
+    choice_request = structured.get("operator_choice_request")
+    options = (
+        choice_request.get("options")
+        if isinstance(choice_request, Mapping)
+        else None
+    )
+    option_lines: list[str] = []
+    if isinstance(options, list):
+        for index, option in enumerate(options, start=1):
+            if not isinstance(option, Mapping):
+                continue
+            label = str(option.get("label") or option.get("value") or f"Option {index}")
+            submit_arguments = option.get("submit_arguments")
+            safe_submit_arguments = (
+                submit_arguments if isinstance(submit_arguments, Mapping) else {}
+            )
+            option_lines.append(
+                f"{index}. {label}\n"
+                "   submit_arguments: "
+                f"{_compact_json(safe_submit_arguments)}"
+            )
+    status = {
+        "debug_code": structured.get("debug_code"),
+        "draft_request_ready": structured.get("draft_request_ready"),
+        "failure_stage": structured.get("failure_stage"),
+        "manual_draft_allowed": structured.get("manual_draft_allowed"),
+        "next_required_action": structured.get("next_required_action"),
+        "operator_selection_ref": structured.get("operator_selection_ref"),
+        "recommended_action": structured.get("recommended_action"),
+        "result_kind": structured.get("result_kind"),
+    }
+    options_text = (
+        "\n".join(option_lines) if option_lines else "No safe options returned."
+    )
+    return (
+        "Multiple KCS article candidates were detected. Operator selection is "
+        "required before drafting.\n\n"
+        "Use a native single-choice popup if Claude Desktop provides one. If no "
+        "popup is available, ask the operator to choose one option and call "
+        "kcs_draft_article again with exactly that option's submit_arguments. "
+        "Do not draft manually.\n\n"
+        "Candidate options:\n"
+        f"{options_text}\n\n"
+        "Compact status:\n"
+        "```json\n"
+        f"{_compact_json(status)}\n"
+        "```"
+    )
 
 
 def _validate_tool_structured_content(
@@ -2287,7 +2285,7 @@ def _ensure_no_forbidden_tool_result_text(value: str) -> None:
         fragment in compact for fragment in _RESULT_FORBIDDEN_COMPACT_FRAGMENTS
     ):
         raise ContractValidationError("MCP tool result contains unsafe value")
-    if "<h1" in normalized or "<p" in normalized or "</" in normalized:
+    if _FORBIDDEN_TEXT_HTML_TAG_RE.search(value):
         raise ContractValidationError("MCP tool result contains unsafe value")
 
 
@@ -2314,6 +2312,8 @@ def _approved_summary_failure_result(
     stage_order = {
         "input_validation": 0,
         "item_identification": 0,
+        "operator_selection": 0,
+        "semantic_extraction": 0,
         "evidence_builder": 1,
         "input_safety": 2,
         "evidence_validation": 3,
@@ -2373,12 +2373,14 @@ def _checked_approved_summary_pipeline_payload(
     arguments: Mapping[str, Any],
 ) -> JsonDict:
     try:
-        return _approved_summary_pipeline_payload(arguments)
+        return _desktop_payload.approved_summary_pipeline_payload(arguments)
     except ApprovedSummaryInputError as exc:
         raise ApprovedSummaryPipelineStageError(
             failure_stage="input_validation",
             debug_code=exc.debug_code,
         ) from None
+    except ApprovedSummaryPayloadArgumentError:
+        raise McpArgumentError("Invalid approved summary arguments.") from None
     except ContractValidationError:
         raise ApprovedSummaryPipelineStageError(
             failure_stage="input_validation",
@@ -2388,21 +2390,7 @@ def _checked_approved_summary_pipeline_payload(
 
 def _approved_ticket_author_arguments(arguments: Mapping[str, Any]) -> JsonDict:
     try:
-        _require_args(
-            arguments,
-            _APPROVED_TICKET_ARGS,
-            required=frozenset({"ticket_ref"}),
-        )
-        _require_approved_summary_false_only_args(arguments)
-        ticket_ref = _checked_approved_ticket_ref(arguments["ticket_ref"])
-        file_payload = _approved_ticket_file_payload(ticket_ref)
-        merged = _approved_ticket_merged_arguments(
-            ticket_ref=ticket_ref,
-            file_payload=file_payload,
-            arguments=arguments,
-        )
-        _require_approved_summary_false_only_args(merged)
-        return merged
+        return _desktop_ticket_ref.approved_ticket_author_arguments(arguments)
     except ApprovedSummaryInputError as exc:
         raise ApprovedSummaryPipelineStageError(
             failure_stage="input_validation",
@@ -2416,92 +2404,7 @@ def _approved_ticket_author_arguments(arguments: Mapping[str, Any]) -> JsonDict:
 
 
 def _approved_ticket_ref_from_arguments(arguments: Mapping[str, Any]) -> str:
-    try:
-        return _checked_approved_ticket_ref(arguments.get("ticket_ref"))
-    except (ApprovedSummaryInputError, ContractValidationError):
-        return "invalid-ticket-ref"
-
-
-def _checked_approved_ticket_ref(value: object) -> str:
-    if not isinstance(value, str) or not _SAFE_APPROVED_TICKET_REF_RE.fullmatch(value):
-        raise ApprovedSummaryInputError("approved_ticket_ref_invalid")
-    ensure_safe_sanitized_payload(value)
-    return value
-
-
-def _approved_ticket_file_payload(ticket_ref: str) -> JsonDict:
-    path = _approved_ticket_summary_path(ticket_ref)
-    payload = _read_approved_ticket_file_payload(path)
-    _validate_approved_ticket_file_payload(payload, ticket_ref=ticket_ref)
-    return payload
-
-
-def _read_approved_ticket_file_payload(path: Path) -> JsonDict:
-    try:
-        if not path.is_file() or path.is_symlink():
-            raise ApprovedSummaryInputError("approved_ticket_summary_not_found")
-        if path.stat().st_size > _MAX_APPROVED_TICKET_FILE_BYTES:
-            raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
-        with path.open("r", encoding="utf-8") as handle:
-            payload = json.load(handle, parse_constant=_reject_json_constant)
-    except ApprovedSummaryInputError:
-        raise
-    except (OSError, json.JSONDecodeError, ValueError):
-        raise ApprovedSummaryInputError("approved_ticket_summary_invalid") from None
-    if not isinstance(payload, dict):
-        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
-    return payload
-
-
-def _validate_approved_ticket_file_payload(
-    payload: Mapping[str, Any],
-    *,
-    ticket_ref: str,
-) -> None:
-    if any(key not in _APPROVED_TICKET_FILE_KEYS for key in payload):
-        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
-    ensure_safe_sanitized_payload(payload)
-    if payload.get("schema_version") != _APPROVED_TICKET_FILE_SCHEMA_VERSION:
-        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
-    if payload.get("ticket_ref") != ticket_ref:
-        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
-
-
-def _approved_ticket_summary_path(ticket_ref: str) -> Path:
-    root = _approved_ticket_repo_root()
-    return root / _APPROVED_TICKET_SUMMARY_DIR / f"{ticket_ref}.json"
-
-
-def _approved_ticket_repo_root() -> Path:
-    value = os.environ.get("KCS_AUTHORING_MVP_REPO_ROOT")
-    root = Path(value) if value else Path.cwd()
-    return root.resolve(strict=False)
-
-
-def _approved_ticket_merged_arguments(
-    *,
-    ticket_ref: str,
-    file_payload: Mapping[str, Any],
-    arguments: Mapping[str, Any],
-) -> JsonDict:
-    merged: JsonDict = {
-        key: value
-        for key, value in file_payload.items()
-        if key not in {"schema_version", "ticket_ref"}
-    }
-    merged.setdefault("case_ref", f"approved-ticket-{ticket_ref}")
-    for key in (
-        "debug",
-        "reference_article",
-        "reference_article_html",
-        "reference_article_text",
-        "reuse_search_checked",
-        "reuse_search_run_ref",
-        *_APPROVED_SUMMARY_FALSE_ONLY_ARGS,
-    ):
-        if key in arguments:
-            merged[key] = arguments[key]
-    return merged
+    return _desktop_ticket_ref.approved_ticket_ref_from_arguments(arguments)
 
 
 def _build_approved_summary_evidence(
@@ -2511,7 +2414,7 @@ def _build_approved_summary_evidence(
     try:
         return build_evidence_packet_from_zendesk_export(
             payload,
-            case_ref=_approved_summary_case_ref(arguments),
+            case_ref=_desktop_payload.approved_summary_case_ref(arguments),
             policy=EvidenceBuildPolicy(
                 input_class=InputClass.OPERATOR_SANITIZED_SUMMARY.value,
                 assume_sanitized=True,
@@ -2614,153 +2517,6 @@ def _build_approved_summary_readiness(
     return readiness
 
 
-def _approved_summary_pipeline_payload(arguments: Mapping[str, Any]) -> JsonDict:
-    _require_approved_summary_args(arguments)
-    approved_summary_text = _approved_summary_text_argument(arguments)
-    item = _approved_summary_checked_item(arguments, approved_summary_text)
-    article_type = _approved_summary_checked_article_type(item)
-    candidate_id = _approved_summary_checked_item_ref(arguments)
-    environment = _approved_summary_checked_environment(item)
-    resolution_steps = _approved_summary_optional_string_list(
-        item, "resolution_steps"
-    )
-    _require_approved_summary_authoring_fields(
-        article_type=article_type,
-        environment=environment,
-        resolution_steps=resolution_steps,
-    )
-    candidate: JsonDict = {
-        "article_type": article_type,
-        "atomic": True,
-        "candidate_id": candidate_id,
-        "confirmed_facts": _approved_summary_required_string_list(
-            item, "confirmed_facts"
-        ),
-        "customer_reported": True,
-        "kcs_applicable": True,
-        "public_solution_safe": True,
-        "resolution_state": "solved",
-        "resolution_steps": resolution_steps,
-        "source_refs": [f"approved-summary-source-{candidate_id}"],
-        "summary": _approved_summary_required_string(item, "summary"),
-        "symptoms": _approved_summary_required_string_list(item, "symptoms"),
-        "title": _approved_summary_required_string(item, "title"),
-    }
-    optional_string_fields = (
-        "question",
-        "supported_answer",
-        "supported_cause",
-        "supported_resolution_or_workaround",
-    )
-    for field_name in optional_string_fields:
-        value = _approved_summary_optional_string(item, field_name)
-        if value is not None:
-            candidate[field_name] = value
-    optional_list_fields = ("answer_steps", "applicable_to", "open_questions")
-    for field_name in optional_list_fields:
-        values = _approved_summary_optional_string_list(item, field_name)
-        if values:
-            candidate[field_name] = values
-    if environment:
-        candidate["environment"] = environment
-    return {
-        "confirmed_facts": candidate["confirmed_facts"],
-        "environment": environment,
-        "input_class": InputClass.OPERATOR_SANITIZED_SUMMARY.value,
-        "issue_candidates": [candidate],
-        "open_questions": _approved_summary_optional_string_list(
-            item, "open_questions"
-        ),
-        "sanitizer_report": {},
-        "schema_version": APPROVED_EVIDENCE_EXPORT_SCHEMA_VERSION,
-        "source_refs": ["approved-summary-source-001"],
-        "supported_cause": candidate.get("supported_cause"),
-        "supported_resolution_or_workaround": candidate.get(
-            "supported_resolution_or_workaround"
-        )
-        or candidate.get("supported_answer"),
-        "symptoms": candidate["symptoms"],
-        "visibility_summary": {
-            "classes": [EvidenceVisibility.PUBLIC_CUSTOMER_SAFE.value]
-        },
-    }
-
-
-def _require_approved_summary_args(arguments: Mapping[str, Any]) -> None:
-    try:
-        _require_args(
-            arguments,
-            _APPROVED_SUMMARY_PIPELINE_ARGS,
-            required=frozenset(),
-        )
-        _require_approved_summary_false_only_args(arguments)
-    except McpArgumentError:
-        raise ApprovedSummaryInputError("approved_summary_args_invalid") from None
-
-
-def _require_approved_summary_false_only_args(arguments: Mapping[str, Any]) -> None:
-    for key in _APPROVED_SUMMARY_FALSE_ONLY_ARGS:
-        if key in arguments and arguments[key] is not False:
-            raise ApprovedSummaryInputError("approved_summary_policy_flag_invalid")
-
-
-def _approved_summary_text_argument(arguments: Mapping[str, Any]) -> str:
-    value = arguments.get("approved_summary_text")
-    if isinstance(value, str) and value.strip():
-        try:
-            ensure_safe_sanitized_payload(value)
-        except ContractValidationError:
-            raise ApprovedSummaryInputError(
-                "approved_summary_text_invalid"
-            ) from None
-        return value.strip()
-    if value is not None:
-        raise ApprovedSummaryInputError("approved_summary_text_invalid") from None
-    text = _approved_summary_text_from_structured_arguments(arguments)
-    if text:
-        return text
-    raise ApprovedSummaryInputError("approved_summary_text_invalid") from None
-
-
-def _approved_summary_checked_item(
-    arguments: Mapping[str, Any],
-    approved_summary_text: str,
-) -> JsonDict:
-    try:
-        return _approved_summary_item(arguments, approved_summary_text)
-    except McpArgumentError:
-        raise
-    except ContractValidationError:
-        raise ApprovedSummaryInputError("approved_summary_item_invalid") from None
-
-
-def _approved_summary_checked_article_type(item: Mapping[str, Any]) -> str:
-    try:
-        return _approved_summary_article_type(item)
-    except ContractValidationError:
-        raise ApprovedSummaryInputError(
-            "approved_summary_article_type_invalid"
-        ) from None
-
-
-def _approved_summary_checked_item_ref(arguments: Mapping[str, Any]) -> str:
-    try:
-        return _approved_summary_item_ref(arguments)
-    except ContractValidationError:
-        raise ApprovedSummaryInputError("approved_summary_item_ref_invalid") from None
-
-
-def _approved_summary_checked_environment(item: Mapping[str, Any]) -> JsonDict:
-    try:
-        return _approved_summary_environment(item)
-    except McpArgumentError:
-        raise
-    except ContractValidationError:
-        raise ApprovedSummaryInputError(
-            "approved_summary_environment_invalid"
-        ) from None
-
-
 def _approved_summary_reuse_results(
     arguments: Mapping[str, Any],
 ) -> ReuseSearchResultsPacket:
@@ -2778,498 +2534,15 @@ def _approved_summary_reuse_results(
     )
 
 
-def _approved_summary_reuse_was_checked(arguments: Mapping[str, Any]) -> bool:
-    item = _approved_summary_optional_item_object(arguments)
-    reuse_checked = arguments.get("reuse_search_checked")
-    if reuse_checked is None and item is not None:
-        reuse_checked = item.get("reuse_search_checked")
-    return reuse_checked is True
-
-
-def _approved_summary_reuse_search_status(arguments: Mapping[str, Any]) -> str:
-    return "checked" if _approved_summary_reuse_was_checked(arguments) else "skipped"
-
-
 def _approved_summary_reuse_search_run_ref(arguments: Mapping[str, Any]) -> str:
     value = arguments.get("reuse_search_run_ref")
-    item = _approved_summary_optional_item_object(arguments)
+    item = _desktop_payload.approved_summary_optional_item_object(arguments)
     if value is None and item is not None:
         value = item.get("reuse_search_run_ref")
     if isinstance(value, str) and value.strip():
         ensure_safe_sanitized_payload(value)
         return value.strip()
     return "operator-approved-summary-reuse-skipped"
-
-
-def _approved_summary_optional_item_object(
-    arguments: Mapping[str, Any],
-) -> JsonDict | None:
-    if "item" not in arguments:
-        return None
-    return require_json_object(arguments["item"])
-
-
-def _approved_summary_case_ref(arguments: Mapping[str, Any]) -> str:
-    value = arguments.get("case_ref")
-    if isinstance(value, str) and value.strip():
-        try:
-            ensure_safe_sanitized_payload(value)
-        except ContractValidationError:
-            raise ApprovedSummaryInputError(
-                "approved_summary_case_ref_invalid"
-            ) from None
-        return _opaque_approved_summary_case_ref(value)
-    return "approved-summary-case-001"
-
-
-def _opaque_approved_summary_case_ref(value: str) -> str:
-    digest = sha256(value.strip().encode("utf-8")).hexdigest()[:12]
-    return f"approved-summary-case-{digest}"
-
-
-def _approved_summary_item_ref(arguments: Mapping[str, Any]) -> str:
-    item = _approved_summary_item(
-        arguments,
-        _approved_summary_text_argument(arguments),
-    )
-    value = item.get("candidate_id")
-    if isinstance(value, str) and value.strip():
-        return value.strip()
-    return "item-001"
-
-
-def _approved_summary_title(arguments: Mapping[str, Any]) -> str:
-    item = _approved_summary_item(
-        arguments,
-        _approved_summary_text_argument(arguments),
-    )
-    return _required_string(item, "title")
-
-
-def _approved_summary_short_summary(arguments: Mapping[str, Any]) -> str:
-    item = _approved_summary_item(
-        arguments,
-        _approved_summary_text_argument(arguments),
-    )
-    return _required_string(item, "summary")
-
-
-def _approved_summary_item(
-    arguments: Mapping[str, Any],
-    approved_summary_text: str,
-) -> JsonDict:
-    if "item" in arguments:
-        item = require_json_object(arguments["item"])
-        if any(key not in _APPROVED_SUMMARY_ITEM_FIELDS for key in item):
-            raise McpArgumentError("Unexpected approved summary item field.")
-        ensure_safe_sanitized_payload(item)
-        return _apply_approved_summary_item_defaults(
-            _normalize_approved_summary_item(dict(item)),
-            approved_summary_text,
-        )
-
-    item: JsonDict = {}
-    for key in sorted(_APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS):
-        if key in arguments:
-            item[key] = arguments[key]
-    item = _normalize_approved_summary_item(item)
-    return _apply_approved_summary_item_defaults(item, approved_summary_text)
-
-
-def _apply_approved_summary_item_defaults(
-    item: JsonDict,
-    approved_summary_text: str,
-) -> JsonDict:
-    summary = _approved_summary_snippet(approved_summary_text, max_length=500)
-    item.setdefault("article_type", ArticleType.TECHNICAL_SCR.value)
-    item.setdefault("summary", summary)
-    if "environment" not in item and "applicable_to" in item:
-        item["environment"] = item["applicable_to"]
-    item.setdefault(
-        "applicable_to",
-        _approved_summary_applicable_to_from_environment(item.get("environment"))
-        or ["Approved sanitized support context"],
-    )
-    _promote_resolution_steps_to_supported_resolution(item)
-    ensure_safe_sanitized_payload(item)
-    return item
-
-
-def _promote_resolution_steps_to_supported_resolution(item: JsonDict) -> None:
-    if "supported_resolution_or_workaround" in item or "supported_answer" in item:
-        return
-    resolution_steps = _optional_string_list(item, "resolution_steps")
-    if resolution_steps:
-        item["supported_resolution_or_workaround"] = " ".join(resolution_steps)
-
-
-def _normalize_approved_summary_item(item: JsonDict) -> JsonDict:
-    _move_item_alias(item, "article_title", "title")
-    _move_item_alias(item, "symptom", "symptoms")
-    _move_item_alias(item, "problem", "symptoms")
-    _move_item_alias(item, "problem_statement", "symptoms")
-    _move_item_alias(item, "evidence", "confirmed_facts")
-    _move_item_alias(item, "facts", "confirmed_facts")
-    _move_item_alias(item, "log_evidence", "confirmed_facts")
-    _move_item_alias(item, "logs", "confirmed_facts")
-    _move_item_alias(item, "notes", "confirmed_facts")
-    _move_item_alias(item, "secondary_finding", "confirmed_facts")
-    _move_item_alias(item, "secondary_findings", "confirmed_facts")
-    _move_item_alias(item, "secondary_issue", "confirmed_facts")
-    _move_item_alias(item, "secondary_issues", "confirmed_facts")
-    _move_item_alias(item, "root_cause", "supported_cause")
-    _move_item_alias(item, "root_cause_analysis", "supported_cause")
-    _move_item_alias(item, "cause", "supported_cause")
-    _move_item_alias(item, "diagnosis", "supported_cause")
-    _move_item_alias(item, "resolution_summary", "supported_resolution_or_workaround")
-    _move_item_alias(item, "resolution", "supported_resolution_or_workaround")
-    _move_item_alias(item, "resolution_procedure", "supported_resolution_or_workaround")
-    _move_item_alias(item, "solution", "supported_resolution_or_workaround")
-    _move_item_alias(item, "fix", "supported_resolution_or_workaround")
-    _move_item_alias(item, "steps", "resolution_steps")
-    _move_item_alias(item, "commands", "resolution_steps")
-    return item
-
-
-def _move_item_alias(item: JsonDict, alias: str, canonical: str) -> None:
-    value = item.pop(alias, None)
-    if value is not None and canonical not in item:
-        item[canonical] = value
-
-
-def _approved_summary_text_from_structured_arguments(
-    arguments: Mapping[str, Any],
-) -> str:
-    item = _approved_summary_structured_item_for_text(arguments)
-    if not item:
-        return ""
-    fragments: list[str] = []
-    for key in (
-        "title",
-        "symptoms",
-        "confirmed_facts",
-        "supported_cause",
-        "supported_resolution_or_workaround",
-        "resolution_steps",
-        "environment",
-        "applicable_to",
-    ):
-        fragments.extend(_approved_summary_text_fragments(item.get(key)))
-    text = " ".join(fragment for fragment in fragments if fragment).strip()
-    ensure_safe_sanitized_payload(text)
-    return _approved_summary_snippet(text, max_length=900) if text else ""
-
-
-def _approved_summary_structured_item_for_text(
-    arguments: Mapping[str, Any],
-) -> JsonDict:
-    if "item" in arguments:
-        item = require_json_object(arguments["item"])
-        if any(key not in _APPROVED_SUMMARY_ITEM_FIELDS for key in item):
-            raise ApprovedSummaryInputError("approved_summary_item_invalid")
-        return _normalize_approved_summary_item(dict(item))
-    item: JsonDict = {}
-    for key in sorted(_APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS):
-        if key in arguments:
-            item[key] = arguments[key]
-    return _normalize_approved_summary_item(item)
-
-
-def _approved_summary_text_fragments(value: object) -> list[str]:
-    if value is None:
-        return []
-    if isinstance(value, str):
-        text = value.strip()
-        return [text] if text else []
-    if isinstance(value, Mapping):
-        fragments: list[str] = []
-        for item in value.values():
-            fragments.extend(_approved_summary_text_fragments(item))
-        return fragments
-    if isinstance(value, list | tuple):
-        fragments: list[str] = []
-        for item in value:
-            fragments.extend(_approved_summary_text_fragments(item))
-        return fragments
-    return []
-
-
-def _approved_summary_article_type(item: Mapping[str, Any]) -> str:
-    value = _required_string(item, "article_type")
-    try:
-        article_type = ArticleType(value)
-    except ValueError:
-        raise ContractValidationError("approved summary article_type invalid") from None
-    if article_type == ArticleType.NONE:
-        raise ContractValidationError("approved summary article_type invalid")
-    return article_type.value
-
-
-def _approved_summary_environment(item: Mapping[str, Any]) -> JsonDict:
-    value = item.get("environment")
-    if value is None:
-        return {}
-    if isinstance(value, str):
-        ensure_safe_sanitized_payload(value)
-        return {"platform": _approved_summary_snippet(value, max_length=180)}
-    if isinstance(value, list | tuple):
-        return _approved_summary_environment_from_labels(value)
-    environment = require_json_object(value)
-    if any(key not in _APPROVED_SUMMARY_ENVIRONMENT_FIELDS for key in environment):
-        raise McpArgumentError("Unexpected approved summary environment field.")
-    ensure_safe_sanitized_payload(environment)
-    normalized = dict(environment)
-    component_values = _approved_summary_environment_values(
-        normalized.pop("component", None)
-    )
-    component_values.extend(
-        _approved_summary_environment_values(normalized.pop("components", None))
-    )
-    component_values.extend(
-        _approved_summary_environment_values(normalized.pop("extension", None))
-    )
-    if component_values:
-        normalized["component"] = " / ".join(component_values)
-    platform_alias = normalized.pop("os", None) or normalized.pop(
-        "operating_system", None
-    )
-    if platform_alias is not None and "platform" not in normalized:
-        normalized["platform"] = platform_alias
-    return {
-        key: value
-        for key, value in normalized.items()
-        if key in _APPROVED_SUMMARY_NORMALIZED_ENVIRONMENT_FIELDS
-    }
-
-
-def _approved_summary_environment_from_labels(value: object) -> JsonDict:
-    labels = _approved_summary_environment_label_values(value)
-    if not labels:
-        raise McpArgumentError("Unexpected approved summary environment field.")
-    return {"platform": _approved_summary_snippet(" / ".join(labels), max_length=180)}
-
-
-def _require_approved_summary_authoring_fields(
-    *,
-    article_type: str,
-    environment: Mapping[str, Any],
-    resolution_steps: list[str],
-) -> None:
-    if not environment:
-        raise ApprovedSummaryInputError("approved_summary_environment_required")
-    if article_type == ArticleType.TECHNICAL_SCR.value and not resolution_steps:
-        raise ApprovedSummaryInputError("approved_summary_resolution_steps_required")
-    if article_type == ArticleType.TECHNICAL_SCR.value:
-        _require_executable_resolution_steps(resolution_steps)
-
-
-def _require_executable_resolution_steps(resolution_steps: list[str]) -> None:
-    executable_steps = sum(
-        1 for step in resolution_steps if _RESOLUTION_EXECUTABLE_DETAIL_RE.search(step)
-    )
-    detailed_steps = sum(
-        1 for step in resolution_steps if _resolution_step_has_executable_detail(step)
-    )
-    if len(resolution_steps) <= 2:
-        minimum_detailed_steps = len(resolution_steps)
-    else:
-        minimum_detailed_steps = max(2, (len(resolution_steps) + 1) // 2)
-    if executable_steps < 1 or detailed_steps < minimum_detailed_steps:
-        raise ApprovedSummaryInputError("approved_summary_resolution_steps_incomplete")
-
-
-def _resolution_step_has_executable_detail(step: str) -> bool:
-    return bool(
-        _RESOLUTION_EXECUTABLE_DETAIL_RE.search(step)
-        or _RESOLUTION_INFORMATIONAL_DETAIL_RE.search(step)
-    )
-
-
-def _approved_summary_applicable_to_from_environment(value: object) -> list[str]:
-    values = _approved_summary_environment_label_values(value)
-    seen: set[str] = set()
-    result: list[str] = []
-    for item in values:
-        label = _approved_summary_snippet(item, max_length=120)
-        key = label.casefold()
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append(label)
-    return result[:8]
-
-
-def _approved_summary_environment_label_values(value: object) -> list[str]:
-    if value is None:
-        return []
-    if isinstance(value, str):
-        ensure_safe_sanitized_payload(value)
-        return _split_approved_summary_environment_text(value)
-    if isinstance(value, Mapping):
-        labels: list[str] = []
-        for key in (
-            "product",
-            "component",
-            "components",
-            "extension",
-            "platform",
-            "os",
-            "operating_system",
-            "version",
-        ):
-            labels.extend(_approved_summary_environment_label_values(value.get(key)))
-        return labels
-    if isinstance(value, list | tuple):
-        labels: list[str] = []
-        for item in value:
-            labels.extend(_approved_summary_environment_label_values(item))
-        return labels
-    return []
-
-
-def _split_approved_summary_environment_text(value: str) -> list[str]:
-    parts = [part.strip() for part in re.split(r"[;,]", value) if part.strip()]
-    return parts or [value.strip()]
-
-
-def _approved_summary_environment_values(value: object) -> list[str]:
-    if value is None:
-        return []
-    if isinstance(value, str):
-        if not value.strip():
-            raise McpArgumentError("Unexpected approved summary environment field.")
-        ensure_safe_sanitized_payload(value)
-        return [value.strip()]
-    if not isinstance(value, list):
-        raise McpArgumentError("Unexpected approved summary environment field.")
-    result: list[str] = []
-    for item in value:
-        if not isinstance(item, str) or not item.strip():
-            raise McpArgumentError("Unexpected approved summary environment field.")
-        ensure_safe_sanitized_payload(item)
-        result.append(item.strip())
-    return result
-
-
-def _approved_summary_default_title(summary: str) -> str:
-    sentence = summary.split(".", 1)[0].strip()
-    if not sentence:
-        sentence = "Approved sanitized KCS candidate"
-    return _approved_summary_snippet(sentence, max_length=140)
-
-
-def _approved_summary_snippet(value: str, *, max_length: int) -> str:
-    normalized = " ".join(value.split())
-    if len(normalized) <= max_length:
-        return normalized
-    return normalized[: max_length - 1].rstrip(" ,.;:") + "."
-
-
-def _approved_summary_required_string(item: Mapping[str, Any], key: str) -> str:
-    try:
-        return _required_string(item, key)
-    except ContractValidationError:
-        raise ApprovedSummaryInputError("approved_summary_content_invalid") from None
-
-
-def _approved_summary_optional_string(
-    item: Mapping[str, Any], key: str
-) -> str | None:
-    try:
-        return _optional_string(item, key)
-    except ContractValidationError:
-        raise ApprovedSummaryInputError("approved_summary_content_invalid") from None
-
-
-def _approved_summary_required_string_list(
-    item: Mapping[str, Any], key: str
-) -> list[str]:
-    try:
-        return _required_string_list(item, key)
-    except ContractValidationError:
-        raise ApprovedSummaryInputError("approved_summary_content_invalid") from None
-
-
-def _approved_summary_optional_string_list(
-    item: Mapping[str, Any], key: str
-) -> list[str]:
-    try:
-        return _optional_string_list(item, key)
-    except ContractValidationError:
-        raise ApprovedSummaryInputError("approved_summary_content_invalid") from None
-
-
-def _required_string(item: Mapping[str, Any], key: str) -> str:
-    value = item.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise ContractValidationError("approved summary field invalid")
-    ensure_safe_sanitized_payload(value)
-    return value.strip()
-
-
-def _required_argument_string(arguments: Mapping[str, Any], key: str) -> str:
-    value = arguments.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise ContractValidationError("approved summary argument invalid")
-    ensure_safe_sanitized_payload(value)
-    return value.strip()
-
-
-def _optional_string(item: Mapping[str, Any], key: str) -> str | None:
-    value = item.get(key)
-    if value is None:
-        return None
-    if not isinstance(value, str) or not value.strip():
-        raise ContractValidationError("approved summary field invalid")
-    ensure_safe_sanitized_payload(value)
-    return value.strip()
-
-
-def _required_string_list(item: Mapping[str, Any], key: str) -> list[str]:
-    values = _optional_string_list(item, key)
-    if not values:
-        raise ContractValidationError("approved summary field invalid")
-    return values
-
-
-def _optional_string_list(item: Mapping[str, Any], key: str) -> list[str]:
-    value = item.get(key)
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return _string_list_from_scalar(value)
-    if not isinstance(value, list):
-        raise ContractValidationError("approved summary field invalid")
-    result: list[str] = []
-    for entry in value:
-        if not isinstance(entry, str) or not entry.strip():
-            raise ContractValidationError("approved summary field invalid")
-        ensure_safe_sanitized_payload(entry)
-        result.append(entry.strip())
-    return result
-
-
-def _string_list_from_scalar(value: str) -> list[str]:
-    if not value.strip():
-        raise ContractValidationError("approved summary field invalid")
-    values = _string_or_json_string_list(value)
-    for entry in values:
-        ensure_safe_sanitized_payload(entry)
-    return values
-
-
-def _string_or_json_string_list(value: str) -> list[str]:
-    stripped = value.strip()
-    if stripped.startswith("[") and stripped.endswith("]"):
-        try:
-            parsed = json.loads(stripped)
-        except ValueError:
-            parsed = None
-        if isinstance(parsed, list) and all(
-            isinstance(entry, str) and entry.strip() for entry in parsed
-        ):
-            return [entry.strip() for entry in parsed]
-    return [stripped]
 
 
 def _empty_reuse_results() -> ReuseSearchResultsPacket:
@@ -3598,6 +2871,7 @@ __all__ = [
     "MCP_DESKTOP_SERVER_VERSION",
     "MCP_PROTOCOL_VERSION",
     "MCP_TOOL_RESULT_SCHEMA_VERSION",
+    "DraftArticleSemanticExtractionProvider",
     "McpArgumentError",
     "McpStdioTransport",
     "McpToolDescriptor",
