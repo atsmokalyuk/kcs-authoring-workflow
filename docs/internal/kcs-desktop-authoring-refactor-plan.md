@@ -185,6 +185,7 @@ Current review checkpoint artifact:
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-2026-06-19.md`
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12b-2026-06-19.md`
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12c-2026-06-19.md`
+- `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12d-2026-06-19.md`
 
 - `KCS-12a: Desktop schema diet + workflow service`
   - status: complete after final ChatGPT Pro follow-up review;
@@ -212,7 +213,10 @@ Current review checkpoint artifact:
     regex semantic engine, no manual fallback, and validation of untrusted
     provider output.
 - `KCS-12d: Desktop smoke/install alignment`
+  - status: ready for external ChatGPT Pro review;
   - lighter review after install/cache/log checks pass;
+  - findings must be fixed or explicitly recorded as deferred in the checkpoint
+    artifact before `KCS-12d` is considered complete;
   - focus on manifest/schema wording, MCP annotations, runtime wrapper env,
     installed cache behavior, and GUI-observable Desktop contract.
 
@@ -295,7 +299,11 @@ Current branch status:
   - stdio smoke uses the fixture provider explicitly;
   - installed-wrapper smoke checks registry/cache behavior;
   - Claude Desktop log check verifies the thin visible schema and tool
-    annotations.
+    annotations;
+  - external review checkpoint is ready in
+    `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12d-2026-06-19.md`;
+  - do not mark `KCS-12d` complete until external review findings are fixed or
+    recorded as explicit deferrals.
 
 ## Output Boundary
 
