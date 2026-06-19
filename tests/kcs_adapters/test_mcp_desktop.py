@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 
 import kcs_adapters
-from kcs_adapters import mcp_desktop
+from kcs_adapters import desktop_authoring_pipeline, mcp_desktop
 from kcs_adapters.desktop_workflow import (
     ApprovedSummarySemanticExtractionProvider,
     FixtureSemanticExtractionProvider,
@@ -3766,7 +3766,7 @@ def test_run_approved_summary_pipeline_reports_evidence_validation_stage(
         )
 
     monkeypatch.setattr(
-        mcp_desktop,
+        desktop_authoring_pipeline,
         "validate_evidence_packet",
         fake_validate_evidence_packet,
     )
@@ -3801,7 +3801,7 @@ def test_run_approved_summary_pipeline_reports_renderer_stage(
         raise ContractValidationError("synthetic renderer failure")
 
     monkeypatch.setattr(
-        mcp_desktop,
+        desktop_authoring_pipeline,
         "render_reviewer_packet",
         fake_render_reviewer_packet,
     )

@@ -29,6 +29,8 @@ Keep the Desktop-visible MCP surface narrow:
 
 - one registration tool: `kcs_register_clean_ticket`;
 - one primary authoring tool: `kcs_draft_article`;
+- one read-only no-arg compatibility helper:
+  `support_get_behavior_instructions`;
 - `kcs_register_clean_ticket` input args only:
   - `clean_ticket_text`;
   - `ticket_ref`;
@@ -41,6 +43,10 @@ Keep the Desktop-visible MCP surface narrow:
   - `debug`;
 - no `item`, `item_candidates`, `reference_article_html`, broad aliases,
   provider internals, schema internals, or Desktop-owned extraction payloads.
+
+`support_get_behavior_instructions` is only a legacy Plesk Support routing
+helper. It must not accept ticket content, item payloads, provider internals,
+reference article bodies, or any drafting payload.
 
 Valid call shapes:
 
