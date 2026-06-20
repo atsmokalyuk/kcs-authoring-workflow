@@ -274,6 +274,54 @@ def _pre_draft_tool_result_text(structured: Mapping[str, Any]) -> str | None:
 
 
 def _debug_tool_result_text(structured: Mapping[str, Any]) -> str | None:
+    if structured.get("debug_code") in {
+        "approved_ticket_summary_invalid",
+        "approved_ticket_summary_not_found",
+    }:
+        status = {
+            "auto_publish_allowed": structured.get("auto_publish_allowed"),
+            "debug_code": structured.get("debug_code"),
+            "draft_available": False,
+            "failure_stage": structured.get("failure_stage"),
+            "manual_draft_allowed": structured.get("manual_draft_allowed"),
+            "next_required_action": structured.get("next_required_action"),
+            "recommended_action": structured.get("recommended_action"),
+            "result_kind": structured.get("result_kind"),
+            "should_be_kcs_article": structured.get("should_be_kcs_article"),
+            "ticket_ref": structured.get("ticket_ref"),
+            "writes_files": structured.get("writes_files"),
+        }
+        if structured.get("debug_code") == "approved_ticket_summary_not_found":
+            explanation = (
+                "the ticket_ref was not found in the configured clean ticket "
+                "store"
+            )
+            next_step = (
+                "Check that the external cleanup form wrote the prepared clean "
+                "ticket under the configured store, then call "
+                "kcs_draft_article again with the same ticket_ref."
+            )
+        else:
+            explanation = (
+                "the clean ticket file was found but rejected by input/safety "
+                "validation"
+            )
+            next_step = (
+                "Re-run the local cleanup/preparation step for this ticket_ref "
+                "or inspect the clean-ticket privacy scan result, then call "
+                "kcs_draft_article again. Do not paste the transcript into chat "
+                "unless the operator explicitly chooses that path."
+            )
+        return (
+            "KCS article drafting is blocked by the KCS Authoring tool because "
+            f"{explanation}. No reviewer-only draft was generated.\n\n"
+            "Do not draft manually.\n\n"
+            f"{next_step}\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
     if structured.get("debug_code") == "semantic_extraction_provider_unavailable":
         status = {
             "auto_publish_allowed": structured.get("auto_publish_allowed"),

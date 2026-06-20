@@ -396,6 +396,21 @@ def test_request_rejects_draft_action_or_full_packet_markers_in_free_text(
     assert text not in str(captured.value)
 
 
+def test_request_accepts_blocked_as_plain_support_text() -> None:
+    payload = _request().to_json_dict()
+    safe_context = dict(payload["safe_context"])  # type: ignore[arg-type]
+    safe_context["short_public_safe_summary"] = (
+        "Customer blocked several IP addresses during troubleshooting."
+    )
+    payload["safe_context"] = safe_context
+
+    request = KcsClaudeHandoffRequestPacket.from_json_dict(payload)
+
+    assert "blocked several IP" in request.safe_context[
+        "short_public_safe_summary"
+    ]
+
+
 def test_request_rejects_safe_context_article_type_mismatch() -> None:
     payload = _request().to_json_dict()
     safe_context = dict(payload["safe_context"])  # type: ignore[arg-type]

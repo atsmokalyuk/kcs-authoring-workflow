@@ -119,6 +119,18 @@ def test_accepts_sanitizer_safe_for_kcs_core_flag() -> None:
     assert result.blockers == ()
 
 
+def test_sanitizer_accepts_technical_vector_word() -> None:
+    ensure_safe_sanitized_payload(
+        "The attack vector was mitigated by a product-side configuration change."
+    )
+
+
+def test_sanitizer_accepts_local_config_file_path() -> None:
+    ensure_safe_sanitized_payload(
+        "Edit /etc/fail2ban/jail.d/plesk-panel-flood.local and reload fail2ban."
+    )
+
+
 def test_rejects_unknown_visibility_class() -> None:
     packet = _safe_packet(visibility_summary={"classes": ["public_draft_ready"]})
 

@@ -61,12 +61,13 @@ layout inside the configured clean-ticket store is:
 local-data/approved-summaries/<ticket_ref>/clean.ticket.txt
 ```
 
-Installed MCPB runs store those machine-readable clean ticket files under
-`~/Library/Application Support/KCS Authoring`. Source/dev runs without a
-storage hint keep using the project-local `local-data/approved-summaries`
-directory. External cleanup forms should write the same layout under the
-Application Support root and show the exact `<ticket_ref>` directory name to the
-operator.
+Installed MCPB runs read those machine-readable clean ticket files from
+`~/Library/Application Support/KCS Authoring` by default, including dev installs
+that override `repository_root` to point at a source checkout. Source/dev runs
+may use a different root only by explicitly setting
+`KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT`. External cleanup forms should
+write the same layout under the Application Support root and show the exact
+`<ticket_ref>` directory name to the operator.
 
 Claude Desktop must pass only the opaque ref, for example:
 

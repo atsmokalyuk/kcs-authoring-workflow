@@ -1544,6 +1544,66 @@ def test_draft_article_uses_clean_ticket_ref_file(
     assert str(tmp_path) not in result_text
 
 
+def test_draft_article_blocks_ambiguous_long_clean_ticket_ref(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    noisy_transcript = "\n".join(
+        [
+            "Avatar",
+            "{{PERSON_NAME_002}}",
+            "To: Client",
+            "Show more",
+            "I am logged in and checking the issue.",
+            "Internal",
+            "[{{SHELL_USERHOST_001}} ~]# ps aux",
+            "many sw-engine-fpm workers are running",
+            "I found that the panel was receiving many external requests.",
+            "I created and tested a dedicated Fail2Ban rule for this traffic:",
+            "fail2ban-regex /var/log/plesk/httpsd_access_log "
+            "/etc/fail2ban/filter.d/plesk-panel-flood.conf",
+            "systemctl reload fail2ban",
+            "systemctl restart sw-engine sw-cp-server",
+            "Later the customer asked about SSH connectivity and blocked IPs.",
+            "As per the SSH access, Plesk does not manage it.",
+        ]
+        * 55
+    )
+    _write_clean_ticket_text(
+        tmp_path,
+        "# Customer Ticket Content\n\n"
+        "I think my server is on attack, I blocked some IP but I think I have "
+        f"another thing.\n{noisy_transcript}\n",
+        ticket_ref="ticket-ambiguous",
+    )
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-ambiguous", "debug": True},
+    )
+
+    assert response is not None
+    response_text = json.dumps(response, sort_keys=True)
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["pipeline_ok"] is False
+    assert structured["debug_code"] == "semantic_extraction_no_candidates"
+    assert structured["next_required_action"] == (
+        "register_complete_clean_ticket_with_final_evidence"
+    )
+    assert structured["ticket_ref"] == "ticket-ambiguous"
+    assert structured["manual_draft_allowed"] is False
+    assert "reviewer_only_html" not in structured
+    assert "Do not draft manually" in response_text
+
+
 def test_register_clean_ticket_then_draft_article_from_ref(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,

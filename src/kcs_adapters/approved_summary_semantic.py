@@ -88,6 +88,17 @@ _NON_ARTICLE_HEADING_TEXT = frozenset(
         "summary",
     }
 )
+_LONG_TRANSCRIPT_MIN_CHARS = 10_000
+_EXPLICIT_ARTICLE_LABEL_RE = re.compile(
+    r"(?im)^\s*(?:Title|Symptoms|Cause|Root cause|Resolution steps?|Solution)\s*:"
+)
+_FINAL_EVIDENCE_RE = re.compile(
+    r"(?is)\broot cause\s*:.{0,2500}\b(?:resolution|resolved|i found|"
+    r"i backed up|i disabled|i created|i enabled)\b"
+)
+_WINDOWS_PLATFORM_RE = re.compile(
+    r"(?i)\b(?:plesk\s+for\s+windows|windows\s+server|via\s+rdp|rdp\s+access)\b"
+)
 
 
 def semantic_extraction_from_approved_summary_text(text: str) -> JsonDict | None:
@@ -126,6 +137,8 @@ def _semantic_item_from_approved_summary_section(
     section: str,
     index: int,
 ) -> JsonDict | None:
+    if _requires_more_explicit_semantic_evidence(section):
+        return None
     title = _summary_title(section)
     symptoms = _section_lines(section, "Symptoms") or _symptoms_from_text(
         section,
@@ -509,10 +522,20 @@ def _sentence_case(value: str) -> str:
 
 
 def _platform_from_text(text: str) -> str:
-    lowered = text.casefold()
-    if "plesk for windows" in lowered or " rdp" in lowered or "windows" in lowered:
+    if _WINDOWS_PLATFORM_RE.search(text):
         return "Plesk for Windows"
     return "Plesk for Linux"
+
+
+def _requires_more_explicit_semantic_evidence(section: str) -> bool:
+    if len(section) < _LONG_TRANSCRIPT_MIN_CHARS:
+        return False
+    if not _DIAGNOSTIC_TRANSCRIPT_RE.search(section):
+        return False
+    label_count = len(_EXPLICIT_ARTICLE_LABEL_RE.findall(section))
+    if label_count >= 3:
+        return False
+    return not _FINAL_EVIDENCE_RE.search(section)
 
 
 def _sentences(text: str) -> list[str]:

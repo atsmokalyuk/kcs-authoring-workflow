@@ -195,6 +195,12 @@ def test_mcpb_node_wrapper_launches_bundled_or_source_stdio_server() -> None:
     assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT" in text
     assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT" in text
     assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF" in text
+    assert "defaultCleanTicketStoreRoot" in text
+    assert (
+        "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT:\n"
+        "    process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT ||\n"
+        "    defaultCleanTicketStoreRoot"
+    ) in text
     assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT" in text
     assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_HINT" in text
     assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_REF" in text

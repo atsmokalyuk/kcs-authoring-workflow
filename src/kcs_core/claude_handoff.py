@@ -51,7 +51,7 @@ _DRAFT_SECTION_RE = re.compile(
 _CUSTOMER_REPLY_RE = re.compile(r"\b(?:customer reply|reply to customer)\s*:", re.I)
 _ACTION_TOKEN_RE = re.compile(
     r"\b(?:reuse_existing|update_existing|create_candidate|flag_existing|"
-    r"split_required|no_article|blocked)\b",
+    r"split_required|no_article)\b",
     re.I,
 )
 _FORBIDDEN_TEXT_LABEL_RE = re.compile(

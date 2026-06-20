@@ -30,7 +30,7 @@ _PRIVATE_VALUE_PATTERNS = (
 )
 _SAFE_FILENAME_RE = re.compile(
     r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
-    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid|bak|backup|disabled|orig|old)"
+    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|local|pid|bak|backup|disabled|orig|old)"
     r"(?:\.(?:bak|backup|disabled|orig|old))?\b"
 )
 _SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
@@ -105,7 +105,6 @@ _UNSAFE_RAW_VALUE_FRAGMENTS = (
     "snippet_text",
     "ticket.redacted.md",
     "ticket.txt",
-    "vector",
 )
 
 

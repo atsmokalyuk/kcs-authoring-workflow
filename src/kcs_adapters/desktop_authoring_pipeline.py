@@ -138,11 +138,21 @@ def author_failure_result(
 ) -> JsonDict:
     """Return controlled approved-summary authoring failure."""
 
-    return draft_author_failure_result(
+    result = draft_author_failure_result(
         failure_stage=failure_stage,
         debug_code=debug_code,
         schema_version=schema_version,
     )
+    if debug_code == "semantic_extraction_no_candidates":
+        next_action = "register_complete_clean_ticket_with_final_evidence"
+        result["manual_draft_allowed"] = False
+        result["next_required_action"] = next_action
+        result["review_summary"] = {
+            "draft_available": False,
+            "next_required_action": next_action,
+            "reason": debug_code,
+        }
+    return result
 
 
 def ticket_author_failure_result(
@@ -167,16 +177,17 @@ def ticket_author_failure_result(
         "approved_ticket_summary_invalid",
         "approved_ticket_summary_not_found",
     }:
+        next_action = (
+            "check_clean_ticket_store_and_ref"
+            if debug_code == "approved_ticket_summary_not_found"
+            else "rerun_clean_ticket_preparation"
+        )
         result["automatic_item_retry_allowed"] = True
         result["manual_draft_allowed"] = False
-        result["next_required_action"] = (
-            "retry_with_approved_summary_text_from_attachment"
-        )
+        result["next_required_action"] = next_action
         result["review_summary"] = {
             "draft_available": False,
-            "next_required_action": (
-                "retry_with_approved_summary_text_from_attachment"
-            ),
+            "next_required_action": next_action,
             "reason": debug_code,
         }
     return result

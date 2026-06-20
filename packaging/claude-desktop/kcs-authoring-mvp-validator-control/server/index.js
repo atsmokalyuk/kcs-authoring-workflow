@@ -112,6 +112,8 @@ function appSupportKcsAuthoringRoot() {
   return path.join(home, "Library", "Application Support", "KCS Authoring");
 }
 
+const defaultCleanTicketStoreRoot = appSupportKcsAuthoringRoot();
+
 function resolveUvCommand() {
   const explicit = runtimeOverride("KCS_AUTHORING_MVP_UV_COMMAND");
   if (explicit) {
@@ -205,13 +207,13 @@ const childEnv = {
   KCS_AUTHORING_MVP_REPO_ROOT: projectRoot,
   KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT:
     process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT ||
-    (isBundledProject ? appSupportKcsAuthoringRoot() : ""),
+    defaultCleanTicketStoreRoot,
   KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT:
     process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT ||
-    (isBundledProject ? "~/Library/Application Support/KCS Authoring" : ""),
+    (defaultCleanTicketStoreRoot ? "~/Library/Application Support/KCS Authoring" : ""),
   KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF:
     process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF ||
-    (isBundledProject ? "user_application_support_kcs_authoring" : ""),
+    (defaultCleanTicketStoreRoot ? "user_application_support_kcs_authoring" : ""),
   KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT:
     process.env.KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT ||
     (isBundledProject
