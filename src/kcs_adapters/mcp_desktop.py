@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import IO, Any
 
 from kcs_adapters import desktop_authoring_pipeline as _desktop_authoring_pipeline
-from kcs_adapters import desktop_contract_smoke as _desktop_contract_smoke
+from kcs_adapters import desktop_control_tools as _desktop_control_tools
 from kcs_adapters import desktop_draft_arguments as _desktop_draft_arguments
 from kcs_adapters import desktop_mcp_results as _desktop_mcp_results
 from kcs_adapters import desktop_payload as _desktop_payload
@@ -64,7 +64,6 @@ from kcs_adapters.desktop_workflow import (
 )
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
-from kcs_core.models import ArticleType
 from kcs_core.semantic_extraction import SemanticExtractionProvider
 
 MCP_PROTOCOL_VERSION = _desktop_protocol.MCP_PROTOCOL_VERSION
@@ -171,54 +170,21 @@ class KcsDesktopMcpAdapter:
 
     def _get_policy_summary(self, arguments: Mapping[str, Any]) -> JsonDict:
         _require_args(arguments, _NO_ARGS, required=_NO_ARGS)
-        return {
-            "auto_publish_allowed": False,
-            "checks": [
-                {
-                    "canonical_values": [
-                        ArticleType.TECHNICAL_SCR.value,
-                        ArticleType.HOWTO_QA.value,
-                    ],
-                    "kind": "approved_summary_article_types",
-                    "ok": True,
-                }
-            ],
-            "customer_replies": False,
-            "network_calls": False,
-            "ok": True,
-            "provider_calls": False,
-            "publishes": False,
-            "ready_for_real_ticket_use": False,
-            "resources_exposed": False,
-            "result_kind": "policy_summary",
-            "schema_version": MCP_TOOL_RESULT_SCHEMA_VERSION,
-            "tool_count": len(self.list_tools()),
-            "writes_files": False,
-        }
+        return _desktop_control_tools.policy_summary_result(
+            schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+            tool_count=len(self.list_tools()),
+        )
 
     def _get_readiness(self, arguments: Mapping[str, Any]) -> JsonDict:
         _require_args(arguments, _NO_ARGS, required=_NO_ARGS)
-        return {
-            "auto_publish_allowed": False,
-            "ok": True,
-            "prompts_exposed": False,
-            "protocol_version": MCP_PROTOCOL_VERSION,
-            "public_output_approved": False,
-            "ready_for_real_ticket_use": False,
-            "resources_exposed": False,
-            "result_kind": "mcp_readiness",
-            "schema_version": MCP_TOOL_RESULT_SCHEMA_VERSION,
-            "server_name": MCP_DESKTOP_SERVER_NAME,
-            "server_version": MCP_DESKTOP_SERVER_VERSION,
-            "tool_count": len(self.list_tools()),
-            "tools": [
-                CLAUDE_DESKTOP_TOOL_ALIASES[tool.name] for tool in self.list_tools()
-            ],
-        }
+        return _desktop_control_tools.readiness_result(
+            schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
+            tools=self.list_tools(),
+        )
 
     def _validate_handoff_request(self, arguments: Mapping[str, Any]) -> JsonDict:
         _require_args(arguments, _REQUEST_ARG, required=_REQUEST_ARG)
-        return _desktop_contract_smoke.validate_handoff_request_payload(
+        return _desktop_control_tools.validate_handoff_request_result(
             arguments["request"],
             schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
         )
@@ -229,7 +195,7 @@ class KcsDesktopMcpAdapter:
             _REQUEST_RESPONSE_ARGS,
             required=_REQUEST_RESPONSE_ARGS,
         )
-        return _desktop_contract_smoke.validate_handoff_response_payload(
+        return _desktop_control_tools.validate_handoff_response_result(
             arguments["request"],
             arguments["response"],
             schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
@@ -237,7 +203,7 @@ class KcsDesktopMcpAdapter:
 
     def _validate_draft_request(self, arguments: Mapping[str, Any]) -> JsonDict:
         _require_args(arguments, _REQUEST_ARG, required=_REQUEST_ARG)
-        return _desktop_contract_smoke.validate_draft_request_payload(
+        return _desktop_control_tools.validate_draft_request_result(
             arguments["request"],
             schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
         )
@@ -248,7 +214,7 @@ class KcsDesktopMcpAdapter:
             _REQUEST_RESPONSE_ARGS,
             required=_REQUEST_RESPONSE_ARGS,
         )
-        return _desktop_contract_smoke.validate_draft_response_payload(
+        return _desktop_control_tools.validate_draft_response_result(
             arguments["request"],
             arguments["response"],
             schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
@@ -256,22 +222,9 @@ class KcsDesktopMcpAdapter:
 
     def _run_contract_smoke(self, arguments: Mapping[str, Any]) -> JsonDict:
         _require_args(arguments, _NO_ARGS, required=_NO_ARGS)
-        checks = _desktop_contract_smoke.run_contract_smoke(
+        return _desktop_control_tools.contract_smoke_result(
             schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION
         )
-        return {
-            "auto_publish_allowed": False,
-            "checks": checks,
-            "network_calls": False,
-            "ok": True,
-            "provider_calls": False,
-            "public_output_approved": False,
-            "ready_for_real_ticket_use": False,
-            "result_kind": "contract_smoke",
-            "schema_version": MCP_TOOL_RESULT_SCHEMA_VERSION,
-            "smoke_ok": True,
-            "writes_files": False,
-        }
 
     def _run_approved_summary_pipeline(self, arguments: Mapping[str, Any]) -> JsonDict:
         try:
