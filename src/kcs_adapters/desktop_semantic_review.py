@@ -8,16 +8,21 @@ import secrets
 import time
 from dataclasses import dataclass
 from hashlib import sha256
+from typing import Any
 
 from kcs_core.json_payload import JsonDict
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
-from kcs_core.semantic_extraction import CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION
+from kcs_core.semantic_extraction import (
+    CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION,
+    CandidateSemanticExtraction,
+    validate_candidate_semantic_extraction,
+)
 
 SEMANTIC_REVIEW_PACKET_SCHEMA_VERSION = "kcs_semantic_review_packet_v1"
 SEMANTIC_REVIEW_REF_BYTES = 12
-SEMANTIC_REVIEW_MAX_EXCERPTS = 10
-SEMANTIC_REVIEW_MAX_EXCERPT_BYTES = 8000
-SEMANTIC_REVIEW_MAX_TOTAL_BYTES = 64000
+SEMANTIC_REVIEW_MAX_EXCERPTS = 12
+SEMANTIC_REVIEW_MAX_EXCERPT_BYTES = 12_000
+SEMANTIC_REVIEW_MAX_TOTAL_BYTES = 96_000
 SEMANTIC_REVIEW_MAX_CANDIDATES = 5
 
 _BLANK_LINE_RE = re.compile(r"\n\s*\n+")
@@ -42,6 +47,32 @@ _FACT_RE = re.compile(
     r"\b[a-z][a-z0-9_.-]+\s+(?:restart|status)\b|/[A-Za-z0-9_.-]+)",
     re.I,
 )
+_SUBMIT_FORBIDDEN_TEXT_RE = re.compile(
+    r"</?\s*[a-z][a-z0-9:-]*(?:\s|/?>)|^\s*#{1,6}\s+|```",
+    re.I | re.M,
+)
+_SUBMIT_FORBIDDEN_LOCAL_PATH_RE = re.compile(
+    r"(?:file://|~[/\\]|[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|"
+    r"(?<![A-Za-z0-9])/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._~+-]+)*)",
+    re.I,
+)
+_SUBMIT_FORBIDDEN_COMPACT_KEYS = frozenset(
+    {
+        "autopublishallowed",
+        "candidateextraction",
+        "file",
+        "filepath",
+        "item",
+        "itemcandidates",
+        "localpath",
+        "path",
+        "publicoutputapproved",
+        "recommendedaction",
+        "revieweronlyhtml",
+    }
+)
+SEMANTIC_REVIEW_SUBMIT_MAX_TEXT_BYTES = 4000
+SEMANTIC_REVIEW_SUBMIT_MAX_TOTAL_BYTES = 64_000
 
 
 class SemanticReviewError(ValueError):
@@ -59,7 +90,9 @@ class PendingSemanticReview:
     semantic_review_ref: str
     ticket_ref: str
     allowed_source_refs: tuple[str, ...]
+    approved_summary_text: str
     packet: JsonDict
+    packet_prepared: bool
     expires_at: float
 
 
@@ -84,10 +117,28 @@ def new_pending_semantic_review(
     )
     return PendingSemanticReview(
         allowed_source_refs=tuple(excerpt["source_ref"] for excerpt in excerpts),
+        approved_summary_text=approved_summary_text,
         expires_at=time.monotonic() + ttl_seconds,
         packet=packet,
+        packet_prepared=False,
         semantic_review_ref=semantic_review_ref,
         ticket_ref=ticket_ref,
+    )
+
+
+def prepared_pending_semantic_review(
+    pending: PendingSemanticReview,
+) -> PendingSemanticReview:
+    """Return the same pending review marked as prepared for submit."""
+
+    return PendingSemanticReview(
+        allowed_source_refs=pending.allowed_source_refs,
+        approved_summary_text=pending.approved_summary_text,
+        expires_at=pending.expires_at,
+        packet=pending.packet,
+        packet_prepared=True,
+        semantic_review_ref=pending.semantic_review_ref,
+        ticket_ref=pending.ticket_ref,
     )
 
 
@@ -148,6 +199,39 @@ def selected_semantic_review_excerpts(text: str) -> list[JsonDict]:
     for excerpt in excerpts:
         ensure_safe_sanitized_payload(excerpt)
     return excerpts
+
+
+def semantic_review_extraction_from_submission(
+    *,
+    pending: PendingSemanticReview,
+    candidate_semantic_extraction: object,
+) -> CandidateSemanticExtraction:
+    """Validate Claude-proposed semantic extraction against prepared excerpts."""
+
+    _ensure_bounded_submit_payload(candidate_semantic_extraction)
+    _ensure_no_forbidden_submit_values(candidate_semantic_extraction)
+    ensure_safe_sanitized_payload(candidate_semantic_extraction)
+    validation = validate_candidate_semantic_extraction(
+        candidate_semantic_extraction
+    )
+    if not validation.ok:
+        raise SemanticReviewError("semantic_review_submission_invalid")
+    extraction = (
+        candidate_semantic_extraction
+        if isinstance(candidate_semantic_extraction, CandidateSemanticExtraction)
+        else CandidateSemanticExtraction.from_json_dict(
+            candidate_semantic_extraction
+        )
+    )
+    if extraction.case_ref != pending.packet.get("case_ref"):
+        raise SemanticReviewError("semantic_review_case_ref_invalid")
+    _ensure_submit_candidate_count(extraction)
+    _ensure_submit_source_refs(
+        extraction,
+        allowed_source_refs=set(pending.allowed_source_refs),
+    )
+    _ensure_bounded_submit_text(extraction.to_json_dict())
+    return extraction
 
 
 def _segments(text: str) -> list[tuple[int, str]]:
@@ -250,6 +334,85 @@ def _truncate_utf8_text(text: str, *, max_bytes: int, suffix: str) -> str:
     return f"{truncated}{suffix}"
 
 
+def _ensure_no_forbidden_submit_values(value: object) -> None:
+    if isinstance(value, dict):
+        _ensure_no_forbidden_submit_mapping(value)
+        return
+    if isinstance(value, list):
+        for item in value:
+            _ensure_no_forbidden_submit_values(item)
+        return
+    if isinstance(value, str):
+        _ensure_no_forbidden_submit_string(value)
+
+
+def _ensure_no_forbidden_submit_mapping(value: dict[object, object]) -> None:
+    for key, item in value.items():
+        if isinstance(key, str):
+            compact_key = key.replace("_", "").replace("-", "").casefold()
+            if compact_key in _SUBMIT_FORBIDDEN_COMPACT_KEYS:
+                raise SemanticReviewError("semantic_review_submission_forbidden")
+        _ensure_no_forbidden_submit_values(item)
+
+
+def _ensure_no_forbidden_submit_string(value: str) -> None:
+    if _SUBMIT_FORBIDDEN_TEXT_RE.search(value):
+        raise SemanticReviewError("semantic_review_submission_forbidden")
+    if _SUBMIT_FORBIDDEN_LOCAL_PATH_RE.search(value):
+        raise SemanticReviewError("semantic_review_submission_forbidden")
+
+
+def _ensure_submit_candidate_count(
+    extraction: CandidateSemanticExtraction,
+) -> None:
+    if len(extraction.items) > SEMANTIC_REVIEW_MAX_CANDIDATES:
+        raise SemanticReviewError("semantic_review_too_many_candidates")
+
+
+def _ensure_submit_source_refs(
+    extraction: CandidateSemanticExtraction,
+    *,
+    allowed_source_refs: set[str],
+) -> None:
+    if not set(extraction.source_refs).issubset(allowed_source_refs):
+        raise SemanticReviewError("semantic_review_source_refs_invalid")
+    for item in extraction.items:
+        if not item.source_refs:
+            raise SemanticReviewError("semantic_review_source_refs_invalid")
+        if not set(item.source_refs).issubset(allowed_source_refs):
+            raise SemanticReviewError("semantic_review_source_refs_invalid")
+
+
+def _ensure_bounded_submit_text(value: Any) -> None:
+    if isinstance(value, dict):
+        for item in value.values():
+            _ensure_bounded_submit_text(item)
+        return
+    if isinstance(value, list):
+        for item in value:
+            _ensure_bounded_submit_text(item)
+        return
+    if (
+        isinstance(value, str)
+        and len(value.encode("utf-8")) > SEMANTIC_REVIEW_SUBMIT_MAX_TEXT_BYTES
+    ):
+        raise SemanticReviewError("semantic_review_submission_too_large")
+
+
+def _ensure_bounded_submit_payload(value: object) -> None:
+    try:
+        payload = json.dumps(
+            value,
+            allow_nan=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise SemanticReviewError("semantic_review_submission_invalid") from exc
+    if len(payload.encode("utf-8")) > SEMANTIC_REVIEW_SUBMIT_MAX_TOTAL_BYTES:
+        raise SemanticReviewError("semantic_review_submission_too_large")
+
+
 def _packet_sha256(packet: JsonDict) -> str:
     payload = {
         key: value
@@ -268,8 +431,12 @@ __all__ = [
     "SEMANTIC_REVIEW_MAX_EXCERPTS",
     "SEMANTIC_REVIEW_MAX_TOTAL_BYTES",
     "SEMANTIC_REVIEW_PACKET_SCHEMA_VERSION",
+    "SEMANTIC_REVIEW_SUBMIT_MAX_TEXT_BYTES",
+    "SEMANTIC_REVIEW_SUBMIT_MAX_TOTAL_BYTES",
     "SemanticReviewError",
     "new_pending_semantic_review",
+    "prepared_pending_semantic_review",
     "selected_semantic_review_excerpts",
+    "semantic_review_extraction_from_submission",
     "semantic_review_packet",
 ]

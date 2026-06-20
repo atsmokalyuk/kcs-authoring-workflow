@@ -102,6 +102,62 @@ class DesktopDraftArticleTool:
             arguments.get("semantic_review_ref")
         )
 
+    def submit_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
+        """Validate semantic-review candidates and continue normal drafting."""
+
+        candidates, approved_summary_text, ticket_ref = (
+            self._draft_workflow.submitted_semantic_review_candidates(
+                semantic_review_ref=arguments.get("semantic_review_ref"),
+                candidate_semantic_extraction=arguments.get(
+                    "candidate_semantic_extraction"
+                ),
+            )
+        )
+        candidates = _desktop_draft_arguments.draft_article_candidates_with_refs(
+            candidates
+        )
+        if not candidates:
+            return _author_failure_result(
+                failure_stage="semantic_extraction",
+                debug_code="semantic_review_submission_invalid",
+                schema_version=self._schema_version,
+            )
+        if len(candidates) > 1:
+            result = _desktop_draft_arguments.draft_article_split_required_result(
+                {"item_candidates": candidates},
+                schema_version=self._schema_version,
+            )
+            if result is None:  # pragma: no cover - defensive invariant
+                return _author_failure_result(
+                    failure_stage="semantic_extraction",
+                    debug_code="semantic_review_submission_invalid",
+                    schema_version=self._schema_version,
+                )
+            pending_selection = self._new_pending_draft_selection(
+                candidates,
+                approved_summary_text=approved_summary_text,
+            )
+            attach_pending_selection(
+                result,
+                pending_selection,
+                submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+            )
+            result["approved_summary_source"] = "semantic_review"
+            result["reviewer_bundle_written"] = False
+            result["ticket_ref"] = ticket_ref
+            return result
+        result = self._draft_article_primary_author_result(
+            _desktop_draft_arguments.draft_article_authoring_args_from_candidate(
+                approved_summary_text=approved_summary_text,
+                candidate=candidates[0],
+                debug=False,
+            )
+        )
+        result["approved_summary_source"] = "semantic_review"
+        result["result_kind"] = "draft_article_authoring"
+        result["ticket_ref"] = ticket_ref
+        return result
+
     def _new_pending_draft_selection(
         self,
         item_candidates: list[JsonDict],

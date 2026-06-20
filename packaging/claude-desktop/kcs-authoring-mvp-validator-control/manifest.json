@@ -22,7 +22,7 @@
     "validator",
     "claude-desktop"
   ],
-  "long_description": "Starts the bundled KCS Authoring Workflow stdio MCP server through an autodetected local runtime: uv first, then python3.11/python3 fallback. Installing this MCPB is the only required Claude Desktop setup step for the default local adapter; no repository path, Claude CLI/Code, API key, or semantic-provider configuration is required. The primary tool is kcs_draft_article for reviewer-only KCS article drafting from operator-provided sanitized ticket text or a local ticket_ref. kcs_prepare_semantic_review is a bounded follow-up tool for low-confidence item identification and returns selected excerpts only, never the full ticket. A small support_get_behavior_instructions compatibility helper exists for legacy Plesk Support prompts and only routes to kcs_draft_article. It performs no Zendesk writes, Help Center publication, Claude Desktop-owned provider calls, Claude CLI/Code dependency, or API-key dependency.",
+  "long_description": "Starts the bundled KCS Authoring Workflow stdio MCP server through an autodetected local runtime: uv first, then python3.11/python3 fallback. Installing this MCPB is the only required Claude Desktop setup step for the default local adapter; no repository path, Claude CLI/Code, API key, or semantic-provider configuration is required. The primary tool is kcs_draft_article for reviewer-only KCS article drafting from operator-provided sanitized ticket text or a local ticket_ref. kcs_prepare_semantic_review and kcs_submit_semantic_review form a bounded follow-up flow for low-confidence item identification: prepare returns selected excerpts only, never the full ticket, and submit accepts only candidate_semantic_extraction_v1 grounded in those excerpt refs. A small support_get_behavior_instructions compatibility helper exists for legacy Plesk Support prompts and only routes to kcs_draft_article. It performs no Zendesk writes, Help Center publication, Claude Desktop-owned provider calls, Claude CLI/Code dependency, or API-key dependency.",
   "manifest_version": "0.3",
   "name": "kcs-authoring-mvp-validator-control",
   "prompts_generated": false,
@@ -49,6 +49,10 @@
     {
       "description": "Return a bounded Claude-visible semantic-review packet for one pending clean-ticket semantic review. Call this only with the semantic_review_ref returned by kcs_draft_article. The packet contains selected excerpts only, not the full ticket. Use it to identify atomic KCS item candidates in candidate_semantic_extraction_v1 format only. Do not draft an article, choose a KCS action, return HTML, or submit item/item_candidates payloads through kcs_draft_article.",
       "name": "kcs_prepare_semantic_review"
+    },
+    {
+      "description": "Submit Claude-proposed semantic item identification for a prepared semantic review. Accepts only candidate_semantic_extraction_v1 grounded in the selected_excerpts source refs returned by kcs_prepare_semantic_review. Do not submit article drafts, HTML, recommended_action, item, item_candidates, raw ticket text, local paths, or publication flags. Python validates the extraction, then continues the normal draft or split-required pipeline.",
+      "name": "kcs_submit_semantic_review"
     },
     {
       "description": "Compatibility helper for legacy Plesk Support behavior-instruction requests. Returns the minimal KCS Authoring route: use kcs_draft_article for sanitized ticket article drafting.",

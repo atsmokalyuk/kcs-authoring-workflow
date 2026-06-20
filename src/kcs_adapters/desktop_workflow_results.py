@@ -134,6 +134,37 @@ def semantic_review_prepare_failure_result(
     return result
 
 
+def semantic_review_submit_failure_result(
+    *,
+    debug_code: str,
+    schema_version: str,
+) -> JsonDict:
+    """Return controlled result for invalid semantic-review submit calls."""
+
+    result = draft_author_failure_result(
+        failure_stage="semantic_extraction",
+        debug_code=debug_code,
+        schema_version=schema_version,
+    )
+    result.update(
+        {
+            "draft_generated": False,
+            "manual_draft_allowed": False,
+            "next_required_action": "restart_with_ticket_ref",
+            "reviewer_bundle_written": False,
+            "should_be_kcs_article": True,
+            "workflow_state": "semantic_review_submit_blocked",
+        }
+    )
+    result["review_summary"] = {
+        "draft_available": False,
+        "next_required_action": "restart_with_ticket_ref",
+        "reason": debug_code,
+        "workflow_state": "semantic_review_submit_blocked",
+    }
+    return result
+
+
 def operator_selection_unavailable_result(*, schema_version: str) -> JsonDict:
     """Return controlled result when a second call has no pending state."""
 

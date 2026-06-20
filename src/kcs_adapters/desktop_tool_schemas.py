@@ -203,6 +203,32 @@ def prepare_semantic_review_input_schema() -> JsonDict:
     )
 
 
+def submit_semantic_review_input_schema() -> JsonDict:
+    return object_schema(
+        properties={
+            "candidate_semantic_extraction": {
+                "type": "object",
+                "description": (
+                    "Strict candidate_semantic_extraction_v1 object proposed "
+                    "from the prepared selected_excerpts only. Do not include "
+                    "article drafts, HTML, recommended_action, item, "
+                    "item_candidates, raw ticket text, local paths, or "
+                    "publication flags."
+                ),
+            },
+            "semantic_review_ref": {
+                "type": "string",
+                "description": (
+                    "Opaque semantic-review ref returned by "
+                    "kcs_draft_article and used by "
+                    "kcs_prepare_semantic_review."
+                ),
+            },
+        },
+        required=["semantic_review_ref", "candidate_semantic_extraction"],
+    )
+
+
 def draft_article_item_schema() -> JsonDict:
     return object_schema(
         properties={
@@ -495,6 +521,7 @@ __all__ = [
     "draft_article_item_candidate_schema",
     "draft_article_item_schema",
     "prepare_semantic_review_input_schema",
+    "submit_semantic_review_input_schema",
     "object_schema",
     "register_clean_ticket_input_schema",
     "safe_desktop_schema_fragment",

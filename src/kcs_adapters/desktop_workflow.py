@@ -31,6 +31,8 @@ from kcs_adapters.desktop_semantic_candidates import (
 from kcs_adapters.desktop_semantic_review import (
     PendingSemanticReview,
     new_pending_semantic_review,
+    prepared_pending_semantic_review,
+    semantic_review_extraction_from_submission,
 )
 from kcs_core.claude_handoff import (
     KcsClaudeHandoffRequestPacket,
@@ -176,6 +178,14 @@ class SemanticReviewExpiredError(RuntimeError):
 
 class SemanticReviewInvalidError(RuntimeError):
     """Semantic-review refs do not match pending state."""
+
+
+class SemanticReviewSubmissionInvalidError(RuntimeError):
+    """Semantic-review submission did not pass validation."""
+
+    def __init__(self, debug_code: str) -> None:
+        super().__init__("semantic review submission invalid")
+        self.debug_code = debug_code
 
 
 class ApprovedSummaryPipelineStageError(ContractValidationError):
@@ -334,8 +344,57 @@ class DesktopDraftWorkflow:
         if pending.expires_at <= time.monotonic():
             self._pending_semantic_review = None
             raise SemanticReviewExpiredError
-        self._pending_semantic_review = None
+        if pending.packet_prepared:
+            raise SemanticReviewUnavailableError
+        self._pending_semantic_review = prepared_pending_semantic_review(pending)
         return dict(pending.packet)
+
+    def submitted_semantic_review_candidates(
+        self,
+        *,
+        semantic_review_ref: object,
+        candidate_semantic_extraction: object,
+    ) -> tuple[list[JsonDict], str, str]:
+        """Validate a semantic-review submit and return Desktop candidates."""
+
+        pending = self._pending_semantic_review_for_submit(semantic_review_ref)
+        try:
+            extraction = semantic_review_extraction_from_submission(
+                pending=pending,
+                candidate_semantic_extraction=candidate_semantic_extraction,
+            )
+        except ContractValidationError as exc:
+            self._pending_semantic_review = None
+            raise SemanticReviewSubmissionInvalidError(
+                "semantic_review_submission_invalid"
+            ) from exc
+        except Exception as exc:
+            self._pending_semantic_review = None
+            debug_code = getattr(
+                exc, "debug_code", "semantic_review_submission_invalid"
+            )
+            raise SemanticReviewSubmissionInvalidError(str(debug_code)) from exc
+        self._pending_semantic_review = None
+        candidates = desktop_item_candidates_from_semantic_extraction(extraction)
+        return candidates, pending.approved_summary_text, pending.ticket_ref
+
+    def _pending_semantic_review_for_submit(
+        self,
+        semantic_review_ref: object,
+    ) -> PendingSemanticReview:
+        pending = self._pending_semantic_review
+        if pending is None:
+            raise SemanticReviewUnavailableError
+        if not isinstance(semantic_review_ref, str):
+            raise SemanticReviewInvalidError
+        if semantic_review_ref != pending.semantic_review_ref:
+            raise SemanticReviewInvalidError
+        if pending.expires_at <= time.monotonic():
+            self._pending_semantic_review = None
+            raise SemanticReviewExpiredError
+        if not pending.packet_prepared:
+            raise SemanticReviewUnavailableError
+        return pending
 
     def selected_candidate(
         self,

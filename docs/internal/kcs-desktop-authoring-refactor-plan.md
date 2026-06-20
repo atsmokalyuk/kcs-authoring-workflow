@@ -210,12 +210,12 @@ descriptions.
 
 MVP packet caps:
 
-- max 10 excerpts;
-- max 8,000 UTF-8 bytes per excerpt;
-- max 64,000 total excerpt UTF-8 bytes;
+- max 12 excerpts;
+- max 12,000 UTF-8 bytes per excerpt;
+- max 96,000 total excerpt UTF-8 bytes;
 - max 5 candidate items.
 
-The generic MCP tool-result cap for this adapter is 128 KB. Semantic review
+The generic MCP tool-result cap for this adapter is 192 KB. Semantic review
 packets must stay comfortably below that cap after JSON overhead.
 
 Prepare output may include safe audit metadata only:
@@ -408,6 +408,7 @@ Current review checkpoint artifact:
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12d-2026-06-19.md`
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-13a-2026-06-20.md`
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-13b-2026-06-20.md`
+- `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-13c-2026-06-20.md`
 
 - `KCS-12a: Desktop schema diet + workflow service`
   - status: complete after final ChatGPT Pro follow-up review;
@@ -449,6 +450,7 @@ Current review checkpoint artifact:
   - focus on Claude-visible excerpt caps, no full-ticket exposure, no logs/raw
     echoes, and ref/TTL state boundaries.
 - `KCS-13c: Submit semantic extraction and continue existing pipeline`
+  - status: complete after `gpt-5.3-codex-spark` review;
   - external review required before moving on;
   - focus on preventing a broad Desktop-owned extraction backdoor and ensuring
     Python-owned validation/decision/rendering.
@@ -550,9 +552,11 @@ Current branch status:
     are implemented and approved to commit after code-review checkpoint;
   - `KCS-13b` adds `kcs_prepare_semantic_review` and bounded
     `selected_excerpts`;
-  - `KCS-13c` is next and must add strict
-    `kcs_submit_semantic_review` validation before the semantic-review fallback
-    can continue into normal drafting.
+  - `KCS-13c` strict `kcs_submit_semantic_review` validation and continuation
+    through the existing draft/split pipeline are implemented and approved to
+    commit after code-review checkpoint;
+  - `KCS-13d` is next and must align MCPB packaging, installed/source smoke,
+    docs, and Desktop log checks for the full KCS-13 tool set.
 
 ## Output Boundary
 

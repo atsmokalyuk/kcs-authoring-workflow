@@ -96,7 +96,11 @@ If `kcs_draft_article` returns `workflow_state=semantic_review_required`,
 Claude Desktop should call `kcs_prepare_semantic_review` with the returned
 `semantic_review_ref`. That tool returns selected excerpts only, capped for
 semantic item identification. It does not return the full ticket and must not
-be used for freehand drafting.
+be used for freehand drafting. Claude Desktop should then call
+`kcs_submit_semantic_review` with only the same `semantic_review_ref` and a
+strict `candidate_semantic_extraction_v1` object grounded in the returned
+excerpt refs. Do not submit article prose, HTML, `recommended_action`, `item`,
+`item_candidates`, raw ticket text, local paths, or publication flags.
 
 It must not pass uploaded filenames, local paths, Claude upload paths,
 structured `item`, `item_candidates`, reference article bodies, or field

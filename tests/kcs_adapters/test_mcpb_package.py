@@ -105,6 +105,7 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert {tool["name"] for tool in manifest["tools"]} == expected_tool_names
     assert "primary tool is kcs_draft_article" in manifest["long_description"]
     assert "kcs_prepare_semantic_review" in manifest["long_description"]
+    assert "kcs_submit_semantic_review" in manifest["long_description"]
     assert "selected excerpts only" in manifest["long_description"]
     assert "support_get_behavior_instructions compatibility helper" in (
         manifest["long_description"]
@@ -167,6 +168,14 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert "selected excerpts only" in prepare_tool["description"]
     assert "candidate_semantic_extraction_v1" in prepare_tool["description"]
     assert "Do not draft an article" in prepare_tool["description"]
+    submit_tool = next(
+        tool
+        for tool in manifest["tools"]
+        if tool["name"] == "kcs_submit_semantic_review"
+    )
+    assert "candidate_semantic_extraction_v1" in submit_tool["description"]
+    assert "selected_excerpts source refs" in submit_tool["description"]
+    assert "Do not submit article drafts" in submit_tool["description"]
     behavior_tool = next(
         tool
         for tool in manifest["tools"]
@@ -468,6 +477,29 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "required": ["semantic_review_ref"],
                     },
                     "name": "kcs_prepare_semantic_review",
+                },
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": False,
+                        "readOnlyHint": False,
+                    },
+                    "description": (
+                        "Submit candidate_semantic_extraction_v1 grounded in "
+                        "selected_excerpts source refs. Do not submit article "
+                        "drafts."
+                    ),
+                    "inputSchema": {
+                        "properties": {
+                            "candidate_semantic_extraction": {},
+                            "semantic_review_ref": {},
+                        },
+                        "required": [
+                            "semantic_review_ref",
+                            "candidate_semantic_extraction",
+                        ],
+                    },
+                    "name": "kcs_submit_semantic_review",
                 },
                 {
                     "annotations": {

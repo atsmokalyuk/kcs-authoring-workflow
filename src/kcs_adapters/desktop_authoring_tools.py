@@ -17,6 +17,7 @@ from kcs_adapters.desktop_workflow import (
     DesktopDraftWorkflow,
     SemanticReviewExpiredError,
     SemanticReviewInvalidError,
+    SemanticReviewSubmissionInvalidError,
     SemanticReviewUnavailableError,
 )
 from kcs_core.errors import ContractValidationError
@@ -126,12 +127,12 @@ class DesktopAuthoringTools:
         return self._draft_article_tool.draft_article(arguments)
 
     def prepare_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
-        _require_args(
-            arguments,
-            frozenset({"semantic_review_ref"}),
-            required=frozenset({"semantic_review_ref"}),
-        )
         try:
+            _require_args(
+                arguments,
+                frozenset({"semantic_review_ref"}),
+                required=frozenset({"semantic_review_ref"}),
+            )
             return self._draft_article_tool.prepare_semantic_review(arguments)
         except SemanticReviewExpiredError:
             debug_code = "semantic_review_expired"
@@ -139,7 +140,42 @@ class DesktopAuthoringTools:
             debug_code = "semantic_review_unavailable"
         except SemanticReviewInvalidError:
             debug_code = "semantic_review_invalid"
+        except McpArgumentError:
+            debug_code = "semantic_review_invalid"
         return _desktop_workflow_results.semantic_review_prepare_failure_result(
+            debug_code=debug_code,
+            schema_version=self._schema_version,
+        )
+
+    def submit_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
+        try:
+            _require_args(
+                arguments,
+                frozenset(
+                    {
+                        "candidate_semantic_extraction",
+                        "semantic_review_ref",
+                    }
+                ),
+                required=frozenset(
+                    {
+                        "candidate_semantic_extraction",
+                        "semantic_review_ref",
+                    }
+                ),
+            )
+            return self._draft_article_tool.submit_semantic_review(arguments)
+        except SemanticReviewExpiredError:
+            debug_code = "semantic_review_expired"
+        except SemanticReviewUnavailableError:
+            debug_code = "semantic_review_unavailable"
+        except SemanticReviewInvalidError:
+            debug_code = "semantic_review_invalid"
+        except SemanticReviewSubmissionInvalidError as exc:
+            debug_code = exc.debug_code
+        except (ContractValidationError, McpArgumentError):
+            debug_code = "semantic_review_submission_invalid"
+        return _desktop_workflow_results.semantic_review_submit_failure_result(
             debug_code=debug_code,
             schema_version=self._schema_version,
         )

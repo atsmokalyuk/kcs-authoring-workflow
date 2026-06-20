@@ -15,6 +15,7 @@ from kcs_adapters.desktop_tool_names import (
     TOOL_REGISTER_CLEAN_TICKET,
     TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
     TOOL_RUN_CONTRACT_SMOKE,
+    TOOL_SUBMIT_SEMANTIC_REVIEW,
     TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS,
     TOOL_VALIDATE_DRAFT_REQUEST,
     TOOL_VALIDATE_DRAFT_RESPONSE,
@@ -50,6 +51,7 @@ def tool_descriptors() -> tuple[McpToolDescriptor, ...]:
         _register_clean_ticket_descriptor(),
         _draft_article_descriptor(),
         _prepare_semantic_review_descriptor(),
+        _submit_semantic_review_descriptor(),
         _support_get_behavior_instructions_descriptor(),
     )
 
@@ -248,6 +250,25 @@ def _prepare_semantic_review_descriptor() -> McpToolDescriptor:
         ),
         input_schema=_desktop_tool_schemas.prepare_semantic_review_input_schema(),
     )
+
+
+def _submit_semantic_review_descriptor() -> McpToolDescriptor:
+    descriptor = _descriptor(
+        name=TOOL_SUBMIT_SEMANTIC_REVIEW,
+        description=(
+            "Submit Claude-proposed semantic item identification for a prepared "
+            "semantic review. Accepts only candidate_semantic_extraction_v1 "
+            "grounded in the selected_excerpts source refs returned by "
+            "kcs_prepare_semantic_review. Do not submit article drafts, HTML, "
+            "recommended_action, item, item_candidates, raw ticket text, local "
+            "paths, or publication flags. Python validates the extraction, then "
+            "continues the normal draft or split-required pipeline."
+        ),
+        input_schema=_desktop_tool_schemas.submit_semantic_review_input_schema(),
+    )
+    descriptor.annotations["idempotentHint"] = False
+    descriptor.annotations["readOnlyHint"] = False
+    return descriptor
 
 
 def _support_get_behavior_instructions_descriptor() -> McpToolDescriptor:

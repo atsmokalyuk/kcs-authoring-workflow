@@ -49,6 +49,7 @@ PROTOCOL_VERSION = "2025-11-25"
 TOOL_NAME = "kcs_draft_article"
 REGISTER_TOOL_NAME = "kcs_register_clean_ticket"
 PREPARE_SEMANTIC_REVIEW_TOOL_NAME = "kcs_prepare_semantic_review"
+SUBMIT_SEMANTIC_REVIEW_TOOL_NAME = "kcs_submit_semantic_review"
 CALL_REQUEST_IDS = (3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 APPROVED_TICKET_STORE_ROOT_ENV = "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT"
 _BUNDLE_FILE_ROOTS = (REPO_ROOT,)
@@ -150,6 +151,22 @@ def run_smoke(
         checks["register_then_draft_ok"] = _register_then_draft_ok(
             registered_ticket
         )
+        semantic_review = _run_semantic_review_submit_smoke(
+            node=node,
+            wrapper=wrapper,
+            uv_command=uv_command,
+        )
+        semantic_review_invalid = _run_semantic_review_invalid_submit_smoke(
+            node=node,
+            wrapper=wrapper,
+            uv_command=uv_command,
+        )
+        checks["semantic_review_submit_ok"] = _semantic_review_submit_ok(
+            semantic_review
+        )
+        checks["semantic_review_invalid_submit_ok"] = (
+            _semantic_review_invalid_submit_ok(semantic_review_invalid)
+        )
         return {
             "checks": checks,
             "ok": all(checks.values()),
@@ -176,6 +193,14 @@ def run_smoke(
             "registered_ticket_debug_code": _structured(
                 registered_ticket["draft"]
             ).get("debug_code", ""),
+            "semantic_review_debug_codes": [
+                _structured(semantic_review["draft"]).get("debug_code", ""),
+                _structured(semantic_review["submit"]).get("debug_code", ""),
+                _structured(semantic_review_invalid["submit"]).get(
+                    "debug_code",
+                    "",
+                ),
+            ],
             "registry_cache_checked": _registry_cache_path(wrapper) is not None,
             "tool_count": len(tools.get("result", {}).get("tools", [])),
             "wrapper_kind": (
@@ -377,6 +402,137 @@ def _run_register_then_draft_smoke(
             "draft": draft,
             "initialize": initialize,
             "register": register,
+        }
+    finally:
+        _close_process(process)
+
+
+def _run_semantic_review_submit_smoke(
+    *,
+    node: str,
+    wrapper: Path,
+    uv_command: str,
+) -> dict[str, dict[str, Any]]:
+    return _run_semantic_review_smoke(
+        node=node,
+        wrapper=wrapper,
+        uv_command=uv_command,
+        invalid_submit=False,
+    )
+
+
+def _run_semantic_review_invalid_submit_smoke(
+    *,
+    node: str,
+    wrapper: Path,
+    uv_command: str,
+) -> dict[str, dict[str, Any]]:
+    return _run_semantic_review_smoke(
+        node=node,
+        wrapper=wrapper,
+        uv_command=uv_command,
+        invalid_submit=True,
+    )
+
+
+def _run_semantic_review_smoke(
+    *,
+    node: str,
+    wrapper: Path,
+    uv_command: str,
+    invalid_submit: bool,
+) -> dict[str, dict[str, Any]]:
+    env = {
+        **os.environ,
+        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
+    }
+    env.pop("KCS_AUTHORING_SEMANTIC_PROVIDER", None)
+    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
+    ticket_ref = f"smoke-semantic-review-{int(time.time() * 1000)}"
+    try:
+        process = subprocess.Popen(
+            [node, str(wrapper)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            text=True,
+        )
+    except OSError as exc:
+        raise SmokeError("wrapper_failed") from exc
+    try:
+        initialize = _send_jsonrpc(
+            process,
+            _request(13, "initialize", {"protocolVersion": PROTOCOL_VERSION}),
+        )
+        _write_process_message(
+            process,
+            {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        )
+        register = _send_jsonrpc(
+            process,
+            _request(
+                14,
+                "tools/call",
+                {
+                    "name": REGISTER_TOOL_NAME,
+                    "arguments": {
+                        "clean_ticket_text": _semantic_review_ticket_text(),
+                        "ticket_ref": ticket_ref,
+                    },
+                },
+            ),
+        )
+        draft = _send_jsonrpc(
+            process,
+            _request(
+                15,
+                "tools/call",
+                {
+                    "name": TOOL_NAME,
+                    "arguments": {"ticket_ref": ticket_ref},
+                },
+            ),
+        )
+        semantic_review_ref = _structured(draft).get("semantic_review_ref")
+        if not isinstance(semantic_review_ref, str):
+            raise SmokeError("semantic_review_ref_missing")
+        prepare = _send_jsonrpc(
+            process,
+            _request(
+                16,
+                "tools/call",
+                {
+                    "name": PREPARE_SEMANTIC_REVIEW_TOOL_NAME,
+                    "arguments": {"semantic_review_ref": semantic_review_ref},
+                },
+            ),
+        )
+        packet = _structured(prepare)
+        extraction = _semantic_review_candidate_extraction(
+            packet,
+            invalid_submit=invalid_submit,
+        )
+        submit = _send_jsonrpc(
+            process,
+            _request(
+                17,
+                "tools/call",
+                {
+                    "name": SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
+                    "arguments": {
+                        "candidate_semantic_extraction": extraction,
+                        "semantic_review_ref": semantic_review_ref,
+                    },
+                },
+            ),
+        )
+        return {
+            "draft": draft,
+            "initialize": initialize,
+            "prepare": prepare,
+            "register": register,
+            "submit": submit,
         }
     finally:
         _close_process(process)
@@ -685,6 +841,65 @@ def _multi_item_labeled_summary_text() -> str:
     )
 
 
+def _semantic_review_ticket_text() -> str:
+    return (
+        "Customer Ticket Content\n"
+        "Customer reports that a product task fails with an error.\n"
+        "The investigation mentions one possible cause, then another.\n"
+        "Support restarted one service and later discussed another issue."
+    )
+
+
+def _semantic_review_candidate_extraction(
+    packet: dict[str, Any],
+    *,
+    invalid_submit: bool,
+) -> dict[str, object]:
+    allowed_refs = packet.get("allowed_source_refs")
+    if not isinstance(allowed_refs, list) or not allowed_refs:
+        raise SmokeError("semantic_review_packet_invalid")
+    source_ref = str(allowed_refs[0])
+    resolution = (
+        "<h1>Article draft</h1>"
+        if invalid_submit
+        else "Restart the affected Plesk service and confirm the task succeeds."
+    )
+    return {
+        "case_ref": packet.get("case_ref"),
+        "extraction_source_ref": "semantic-review-smoke-submit-001",
+        "items": [
+            {
+                "article_type_hint": "technical_scr",
+                "candidate_id": "candidate-001",
+                "confirmed_facts": [
+                    "The clean ticket contains confirmed service failure evidence."
+                ],
+                "environment": {
+                    "applicable_to": ["Plesk for Linux"],
+                    "platform": "Plesk for Linux",
+                },
+                "kcs_item_status": "candidate_allowed",
+                "product_relation": "plesk_owned",
+                "resolution_steps": [
+                    "Connect to the Plesk server via SSH.",
+                    "Run systemctl restart sw-cp-server.",
+                    "Open Plesk and confirm the task completes successfully.",
+                ],
+                "source_refs": [source_ref],
+                "summary": "Plesk task fails with an error",
+                "supportability": "supported",
+                "supportability_basis": "not_checked",
+                "supported_cause": "A Plesk service issue caused the failure.",
+                "supported_resolution_or_workaround": resolution,
+                "symptoms": ["A Plesk task fails with an error."],
+                "visibility_hint": "public_customer_safe",
+            }
+        ],
+        "schema_version": "candidate_semantic_extraction_v1",
+        "source_refs": [source_ref],
+    }
+
+
 def _initialize_ok(response: dict[str, Any]) -> bool:
     result = response.get("result", {})
     return (
@@ -750,7 +965,7 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
     if not isinstance(value, dict):
         return False
     tools = value.get("tools")
-    if not isinstance(tools, list) or len(tools) != 4:
+    if not isinstance(tools, list) or len(tools) != 5:
         return False
     register_tool = next(
         (
@@ -786,16 +1001,27 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
         ),
         None,
     )
+    submit_tool = next(
+        (
+            item
+            for item in tools
+            if isinstance(item, dict)
+            and item.get("name") == SUBMIT_SEMANTIC_REVIEW_TOOL_NAME
+        ),
+        None,
+    )
     if (
         register_tool is None
         or tool is None
         or behavior_tool is None
         or prepare_tool is None
+        or submit_tool is None
     ):
         return False
     register_description = str(register_tool.get("description", ""))
     description = str(tool.get("description", ""))
     prepare_description = str(prepare_tool.get("description", ""))
+    submit_description = str(submit_tool.get("description", ""))
     long_description = str(value.get("long_description", ""))
     return (
         "clean_ticket_text" in register_description
@@ -822,13 +1048,16 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
         and "selected excerpts only" in prepare_description
         and "candidate_semantic_extraction_v1" in prepare_description
         and "Do not draft an article" in prepare_description
+        and "candidate_semantic_extraction_v1" in submit_description
+        and "selected_excerpts source refs" in submit_description
+        and "Do not submit article drafts" in submit_description
         and "one primary read-only tool" not in long_description
     )
 
 
 def _tool_surface_ok(response: dict[str, Any]) -> bool:
     tools = response.get("result", {}).get("tools", [])
-    if len(tools) != 4:
+    if len(tools) != 5:
         return False
     register_tool = next(
         (item for item in tools if item.get("name") == REGISTER_TOOL_NAME),
@@ -851,11 +1080,20 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         ),
         None,
     )
+    submit_tool = next(
+        (
+            item
+            for item in tools
+            if item.get("name") == SUBMIT_SEMANTIC_REVIEW_TOOL_NAME
+        ),
+        None,
+    )
     if (
         register_tool is None
         or tool is None
         or behavior_tool is None
         or prepare_tool is None
+        or submit_tool is None
     ):
         return False
     register_properties = register_tool.get("inputSchema", {}).get("properties", {})
@@ -865,6 +1103,9 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
     prepare_properties = prepare_tool.get("inputSchema", {}).get("properties", {})
     prepare_annotations = prepare_tool.get("annotations", {})
     prepare_description = str(prepare_tool.get("description", ""))
+    submit_properties = submit_tool.get("inputSchema", {}).get("properties", {})
+    submit_annotations = submit_tool.get("annotations", {})
+    submit_description = str(submit_tool.get("description", ""))
     description = str(tool.get("description", ""))
     debug_description = str(properties.get("debug", {}).get("description", ""))
     return (
@@ -905,6 +1146,16 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         and "selected excerpts only" in prepare_description
         and "candidate_semantic_extraction_v1" in prepare_description
         and "Do not draft an article" in prepare_description
+        and set(submit_properties)
+        == {"candidate_semantic_extraction", "semantic_review_ref"}
+        and submit_tool.get("inputSchema", {}).get("required")
+        == ["semantic_review_ref", "candidate_semantic_extraction"]
+        and submit_annotations.get("destructiveHint") is False
+        and submit_annotations.get("idempotentHint") is False
+        and submit_annotations.get("readOnlyHint") is False
+        and "candidate_semantic_extraction_v1" in submit_description
+        and "selected_excerpts source refs" in submit_description
+        and "Do not submit article drafts" in submit_description
         and behavior_tool.get("inputSchema", {}).get("properties", {}) == {}
     )
 
@@ -1107,6 +1358,56 @@ def _register_then_draft_ok(responses: dict[str, dict[str, Any]]) -> bool:
         and "reviewer_only_html" not in draft
         and not draft_text.startswith("```html\n")
         and "<h2>Resolution</h2>" in draft_html
+    )
+
+
+def _semantic_review_submit_ok(responses: dict[str, dict[str, Any]]) -> bool:
+    draft = _structured(responses["draft"])
+    prepare = _structured(responses["prepare"])
+    submit = _structured(responses["submit"])
+    response_text = json.dumps(responses["submit"], sort_keys=True)
+    submit_html = _response_bundle_html_text(responses["submit"])
+    html_path = submit.get("html_path")
+    return (
+        responses["draft"].get("result", {}).get("isError") is False
+        and responses["prepare"].get("result", {}).get("isError") is False
+        and responses["submit"].get("result", {}).get("isError") is False
+        and draft.get("workflow_state") == "semantic_review_required"
+        and draft.get("debug_code") == "semantic_identification_low_confidence"
+        and draft.get("next_tool") == PREPARE_SEMANTIC_REVIEW_TOOL_NAME
+        and prepare.get("result_kind") == "semantic_review_packet"
+        and prepare.get("submit_tool") == SUBMIT_SEMANTIC_REVIEW_TOOL_NAME
+        and prepare.get("selected_excerpts")
+        and submit.get("result_kind") == "draft_article_authoring"
+        and submit.get("approved_summary_source") == "semantic_review"
+        and str(submit.get("ticket_ref", "")).startswith("smoke-semantic-review-")
+        and submit.get("draft_generated") is True
+        and submit.get("debug_code") == "draft_only_reuse_search_missing"
+        and submit.get("reviewer_bundle_written") is True
+        and submit.get("writes_files") is True
+        and isinstance(html_path, str)
+        and html_path.startswith("local-data/reviewer-bundles/")
+        and _bundle_file_ok(html_path, submit.get("html_sha256"))
+        and "reviewer_only_html" not in submit
+        and "candidate_semantic_extraction" not in response_text
+        and "<h2>Resolution</h2>" in submit_html
+    )
+
+
+def _semantic_review_invalid_submit_ok(
+    responses: dict[str, dict[str, Any]],
+) -> bool:
+    submit = _structured(responses["submit"])
+    text = _response_text(responses["submit"])
+    return (
+        responses["submit"].get("result", {}).get("isError") is False
+        and submit.get("workflow_state") == "semantic_review_submit_blocked"
+        and submit.get("debug_code") == "semantic_review_submission_forbidden"
+        and submit.get("draft_generated") is False
+        and submit.get("reviewer_bundle_written") is False
+        and submit.get("manual_draft_allowed") is False
+        and "reviewer_only_html" not in submit
+        and "Do not draft manually" in text
     )
 
 
