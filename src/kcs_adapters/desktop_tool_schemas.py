@@ -186,6 +186,23 @@ def draft_article_input_schema() -> JsonDict:
     )
 
 
+def prepare_semantic_review_input_schema() -> JsonDict:
+    return object_schema(
+        properties={
+            "semantic_review_ref": {
+                "type": "string",
+                "description": (
+                    "Opaque semantic-review ref returned by kcs_draft_article "
+                    "when workflow_state is semantic_review_required. Do not "
+                    "pass ticket text, item payloads, article drafts, paths, or "
+                    "candidate extraction here."
+                ),
+            }
+        },
+        required=["semantic_review_ref"],
+    )
+
+
 def draft_article_item_schema() -> JsonDict:
     return object_schema(
         properties={
@@ -302,6 +319,8 @@ def tool_output_schema() -> JsonDict:
 
 
 _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
+    "allowed_output_schema": {"type": "string"},
+    "allowed_source_refs": {"type": "array"},
     "auto_publish_allowed": {"type": "boolean"},
     "automatic_item_retry_allowed": {"type": "boolean"},
     "approved_summary_source": {"type": "string"},
@@ -325,6 +344,8 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "draft_request_ready": {"type": "boolean"},
     "draft_sections": {"type": "object"},
     "evidence_valid": {"type": "boolean"},
+    "excerpt_count": {"type": "integer"},
+    "excerpt_total_bytes": {"type": "integer"},
     "draft_status": {"type": "string"},
     "failure_stage": {"type": "string"},
     "handoff_ref": {"type": "string"},
@@ -336,6 +357,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "kcs_ready": {"type": "boolean"},
     "manual_draft_allowed": {"type": "boolean"},
     "manifest_path": {"type": "string"},
+    "max_candidates": {"type": "integer"},
     "network_calls": {"type": "boolean"},
     "next_arguments": {"type": "object"},
     "next_required_action": {"type": "string"},
@@ -381,11 +403,16 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "reuse_search_run_ref": {"type": "string"},
     "reuse_search_status": {"type": "string"},
     "schema_version": {"type": "string"},
+    "selected_excerpts": {"type": "array"},
     "server_name": {"type": "string"},
     "server_version": {"type": "string"},
     "should_be_kcs_article": {"type": "boolean"},
     "semantic_review_ref": {"type": "string"},
+    "semantic_review_packet_sha256": {"type": "string"},
     "smoke_ok": {"type": "boolean"},
+    "submit_arguments": {"type": "object"},
+    "submit_tool": {"type": "string"},
+    "task": {"type": "string"},
     "tool_count": {"type": "integer"},
     "tools": {"type": "array"},
     "ticket_ref": {"type": "string"},
@@ -467,6 +494,7 @@ __all__ = [
     "draft_article_input_schema",
     "draft_article_item_candidate_schema",
     "draft_article_item_schema",
+    "prepare_semantic_review_input_schema",
     "object_schema",
     "register_clean_ticket_input_schema",
     "safe_desktop_schema_fragment",

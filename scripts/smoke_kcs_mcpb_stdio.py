@@ -48,6 +48,7 @@ DEFAULT_CODEX_NODE = (
 PROTOCOL_VERSION = "2025-11-25"
 TOOL_NAME = "kcs_draft_article"
 REGISTER_TOOL_NAME = "kcs_register_clean_ticket"
+PREPARE_SEMANTIC_REVIEW_TOOL_NAME = "kcs_prepare_semantic_review"
 CALL_REQUEST_IDS = (3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 APPROVED_TICKET_STORE_ROOT_ENV = "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT"
 _BUNDLE_FILE_ROOTS = (REPO_ROOT,)
@@ -749,7 +750,7 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
     if not isinstance(value, dict):
         return False
     tools = value.get("tools")
-    if not isinstance(tools, list) or len(tools) != 3:
+    if not isinstance(tools, list) or len(tools) != 4:
         return False
     register_tool = next(
         (
@@ -776,10 +777,25 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
         ),
         None,
     )
-    if register_tool is None or tool is None or behavior_tool is None:
+    prepare_tool = next(
+        (
+            item
+            for item in tools
+            if isinstance(item, dict)
+            and item.get("name") == PREPARE_SEMANTIC_REVIEW_TOOL_NAME
+        ),
+        None,
+    )
+    if (
+        register_tool is None
+        or tool is None
+        or behavior_tool is None
+        or prepare_tool is None
+    ):
         return False
     register_description = str(register_tool.get("description", ""))
     description = str(tool.get("description", ""))
+    prepare_description = str(prepare_tool.get("description", ""))
     long_description = str(value.get("long_description", ""))
     return (
         "clean_ticket_text" in register_description
@@ -803,13 +819,16 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
         and "show the returned candidates in a native Claude Desktop choice popup"
         not in description
         and "reviewer-only Zendesk HTML" in description
+        and "selected excerpts only" in prepare_description
+        and "candidate_semantic_extraction_v1" in prepare_description
+        and "Do not draft an article" in prepare_description
         and "one primary read-only tool" not in long_description
     )
 
 
 def _tool_surface_ok(response: dict[str, Any]) -> bool:
     tools = response.get("result", {}).get("tools", [])
-    if len(tools) != 3:
+    if len(tools) != 4:
         return False
     register_tool = next(
         (item for item in tools if item.get("name") == REGISTER_TOOL_NAME),
@@ -824,12 +843,28 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         ),
         None,
     )
-    if register_tool is None or tool is None or behavior_tool is None:
+    prepare_tool = next(
+        (
+            item
+            for item in tools
+            if item.get("name") == PREPARE_SEMANTIC_REVIEW_TOOL_NAME
+        ),
+        None,
+    )
+    if (
+        register_tool is None
+        or tool is None
+        or behavior_tool is None
+        or prepare_tool is None
+    ):
         return False
     register_properties = register_tool.get("inputSchema", {}).get("properties", {})
     register_annotations = register_tool.get("annotations", {})
     properties = tool.get("inputSchema", {}).get("properties", {})
     annotations = tool.get("annotations", {})
+    prepare_properties = prepare_tool.get("inputSchema", {}).get("properties", {})
+    prepare_annotations = prepare_tool.get("annotations", {})
+    prepare_description = str(prepare_tool.get("description", ""))
     description = str(tool.get("description", ""))
     debug_description = str(properties.get("debug", {}).get("description", ""))
     return (
@@ -860,6 +895,16 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         and "raw comments" not in description
         and "internal notes" not in description
         and "reviewer-only Zendesk HTML" in debug_description
+        and set(prepare_properties) == {"semantic_review_ref"}
+        and prepare_tool.get("inputSchema", {}).get("required") == [
+            "semantic_review_ref"
+        ]
+        and prepare_annotations.get("destructiveHint") is False
+        and prepare_annotations.get("idempotentHint") is True
+        and prepare_annotations.get("readOnlyHint") is True
+        and "selected excerpts only" in prepare_description
+        and "candidate_semantic_extraction_v1" in prepare_description
+        and "Do not draft an article" in prepare_description
         and behavior_tool.get("inputSchema", {}).get("properties", {}) == {}
     )
 

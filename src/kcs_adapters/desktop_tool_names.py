@@ -17,12 +17,14 @@ TOOL_AUTHOR_APPROVED_SUMMARY = "kcs.author_approved_summary"
 TOOL_AUTHOR_TICKET = "kcs.author_ticket"
 TOOL_REGISTER_CLEAN_TICKET = "kcs.register_clean_ticket"
 TOOL_DRAFT_ARTICLE = "kcs.draft_article"
+TOOL_PREPARE_SEMANTIC_REVIEW = "kcs.prepare_semantic_review"
 TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS = "support.get_behavior_instructions"
 
 DESKTOP_OPERATOR_TOOLS = frozenset(
     {
         TOOL_REGISTER_CLEAN_TICKET,
         TOOL_DRAFT_ARTICLE,
+        TOOL_PREPARE_SEMANTIC_REVIEW,
         TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS,
     }
 )
@@ -40,6 +42,7 @@ CLAUDE_DESKTOP_TOOL_ALIASES = {
     TOOL_AUTHOR_TICKET: "kcs_author_ticket",
     TOOL_REGISTER_CLEAN_TICKET: "kcs_register_clean_ticket",
     TOOL_DRAFT_ARTICLE: "kcs_draft_article",
+    TOOL_PREPARE_SEMANTIC_REVIEW: "kcs_prepare_semantic_review",
     TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS: "support_get_behavior_instructions",
 }
 CANONICAL_TOOL_BY_CLAUDE_DESKTOP_ALIAS = {
@@ -72,6 +75,7 @@ __all__ = [
     "TOOL_GET_POLICY_SUMMARY",
     "TOOL_NAME_STYLE_CANONICAL",
     "TOOL_NAME_STYLE_DESKTOP_ALIASES",
+    "TOOL_PREPARE_SEMANTIC_REVIEW",
     "TOOL_REGISTER_CLEAN_TICKET",
     "TOOL_RUN_APPROVED_SUMMARY_PIPELINE",
     "TOOL_RUN_CONTRACT_SMOKE",

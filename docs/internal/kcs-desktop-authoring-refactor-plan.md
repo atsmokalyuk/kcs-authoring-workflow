@@ -210,16 +210,19 @@ descriptions.
 
 MVP packet caps:
 
-- max 8 excerpts;
-- max 1,800 characters per excerpt;
-- max 12,000 total excerpt characters;
+- max 10 excerpts;
+- max 8,000 UTF-8 bytes per excerpt;
+- max 64,000 total excerpt UTF-8 bytes;
 - max 5 candidate items.
+
+The generic MCP tool-result cap for this adapter is 128 KB. Semantic review
+packets must stay comfortably below that cap after JSON overhead.
 
 Prepare output may include safe audit metadata only:
 
 - `semantic_review_packet_sha256`;
 - `excerpt_count`;
-- `excerpt_total_chars`.
+- `excerpt_total_bytes`.
 
 Prepare output must exclude raw Zendesk JSON, attachments, redaction maps, full
 ticket dumps, local absolute paths, reviewer packets, Zendesk HTML, article
@@ -403,6 +406,8 @@ Current review checkpoint artifact:
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12b-2026-06-19.md`
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12c-2026-06-19.md`
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12d-2026-06-19.md`
+- `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-13a-2026-06-20.md`
+- `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-13b-2026-06-20.md`
 
 - `KCS-12a: Desktop schema diet + workflow service`
   - status: complete after final ChatGPT Pro follow-up review;
@@ -541,10 +546,13 @@ Current branch status:
   - design direction is conditionally approved after external review;
   - `KCS-13a` policy/metadata/result contract is implemented and approved to
     move forward after code-review checkpoint;
-  - `KCS-13a` does not return bounded selected excerpts yet;
-  - no selected excerpts should be returned until `KCS-13b` adds
-    process-local semantic-review state plus the bounded prepare packet and
-    passes its own checkpoint review.
+  - `KCS-13b` process-local semantic-review state and bounded prepare packet
+    are implemented and approved to commit after code-review checkpoint;
+  - `KCS-13b` adds `kcs_prepare_semantic_review` and bounded
+    `selected_excerpts`;
+  - `KCS-13c` is next and must add strict
+    `kcs_submit_semantic_review` validation before the semantic-review fallback
+    can continue into normal drafting.
 
 ## Output Boundary
 

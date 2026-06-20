@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import secrets
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -11,6 +10,7 @@ from typing import Any
 from kcs_adapters import desktop_authoring_pipeline as _desktop_authoring_pipeline
 from kcs_adapters import desktop_draft_arguments as _desktop_draft_arguments
 from kcs_adapters import desktop_payload as _desktop_payload
+from kcs_adapters.desktop_semantic_review import SemanticReviewError
 from kcs_adapters.desktop_stdio_transport import McpArgumentError
 from kcs_adapters.desktop_tool_names import (
     TOOL_DRAFT_ARTICLE,
@@ -95,6 +95,13 @@ class DesktopDraftArticleTool:
         result["result_kind"] = "draft_article_authoring"
         return result
 
+    def prepare_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
+        """Return the bounded semantic-review packet for a pending ref."""
+
+        return self._draft_workflow.prepared_semantic_review_packet(
+            arguments.get("semantic_review_ref")
+        )
+
     def _new_pending_draft_selection(
         self,
         item_candidates: list[JsonDict],
@@ -124,6 +131,7 @@ class DesktopDraftArticleTool:
             and not has_selected_item_ref
             and not has_ticket_ref
         ):
+            self._draft_workflow.clear_pending_semantic_review()
             return self._draft_article_from_primary_summary(arguments)
         if (
             has_ticket_ref
@@ -131,6 +139,7 @@ class DesktopDraftArticleTool:
             and not has_selection_ref
             and not has_selected_item_ref
         ):
+            self._draft_workflow.clear_pending_semantic_review()
             return self._draft_article_from_primary_ticket_ref(arguments)
         if (
             has_selection_ref
@@ -138,6 +147,7 @@ class DesktopDraftArticleTool:
             and not has_summary
             and not has_ticket_ref
         ):
+            self._draft_workflow.clear_pending_semantic_review()
             return self._draft_article_from_primary_selection(arguments)
         return _author_failure_result(
             failure_stage="input_validation",
@@ -267,10 +277,30 @@ class DesktopDraftArticleTool:
                     schema_version=self._schema_version,
                 )
             else:
-                return semantic_review_required_result(
+                try:
+                    pending_review = (
+                        self._draft_workflow.start_pending_semantic_review(
+                            approved_summary_text=approved_summary_text,
+                            ticket_ref=ticket_ref,
+                        )
+                    )
+                except SemanticReviewError as exc:
+                    return _author_failure_result(
+                        failure_stage="semantic_extraction",
+                        debug_code=exc.debug_code,
+                        schema_version=self._schema_version,
+                    )
+                packet = pending_review.packet
+                result = semantic_review_required_result(
                     schema_version=self._schema_version,
-                    semantic_review_ref=_new_semantic_review_ref(),
+                    semantic_review_ref=pending_review.semantic_review_ref,
                 )
+                result["excerpt_count"] = packet["excerpt_count"]
+                result["excerpt_total_bytes"] = packet["excerpt_total_bytes"]
+                result["semantic_review_packet_sha256"] = packet[
+                    "semantic_review_packet_sha256"
+                ]
+                return result
         return _author_failure_result(
             failure_stage="semantic_extraction",
             debug_code="semantic_extraction_no_candidates",
@@ -372,10 +402,6 @@ def _likely_kcs_material(text: str) -> bool:
     return len(text.encode("utf-8")) >= 120 and bool(
         _LIKELY_KCS_MATERIAL_RE.search(text)
     )
-
-
-def _new_semantic_review_ref() -> str:
-    return f"semantic-review-{secrets.token_urlsafe(12)}"
 
 
 __all__ = [

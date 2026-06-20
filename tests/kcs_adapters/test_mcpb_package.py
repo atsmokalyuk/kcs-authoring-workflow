@@ -104,6 +104,8 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert manifest["server"]["mcp_config"]["command"] == "node"
     assert {tool["name"] for tool in manifest["tools"]} == expected_tool_names
     assert "primary tool is kcs_draft_article" in manifest["long_description"]
+    assert "kcs_prepare_semantic_review" in manifest["long_description"]
+    assert "selected excerpts only" in manifest["long_description"]
     assert "support_get_behavior_instructions compatibility helper" in (
         manifest["long_description"]
     )
@@ -154,6 +156,17 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert "operator_selection_ref" in draft_tool["description"]
     assert "operator_selected_item_ref" in draft_tool["description"]
     assert "reviewer-only Zendesk HTML" in draft_tool["description"]
+    prepare_tool = next(
+        tool
+        for tool in manifest["tools"]
+        if tool["name"] == "kcs_prepare_semantic_review"
+    )
+    assert "bounded Claude-visible semantic-review packet" in prepare_tool[
+        "description"
+    ]
+    assert "selected excerpts only" in prepare_tool["description"]
+    assert "candidate_semantic_extraction_v1" in prepare_tool["description"]
+    assert "Do not draft an article" in prepare_tool["description"]
     behavior_tool = next(
         tool
         for tool in manifest["tools"]
@@ -444,10 +457,28 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "idempotentHint": True,
                         "readOnlyHint": True,
                     },
+                    "description": (
+                        "Return a bounded Claude-visible semantic-review packet "
+                        "with selected excerpts only in "
+                        "candidate_semantic_extraction_v1 format. Do not draft "
+                        "an article."
+                    ),
+                    "inputSchema": {
+                        "properties": {"semantic_review_ref": {}},
+                        "required": ["semantic_review_ref"],
+                    },
+                    "name": "kcs_prepare_semantic_review",
+                },
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": True,
+                        "readOnlyHint": True,
+                    },
                     "description": "Compatibility helper for kcs_draft_article.",
                     "inputSchema": {"properties": {}},
                     "name": "support_get_behavior_instructions",
-                }
+                },
             ]
         }
     }

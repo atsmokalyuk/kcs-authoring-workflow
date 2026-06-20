@@ -10,10 +10,14 @@ from kcs_adapters import desktop_authoring_pipeline as _desktop_authoring_pipeli
 from kcs_adapters import desktop_draft_tool as _desktop_draft_tool
 from kcs_adapters import desktop_payload as _desktop_payload
 from kcs_adapters import desktop_ticket_ref as _desktop_ticket_ref
+from kcs_adapters import desktop_workflow_results as _desktop_workflow_results
 from kcs_adapters.desktop_stdio_transport import McpArgumentError
 from kcs_adapters.desktop_workflow import (
     ApprovedSummaryPipelineStageError,
     DesktopDraftWorkflow,
+    SemanticReviewExpiredError,
+    SemanticReviewInvalidError,
+    SemanticReviewUnavailableError,
 )
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
@@ -32,6 +36,7 @@ class DesktopAuthoringTools:
         schema_version: str,
     ) -> None:
         self._schema_version = schema_version
+        self._draft_workflow = draft_workflow
         self._draft_article_tool = _desktop_draft_tool.DesktopDraftArticleTool(
             draft_workflow=draft_workflow,
             reviewer_bundle_root=reviewer_bundle_root,
@@ -96,6 +101,7 @@ class DesktopAuthoringTools:
         return result
 
     def register_clean_ticket(self, arguments: Mapping[str, Any]) -> JsonDict:
+        self._draft_workflow.clear_pending_semantic_review()
         try:
             return _desktop_ticket_ref.register_clean_ticket_arguments(arguments)
         except ApprovedSummaryInputError as exc:
@@ -118,6 +124,25 @@ class DesktopAuthoringTools:
 
     def draft_article(self, arguments: Mapping[str, Any]) -> JsonDict:
         return self._draft_article_tool.draft_article(arguments)
+
+    def prepare_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
+        _require_args(
+            arguments,
+            frozenset({"semantic_review_ref"}),
+            required=frozenset({"semantic_review_ref"}),
+        )
+        try:
+            return self._draft_article_tool.prepare_semantic_review(arguments)
+        except SemanticReviewExpiredError:
+            debug_code = "semantic_review_expired"
+        except SemanticReviewUnavailableError:
+            debug_code = "semantic_review_unavailable"
+        except SemanticReviewInvalidError:
+            debug_code = "semantic_review_invalid"
+        return _desktop_workflow_results.semantic_review_prepare_failure_result(
+            debug_code=debug_code,
+            schema_version=self._schema_version,
+        )
 
     def support_get_behavior_instructions(
         self,

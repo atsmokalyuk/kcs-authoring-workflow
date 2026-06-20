@@ -11,6 +11,7 @@ from kcs_adapters.desktop_tool_names import (
     TOOL_DRAFT_ARTICLE,
     TOOL_GET_MCP_READINESS,
     TOOL_GET_POLICY_SUMMARY,
+    TOOL_PREPARE_SEMANTIC_REVIEW,
     TOOL_REGISTER_CLEAN_TICKET,
     TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
     TOOL_RUN_CONTRACT_SMOKE,
@@ -48,6 +49,7 @@ def tool_descriptors() -> tuple[McpToolDescriptor, ...]:
         _author_ticket_descriptor(),
         _register_clean_ticket_descriptor(),
         _draft_article_descriptor(),
+        _prepare_semantic_review_descriptor(),
         _support_get_behavior_instructions_descriptor(),
     )
 
@@ -229,6 +231,23 @@ def _draft_article_descriptor() -> McpToolDescriptor:
     descriptor.annotations["idempotentHint"] = False
     descriptor.annotations["readOnlyHint"] = False
     return descriptor
+
+
+def _prepare_semantic_review_descriptor() -> McpToolDescriptor:
+    return _descriptor(
+        name=TOOL_PREPARE_SEMANTIC_REVIEW,
+        description=(
+            "Return a bounded Claude-visible semantic-review packet for one "
+            "pending clean-ticket semantic review. Call this only with the "
+            "semantic_review_ref returned by kcs_draft_article. The packet "
+            "contains selected excerpts only, not the full ticket. Use it to "
+            "identify atomic KCS item candidates in candidate_semantic_extraction_v1 "
+            "format only. Do not draft an article, choose a KCS action, return "
+            "HTML, or submit item/item_candidates payloads through "
+            "kcs_draft_article."
+        ),
+        input_schema=_desktop_tool_schemas.prepare_semantic_review_input_schema(),
+    )
 
 
 def _support_get_behavior_instructions_descriptor() -> McpToolDescriptor:

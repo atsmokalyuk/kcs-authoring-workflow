@@ -76,8 +76,8 @@ may use a different root only by explicitly setting
 `KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT`. External cleanup forms should
 write the same layout under the Application Support root and show the exact
 `<ticket_ref>` directory name to the operator. The metadata file binds
-`clean.ticket.txt` by SHA-256 and is required before any future Claude-visible
-semantic-review fallback may return selected excerpts.
+`clean.ticket.txt` by SHA-256 and is required before the Claude-visible
+semantic-review fallback can return bounded selected excerpts.
 
 Claude Desktop must pass only the opaque ref, for example:
 
@@ -91,6 +91,12 @@ the complete visible sanitized transcript in `clean_ticket_text`; the operator
 does not need to ask for registration explicitly. The registration result
 returns `next_arguments`; Claude Desktop must call `kcs_draft_article` with
 those exact `next_arguments`.
+
+If `kcs_draft_article` returns `workflow_state=semantic_review_required`,
+Claude Desktop should call `kcs_prepare_semantic_review` with the returned
+`semantic_review_ref`. That tool returns selected excerpts only, capped for
+semantic item identification. It does not return the full ticket and must not
+be used for freehand drafting.
 
 It must not pass uploaded filenames, local paths, Claude upload paths,
 structured `item`, `item_candidates`, reference article bodies, or field

@@ -23,6 +23,7 @@ from kcs_adapters.mcp_desktop import (
     TOOL_DRAFT_ARTICLE,
     TOOL_GET_POLICY_SUMMARY,
     TOOL_NAME_STYLE_CANONICAL,
+    TOOL_PREPARE_SEMANTIC_REVIEW,
     TOOL_REGISTER_CLEAN_TICKET,
     TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
     TOOL_RUN_CONTRACT_SMOKE,
@@ -802,9 +803,10 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
     assert tool_names == {
         "kcs_register_clean_ticket",
         "kcs_draft_article",
+        "kcs_prepare_semantic_review",
         "support_get_behavior_instructions",
     }
-    assert len(tools) == 3
+    assert len(tools) == 4
     for tool in tools:
         if tool["name"] == "kcs_register_clean_ticket":
             assert "Register one approved sanitized" in tool["description"]
@@ -912,6 +914,21 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
                 assert hidden_alias not in schema["properties"]
             assert tool["annotations"]["readOnlyHint"] is False
             assert tool["annotations"]["idempotentHint"] is False
+        elif tool["name"] == "kcs_prepare_semantic_review":
+            assert "bounded Claude-visible semantic-review packet" in (
+                tool["description"]
+            )
+            assert "selected excerpts only" in tool["description"]
+            assert "candidate_semantic_extraction_v1" in tool["description"]
+            assert "Do not draft an article" in tool["description"]
+            schema = tool["inputSchema"]
+            assert set(schema["properties"]) == {"semantic_review_ref"}
+            assert schema["required"] == ["semantic_review_ref"]
+            assert "ticket text" in schema["properties"]["semantic_review_ref"][
+                "description"
+            ]
+            assert tool["annotations"]["readOnlyHint"] is True
+            assert tool["annotations"]["idempotentHint"] is True
         elif tool["name"] == "support_get_behavior_instructions":
             assert "Compatibility helper" in tool["description"]
             assert "kcs_draft_article" in tool["description"]
@@ -1654,12 +1671,350 @@ def test_draft_article_registered_ambiguous_ticket_requires_semantic_review(
     assert structured["next_arguments"] == {
         "semantic_review_ref": structured["semantic_review_ref"]
     }
+    assert structured["excerpt_count"] > 0
+    assert structured["excerpt_total_bytes"] <= 64000
+    assert isinstance(structured["semantic_review_packet_sha256"], str)
     assert structured["draft_generated"] is False
     assert structured["reviewer_bundle_written"] is False
     assert structured["manual_draft_allowed"] is False
     assert structured["ticket_ref"] == "ticket-ambiguous"
     assert "reviewer_only_html" not in structured
     assert "Do not draft manually" in response_text
+
+
+def test_prepare_semantic_review_returns_bounded_selected_excerpts(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    filler = "\n".join(
+        f"Filler diagnostic note {index} DO-NOT-RETURN-FULL-TICKET-SENTINEL"
+        for index in range(80)
+    )
+    noisy_transcript = "\n\n".join(
+        [
+            "Customer Ticket Content",
+            "Customer reports that a safe product task fails with an error.",
+            filler,
+            "The investigation mentions one possible cause, then another.",
+            (
+                "Support restarted one service and later discussed a different "
+                "issue, so semantic item identification needs review."
+            ),
+        ]
+    )
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+    _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": noisy_transcript,
+            "ticket_ref": "ticket-semantic-review",
+        },
+    )
+    draft_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-semantic-review", "debug": True},
+    )
+    assert draft_response is not None
+    draft = draft_response["result"]["structuredContent"]
+
+    prepare_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_PREPARE_SEMANTIC_REVIEW),
+        {"semantic_review_ref": draft["semantic_review_ref"]},
+    )
+
+    assert prepare_response is not None
+    packet_text = json.dumps(prepare_response, sort_keys=True)
+    packet = prepare_response["result"]["structuredContent"]
+    assert packet["result_kind"] == "semantic_review_packet"
+    assert packet["schema_version"] == "kcs_semantic_review_packet_v1"
+    assert packet["semantic_review_ref"] == draft["semantic_review_ref"]
+    assert packet["allowed_output_schema"] == "candidate_semantic_extraction_v1"
+    assert packet["submit_tool"] == "kcs_submit_semantic_review"
+    assert packet["submit_arguments"] == {
+        "semantic_review_ref": draft["semantic_review_ref"]
+    }
+    assert 0 < packet["excerpt_count"] <= 10
+    assert packet["excerpt_total_bytes"] <= 64000
+    assert packet["selected_excerpts"]
+    assert packet["allowed_source_refs"] == [
+        excerpt["source_ref"] for excerpt in packet["selected_excerpts"]
+    ]
+    assert "DO-NOT-RETURN-FULL-TICKET-SENTINEL" not in packet_text
+    assert "Do not draft an article" in packet_text
+
+
+def test_prepare_semantic_review_is_one_shot(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+    _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Customer reports that a product task fails with an error.\n"
+                "The investigation mentions one possible cause, then another.\n"
+                "Support restarted one service and later discussed another issue."
+            ),
+            "ticket_ref": "ticket-semantic-review",
+        },
+    )
+    draft_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-semantic-review", "debug": True},
+    )
+    assert draft_response is not None
+    semantic_review_ref = draft_response["result"]["structuredContent"][
+        "semantic_review_ref"
+    ]
+
+    first_prepare = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_PREPARE_SEMANTIC_REVIEW),
+        {"semantic_review_ref": semantic_review_ref},
+    )
+    second_prepare = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_PREPARE_SEMANTIC_REVIEW),
+        {"semantic_review_ref": semantic_review_ref},
+    )
+
+    assert first_prepare is not None
+    assert first_prepare["result"]["structuredContent"]["result_kind"] == (
+        "semantic_review_packet"
+    )
+    assert second_prepare is not None
+    structured = second_prepare["result"]["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_prepare_blocked"
+    assert structured["debug_code"] == "semantic_review_unavailable"
+    assert structured["manual_draft_allowed"] is False
+
+
+def test_new_draft_call_clears_pending_semantic_review(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+    _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Customer reports that a product task fails with an error.\n"
+                "The investigation mentions one possible cause, then another.\n"
+                "Support restarted one service and later discussed another issue."
+            ),
+            "ticket_ref": "ticket-semantic-review-a",
+        },
+    )
+    _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Customer reports that a different product task fails.\n"
+                "The investigation mentions one possible cause, then another.\n"
+                "Support restarted one service and later discussed another issue."
+            ),
+            "ticket_ref": "ticket-semantic-review-b",
+        },
+    )
+    first_draft = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-semantic-review-a", "debug": True},
+    )
+    assert first_draft is not None
+    old_ref = first_draft["result"]["structuredContent"]["semantic_review_ref"]
+
+    second_draft = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-semantic-review-b", "debug": True},
+    )
+    assert second_draft is not None
+
+    prepare_old = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_PREPARE_SEMANTIC_REVIEW),
+        {"semantic_review_ref": old_ref},
+    )
+
+    assert prepare_old is not None
+    structured = prepare_old["result"]["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_prepare_blocked"
+    assert structured["debug_code"] == "semantic_review_invalid"
+    assert structured["manual_draft_allowed"] is False
+
+
+def test_register_clean_ticket_clears_pending_semantic_review(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+    _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Customer reports that a product task fails with an error.\n"
+                "The investigation mentions one possible cause, then another.\n"
+                "Support restarted one service and later discussed another issue."
+            ),
+            "ticket_ref": "ticket-semantic-review-a",
+        },
+    )
+    first_draft = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-semantic-review-a", "debug": True},
+    )
+    assert first_draft is not None
+    old_ref = first_draft["result"]["structuredContent"]["semantic_review_ref"]
+
+    _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Customer reports that a different product task fails.\n"
+                "The investigation mentions one possible cause, then another.\n"
+                "Support restarted one service and later discussed another issue."
+            ),
+            "ticket_ref": "ticket-semantic-review-b",
+        },
+    )
+    prepare_old = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_PREPARE_SEMANTIC_REVIEW),
+        {"semantic_review_ref": old_ref},
+    )
+
+    assert prepare_old is not None
+    structured = prepare_old["result"]["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_prepare_blocked"
+    assert structured["debug_code"] == "semantic_review_unavailable"
+    assert structured["manual_draft_allowed"] is False
+
+
+def test_semantic_review_excerpts_use_utf8_byte_caps() -> None:
+    from kcs_adapters.desktop_semantic_review import (
+        SEMANTIC_REVIEW_MAX_EXCERPT_BYTES,
+        SEMANTIC_REVIEW_MAX_TOTAL_BYTES,
+        selected_semantic_review_excerpts,
+    )
+
+    excerpts = selected_semantic_review_excerpts(
+        "Customer reports product issue. "
+        + ("Ж" * 20_000)
+        + "\n\nSupport restarted a service and the issue was resolved."
+    )
+
+    assert excerpts
+    assert all(
+        len(str(excerpt["text"]).encode("utf-8"))
+        <= SEMANTIC_REVIEW_MAX_EXCERPT_BYTES
+        for excerpt in excerpts
+    )
+    assert (
+        sum(len(str(excerpt["text"]).encode("utf-8")) for excerpt in excerpts)
+        <= SEMANTIC_REVIEW_MAX_TOTAL_BYTES
+    )
+
+
+def test_prepare_semantic_review_rejects_missing_state() -> None:
+    transport = _initialized_transport()
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_PREPARE_SEMANTIC_REVIEW),
+        {"semantic_review_ref": "semantic-review-missing"},
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is False
+    assert structured["workflow_state"] == "semantic_review_prepare_blocked"
+    assert structured["debug_code"] == "semantic_review_unavailable"
+    assert structured["manual_draft_allowed"] is False
+    assert structured["reviewer_bundle_written"] is False
+
+
+def test_prepare_semantic_review_rejects_expired_state(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles",
+            selection_ttl_seconds=-1,
+        )
+    )
+    _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "The customer reports that a product task fails.\n"
+                "The investigation mentions one possible cause, then another.\n"
+                "Support restarted one service and later discussed another issue."
+            ),
+            "ticket_ref": "ticket-semantic-review",
+        },
+    )
+    draft_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-semantic-review", "debug": True},
+    )
+    assert draft_response is not None
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_PREPARE_SEMANTIC_REVIEW),
+        {
+            "semantic_review_ref": draft_response["result"]["structuredContent"][
+                "semantic_review_ref"
+            ]
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_prepare_blocked"
+    assert structured["debug_code"] == "semantic_review_expired"
 
 
 def test_register_clean_ticket_then_draft_article_from_ref(

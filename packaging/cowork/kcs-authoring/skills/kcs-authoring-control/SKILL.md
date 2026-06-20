@@ -19,6 +19,7 @@ these MCP tools:
 
 - `kcs_register_clean_ticket`
 - `kcs_draft_article`
+- `kcs_prepare_semantic_review`
 - `support_get_behavior_instructions`
 
 `support_get_behavior_instructions` is a compatibility helper for legacy
@@ -95,6 +96,15 @@ write a manual draft.
 If the tool returns `pipeline_ok: false`, report the returned `failure_stage`
 and `debug_code` instead of guessing KCS-9b or KCS-9c packet schemas.
 
+If `kcs_draft_article` returns
+`workflow_state=semantic_review_required`, call
+`kcs_prepare_semantic_review` with the returned `semantic_review_ref`. That
+tool returns a bounded Claude-visible semantic-review packet with
+`selected_excerpts` only. Use it only to identify atomic KCS item candidates
+for `candidate_semantic_extraction_v1`; do not draft article prose, choose a
+KCS action, produce HTML, or pass `item` / `item_candidates` payloads through
+`kcs_draft_article`.
+
 Do not try to construct KCS-9b or KCS-9c packet schemas manually from chat.
 
 If the tools are not visible in the active session, tell the user that the KCS
@@ -122,6 +132,8 @@ Use:
 
 - `kcs_draft_article` as the primary operator-facing wrapper for normal
   "draft article" prompts.
+- `kcs_prepare_semantic_review` only as the bounded follow-up when
+  `kcs_draft_article` returns `workflow_state=semantic_review_required`.
 
 Do not call low-level KCS-9b/KCS-9c packet validators, policy summary, smoke,
 pipeline, or authoring sub-tools from Claude Desktop. They are internal

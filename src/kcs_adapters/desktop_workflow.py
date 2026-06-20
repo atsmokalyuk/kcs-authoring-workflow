@@ -28,6 +28,10 @@ from kcs_adapters.desktop_reviewer_bundle import write_desktop_reviewer_bundle
 from kcs_adapters.desktop_semantic_candidates import (
     desktop_item_candidates_from_semantic_extraction,
 )
+from kcs_adapters.desktop_semantic_review import (
+    PendingSemanticReview,
+    new_pending_semantic_review,
+)
 from kcs_core.claude_handoff import (
     KcsClaudeHandoffRequestPacket,
     build_claude_handoff_request,
@@ -162,6 +166,18 @@ class OperatorSelectionInvalidError(RuntimeError):
     """Operator selection refs do not match pending state."""
 
 
+class SemanticReviewUnavailableError(RuntimeError):
+    """No pending semantic-review state exists."""
+
+
+class SemanticReviewExpiredError(RuntimeError):
+    """Pending semantic-review state expired."""
+
+
+class SemanticReviewInvalidError(RuntimeError):
+    """Semantic-review refs do not match pending state."""
+
+
 class ApprovedSummaryPipelineStageError(ContractValidationError):
     """Value-safe approved summary pipeline stage error."""
 
@@ -235,6 +251,7 @@ class DesktopDraftWorkflow:
         self._provider = provider
         self._selection_ttl_seconds = selection_ttl_seconds
         self._pending_selection: PendingDraftSelection | None = None
+        self._pending_semantic_review: PendingSemanticReview | None = None
 
     @property
     def pending_selection(self) -> PendingDraftSelection | None:
@@ -246,6 +263,17 @@ class DesktopDraftWorkflow:
         """Clear pending selection state after accepted continuation."""
 
         self._pending_selection = None
+
+    def clear_pending_semantic_review(self) -> None:
+        """Clear pending semantic-review state after use or superseding flow."""
+
+        self._pending_semantic_review = None
+
+    @property
+    def pending_semantic_review(self) -> PendingSemanticReview | None:
+        """Return current pending semantic-review state, if any."""
+
+        return self._pending_semantic_review
 
     def item_candidates_from_summary(
         self, approved_summary_text: str
@@ -277,6 +305,37 @@ class DesktopDraftWorkflow:
             ttl_seconds=self._selection_ttl_seconds,
         )
         return self._pending_selection
+
+    def start_pending_semantic_review(
+        self,
+        *,
+        approved_summary_text: str,
+        ticket_ref: str,
+    ) -> PendingSemanticReview:
+        """Store a bounded semantic-review packet for a deterministic next call."""
+
+        self._pending_semantic_review = new_pending_semantic_review(
+            approved_summary_text=approved_summary_text,
+            ticket_ref=ticket_ref,
+            ttl_seconds=self._selection_ttl_seconds,
+        )
+        return self._pending_semantic_review
+
+    def prepared_semantic_review_packet(self, semantic_review_ref: object) -> JsonDict:
+        """Return a pending semantic-review packet or raise a controlled error."""
+
+        pending = self._pending_semantic_review
+        if pending is None:
+            raise SemanticReviewUnavailableError
+        if not isinstance(semantic_review_ref, str):
+            raise SemanticReviewInvalidError
+        if semantic_review_ref != pending.semantic_review_ref:
+            raise SemanticReviewInvalidError
+        if pending.expires_at <= time.monotonic():
+            self._pending_semantic_review = None
+            raise SemanticReviewExpiredError
+        self._pending_semantic_review = None
+        return dict(pending.packet)
 
     def selected_candidate(
         self,

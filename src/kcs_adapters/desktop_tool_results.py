@@ -11,7 +11,7 @@ from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict, require_json_object
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
 
-MAX_TOOL_RESULT_BYTES = 32 * 1024
+MAX_TOOL_RESULT_BYTES = 128 * 1024
 
 _RESULT_FORBIDDEN_FRAGMENTS = (
     "article_body",
@@ -210,6 +210,18 @@ def _pre_draft_tool_result_text(structured: Mapping[str, Any]) -> str | None:
             "Compact status:\n"
             "```json\n"
             f"{_compact_json(status)}\n"
+            "```"
+        )
+    if structured.get("result_kind") == "semantic_review_packet":
+        return (
+            "Semantic review packet prepared by the KCS Authoring tool. "
+            "Identify atomic KCS item candidates only. Do not draft an article, "
+            "choose a KCS action, produce HTML, or use item/item_candidates "
+            "payloads. Use only the selected_excerpts and cite only "
+            "allowed_source_refs in candidate_semantic_extraction_v1 output.\n\n"
+            "Packet:\n"
+            "```json\n"
+            f"{_compact_json(structured)}\n"
             "```"
         )
     if structured.get("debug_code") == "clean_ticket_text_incomplete":
