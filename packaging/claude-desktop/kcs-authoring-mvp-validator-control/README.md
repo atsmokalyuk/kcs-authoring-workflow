@@ -66,6 +66,7 @@ layout inside the configured clean-ticket store is:
 
 ```text
 local-data/approved-summaries/<ticket_ref>/clean.ticket.txt
+local-data/approved-summaries/<ticket_ref>/clean.ticket.meta.json
 ```
 
 Installed MCPB runs read those machine-readable clean ticket files from
@@ -74,7 +75,9 @@ that override `repository_root` to point at a source checkout. Source/dev runs
 may use a different root only by explicitly setting
 `KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT`. External cleanup forms should
 write the same layout under the Application Support root and show the exact
-`<ticket_ref>` directory name to the operator.
+`<ticket_ref>` directory name to the operator. The metadata file binds
+`clean.ticket.txt` by SHA-256 and is required before any future Claude-visible
+semantic-review fallback may return selected excerpts.
 
 Claude Desktop must pass only the opaque ref, for example:
 

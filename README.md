@@ -517,8 +517,8 @@ tools are not loaded into the active chat.
 - Historical parent Jira item: PAUX-7083
 - Last completed implementation slice: KCS-12 Claude Desktop MCP Adapter
 - Current implementation slice: KCS-13 Controlled Semantic Review Fallback
-- Current implementation subtask: KCS-13a Semantic review policy, metadata, and
-  result contract
+- Current implementation subtask: KCS-13b Semantic-review state and bounded
+  prepare packet
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

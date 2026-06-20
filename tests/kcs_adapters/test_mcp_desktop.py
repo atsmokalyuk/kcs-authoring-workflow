@@ -1594,12 +1594,70 @@ def test_draft_article_blocks_ambiguous_long_clean_ticket_ref(
     structured = response["result"]["structuredContent"]
     assert response["result"]["isError"] is False
     assert structured["pipeline_ok"] is False
-    assert structured["debug_code"] == "semantic_extraction_no_candidates"
-    assert structured["next_required_action"] == (
-        "register_complete_clean_ticket_with_final_evidence"
-    )
+    assert structured["debug_code"] == "clean_ticket_metadata_missing"
+    assert structured["workflow_state"] == "semantic_review_metadata_blocked"
+    assert structured["next_required_action"] == "repair_clean_ticket_metadata"
     assert structured["ticket_ref"] == "ticket-ambiguous"
     assert structured["manual_draft_allowed"] is False
+    assert structured["draft_generated"] is False
+    assert structured["reviewer_bundle_written"] is False
+    assert "reviewer_only_html" not in structured
+    assert "Do not draft manually" in response_text
+
+
+def test_draft_article_registered_ambiguous_ticket_requires_semantic_review(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    noisy_transcript = "\n".join(
+        [
+            "Customer Ticket Content",
+            "The customer reports that a product task fails intermittently.",
+            "The investigation mentions one possible cause, then another.",
+            "A final resolution is likely present but scattered across notes.",
+            "Support restarted one service and later discussed a different issue.",
+        ]
+        * 45
+    )
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+    register_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": noisy_transcript,
+            "ticket_ref": "ticket-ambiguous",
+        },
+    )
+    assert register_response is not None
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-ambiguous", "debug": True},
+    )
+
+    assert response is not None
+    response_text = json.dumps(response, sort_keys=True)
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["pipeline_ok"] is False
+    assert structured["recommended_action"] == "blocked"
+    assert structured["workflow_state"] == "semantic_review_required"
+    assert structured["debug_code"] == "semantic_identification_low_confidence"
+    assert structured["failure_stage"] == "semantic_extraction"
+    assert structured["next_tool"] == "kcs_prepare_semantic_review"
+    assert structured["next_arguments"] == {
+        "semantic_review_ref": structured["semantic_review_ref"]
+    }
+    assert structured["draft_generated"] is False
+    assert structured["reviewer_bundle_written"] is False
+    assert structured["manual_draft_allowed"] is False
+    assert structured["ticket_ref"] == "ticket-ambiguous"
     assert "reviewer_only_html" not in structured
     assert "Do not draft manually" in response_text
 

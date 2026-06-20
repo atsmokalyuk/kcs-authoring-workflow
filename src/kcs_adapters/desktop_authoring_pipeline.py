@@ -193,6 +193,25 @@ def ticket_author_failure_result(
     return result
 
 
+def clean_ticket_semantic_review_metadata(
+    *,
+    ticket_ref: str,
+    approved_summary_text: str,
+) -> JsonDict:
+    """Validate clean-ticket metadata for semantic-review fallback."""
+
+    try:
+        return _desktop_ticket_ref.clean_ticket_semantic_review_metadata(
+            ticket_ref=ticket_ref,
+            approved_summary_text=approved_summary_text,
+        )
+    except ApprovedSummaryInputError as exc:
+        raise ApprovedSummaryPipelineStageError(
+            failure_stage="semantic_extraction",
+            debug_code=exc.debug_code,
+        ) from None
+
+
 def pipeline_failure_result(
     *,
     failure_stage: str,

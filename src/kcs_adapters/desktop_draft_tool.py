@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import secrets
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -30,11 +32,22 @@ from kcs_adapters.desktop_workflow_results import (
     operator_selection_expired_result,
     operator_selection_unavailable_result,
     semantic_provider_unavailable_result,
+    semantic_review_metadata_blocked_result,
+    semantic_review_required_result,
 )
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
 
 AuthoringCallable = Callable[[Mapping[str, Any]], JsonDict]
+
+_LIKELY_KCS_MATERIAL_RE = re.compile(
+    r"\b(?:"
+    r"cause|customer|error|fail(?:ed|s|ure)?|fix(?:ed)?|issue|problem|"
+    r"resolution|resolved|restart(?:ed)?|root\s+cause|symptoms?|ticket|"
+    r"workaround"
+    r")\b",
+    re.I,
+)
 
 
 class DesktopDraftArticleTool:
@@ -135,6 +148,8 @@ class DesktopDraftArticleTool:
     def _draft_article_from_primary_summary(
         self,
         arguments: Mapping[str, Any],
+        *,
+        ticket_ref_for_semantic_review: str | None = None,
     ) -> JsonDict:
         approved_summary_text = _desktop_payload.approved_summary_text_argument(
             arguments
@@ -150,10 +165,9 @@ class DesktopDraftArticleTool:
                 schema_version=self._schema_version,
             )
         except NoSemanticCandidatesError:
-            return _author_failure_result(
-                failure_stage="semantic_extraction",
-                debug_code="semantic_extraction_no_candidates",
-                schema_version=self._schema_version,
+            return self._semantic_review_or_no_candidates_result(
+                approved_summary_text=approved_summary_text,
+                ticket_ref=ticket_ref_for_semantic_review,
             )
         except (ContractValidationError, McpArgumentError, ValueError):
             return _author_failure_result(
@@ -162,10 +176,9 @@ class DesktopDraftArticleTool:
                 schema_version=self._schema_version,
             )
         if not candidates:
-            return _author_failure_result(
-                failure_stage="semantic_extraction",
-                debug_code="semantic_extraction_no_candidates",
-                schema_version=self._schema_version,
+            return self._semantic_review_or_no_candidates_result(
+                approved_summary_text=approved_summary_text,
+                ticket_ref=ticket_ref_for_semantic_review,
             )
         if len(candidates) > 1:
             result = _desktop_draft_arguments.draft_article_split_required_result(
@@ -228,10 +241,41 @@ class DesktopDraftArticleTool:
         }
         if arguments.get("debug") is True:
             summary_arguments["debug"] = True
-        result = self._draft_article_from_primary_summary(summary_arguments)
+        result = self._draft_article_from_primary_summary(
+            summary_arguments,
+            ticket_ref_for_semantic_review=ticket_ref,
+        )
         result["approved_summary_source"] = "local_clean_ticket"
         result["ticket_ref"] = ticket_ref
         return result
+
+    def _semantic_review_or_no_candidates_result(
+        self,
+        *,
+        approved_summary_text: str,
+        ticket_ref: str | None,
+    ) -> JsonDict:
+        if ticket_ref and _likely_kcs_material(approved_summary_text):
+            try:
+                _desktop_authoring_pipeline.clean_ticket_semantic_review_metadata(
+                    ticket_ref=ticket_ref,
+                    approved_summary_text=approved_summary_text,
+                )
+            except ApprovedSummaryPipelineStageError as exc:
+                return semantic_review_metadata_blocked_result(
+                    debug_code=exc.debug_code,
+                    schema_version=self._schema_version,
+                )
+            else:
+                return semantic_review_required_result(
+                    schema_version=self._schema_version,
+                    semantic_review_ref=_new_semantic_review_ref(),
+                )
+        return _author_failure_result(
+            failure_stage="semantic_extraction",
+            debug_code="semantic_extraction_no_candidates",
+            schema_version=self._schema_version,
+        )
 
     def _draft_article_from_primary_selection(
         self,
@@ -322,6 +366,16 @@ def _ticket_author_arguments(arguments: Mapping[str, Any]) -> JsonDict:
 
 def _ticket_ref_from_arguments(arguments: Mapping[str, Any]) -> str:
     return _desktop_authoring_pipeline.ticket_ref_from_arguments(arguments)
+
+
+def _likely_kcs_material(text: str) -> bool:
+    return len(text.encode("utf-8")) >= 120 and bool(
+        _LIKELY_KCS_MATERIAL_RE.search(text)
+    )
+
+
+def _new_semantic_review_ref() -> str:
+    return f"semantic-review-{secrets.token_urlsafe(12)}"
 
 
 __all__ = [

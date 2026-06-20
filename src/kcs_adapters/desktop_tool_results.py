@@ -344,6 +344,68 @@ def _debug_tool_result_text(structured: Mapping[str, Any]) -> str | None:
             f"{_compact_json(status)}\n"
             "```"
         )
+    if structured.get("workflow_state") == "semantic_review_required":
+        status = {
+            "approved_summary_source": structured.get("approved_summary_source"),
+            "auto_publish_allowed": structured.get("auto_publish_allowed"),
+            "debug_code": structured.get("debug_code"),
+            "draft_generated": structured.get("draft_generated"),
+            "failure_stage": structured.get("failure_stage"),
+            "manual_draft_allowed": structured.get("manual_draft_allowed"),
+            "next_arguments": structured.get("next_arguments"),
+            "next_required_action": structured.get("next_required_action"),
+            "next_tool": structured.get("next_tool"),
+            "public_output_approved": structured.get("public_output_approved"),
+            "recommended_action": structured.get("recommended_action"),
+            "result_kind": structured.get("result_kind"),
+            "reviewer_bundle_written": structured.get("reviewer_bundle_written"),
+            "semantic_review_ref": structured.get("semantic_review_ref"),
+            "ticket_ref": structured.get("ticket_ref"),
+            "workflow_state": structured.get("workflow_state"),
+            "writes_files": structured.get("writes_files"),
+        }
+        return (
+            "KCS article drafting is paused by the KCS Authoring tool because "
+            "Python found likely KCS material, but deterministic item "
+            "identification is low-confidence for this clean ticket. No "
+            "reviewer-only draft was generated.\n\n"
+            "Do not draft manually. Do not create article text from the clean "
+            "ticket in chat. Continue only through the returned semantic-review "
+            "workflow state when the next KCS-13 tool is available.\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
+    if structured.get("workflow_state") == "semantic_review_metadata_blocked":
+        status = {
+            "approved_summary_source": structured.get("approved_summary_source"),
+            "auto_publish_allowed": structured.get("auto_publish_allowed"),
+            "debug_code": structured.get("debug_code"),
+            "draft_generated": structured.get("draft_generated"),
+            "failure_stage": structured.get("failure_stage"),
+            "manual_draft_allowed": structured.get("manual_draft_allowed"),
+            "next_required_action": structured.get("next_required_action"),
+            "public_output_approved": structured.get("public_output_approved"),
+            "recommended_action": structured.get("recommended_action"),
+            "result_kind": structured.get("result_kind"),
+            "reviewer_bundle_written": structured.get("reviewer_bundle_written"),
+            "ticket_ref": structured.get("ticket_ref"),
+            "workflow_state": structured.get("workflow_state"),
+            "writes_files": structured.get("writes_files"),
+        }
+        return (
+            "KCS article drafting is blocked by the KCS Authoring tool because "
+            "the clean-ticket metadata required for semantic review is missing, "
+            "disabled, or no longer matches the clean ticket file. No "
+            "reviewer-only draft was generated.\n\n"
+            "Do not draft manually. Repair or re-register the clean ticket, then "
+            "run the KCS draft workflow again.\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
     if structured.get("debug_code") == "semantic_extraction_no_candidates":
         status = {
             "approved_summary_source": structured.get("approved_summary_source"),

@@ -339,6 +339,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "network_calls": {"type": "boolean"},
     "next_arguments": {"type": "object"},
     "next_required_action": {"type": "string"},
+    "next_tool": {"type": "string"},
     "next_tool_name": {"type": "string"},
     "ok": {"type": "boolean"},
     "open_questions": {"type": "array"},
@@ -383,11 +384,13 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "server_name": {"type": "string"},
     "server_version": {"type": "string"},
     "should_be_kcs_article": {"type": "boolean"},
+    "semantic_review_ref": {"type": "string"},
     "smoke_ok": {"type": "boolean"},
     "tool_count": {"type": "integer"},
     "tools": {"type": "array"},
     "ticket_ref": {"type": "string"},
     "validation_ok": {"type": "boolean"},
+    "workflow_state": {"type": "string"},
     "writes_files": {"type": "boolean"},
 }
 _SUCCESS_OUTPUT_KEYS = frozenset(_SUCCESS_OUTPUT_PROPERTIES)

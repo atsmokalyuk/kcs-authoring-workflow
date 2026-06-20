@@ -6,11 +6,10 @@ import json
 import os
 import re
 from collections.abc import Mapping
-from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
-from kcs_adapters import desktop_payload
+from kcs_adapters import desktop_clean_ticket_metadata, desktop_payload
 from kcs_adapters.desktop_payload import ApprovedSummaryInputError
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
@@ -117,7 +116,20 @@ def register_clean_ticket_arguments(arguments: Mapping[str, Any]) -> JsonDict:
     ticket_ref = _register_ticket_ref(arguments.get("ticket_ref"), text)
     path = approved_ticket_clean_text_path(ticket_ref)
     _write_clean_ticket_text(path, text)
-    digest = sha256(text.encode("utf-8")).hexdigest()
+    source_kind = (
+        desktop_clean_ticket_metadata.CLEAN_TICKET_SOURCE_CLAUDE_VISIBLE_REGISTRATION
+    )
+    metadata_payload = desktop_clean_ticket_metadata.clean_ticket_metadata_payload(
+        ticket_ref=ticket_ref,
+        text=text,
+        semantic_review_allowed=True,
+        source_kind=source_kind,
+    )
+    _write_clean_ticket_metadata(
+        approved_ticket_clean_metadata_path(ticket_ref),
+        metadata_payload,
+    )
+    digest = desktop_clean_ticket_metadata.clean_ticket_sha256(text)
     return {
         "auto_publish_allowed": False,
         "byte_length": len(text.encode("utf-8")),
@@ -180,7 +192,8 @@ def _clean_ticket_text_looks_incomplete(text: str) -> bool:
 
 def _register_ticket_ref(value: object, text: str) -> str:
     if value in (None, ""):
-        return f"ticket-{sha256(text.encode('utf-8')).hexdigest()[:12]}"
+        digest = desktop_clean_ticket_metadata.clean_ticket_sha256(text)
+        return f"ticket-{digest[:12]}"
     return checked_approved_ticket_ref(value)
 
 
@@ -196,6 +209,13 @@ def _write_clean_ticket_text(path: Path, text: str) -> None:
         raise
     except OSError:
         raise ApprovedSummaryInputError("clean_ticket_write_failed") from None
+
+
+def _write_clean_ticket_metadata(path: Path, payload: Mapping[str, Any]) -> None:
+    try:
+        desktop_clean_ticket_metadata.write_clean_ticket_metadata(path, payload)
+    except desktop_clean_ticket_metadata.CleanTicketMetadataError as exc:
+        raise ApprovedSummaryInputError(exc.debug_code) from None
 
 
 def approved_ticket_file_payload(ticket_ref: str) -> JsonDict:
@@ -226,6 +246,12 @@ def approved_ticket_clean_text_path(ticket_ref: str) -> Path:
     )
 
 
+def approved_ticket_clean_metadata_path(ticket_ref: str) -> Path:
+    return approved_ticket_clean_text_path(ticket_ref).with_name(
+        desktop_clean_ticket_metadata.CLEAN_TICKET_METADATA_FILE_NAME
+    )
+
+
 def approved_ticket_repo_root() -> Path:
     value = os.environ.get(APPROVED_TICKET_STORE_ROOT_ENV) or os.environ.get(
         "KCS_AUTHORING_MVP_REPO_ROOT"
@@ -243,6 +269,25 @@ def _clean_ticket_storage_fields() -> JsonDict:
     if storage_ref:
         fields["clean_ticket_storage_ref"] = storage_ref
     return fields
+
+
+def clean_ticket_semantic_review_metadata(
+    *,
+    ticket_ref: str,
+    approved_summary_text: str,
+) -> JsonDict:
+    """Validate clean-ticket metadata before semantic-review fallback."""
+
+    try:
+        return (
+            desktop_clean_ticket_metadata.validate_clean_ticket_metadata_for_semantic_review(
+                path=approved_ticket_clean_metadata_path(ticket_ref),
+                ticket_ref=ticket_ref,
+                text=approved_summary_text,
+            )
+        )
+    except desktop_clean_ticket_metadata.CleanTicketMetadataError as exc:
+        raise ApprovedSummaryInputError(exc.debug_code) from None
 
 
 def approved_ticket_merged_arguments(

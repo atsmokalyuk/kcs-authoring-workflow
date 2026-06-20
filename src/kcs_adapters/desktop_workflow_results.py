@@ -37,6 +37,72 @@ def semantic_provider_unavailable_result(*, schema_version: str) -> JsonDict:
     return result
 
 
+def semantic_review_required_result(
+    *,
+    schema_version: str,
+    semantic_review_ref: str,
+) -> JsonDict:
+    """Return controlled result for the KCS-13 semantic-review breakpoint."""
+
+    result = draft_author_failure_result(
+        failure_stage="semantic_extraction",
+        debug_code="semantic_identification_low_confidence",
+        schema_version=schema_version,
+    )
+    result.update(
+        {
+            "draft_generated": False,
+            "manual_draft_allowed": False,
+            "next_arguments": {"semantic_review_ref": semantic_review_ref},
+            "next_required_action": "prepare_semantic_review",
+            "next_tool": "kcs_prepare_semantic_review",
+            "reviewer_bundle_written": False,
+            "semantic_review_ref": semantic_review_ref,
+            "should_be_kcs_article": True,
+            "workflow_state": "semantic_review_required",
+        }
+    )
+    result["review_summary"] = {
+        "draft_available": False,
+        "next_required_action": "prepare_semantic_review",
+        "reason": "semantic_identification_low_confidence",
+        "semantic_review_ref": semantic_review_ref,
+        "workflow_state": "semantic_review_required",
+    }
+    return result
+
+
+def semantic_review_metadata_blocked_result(
+    *,
+    debug_code: str,
+    schema_version: str,
+) -> JsonDict:
+    """Return controlled result when semantic-review metadata is unusable."""
+
+    result = draft_author_failure_result(
+        failure_stage="semantic_extraction",
+        debug_code=debug_code,
+        schema_version=schema_version,
+    )
+    result.update(
+        {
+            "draft_generated": False,
+            "manual_draft_allowed": False,
+            "next_required_action": "repair_clean_ticket_metadata",
+            "reviewer_bundle_written": False,
+            "should_be_kcs_article": True,
+            "workflow_state": "semantic_review_metadata_blocked",
+        }
+    )
+    result["review_summary"] = {
+        "draft_available": False,
+        "next_required_action": "repair_clean_ticket_metadata",
+        "reason": debug_code,
+        "workflow_state": "semantic_review_metadata_blocked",
+    }
+    return result
+
+
 def operator_selection_unavailable_result(*, schema_version: str) -> JsonDict:
     """Return controlled result when a second call has no pending state."""
 
@@ -260,6 +326,8 @@ __all__ = [
     "operator_selection_expired_result",
     "operator_selection_unavailable_result",
     "selection_error_result",
+    "semantic_review_metadata_blocked_result",
+    "semantic_review_required_result",
     "semantic_provider_unavailable_result",
     "split_required_result",
 ]

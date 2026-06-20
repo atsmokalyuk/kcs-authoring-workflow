@@ -4,12 +4,15 @@ import json
 
 import pytest
 
+from kcs_adapters import desktop_clean_ticket_metadata
 from kcs_adapters.desktop_payload import ApprovedSummaryInputError
 from kcs_adapters.desktop_ticket_ref import (
     APPROVED_TICKET_CLEAN_TEXT_FILE_NAME,
     APPROVED_TICKET_FILE_SCHEMA_VERSION,
     approved_ticket_author_arguments,
+    approved_ticket_clean_metadata_path,
     approved_ticket_ref_from_arguments,
+    clean_ticket_semantic_review_metadata,
     register_clean_ticket_arguments,
 )
 from kcs_core.models import ArticleType
@@ -160,6 +163,22 @@ def test_register_clean_ticket_writes_clean_ticket_file(
     assert result["next_arguments"] == {"ticket_ref": "monitoring-001"}
     assert result["clean_ticket_store_ref"] == "approved-summary-clean-ticket"
     assert "clean_ticket_text" not in result
+    metadata_path = approved_ticket_clean_metadata_path("monitoring-001")
+    metadata = desktop_clean_ticket_metadata.read_clean_ticket_metadata(
+        metadata_path
+    )
+    source_kind = (
+        desktop_clean_ticket_metadata.CLEAN_TICKET_SOURCE_CLAUDE_VISIBLE_REGISTRATION
+    )
+    assert metadata == {
+        "clean_ticket_sha256": result["clean_ticket_sha256"],
+        "schema_version": (
+            desktop_clean_ticket_metadata.CLEAN_TICKET_METADATA_SCHEMA_VERSION
+        ),
+        "semantic_review_allowed": True,
+        "source_kind": source_kind,
+        "ticket_ref": "monitoring-001",
+    }
 
 
 def test_register_clean_ticket_uses_configured_store_root(
@@ -248,6 +267,84 @@ def test_register_clean_ticket_accepts_operator_ticket_ref(
     assert arguments["approved_summary_text"] == (
         "Customer Ticket Content\nSafe sanitized text."
     )
+
+
+def test_clean_ticket_semantic_review_metadata_validates_hash_binding(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    text = "Customer Ticket Content\nIssue: safe noisy ticket.\n"
+    result = register_clean_ticket_arguments(
+        {
+            "clean_ticket_text": text,
+            "ticket_ref": "ticket-semantic-review",
+        }
+    )
+
+    metadata = clean_ticket_semantic_review_metadata(
+        ticket_ref="ticket-semantic-review",
+        approved_summary_text=text.strip(),
+    )
+
+    assert metadata["ticket_ref"] == "ticket-semantic-review"
+    assert metadata["clean_ticket_sha256"] == result["clean_ticket_sha256"]
+
+
+def test_clean_ticket_semantic_review_metadata_rejects_hash_mismatch(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    register_clean_ticket_arguments(
+        {
+            "clean_ticket_text": "Customer Ticket Content\nIssue: safe noisy ticket.",
+            "ticket_ref": "ticket-semantic-review",
+        }
+    )
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        clean_ticket_semantic_review_metadata(
+            ticket_ref="ticket-semantic-review",
+            approved_summary_text=(
+                "Customer Ticket Content\nIssue: safe noisy ticket changed."
+            ),
+        )
+
+    assert exc_info.value.debug_code == "clean_ticket_hash_mismatch"
+
+
+def test_register_clean_ticket_rejects_metadata_broken_symlink(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    metadata_path = (
+        tmp_path
+        / "local-data"
+        / "approved-summaries"
+        / "ticket-semantic-review"
+        / desktop_clean_ticket_metadata.CLEAN_TICKET_METADATA_FILE_NAME
+    )
+    metadata_path.parent.mkdir(parents=True)
+    outside_target = tmp_path / "outside" / "metadata.json"
+    try:
+        metadata_path.symlink_to(outside_target)
+    except OSError as exc:
+        pytest.skip(f"symlinks unavailable: {exc}")
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        register_clean_ticket_arguments(
+            {
+                "clean_ticket_text": (
+                    "Customer Ticket Content\nIssue: safe noisy ticket."
+                ),
+                "ticket_ref": "ticket-semantic-review",
+            }
+        )
+
+    assert exc_info.value.debug_code == "clean_ticket_metadata_write_invalid"
+    assert not outside_target.exists()
 
 
 def test_register_clean_ticket_accepts_large_complete_transcript(
