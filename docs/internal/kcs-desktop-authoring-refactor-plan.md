@@ -537,11 +537,14 @@ Current branch status:
     P0/P1 blockers;
   - deferred hardening is recorded in
     `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12d-2026-06-19.md`.
-- `KCS-13` controlled semantic review fallback is planned but not implemented:
+- `KCS-13` controlled semantic review fallback is in staged implementation:
   - design direction is conditionally approved after external review;
-  - `KCS-13a` must start with policy/metadata/result contract only;
-  - no bounded selected excerpts should be returned until the data-egress lane
-    and hash-bound clean-ticket metadata are implemented and reviewed.
+  - `KCS-13a` policy/metadata/result contract is implemented locally and is at
+    checkpoint-review stage;
+  - `KCS-13a` does not return bounded selected excerpts yet;
+  - no selected excerpts should be returned until the `KCS-13a` checkpoint is
+    approved and `KCS-13b` adds process-local semantic-review state plus the
+    bounded prepare packet.
 
 ## Output Boundary
 
