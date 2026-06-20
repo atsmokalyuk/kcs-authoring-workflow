@@ -50,9 +50,9 @@ option's `submit_arguments`. If a native popup is unavailable, present the same
 choices and still use the returned `submit_arguments` exactly. Do not infer,
 rewrite, or enrich the selection payload.
 
-Successful `kcs_draft_article` results include tool-generated reviewer-only
-Zendesk HTML and compact status. Use that HTML as the article draft; do not
-create a separate freehand draft.
+Successful `kcs_draft_article` results write tool-generated reviewer-only
+Zendesk HTML to the returned local bundle path and return compact status. Use
+that bundle HTML as the article draft; do not create a separate freehand draft.
 
 Low-level KCS-9b/KCS-9c packet validators, policy/readiness/smoke tools,
 pipeline status tools, and authoring sub-tools are internal development tools.

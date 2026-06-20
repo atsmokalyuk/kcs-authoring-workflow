@@ -1,6 +1,6 @@
 {
   "author": {
-    "name": "KCS Authoring MVP"
+    "name": "KCS Authoring"
   },
   "compatibility": {
     "claude_desktop": ">=0.10.0",
@@ -13,7 +13,7 @@
       "node": ">=16.0.0"
     }
   },
-  "description": "Local Claude Desktop KCS article drafting adapter for KCS Authoring MVP.",
+  "description": "Local Claude Desktop KCS article drafting adapter for the KCS Authoring Workflow.",
   "display_name": "KCS Authoring",
   "keywords": [
     "kcs",
@@ -22,7 +22,7 @@
     "validator",
     "claude-desktop"
   ],
-  "long_description": "Starts the bundled KCS Authoring MVP stdio MCP server through an autodetected local runtime: uv first, then python3.11/python3 fallback. Installing this MCPB is the only required Claude Desktop setup step for the default local workflow; no repository path, Claude CLI/Code, API key, or semantic-provider configuration is required. The primary tool is kcs_draft_article for reviewer-only KCS article drafting from operator-provided sanitized ticket text. A small support_get_behavior_instructions compatibility helper exists for legacy Plesk Support prompts and only routes to kcs_draft_article. It performs no Zendesk writes, Help Center publication, Claude Desktop-owned provider calls, Claude CLI/Code dependency, or API-key dependency.",
+  "long_description": "Starts the bundled KCS Authoring Workflow stdio MCP server through an autodetected local runtime: uv first, then python3.11/python3 fallback. Installing this MCPB is the only required Claude Desktop setup step for the default local adapter; no repository path, Claude CLI/Code, API key, or semantic-provider configuration is required. The primary tool is kcs_draft_article for reviewer-only KCS article drafting from operator-provided sanitized ticket text or a local ticket_ref. A small support_get_behavior_instructions compatibility helper exists for legacy Plesk Support prompts and only routes to kcs_draft_article. It performs no Zendesk writes, Help Center publication, Claude Desktop-owned provider calls, Claude CLI/Code dependency, or API-key dependency.",
   "manifest_version": "0.3",
   "name": "kcs-authoring-mvp-validator-control",
   "prompts_generated": false,

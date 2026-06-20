@@ -1,5 +1,13 @@
 # KCS Authoring MVP - Goal and Success Criteria
 
+Status note, 2026-06-20: this file records the original MVP product goal and
+success criteria. The current implementation has moved beyond a minimal MVP
+into the KCS Authoring Workflow: a production-shaped local workflow with
+clean-ticket registration, `ticket_ref` drafting, compact MCP output, and local
+reviewer bundles. Enterprise/PAUX rollout is postponed. The MVP criteria remain
+the historical baseline and safety floor, not the ceiling for current
+functionality.
+
 ## Purpose
 The KCS Authoring MVP is part of the [AI Toolkit](https://webpros.atlassian.net/wiki/spaces/~vzhidkov/pages/6547308551/AI+Toolkit+for+ZenDesk) initiative. Its goal is to help support engineers turn solved support cases into reviewer-ready KCS outputs faster, with less mental effort, and without introducing unsafe automation.
 This MVP focuses on the KCS workflow after or near ticket resolution: deciding whether knowledge should be reused, updated, created, flagged, or skipped.

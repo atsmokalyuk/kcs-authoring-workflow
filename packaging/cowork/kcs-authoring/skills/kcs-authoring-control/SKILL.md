@@ -75,14 +75,12 @@ provider is not configured and the tool returns
 `semantic_extraction_no_candidates`, report that controlled status and
 do not draft manually or ask Claude to infer `item`/`item_candidates`.
 
-Default successful authoring results return reviewer-only Zendesk HTML, compact
-safe status, and local reviewer bundle references. Show the generated HTML in
-one fenced `html` block together with the returned `html_path`, `manifest_path`,
-`debug_code`, readiness flags, and reuse-search status.
-
-Successful `kcs_draft_article` results include tool-generated reviewer-only
-Zendesk HTML. Use that HTML as the article draft; do not create a separate
-freehand draft.
+Default successful authoring results return compact safe status and local
+reviewer bundle references. Tool-generated reviewer-only Zendesk HTML is written
+to the returned `html_path`; use that bundle HTML as the article draft and do
+not create a separate freehand draft. Inline `reviewer_only_html` may appear
+only in explicit debug or smoke compatibility mode; if present, show it in one
+fenced `html` block without converting or rewriting it.
 
 If the approved summary contains more than one semantic KCS item, the tool
 returns `split_required`, `operator_selection_ref`, candidate cards, and an

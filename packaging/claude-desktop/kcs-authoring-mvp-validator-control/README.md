@@ -1,6 +1,13 @@
-# KCS Authoring MCPB
+# KCS Authoring Workflow MCPB
 
 This directory is the source for the Claude Desktop MCPB package.
+
+The technical package ID remains `kcs-authoring-mvp-validator-control` for
+installed-extension compatibility, but the human-facing workflow is no longer a
+minimal MVP. It is the Claude Desktop adapter for the local KCS Authoring
+Workflow: clean-ticket registration, `ticket_ref` drafting, Python-owned
+semantic extraction and validation, compact default output, and local reviewer
+bundles.
 
 The extension starts the bundled `kcs-desktop-mcp` stdio server through an
 autodetected local runtime: `uv` first, then `python3.11` / `python3` fallback.
@@ -136,9 +143,10 @@ If semantic extraction cannot identify a supported candidate from the approved
 summary, show the controlled `semantic_extraction_no_candidates` status instead
 of drafting manually.
 
-Successful `kcs_draft_article` results include tool-generated reviewer-only
-Zendesk HTML. Use that HTML as the article draft; do not create a separate
-freehand draft.
+Successful `kcs_draft_article` results write tool-generated reviewer-only
+Zendesk HTML to the returned local bundle path. Use that bundle HTML as the
+article draft; do not create a separate freehand draft. Inline
+`reviewer_only_html` is returned only for explicit debug/smoke compatibility.
 
 The active refactor target is tracked in:
 
@@ -172,8 +180,8 @@ If an `article_type` is provided, use only canonical KCS values:
 `technical_scr` or `howto_qa`.
 
 Do not invent reuse/search proof. If explicit reuse/search proof is not
-available, this MVP marks reuse search as skipped and continues with
-reviewer-only drafting.
+available, the local workflow marks reuse search as skipped and
+continues with reviewer-only drafting.
 
 The tool returns compact reviewer-only draft/status metadata:
 

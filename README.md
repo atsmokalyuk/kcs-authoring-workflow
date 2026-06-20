@@ -1,20 +1,30 @@
-# KCS Authoring MVP
+# KCS Authoring Workflow
 
-Internal WebPros PAUX prototype for a runtime-independent KCS Authoring core.
+Local workflow for runtime-independent KCS Authoring.
 
-Status: early implementation. Python baseline: 3.11. CI is deferred until the
-local command set is stable.
+Status: production-shaped local workflow. Enterprise/PAUX rollout is postponed;
+this repository now tracks the local product workflow. Some package IDs,
+environment variables, paths, and historical docs still use `kcs-authoring-mvp`
+for compatibility, but the implemented workflow has moved beyond a minimal MVP.
+The original MVP boundary remains the safety floor: reviewer-only output, no
+Zendesk writes, no Help Center publication, no auto-publish, compact default MCP
+output, and Python-owned validation, decision, rendering, and bundle writing.
+
+Python baseline: 3.11. CI is deferred until the local command set is stable.
 
 ## Overview
 
-The KCS Authoring MVP helps support engineers prepare reviewer-ready KCS output
-from approved or sanitized ticket evidence. It recommends a KCS action, records
-the evidence basis, reports blockers, and prepares reviewer-ready packets
-without publishing or writing to Zendesk or Help Center.
+The KCS Authoring Workflow helps support engineers prepare reviewer-ready KCS
+output from approved or sanitized ticket evidence. It recommends a KCS action,
+records the evidence basis, reports blockers, and prepares reviewer-only local
+bundles without publishing or writing to Zendesk or Help Center.
 
-The MVP focuses on the KCS workflow after or near ticket resolution: deciding
+The workflow focuses on KCS work after or near ticket resolution: deciding
 whether knowledge should be reused, updated, created, flagged, split, skipped,
-or blocked for review.
+or blocked for review. The primary clean-ticket path is source-independent:
+Zendesk cleanup, a web cleanup form, Claude Desktop sanitized attachment
+registration, or another approved cleanup source should all produce the same
+clean-ticket input shape before Python runs the KCS pipeline.
 
 ## Core Principle
 
@@ -32,6 +42,13 @@ after the relevant contracts and gates exist.
 
 Initial development follows the KCS-0..KCS-12 roadmap in
 `docs/internal/kcs-authoring-mvp-jira-tracking.md`.
+
+Current active design work is tracked in
+`docs/internal/kcs-desktop-authoring-refactor-plan.md`. `KCS-12` established
+the local Claude Desktop MCPB adapter with clean-ticket registration,
+`ticket_ref` drafting, compact status output, and local reviewer bundles.
+`KCS-13` is the planned controlled semantic-review fallback for complex/noisy
+clean tickets when deterministic Python item identification is low-confidence.
 
 Implemented code slices:
 
@@ -250,8 +267,9 @@ the repository.
 
 - Python 3.11
 - Git
-- Access to the WebPros GitHub Enterprise repository
-- Access to the relevant Jira PAUX work items
+- Access to `github.com/atsmokalyuk/kcs-authoring-workflow`
+- Access to historical PAUX/Jira context only when working on migrated
+  enterprise-tracking documents
 
 ### Setup
 
@@ -322,7 +340,7 @@ By default:
   credentials, internal article chunks, vector values, raw query logs, or
   runtime artifacts;
 - run safety/evidence gates before decision, drafting, rendering, or handoff;
-- keep `auto_publish_allowed=false` in MVP outputs.
+- keep `auto_publish_allowed=false` in all local workflow outputs.
 
 ## Source Documents
 
@@ -467,9 +485,11 @@ uv run python scripts/smoke_claude_desktop_ui_prompt.py \
 
 Use `--prompt-kind raw-ticket` for the primary Claude Desktop MVP smoke because
 it exercises a pasted approved sanitized ticket transcript rather than a neat
-field-labeled packet. Use `--prompt-kind single` for a strict labeled one-item
-smoke, `--prompt-kind split` for a split-required manual smoke window, or
-`--prompt-kind narrative` to cover approved summaries shaped as `Summary` /
+field-labeled packet. In current local workflow testing, prefer the
+`ticket_ref` path for production-like long tickets because it avoids pushing
+large transcripts through chat. Use `--prompt-kind single` for a strict labeled
+one-item smoke, `--prompt-kind split` for a split-required manual smoke window,
+or `--prompt-kind narrative` to cover approved summaries shaped as `Summary` /
 `Investigation` / `Resolution` instead of strict field labels.
 
 ### Claude/Cowork Plugin

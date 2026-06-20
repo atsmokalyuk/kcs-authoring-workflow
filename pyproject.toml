@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "kcs-authoring-mvp"
 version = "0.1.0"
-description = "Runtime-independent KCS Authoring MVP core."
+description = "Runtime-independent KCS Authoring workflow core."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = []

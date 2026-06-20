@@ -1,5 +1,13 @@
 # KCS Desktop Authoring Refactor Plan
 
+Status note, 2026-06-20: this plan describes the current KCS Authoring
+Workflow, not only the original MVP milestone. Enterprise/PAUX rollout is
+postponed. Some package names still contain `mvp` for compatibility, but the
+implemented product is now a production-shaped local workflow with clean-ticket
+registration, `ticket_ref` drafting, compact default output, and local reviewer
+bundles. Claude Desktop MCPB is the current local operator adapter, not a core
+product dependency.
+
 ## Summary
 
 The Desktop drafting workflow must be tool-owned, not Claude-owned.
@@ -104,6 +112,150 @@ Monitoring/DataDir or other product-specific regex semantic engine is allowed.
 The local approved-summary provider may parse generic labeled or narrative
 support-summary structure, but it must not become a product-specific ticket
 solver.
+
+## Controlled Semantic Review Fallback
+
+`KCS-13` adds a fallback for free Claude Desktop environments where no Claude
+API/CLI/Code provider and no local LLM are available. This fallback must not
+reopen the Desktop-owned schema problem. Claude Desktop may identify candidate
+KCS items from bounded selected excerpts only. Python still validates, decides,
+renders, and writes any reviewer bundle.
+
+Primary invariant:
+
+```text
+Claude may identify candidate KCS items from bounded selected excerpts.
+Claude must not draft, decide, render, or publish.
+Python validates everything before any reviewer bundle is written.
+```
+
+The fallback is a new explicit Claude-visible data-egress lane:
+
+```text
+approved clean ticket
+  -> semantic-review eligible metadata
+  -> bounded selected excerpts
+  -> candidate_semantic_extraction_v1 proposal
+  -> Python validation / decision / rendering
+```
+
+Clean-ticket metadata must live next to `clean.ticket.txt`:
+
+```text
+local-data/approved-summaries/<ticket_ref>/clean.ticket.meta.json
+```
+
+Metadata schema:
+
+```json
+{
+  "schema_version": "kcs_clean_ticket_metadata_v1",
+  "ticket_ref": "...",
+  "clean_ticket_sha256": "...",
+  "semantic_review_allowed": true,
+  "source_kind": "cleanup_form|claude_visible_registration"
+}
+```
+
+Before returning `semantic_review_required`, before preparing excerpts, and
+before accepting a submitted semantic extraction, Python must verify:
+
+- metadata exists;
+- `schema_version` is valid;
+- `ticket_ref` matches;
+- `sha256(clean.ticket.txt)` matches `clean_ticket_sha256`;
+- `semantic_review_allowed=true`.
+
+Missing metadata, false eligibility, or hash mismatch is a hard blocker. It
+must not expose excerpts.
+
+`semantic_review_required` is a workflow state, not a KCS action. The result
+contract is:
+
+```json
+{
+  "recommended_action": "blocked",
+  "workflow_state": "semantic_review_required",
+  "failure_stage": "semantic_extraction",
+  "debug_code": "semantic_identification_low_confidence",
+  "semantic_review_ref": "semantic-review-...",
+  "next_tool": "kcs_prepare_semantic_review",
+  "next_arguments": {
+    "semantic_review_ref": "semantic-review-..."
+  },
+  "manual_draft_allowed": false,
+  "draft_generated": false,
+  "reviewer_bundle_written": false,
+  "auto_publish_allowed": false,
+  "public_output_approved": false
+}
+```
+
+New Desktop-visible tools:
+
+- `kcs_prepare_semantic_review`;
+- `kcs_submit_semantic_review`.
+
+`kcs_draft_article` must not accept semantic-review payloads. Its schema stays:
+
+- `ticket_ref`;
+- `approved_summary_text`;
+- `operator_selection_ref`;
+- `operator_selected_item_ref`;
+- `debug`.
+
+`kcs_prepare_semantic_review` returns only precomputed bounded selected
+excerpts. Do not use "chunks" in Desktop-facing docs, manifest wording, or tool
+descriptions.
+
+MVP packet caps:
+
+- max 8 excerpts;
+- max 1,800 characters per excerpt;
+- max 12,000 total excerpt characters;
+- max 5 candidate items.
+
+Prepare output may include safe audit metadata only:
+
+- `semantic_review_packet_sha256`;
+- `excerpt_count`;
+- `excerpt_total_chars`.
+
+Prepare output must exclude raw Zendesk JSON, attachments, redaction maps, full
+ticket dumps, local absolute paths, reviewer packets, Zendesk HTML, article
+drafts, KCS decisions, publication flags, and provider payloads.
+
+`kcs_submit_semantic_review` accepts only:
+
+```json
+{
+  "semantic_review_ref": "...",
+  "candidate_semantic_extraction": {
+    "schema_version": "candidate_semantic_extraction_v1",
+    "case_ref": "...",
+    "extraction_source_ref": "...",
+    "source_refs": ["excerpt-001"],
+    "items": []
+  }
+}
+```
+
+It must reject article drafts, Markdown or HTML, `reviewer_only_html`,
+`recommended_action`, `item`, `item_candidates`, publication flags, local paths,
+copied full ticket text, broad aliases, unknown source refs, unsafe values, and
+raw provider payloads. Valid output is still untrusted until the existing core
+`CandidateSemanticExtraction` validation and semantic-review-specific source-ref
+checks pass.
+
+Trigger rules:
+
+- keep `semantic_extraction_no_candidates` for no usable KCS item,
+  incomplete/unresolved tickets, unsafe input, missing eligibility metadata, or
+  no final evidence;
+- return `workflow_state=semantic_review_required` only when Python sees likely
+  KCS material, deterministic extraction is low-confidence, metadata/hash
+  validation passes, and bounded selected excerpts can be prepared;
+- hard block unsafe, raw, unresolved, too-large, or non-eligible tickets.
 
 ## Local RAG Reuse Search Boundary
 
@@ -221,6 +373,24 @@ Implement this as small reviewable slices, not as one large commit:
   - make stdio and installed-wrapper smoke explicit about fixture provider use;
   - keep GUI-log smoke focused on observed Desktop behavior;
   - verify the installed MCPB exposes the same thin schema and wording.
+- `KCS-13a: Semantic review policy, metadata, and result contract`
+  - document the explicit Claude-visible excerpt lane;
+  - add clean-ticket metadata and hash validation;
+  - add `workflow_state=semantic_review_required` without exposing excerpts.
+- `KCS-13b: Semantic review state and bounded prepare packet`
+  - add process-local semantic-review state with TTL;
+  - precompute bounded selected excerpts before returning
+    `semantic_review_required`;
+  - add `kcs_prepare_semantic_review`.
+- `KCS-13c: Submit semantic extraction and continue existing pipeline`
+  - add `kcs_submit_semantic_review`;
+  - accept only `candidate_semantic_extraction_v1`;
+  - validate source refs and forbidden payloads before continuing to draft or
+    split selection.
+- `KCS-13d: MCPB, docs, smoke, and Desktop contract alignment`
+  - update tool names, descriptors, manifest, README, stdio smoke, installed
+    wrapper smoke, and Desktop log checks;
+  - keep bounded selected excerpts only and defer browsing/chunk tools.
 
 ## Review Breakpoints
 
@@ -266,6 +436,20 @@ Current review checkpoint artifact:
     artifact before `KCS-12d` is considered complete;
   - focus on manifest/schema wording, MCP annotations, runtime wrapper env,
     installed cache behavior, and GUI-observable Desktop contract.
+- `KCS-13a: Semantic review policy, metadata, and result contract`
+  - review required before implementing excerpt return;
+  - focus on data-egress lane, metadata/hash binding, and result vocabulary.
+- `KCS-13b: Semantic review state and bounded prepare packet`
+  - external review required before moving on;
+  - focus on Claude-visible excerpt caps, no full-ticket exposure, no logs/raw
+    echoes, and ref/TTL state boundaries.
+- `KCS-13c: Submit semantic extraction and continue existing pipeline`
+  - external review required before moving on;
+  - focus on preventing a broad Desktop-owned extraction backdoor and ensuring
+    Python-owned validation/decision/rendering.
+- `KCS-13d: MCPB, docs, smoke, and Desktop contract alignment`
+  - lighter review after source/installed smoke and log checks pass;
+  - focus on Desktop-visible schema wording and no manual fallback.
 
 Review bundle should include:
 
@@ -353,6 +537,11 @@ Current branch status:
     P0/P1 blockers;
   - deferred hardening is recorded in
     `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12d-2026-06-19.md`.
+- `KCS-13` controlled semantic review fallback is planned but not implemented:
+  - design direction is conditionally approved after external review;
+  - `KCS-13a` must start with policy/metadata/result contract only;
+  - no bounded selected excerpts should be returned until the data-egress lane
+    and hash-bound clean-ticket metadata are implemented and reviewed.
 
 ## Output Boundary
 
@@ -369,8 +558,8 @@ Default successful draft output:
 Full `reviewer_only_html` is allowed only with `debug=true` or explicit smoke
 compatibility.
 
-Missing reuse/search may generate a reviewer-only draft for MVP, but it must
-not be reported as KCS-ready:
+Missing reuse/search may generate a reviewer-only draft in the current local
+workflow, but it must not be reported as KCS-ready:
 
 - `kcs_ready=false`;
 - `ready_for_reviewer=false`;
@@ -411,6 +600,14 @@ are detected.
 9. Keep GUI-log smoke focused on observable Desktop behavior:
    tool call observed, `approved_summary_text` used, old structured args
    absent, manual fallback absent, timeout/disconnect absent.
+10. Implement `KCS-13a`: semantic-review data policy, clean-ticket metadata,
+    hash validation, and `workflow_state=semantic_review_required`.
+11. Implement `KCS-13b`: process-local semantic-review state and bounded
+    selected-excerpt prepare packet.
+12. Implement `KCS-13c`: strict semantic extraction submit tool and continuation
+    through the existing draft/split pipeline.
+13. Implement `KCS-13d`: MCPB manifest, docs, stdio smoke, installed smoke, and
+    Desktop log checker alignment for the new tools.
 
 ## Test Plan
 
@@ -443,6 +640,23 @@ Unit and regression coverage must verify:
 - Linux first resolution step uses the SSH link;
 - Windows first resolution step uses the RDP link;
 - Applicable To remains `Plesk for Linux` / `Plesk for Windows`.
+- clean-ticket metadata is written by registration and validated before
+  semantic review;
+- missing/false/hash-mismatched metadata blocks semantic review without
+  exposing excerpts;
+- eligible low-confidence tickets return
+  `workflow_state=semantic_review_required`, `recommended_action=blocked`, and
+  `manual_draft_allowed=false`;
+- `kcs_prepare_semantic_review` returns bounded selected excerpts only, with
+  packet hash/count/size metadata and exact submit arguments;
+- prepare output excludes full tickets, Zendesk HTML, absolute paths, reviewer
+  packets, redaction maps, raw payloads, and article drafts;
+- `kcs_submit_semantic_review` rejects invalid schema, unknown source refs,
+  unsafe values, too many items, copied full text, article drafts, HTML,
+  `recommended_action`, `item`, and `item_candidates` without raw echo;
+- valid semantic-review submissions either continue to normal draft output or
+  return the existing split-required operator-selection flow;
+- simple deterministic tickets bypass semantic review and still draft normally.
 
 Validation commands:
 
