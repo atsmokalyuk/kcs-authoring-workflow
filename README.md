@@ -514,13 +514,17 @@ tools are not loaded into the active chat.
 ## Ownership
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
-- Parent Jira item: PAUX-7083
-- Current implementation subtask: KCS-12 Claude Desktop MCP Adapter
+- Historical parent Jira item: PAUX-7083
+- Last completed implementation slice: KCS-12 Claude Desktop MCP Adapter
+- Current implementation slice: KCS-13 Controlled Semantic Review Fallback
+- Current implementation subtask: KCS-13a Semantic review policy, metadata, and
+  result contract
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
 
 ## Visibility
 
-Internal - WebPros confidential. Do not share repository contents, fixtures,
-packets, logs, or generated artifacts outside approved WebPros channels.
+Private local product repository. Do not commit or share raw tickets, private
+customer identifiers, credentials, logs with ticket-derived text, generated
+runtime artifacts, reviewer bundles, or other sensitive support material.
