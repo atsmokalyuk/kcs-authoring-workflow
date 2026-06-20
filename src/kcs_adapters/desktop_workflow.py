@@ -15,8 +15,10 @@ from pathlib import Path
 from typing import Any
 
 from kcs_adapters import desktop_operator_selection as _desktop_operator_selection
+from kcs_adapters import desktop_reviewer_preview as _desktop_reviewer_preview
 from kcs_adapters import desktop_semantic_providers as _desktop_semantic_providers
 from kcs_adapters import desktop_workflow_results as _desktop_workflow_results
+from kcs_adapters import desktop_workflow_status as _desktop_workflow_status
 from kcs_adapters.desktop_draft_output import (
     compact_draft_result,
     quality_blocked_result,
@@ -26,8 +28,6 @@ from kcs_adapters.desktop_reviewer_bundle import write_desktop_reviewer_bundle
 from kcs_adapters.desktop_semantic_candidates import (
     desktop_item_candidates_from_semantic_extraction,
 )
-from kcs_adapters.zendesk_markup_quality import review_reviewer_only_html
-from kcs_core.claude_draft import build_claude_draft_request
 from kcs_core.claude_handoff import (
     KcsClaudeHandoffRequestPacket,
     build_claude_handoff_request,
@@ -35,8 +35,6 @@ from kcs_core.claude_handoff import (
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
 from kcs_core.models import (
-    ArticleType,
-    DecisionStatus,
     KcsActionDecisionPacket,
     KcsReviewerPacket,
     KcsValidationReportPacket,
@@ -101,6 +99,55 @@ semantic_provider_unavailable_result = (
     _desktop_workflow_results.semantic_provider_unavailable_result
 )
 split_required_result = _desktop_workflow_results.split_required_result
+approved_summary_draft_request_ready = (
+    _desktop_workflow_status.approved_summary_draft_request_ready
+)
+approved_summary_pipeline_status = (
+    _desktop_workflow_status.approved_summary_pipeline_status
+)
+approved_summary_reuse_search_status = (
+    _desktop_workflow_status.approved_summary_reuse_search_status
+)
+approved_summary_reuse_was_checked = (
+    _desktop_workflow_status.approved_summary_reuse_was_checked
+)
+approved_summary_applicable_to = (
+    _desktop_reviewer_preview.approved_summary_applicable_to
+)
+approved_summary_html_quality_gaps = (
+    _desktop_reviewer_preview.approved_summary_html_quality_gaps
+)
+approved_summary_open_questions = (
+    _desktop_reviewer_preview.approved_summary_open_questions
+)
+approved_summary_public_candidate = (
+    _desktop_reviewer_preview.approved_summary_public_candidate
+)
+approved_summary_quality_gaps = _desktop_reviewer_preview.approved_summary_quality_gaps
+approved_summary_reference_section_gaps = (
+    _desktop_reviewer_preview.approved_summary_reference_section_gaps
+)
+approved_summary_reference_text = (
+    _desktop_reviewer_preview.approved_summary_reference_text
+)
+approved_summary_reviewer_only_draft = (
+    _desktop_reviewer_preview.approved_summary_reviewer_only_draft
+)
+approved_summary_reviewer_only_html = (
+    _desktop_reviewer_preview.approved_summary_reviewer_only_html
+)
+approved_summary_reviewer_only_preview = (
+    _desktop_reviewer_preview.approved_summary_reviewer_only_preview
+)
+approved_summary_reviewer_only_preview_text = (
+    _desktop_reviewer_preview.approved_summary_reviewer_only_preview_text
+)
+approved_summary_source_candidate = (
+    _desktop_reviewer_preview.approved_summary_source_candidate
+)
+numbered_or_bulleted_lines = _desktop_reviewer_preview.numbered_or_bulleted_lines
+safe_candidate_list = _desktop_reviewer_preview.safe_candidate_list
+safe_candidate_string = _desktop_reviewer_preview.safe_candidate_string
 
 
 class OperatorSelectionUnavailableError(RuntimeError):
@@ -300,329 +347,6 @@ def execute_approved_summary_pipeline(
         draft_request_ready=draft_request_ready,
         item_ref=item_ref,
     )
-
-
-def approved_summary_draft_request_ready(
-    handoff_request: KcsClaudeHandoffRequestPacket,
-    item_ref: str,
-    readiness: KcsValidationReportPacket,
-) -> bool:
-    """Return whether a Claude draft request can be built for this run."""
-
-    if not readiness.ready_for_reviewer:
-        return False
-    try:
-        build_claude_draft_request(handoff_request, draft_ref=f"draft-{item_ref}")
-    except ContractValidationError:
-        return False
-    return True
-
-
-def approved_summary_pipeline_status(
-    execution: ApprovedSummaryExecution,
-    *,
-    schema_version: str,
-    reuse_search_status: str,
-) -> JsonDict:
-    """Return compact status for an approved-summary pipeline execution."""
-
-    decision = execution.decision
-    readiness = execution.readiness
-    safety = execution.safety
-    evidence_validation = execution.evidence_validation
-    return {
-        "auto_publish_allowed": False,
-        "case_ref": execution.evidence.case_ref,
-        "checks": [
-            {"kind": "input_validation", "ok": True},
-            {"kind": "evidence_builder", "ok": True},
-            {"kind": "input_safety", "ok": safety.ok},
-            {"kind": "evidence_validation", "ok": evidence_validation.ok},
-            {
-                "kind": "decision",
-                "ok": decision.status == DecisionStatus.DECISION_READY.value,
-            },
-            {"kind": "renderer", "ok": True},
-            {"kind": "readiness", "ok": readiness.ready_for_reviewer},
-            {"kind": "draft_request_ready", "ok": execution.draft_request_ready},
-        ],
-        "debug_code": "none",
-        "draft_request_ready": execution.draft_request_ready,
-        "evidence_valid": evidence_validation.ok,
-        "failure_stage": "none",
-        "handoff_ref": execution.handoff_request.handoff_ref,
-        "input_safety_ok": safety.ok,
-        "item_ref": execution.item_ref,
-        "network_calls": False,
-        "ok": safety.ok and readiness.ready_for_reviewer,
-        "original_article_type": decision.article_type,
-        "original_decision_status": decision.status,
-        "original_readiness_state": readiness.state,
-        "original_recommended_action": decision.recommended_action,
-        "pipeline_ok": safety.ok and readiness.ready_for_reviewer,
-        "provider_calls": False,
-        "public_output_approved": False,
-        "ready_for_real_ticket_use": False,
-        "ready_for_reviewer": readiness.ready_for_reviewer,
-        "result_kind": "approved_summary_pipeline",
-        "reuse_search_status": reuse_search_status,
-        "schema_version": schema_version,
-        "validation_ok": evidence_validation.ok,
-        "writes_files": False,
-    }
-
-
-def approved_summary_reviewer_only_draft(
-    execution: ApprovedSummaryExecution,
-) -> JsonDict:
-    """Return compact reviewer-only draft sections for Desktop output."""
-
-    candidate = approved_summary_public_candidate(execution.reviewer_packet)
-    source_candidate = approved_summary_source_candidate(execution)
-    resolution_steps = safe_candidate_list(candidate, "resolution_steps")
-    return {
-        "applicable_to": approved_summary_applicable_to(candidate),
-        "cause": safe_candidate_string(candidate, "cause"),
-        "resolution": safe_candidate_string(
-            source_candidate, "supported_resolution_or_workaround"
-        )
-        or safe_candidate_string(source_candidate, "supported_answer")
-        or safe_candidate_string(candidate, "resolution")
-        or " ".join(resolution_steps),
-        "resolution_steps": resolution_steps,
-        "status": "reviewer_only",
-        "symptoms": safe_candidate_list(candidate, "symptoms"),
-        "title": safe_candidate_string(candidate, "title"),
-    }
-
-
-def approved_summary_reviewer_only_html(
-    execution: ApprovedSummaryExecution,
-) -> str:
-    """Return reviewer-only Zendesk HTML from the reviewer packet."""
-
-    html = execution.reviewer_packet.zendesk_source_html
-    if not isinstance(html, str):
-        return ""
-    return html
-
-
-def approved_summary_reviewer_only_preview(draft: Mapping[str, Any]) -> JsonDict:
-    """Return structured preview fields for a reviewer-only draft."""
-
-    return {
-        "applicable_to": safe_candidate_list(draft, "applicable_to"),
-        "cause": safe_candidate_string(draft, "cause"),
-        "resolution": safe_candidate_string(draft, "resolution"),
-        "resolution_steps": safe_candidate_list(draft, "resolution_steps"),
-        "status": safe_candidate_string(draft, "status"),
-        "symptoms": safe_candidate_list(draft, "symptoms"),
-        "title": safe_candidate_string(draft, "title"),
-    }
-
-
-def approved_summary_reviewer_only_preview_text(
-    draft: Mapping[str, Any],
-) -> str:
-    """Return plain-text reviewer preview for a reviewer-only draft."""
-
-    preview = approved_summary_reviewer_only_preview(draft)
-    lines = [
-        f"Title: {preview['title']}",
-        f"Status: {preview['status']}",
-        "",
-        "Applicable to:",
-        *numbered_or_bulleted_lines(preview["applicable_to"], bullet="-"),
-        "",
-        "Symptoms:",
-        *numbered_or_bulleted_lines(preview["symptoms"], bullet="1."),
-        "",
-        "Cause:",
-        str(preview["cause"]),
-        "",
-        "Resolution:",
-        str(preview["resolution"]),
-        "",
-        "Resolution steps:",
-        *numbered_or_bulleted_lines(preview["resolution_steps"], bullet="1."),
-    ]
-    return "\n".join(line for line in lines if line is not None).strip()
-
-
-def numbered_or_bulleted_lines(values: object, *, bullet: str) -> list[str]:
-    """Return simple preview lines for list-like values."""
-
-    if not isinstance(values, list) or not values:
-        return ["-"]
-    if bullet == "1.":
-        return [f"{index}. {value}" for index, value in enumerate(values, start=1)]
-    return [f"{bullet} {value}" for value in values]
-
-
-def approved_summary_quality_gaps(
-    execution: ApprovedSummaryExecution,
-    draft: Mapping[str, Any],
-) -> list[JsonDict]:
-    """Return adapter-facing quality gaps for reviewer-only Desktop output."""
-
-    gaps: list[JsonDict] = []
-    is_howto = execution.decision.article_type == ArticleType.HOWTO_QA.value
-    if not safe_candidate_list(draft, "applicable_to"):
-        gaps.append({"kind": "missing_applicable_to", "severity": "blocker"})
-    if not safe_candidate_list(draft, "symptoms"):
-        gaps.append({"kind": "missing_symptoms", "severity": "blocker"})
-    if not is_howto and not safe_candidate_string(draft, "cause"):
-        gaps.append({"kind": "missing_cause", "severity": "blocker"})
-    if not safe_candidate_string(draft, "resolution"):
-        gaps.append({"kind": "missing_resolution", "severity": "blocker"})
-    reference_text = approved_summary_reference_text(execution.arguments)
-    if reference_text is None:
-        gaps.append({"kind": "reference_not_provided", "severity": "info"})
-    else:
-        gaps.extend(approved_summary_reference_section_gaps(reference_text, draft))
-    if not approved_summary_reuse_was_checked(execution.arguments):
-        gaps.append({"kind": "reuse_search_skipped", "severity": "warning"})
-    gaps.extend(approved_summary_html_quality_gaps(execution))
-    return gaps
-
-
-def approved_summary_html_quality_gaps(
-    execution: ApprovedSummaryExecution,
-) -> list[JsonDict]:
-    """Return quality gaps from reviewer-only Zendesk HTML."""
-
-    return review_reviewer_only_html(
-        approved_summary_reviewer_only_html(execution),
-        require_resolution_container=(
-            execution.decision.article_type == ArticleType.TECHNICAL_SCR.value
-        ),
-    )
-
-
-def approved_summary_reference_text(arguments: Mapping[str, Any]) -> str | None:
-    """Return optional safe reference article text from authoring arguments."""
-
-    reference_keys = (
-        "reference_article",
-        "reference_article_text",
-        "reference_article_html",
-    )
-    for key in reference_keys:
-        value = arguments.get(key)
-        if isinstance(value, str) and value.strip():
-            ensure_safe_sanitized_payload(value)
-            return value.strip()
-    return None
-
-
-def approved_summary_reference_section_gaps(
-    reference_text: str,
-    draft: Mapping[str, Any],
-) -> list[JsonDict]:
-    """Return reference section coverage warnings for reviewer-only drafts."""
-
-    gaps: list[JsonDict] = []
-    reference = reference_text.casefold()
-    section_checks = (
-        (
-            "applicable_to",
-            "applicable to",
-            safe_candidate_list(draft, "applicable_to"),
-        ),
-        ("symptoms", "symptoms", safe_candidate_list(draft, "symptoms")),
-        ("cause", "cause", [safe_candidate_string(draft, "cause")]),
-        ("resolution", "resolution", [safe_candidate_string(draft, "resolution")]),
-    )
-    for kind, marker, values in section_checks:
-        if marker in reference and not any(values):
-            gaps.append(
-                {
-                    "kind": f"reference_section_missing_{kind}",
-                    "severity": "warning",
-                }
-            )
-    if not gaps:
-        gaps.append({"kind": "reference_section_coverage_ok", "severity": "info"})
-    return gaps
-
-
-def approved_summary_open_questions(
-    execution: ApprovedSummaryExecution,
-) -> list[str]:
-    """Return safe open questions from the public candidate."""
-
-    candidate = approved_summary_public_candidate(execution.reviewer_packet)
-    return safe_candidate_list(candidate, "open_questions")
-
-
-def approved_summary_public_candidate(packet: KcsReviewerPacket) -> JsonDict:
-    """Return public article candidate as a JSON dict."""
-
-    candidate = packet.public_article_candidate
-    if not isinstance(candidate, Mapping):
-        return {}
-    return dict(candidate)
-
-
-def approved_summary_applicable_to(candidate: Mapping[str, Any]) -> list[str]:
-    """Return public Applicable To values, excluding internal refs."""
-
-    values = safe_candidate_list(candidate, "applicable_to")
-    return [
-        value
-        for value in values
-        if not value.casefold().startswith("approved-summary-")
-    ]
-
-
-def approved_summary_source_candidate(
-    execution: ApprovedSummaryExecution,
-) -> JsonDict:
-    """Return the source issue candidate from the approved-summary payload."""
-
-    candidates = execution.payload.get("issue_candidates")
-    if not isinstance(candidates, list) or not candidates:
-        return {}
-    candidate = candidates[0]
-    if not isinstance(candidate, Mapping):
-        return {}
-    return dict(candidate)
-
-
-def safe_candidate_string(candidate: Mapping[str, Any], key: str) -> str:
-    """Return a string candidate field or empty string."""
-
-    value = candidate.get(key)
-    if isinstance(value, str):
-        return value
-    return ""
-
-
-def safe_candidate_list(candidate: Mapping[str, Any], key: str) -> list[str]:
-    """Return a normalized string list candidate field."""
-
-    value = candidate.get(key)
-    if isinstance(value, str) and value:
-        return [value]
-    if isinstance(value, list):
-        return [item for item in value if isinstance(item, str) and item]
-    return []
-
-
-def approved_summary_reuse_was_checked(arguments: Mapping[str, Any]) -> bool:
-    """Return whether the authoring request claims reuse search was checked."""
-
-    reuse_checked = arguments.get("reuse_search_checked")
-    item = arguments.get("item")
-    if reuse_checked is None and isinstance(item, Mapping):
-        reuse_checked = item.get("reuse_search_checked")
-    return reuse_checked is True
-
-
-def approved_summary_reuse_search_status(arguments: Mapping[str, Any]) -> str:
-    """Return compact reuse search status for Desktop results."""
-
-    return "checked" if approved_summary_reuse_was_checked(arguments) else "skipped"
 
 
 def finalize_author_result_with_bundle(

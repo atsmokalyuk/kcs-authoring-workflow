@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 import kcs_adapters.desktop_workflow as desktop_workflow
+import kcs_adapters.desktop_workflow_status as desktop_workflow_status
 from kcs_adapters.desktop_workflow import (
     ApprovedSummaryPipelineHooks,
     DesktopDraftWorkflow,
@@ -139,7 +140,7 @@ def test_execute_approved_summary_pipeline_owns_stage_order(monkeypatch) -> None
         fake_handoff_request,
     )
     monkeypatch.setattr(
-        desktop_workflow,
+        desktop_workflow_status,
         "build_claude_draft_request",
         fake_draft_request,
     )
