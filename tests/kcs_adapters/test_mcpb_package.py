@@ -413,6 +413,7 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                     "annotations": {
                         "destructiveHint": False,
                         "idempotentHint": False,
+                        "openWorldHint": False,
                         "readOnlyHint": False,
                     },
                     "description": (
@@ -436,6 +437,7 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                     "annotations": {
                         "destructiveHint": False,
                         "idempotentHint": False,
+                        "openWorldHint": False,
                         "readOnlyHint": False,
                     },
                     "description": (
@@ -464,6 +466,7 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                     "annotations": {
                         "destructiveHint": False,
                         "idempotentHint": True,
+                        "openWorldHint": False,
                         "readOnlyHint": True,
                     },
                     "description": (
@@ -482,6 +485,7 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                     "annotations": {
                         "destructiveHint": False,
                         "idempotentHint": False,
+                        "openWorldHint": False,
                         "readOnlyHint": False,
                     },
                     "description": (
@@ -505,6 +509,7 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                     "annotations": {
                         "destructiveHint": False,
                         "idempotentHint": True,
+                        "openWorldHint": False,
                         "readOnlyHint": True,
                     },
                     "description": "Compatibility helper for kcs_draft_article.",
@@ -821,6 +826,85 @@ def test_claude_desktop_log_check_accepts_latest_thin_tool_surface(
 ) -> None:
     module = _load_log_check_module()
     log = tmp_path / "mcp-server-KCS Authoring.log"
+    latest_surface = {
+        "id": 1,
+        "result": {
+            "tools": [
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": False,
+                        "openWorldHint": False,
+                        "readOnlyHint": False,
+                    },
+                    "inputSchema": {
+                        "properties": {
+                            "clean_ticket_text": {},
+                            "debug": {},
+                            "ticket_ref": {},
+                        }
+                    },
+                    "name": "kcs_register_clean_ticket",
+                },
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": False,
+                        "openWorldHint": False,
+                        "readOnlyHint": False,
+                    },
+                    "description": "Python owns semantic extraction",
+                    "inputSchema": {
+                        "properties": {
+                            "approved_summary_text": {},
+                            "debug": {},
+                            "operator_selected_item_ref": {},
+                            "operator_selection_ref": {},
+                            "ticket_ref": {},
+                        }
+                    },
+                    "name": "kcs_draft_article",
+                },
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": True,
+                        "openWorldHint": False,
+                        "readOnlyHint": True,
+                    },
+                    "inputSchema": {
+                        "properties": {"semantic_review_ref": {}}
+                    },
+                    "name": "kcs_prepare_semantic_review",
+                },
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": False,
+                        "openWorldHint": False,
+                        "readOnlyHint": False,
+                    },
+                    "inputSchema": {
+                        "properties": {
+                            "candidate_semantic_extraction": {},
+                            "semantic_review_ref": {},
+                        }
+                    },
+                    "name": "kcs_submit_semantic_review",
+                },
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": True,
+                        "openWorldHint": False,
+                        "readOnlyHint": True,
+                    },
+                    "inputSchema": {"properties": {}},
+                    "name": "support_get_behavior_instructions",
+                },
+            ]
+        },
+    }
     log.write_text(
         "\n".join(
             [
@@ -844,14 +928,7 @@ def test_claude_desktop_log_check_accepts_latest_thin_tool_surface(
                 ),
                 (
                     '2026-06-18T22:32:53.261Z [KCS Authoring] [info] '
-                    'Message from server: {"id":1,"result":{"tools":[{'
-                    '"annotations":{"destructiveHint":false,'
-                    '"idempotentHint":false,"readOnlyHint":false},'
-                    '"description":"Python owns semantic extraction",'
-                    '"inputSchema":{"properties":{"approved_summary_text":{},'
-                    '"debug":{},"operator_selected_item_ref":{},'
-                    '"operator_selection_ref":{}}},'
-                    '"name":"kcs_draft_article"}]}}'
+                    f"Message from server: {json.dumps(latest_surface)}"
                 ),
             ]
         ),
@@ -890,10 +967,41 @@ def test_claude_desktop_log_check_rejects_stale_tool_surface(tmp_path: Path) -> 
     report = module.check_log(log_path=log, max_bytes=10000)
 
     assert report["ok"] is False
-    assert report["checks"]["annotations_non_read_only"] is False
+    assert report["checks"]["annotations_exact"] is False
+    assert report["checks"]["draft_schema_exact"] is False
     assert report["checks"]["old_item_schema_absent"] is False
     assert report["checks"]["old_item_candidates_schema_absent"] is False
     assert report["checks"]["old_reference_article_html_absent"] is False
+
+
+def test_claude_desktop_log_check_accepts_truncated_latest_tool_surface(
+    tmp_path: Path,
+) -> None:
+    module = _load_log_check_module()
+    log = tmp_path / "mcp-server-KCS Authoring.log"
+    log.write_text(
+        (
+            '2026-06-20T06:33:03.146Z [KCS Authoring] [info] '
+            'Message from server: {"id":1,"jsonrpc":"2.0","result":{"tools":[{'
+            '"annotations":{"destructiveHint":false,"idempotentHint":false,'
+            '"openWorldHint":false,"readOnlyHint":false},'
+            '"description":"Register one approved sanitized support-ticket '
+            'transcript as a configured clean ticket file...[4624 chars '
+            'truncated]...sanitized ticket article drafting.",'
+            '"inputSchema":{"additionalProperties":false,"properties":{},'
+            '"required":[],"type":"object"},'
+            '"name":"kcs_register_clean_ticket"}]}}'
+        ),
+        encoding="utf-8",
+    )
+
+    report = module.check_log(log_path=log, max_bytes=10000)
+
+    assert report["ok"] is True
+    assert report["checks"]["tool_surface_truncated"] is True
+    assert report["checks"]["truncated_annotations_visible"] is True
+    assert "tool_names_exact" not in report["checks"]
+    assert "draft_schema_exact" not in report["checks"]
 
 
 def test_claude_desktop_log_check_honors_since_timestamp(tmp_path: Path) -> None:

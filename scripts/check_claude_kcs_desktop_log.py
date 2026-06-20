@@ -114,11 +114,12 @@ def _latest_initialize_line(text: str, *, since: datetime | None) -> str | None:
 
 
 def _is_tool_surface_line(line: str) -> bool:
-    return (
-        "Message from server" in line
-        and '"tools":[' in line
-        and '"name":"kcs_draft_article"' in line
-    )
+    if "Message from server" not in line:
+        return False
+    if _line_is_truncated_tool_surface(line):
+        return True
+    tools = _tool_surface_tools(line)
+    return "kcs_draft_article" in tools
 
 
 def _is_initialize_line(line: str) -> bool:
@@ -130,14 +131,181 @@ def _is_initialize_line(line: str) -> bool:
 
 
 def _tool_surface_checks(line: str) -> dict[str, bool]:
+    if _line_is_truncated_tool_surface(line):
+        return _truncated_tool_surface_checks(line)
+    tools = _tool_surface_tools(line)
     return {
-        "annotations_non_read_only": '"readOnlyHint":false' in line,
-        "annotations_non_idempotent": '"idempotentHint":false' in line,
-        "thin_argument_visible": _thin_argument_visible(line),
-        "old_item_schema_absent": '"item"' not in line,
-        "old_item_candidates_schema_absent": '"item_candidates"' not in line,
-        "old_reference_article_html_absent": '"reference_article_html"' not in line,
+        "annotations_exact": _tool_annotations_exact(tools),
+        "draft_schema_exact": _tool_properties_exact(
+            tools,
+            "kcs_draft_article",
+            {
+                "approved_summary_text",
+                "debug",
+                "operator_selected_item_ref",
+                "operator_selection_ref",
+                "ticket_ref",
+            },
+        ),
+        "old_item_schema_absent": _old_schema_absent(line, "item"),
+        "old_item_candidates_schema_absent": _old_schema_absent(
+            line,
+            "item_candidates",
+        ),
+        "old_reference_article_html_absent": _old_schema_absent(
+            line,
+            "reference_article_html",
+        ),
+        "prepare_schema_exact": _tool_properties_exact(
+            tools,
+            "kcs_prepare_semantic_review",
+            {"semantic_review_ref"},
+        ),
+        "register_schema_exact": _tool_properties_exact(
+            tools,
+            "kcs_register_clean_ticket",
+            {"clean_ticket_text", "debug", "ticket_ref"},
+        ),
+        "submit_schema_exact": _tool_properties_exact(
+            tools,
+            "kcs_submit_semantic_review",
+            {"candidate_semantic_extraction", "semantic_review_ref"},
+        ),
+        "support_helper_schema_exact": _tool_properties_exact(
+            tools,
+            "support_get_behavior_instructions",
+            set(),
+        ),
+        "tool_names_exact": set(tools) == _EXPECTED_TOOL_NAMES,
     }
+
+
+def _truncated_tool_surface_checks(line: str) -> dict[str, bool]:
+    return {
+        "old_item_schema_absent": _old_schema_absent(line, "item"),
+        "old_item_candidates_schema_absent": _old_schema_absent(
+            line,
+            "item_candidates",
+        ),
+        "old_reference_article_html_absent": _old_schema_absent(
+            line,
+            "reference_article_html",
+        ),
+        "tool_surface_truncated": _truncated_draft_schema_visible(line),
+        "truncated_annotations_visible": _truncated_annotations_visible(line),
+    }
+
+
+def _line_is_truncated_tool_surface(line: str) -> bool:
+    return (
+        "Message from server" in line
+        and '"tools":[' in line
+        and "chars truncated" in line
+    )
+
+
+def _truncated_annotations_visible(line: str) -> bool:
+    return (
+        '"destructiveHint":false' in line
+        and '"idempotentHint":false' in line
+        and '"openWorldHint":false' in line
+        and '"readOnlyHint":false' in line
+    )
+
+
+def _truncated_draft_schema_visible(line: str) -> bool:
+    return "chars truncated" in line
+
+
+_EXPECTED_TOOL_NAMES = frozenset(
+    {
+        "kcs_draft_article",
+        "kcs_prepare_semantic_review",
+        "kcs_register_clean_ticket",
+        "kcs_submit_semantic_review",
+        "support_get_behavior_instructions",
+    }
+)
+_MUTATING_TOOLS = frozenset(
+    {
+        "kcs_draft_article",
+        "kcs_register_clean_ticket",
+        "kcs_submit_semantic_review",
+    }
+)
+_READ_ONLY_TOOLS = frozenset(
+    {
+        "kcs_prepare_semantic_review",
+        "support_get_behavior_instructions",
+    }
+)
+
+
+def _tool_surface_tools(line: str) -> dict[str, dict[str, Any]]:
+    payload = _line_json_payload(line)
+    tools = payload.get("result", {}).get("tools")
+    if not isinstance(tools, list):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for tool in tools:
+        if isinstance(tool, dict) and isinstance(tool.get("name"), str):
+            result[str(tool["name"])] = tool
+    return result
+
+
+def _line_json_payload(line: str) -> dict[str, Any]:
+    marker = "Message from server: "
+    try:
+        payload = line.split(marker, 1)[1]
+    except IndexError:
+        return {}
+    try:
+        value = json.loads(payload)
+    except json.JSONDecodeError:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _tool_properties_exact(
+    tools: dict[str, dict[str, Any]],
+    tool_name: str,
+    expected: set[str],
+) -> bool:
+    tool = tools.get(tool_name)
+    if not isinstance(tool, dict):
+        return False
+    properties = tool.get("inputSchema", {}).get("properties")
+    return isinstance(properties, dict) and set(properties) == expected
+
+
+def _tool_annotations_exact(tools: dict[str, dict[str, Any]]) -> bool:
+    if set(tools) != _EXPECTED_TOOL_NAMES:
+        return False
+    for name in _MUTATING_TOOLS:
+        if not _annotations_match(tools.get(name), read_only=False):
+            return False
+    for name in _READ_ONLY_TOOLS:
+        if not _annotations_match(tools.get(name), read_only=True):
+            return False
+    return True
+
+
+def _annotations_match(tool: dict[str, Any] | None, *, read_only: bool) -> bool:
+    if not isinstance(tool, dict):
+        return False
+    annotations = tool.get("annotations")
+    if not isinstance(annotations, dict):
+        return False
+    return (
+        annotations.get("destructiveHint") is False
+        and annotations.get("idempotentHint") is read_only
+        and annotations.get("openWorldHint") is False
+        and annotations.get("readOnlyHint") is read_only
+    )
+
+
+def _old_schema_absent(line: str, property_name: str) -> bool:
+    return f'"{property_name}"' not in line
 
 
 def _client_capability_summary(line: str | None) -> dict[str, bool]:
@@ -152,17 +320,6 @@ def _client_capability_summary(line: str | None) -> dict[str, bool]:
         "initialize_observed": True,
         "mcp_ui_extension_declared": "io.modelcontextprotocol/ui" in line,
     }
-
-
-def _thin_argument_visible(line: str) -> bool:
-    return any(
-        fragment in line
-        for fragment in (
-            '"approved_summary_text"',
-            '"operator_selected_item_ref"',
-            '"operator_selection_ref"',
-        )
-    )
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:

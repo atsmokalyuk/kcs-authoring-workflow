@@ -212,10 +212,10 @@ MVP packet caps:
 
 - max 12 excerpts;
 - max 12,000 UTF-8 bytes per excerpt;
-- max 96,000 total excerpt UTF-8 bytes;
+- max 144,000 total excerpt UTF-8 bytes;
 - max 5 candidate items.
 
-The generic MCP tool-result cap for this adapter is 192 KB. Semantic review
+The generic MCP tool-result cap for this adapter is 256 KB. Semantic review
 packets must stay comfortably below that cap after JSON overhead.
 
 Prepare output may include safe audit metadata only:
@@ -409,6 +409,7 @@ Current review checkpoint artifact:
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-13a-2026-06-20.md`
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-13b-2026-06-20.md`
 - `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-13c-2026-06-20.md`
+- `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-13d-2026-06-20.md`
 
 - `KCS-12a: Desktop schema diet + workflow service`
   - status: complete after final ChatGPT Pro follow-up review;
@@ -455,6 +456,7 @@ Current review checkpoint artifact:
   - focus on preventing a broad Desktop-owned extraction backdoor and ensuring
     Python-owned validation/decision/rendering.
 - `KCS-13d: MCPB, docs, smoke, and Desktop contract alignment`
+  - status: complete after `gpt-5.3-codex-spark` review;
   - lighter review after source/installed smoke and log checks pass;
   - focus on Desktop-visible schema wording and no manual fallback.
 
@@ -544,7 +546,7 @@ Current branch status:
     P0/P1 blockers;
   - deferred hardening is recorded in
     `docs/internal/kcs-desktop-authoring-review-checkpoint-kcs-12d-2026-06-19.md`.
-- `KCS-13` controlled semantic review fallback is in staged implementation:
+- `KCS-13` controlled semantic review fallback is implemented locally:
   - design direction is conditionally approved after external review;
   - `KCS-13a` policy/metadata/result contract is implemented and approved to
     move forward after code-review checkpoint;
@@ -555,8 +557,11 @@ Current branch status:
   - `KCS-13c` strict `kcs_submit_semantic_review` validation and continuation
     through the existing draft/split pipeline are implemented and approved to
     commit after code-review checkpoint;
-  - `KCS-13d` is next and must align MCPB packaging, installed/source smoke,
-    docs, and Desktop log checks for the full KCS-13 tool set.
+  - `KCS-13d` aligns MCPB packaging, installed/source smoke, docs, and Desktop
+    log checks for the full KCS-13 tool set;
+  - KCS-13d raises the bounded semantic-review budget to 144,000 total
+    selected-excerpt bytes and the generic MCP tool-result cap to 256 KB while
+    keeping forbidden-key checks and no-full-ticket output.
 
 ## Output Boundary
 

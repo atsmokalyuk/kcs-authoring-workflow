@@ -1115,6 +1115,7 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         ]
         and register_annotations.get("destructiveHint") is False
         and register_annotations.get("idempotentHint") is False
+        and register_annotations.get("openWorldHint") is False
         and register_annotations.get("readOnlyHint") is False
         and set(properties)
         == {
@@ -1128,6 +1129,7 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         and "item_candidates" not in properties
         and annotations.get("destructiveHint") is False
         and annotations.get("idempotentHint") is False
+        and annotations.get("openWorldHint") is False
         and annotations.get("readOnlyHint") is False
         and "Python validates the input and owns semantic extraction" in description
         and "Claude Desktop file card is not a filesystem path" in description
@@ -1142,6 +1144,7 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         ]
         and prepare_annotations.get("destructiveHint") is False
         and prepare_annotations.get("idempotentHint") is True
+        and prepare_annotations.get("openWorldHint") is False
         and prepare_annotations.get("readOnlyHint") is True
         and "selected excerpts only" in prepare_description
         and "candidate_semantic_extraction_v1" in prepare_description
@@ -1152,10 +1155,15 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         == ["semantic_review_ref", "candidate_semantic_extraction"]
         and submit_annotations.get("destructiveHint") is False
         and submit_annotations.get("idempotentHint") is False
+        and submit_annotations.get("openWorldHint") is False
         and submit_annotations.get("readOnlyHint") is False
         and "candidate_semantic_extraction_v1" in submit_description
         and "selected_excerpts source refs" in submit_description
         and "Do not submit article drafts" in submit_description
+        and behavior_tool.get("annotations", {}).get("destructiveHint") is False
+        and behavior_tool.get("annotations", {}).get("idempotentHint") is True
+        and behavior_tool.get("annotations", {}).get("openWorldHint") is False
+        and behavior_tool.get("annotations", {}).get("readOnlyHint") is True
         and behavior_tool.get("inputSchema", {}).get("properties", {}) == {}
     )
 

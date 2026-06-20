@@ -11,7 +11,7 @@ from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict, require_json_object
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
 
-MAX_TOOL_RESULT_BYTES = 192 * 1024
+MAX_TOOL_RESULT_BYTES = 256 * 1024
 
 _RESULT_FORBIDDEN_FRAGMENTS = (
     "article_body",

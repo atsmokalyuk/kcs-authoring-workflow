@@ -515,10 +515,10 @@ tools are not loaded into the active chat.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Historical parent Jira item: PAUX-7083
-- Last completed implementation slice: KCS-13c Semantic Review Submit
-- Current implementation slice: KCS-13 Controlled Semantic Review Fallback
-- Current implementation subtask: KCS-13d MCPB, docs, smoke, and Desktop
-  contract alignment
+- Last completed implementation slice: KCS-13 Controlled Semantic Review
+  Fallback
+- Current implementation slice: post-KCS-13 stabilization / next slice TBD
+- Current implementation subtask: none
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
