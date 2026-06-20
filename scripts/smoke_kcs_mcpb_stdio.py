@@ -9,6 +9,7 @@ import selectors
 import shutil
 import subprocess
 import sys
+import time
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -48,6 +49,7 @@ PROTOCOL_VERSION = "2025-11-25"
 TOOL_NAME = "kcs_draft_article"
 REGISTER_TOOL_NAME = "kcs_register_clean_ticket"
 CALL_REQUEST_IDS = (3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+APPROVED_TICKET_STORE_ROOT_ENV = "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT"
 _BUNDLE_FILE_ROOTS = (REPO_ROOT,)
 
 
@@ -342,6 +344,7 @@ def _run_register_then_draft_smoke(
             process,
             {"jsonrpc": "2.0", "method": "notifications/initialized"},
         )
+        register_started_at = time.time()
         register = _send_jsonrpc(
             process,
             _request(
@@ -368,7 +371,12 @@ def _run_register_then_draft_smoke(
                 {"name": TOOL_NAME, "arguments": dict(next_arguments)},
             ),
         )
-        return {"draft": draft, "initialize": initialize, "register": register}
+        return {
+            "_register_started_at": {"value": register_started_at},
+            "draft": draft,
+            "initialize": initialize,
+            "register": register,
+        }
     finally:
         _close_process(process)
 
@@ -1032,6 +1040,11 @@ def _register_then_draft_ok(responses: dict[str, dict[str, Any]]) -> bool:
         and responses["draft"].get("result", {}).get("isError") is False
         and registered.get("result_kind") == "clean_ticket_registered"
         and registered.get("ticket_ref") == "smoke-monitoring-001"
+        and _clean_ticket_file_ok(
+            "smoke-monitoring-001",
+            registered.get("clean_ticket_sha256"),
+            min_mtime=_register_started_at(responses),
+        )
         and registered.get("next_tool_name") == TOOL_NAME
         and registered.get("next_arguments") == {"ticket_ref": "smoke-monitoring-001"}
         and "clean_ticket_text" not in register_text
@@ -1082,8 +1095,44 @@ def _bundle_file_ok(html_path: str, expected_sha256: object) -> bool:
     return False
 
 
+def _clean_ticket_file_ok(
+    ticket_ref: str,
+    expected_sha256: object,
+    *,
+    min_mtime: float,
+) -> bool:
+    if not isinstance(expected_sha256, str) or len(expected_sha256) != 64:
+        return False
+    roots = tuple(dict.fromkeys((REPO_ROOT, *_BUNDLE_FILE_ROOTS)))
+    for root in roots:
+        path = (
+            root
+            / "local-data"
+            / "approved-summaries"
+            / ticket_ref
+            / "clean.ticket.txt"
+        )
+        try:
+            stat = path.stat()
+            content = path.read_bytes()
+        except OSError:
+            continue
+        if stat.st_mtime < min_mtime:
+            continue
+        if sha256(content).hexdigest() == expected_sha256:
+            return True
+    return False
+
+
+def _register_started_at(responses: dict[str, dict[str, Any]]) -> float:
+    value = responses.get("_register_started_at", {}).get("value")
+    return value if isinstance(value, (int, float)) else 0.0
+
+
 def _runtime_bundle_file_roots(wrapper: Path) -> tuple[Path, ...]:
     roots = [REPO_ROOT]
+    if approved_ticket_store_root := os.environ.get(APPROVED_TICKET_STORE_ROOT_ENV):
+        roots.insert(0, Path(approved_ticket_store_root))
     bundled_root = wrapper.parent.parent / "python"
     if (bundled_root / "pyproject.toml").is_file():
         roots.insert(0, Path.home() / "Documents" / "KCS Authoring")

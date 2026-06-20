@@ -222,6 +222,72 @@ def test_mcpb_node_wrapper_launches_bundled_or_source_stdio_server() -> None:
     assert "TMPDIR" in text
 
 
+def test_stdio_smoke_checks_persisted_clean_ticket_file(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    smoke = _load_smoke_module()
+    ticket_ref = "ticket-96024747"
+    clean_ticket = (
+        tmp_path
+        / "local-data"
+        / "approved-summaries"
+        / ticket_ref
+        / "clean.ticket.txt"
+    )
+    clean_ticket.parent.mkdir(parents=True)
+    content = b"When loading the monitoring module in Plesk, graphs show no data."
+    clean_ticket.write_bytes(content)
+    expected_sha256 = sha256(content).hexdigest()
+    min_mtime = clean_ticket.stat().st_mtime - 1.0
+    monkeypatch.setattr(smoke, "_BUNDLE_FILE_ROOTS", (tmp_path,))
+
+    assert (
+        smoke._clean_ticket_file_ok(
+            ticket_ref,
+            expected_sha256,
+            min_mtime=min_mtime,
+        )
+        is True
+    )
+    assert (
+        smoke._clean_ticket_file_ok(
+            ticket_ref,
+            "0" * 64,
+            min_mtime=min_mtime,
+        )
+        is False
+    )
+    assert (
+        smoke._clean_ticket_file_ok(
+            ticket_ref,
+            expected_sha256,
+            min_mtime=clean_ticket.stat().st_mtime + 1.0,
+        )
+        is False
+    )
+    assert (
+        smoke._clean_ticket_file_ok(
+            "ticket-missing",
+            expected_sha256,
+            min_mtime=min_mtime,
+        )
+        is False
+    )
+
+
+def test_stdio_smoke_roots_include_approved_ticket_store_override(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    smoke = _load_smoke_module()
+    monkeypatch.setenv(smoke.APPROVED_TICKET_STORE_ROOT_ENV, str(tmp_path))
+
+    roots = smoke._runtime_bundle_file_roots(MCPB_SOURCE / "server" / "index.js")
+
+    assert tmp_path.resolve() in roots
+
+
 def test_mcpb_node_wrapper_rejects_wrong_explicit_repo_root_without_spawn(
     tmp_path: Path,
 ) -> None:
