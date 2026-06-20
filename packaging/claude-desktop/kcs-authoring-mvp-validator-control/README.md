@@ -61,9 +61,12 @@ layout inside the configured clean-ticket store is:
 local-data/approved-summaries/<ticket_ref>/clean.ticket.txt
 ```
 
-Installed MCPB runs store those clean ticket files under
-`~/Documents/KCS Authoring`. Source/dev runs without a storage hint keep using
-the project-local `local-data/approved-summaries` directory.
+Installed MCPB runs store those machine-readable clean ticket files under
+`~/Library/Application Support/KCS Authoring`. Source/dev runs without a
+storage hint keep using the project-local `local-data/approved-summaries`
+directory. External cleanup forms should write the same layout under the
+Application Support root and show the exact `<ticket_ref>` directory name to the
+operator.
 
 Claude Desktop must pass only the opaque ref, for example:
 
@@ -120,9 +123,9 @@ That fixture is not production semantic extraction.
 After the operator chooses one candidate, the next `kcs_draft_article` call
 must pass only `operator_selection_ref` and `operator_selected_item_ref`.
 
-Default successful authoring results return reviewer-only Zendesk HTML, compact
-safe status, and local reviewer bundle references. The same HTML is written to
-the local bundle path returned as `html_path`. Installed MCPB runs write reviewer
+Default successful authoring results return compact safe status and local
+reviewer bundle references. Reviewer-only Zendesk HTML is written to the local
+bundle path returned as `html_path`. Installed MCPB runs write human-reviewable
 bundles under `~/Documents/KCS Authoring` and return that location as
 `bundle_storage_hint`; resolve `html_path` below that directory. Source/dev runs
 without that hint keep using the project-local `local-data/reviewer-bundles`

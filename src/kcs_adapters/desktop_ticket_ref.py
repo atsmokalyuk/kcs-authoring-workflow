@@ -140,7 +140,6 @@ def register_clean_ticket_arguments(arguments: Mapping[str, Any]) -> JsonDict:
 def checked_approved_ticket_ref(value: object) -> str:
     if not isinstance(value, str) or not _SAFE_APPROVED_TICKET_REF_RE.fullmatch(value):
         raise ApprovedSummaryInputError("approved_ticket_ref_invalid")
-    ensure_safe_sanitized_payload(value)
     return value
 
 
@@ -321,7 +320,13 @@ def _validate_approved_ticket_file_payload(
 ) -> None:
     if any(key not in APPROVED_TICKET_FILE_KEYS for key in payload):
         raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
-    ensure_safe_sanitized_payload(payload)
+    ensure_safe_sanitized_payload(
+        {
+            key: value
+            for key, value in payload.items()
+            if key not in {"schema_version", "ticket_ref"}
+        }
+    )
     if payload.get("schema_version") != APPROVED_TICKET_FILE_SCHEMA_VERSION:
         raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
     if payload.get("ticket_ref") != ticket_ref:

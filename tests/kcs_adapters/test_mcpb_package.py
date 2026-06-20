@@ -217,6 +217,7 @@ def test_mcpb_node_wrapper_launches_bundled_or_source_stdio_server() -> None:
     assert "child.stdout" in text
     assert "USERPROFILE" in text
     assert "APPDATA" in text
+    assert "Application Support" in text
     assert "Documents" in text
     assert "KCS Authoring" in text
     assert "TMPDIR" in text

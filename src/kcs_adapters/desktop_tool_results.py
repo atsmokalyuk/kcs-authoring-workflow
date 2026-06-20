@@ -60,6 +60,8 @@ _FORBIDDEN_TEXT_HTML_TAG_RE = re.compile(
     r"</\s*[a-z][a-z0-9:-]*\b|<\s*(?:a|br|div|h1|h2|h3|li|ol|p|pre|ul)\b",
     re.I,
 )
+_SAFE_LOCAL_REF_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,120}")
+_TOOL_RESULT_LOCAL_REF_FIELDS = frozenset({"case_ref", "ticket_ref"})
 
 
 def tool_result_content(structured: Mapping[str, Any]) -> list[JsonDict]:
@@ -382,7 +384,9 @@ def _tool_result_payload_for_generic_safety(value: object) -> object:
     if isinstance(value, Mapping):
         return {
             key: (
-                _mask_approved_tool_html_urls(item)
+                _mask_local_tool_ref(item)
+                if key in _TOOL_RESULT_LOCAL_REF_FIELDS and isinstance(item, str)
+                else _mask_approved_tool_html_urls(item)
                 if key in _TOOL_RESULT_HTML_FIELDS and isinstance(item, str)
                 else _tool_result_payload_for_generic_safety(item)
             )
@@ -390,6 +394,12 @@ def _tool_result_payload_for_generic_safety(value: object) -> object:
         }
     if isinstance(value, list):
         return [_tool_result_payload_for_generic_safety(item) for item in value]
+    return value
+
+
+def _mask_local_tool_ref(value: str) -> str:
+    if _SAFE_LOCAL_REF_RE.fullmatch(value):
+        return "safe-local-ref"
     return value
 
 

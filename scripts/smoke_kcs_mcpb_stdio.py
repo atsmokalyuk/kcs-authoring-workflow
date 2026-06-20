@@ -1135,8 +1135,12 @@ def _runtime_bundle_file_roots(wrapper: Path) -> tuple[Path, ...]:
         roots.insert(0, Path(approved_ticket_store_root))
     bundled_root = wrapper.parent.parent / "python"
     if (bundled_root / "pyproject.toml").is_file():
-        roots.insert(0, Path.home() / "Documents" / "KCS Authoring")
-        roots.insert(1, bundled_root)
+        roots.insert(
+            0,
+            Path.home() / "Library" / "Application Support" / "KCS Authoring",
+        )
+        roots.insert(1, Path.home() / "Documents" / "KCS Authoring")
+        roots.insert(2, bundled_root)
     return tuple(dict.fromkeys(root.resolve() for root in roots))
 
 

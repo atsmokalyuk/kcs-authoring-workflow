@@ -167,7 +167,7 @@ def test_register_clean_ticket_uses_configured_store_root(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project_root = tmp_path / "project"
-    storage_root = tmp_path / "documents" / "KCS Authoring"
+    storage_root = tmp_path / "Application Support" / "KCS Authoring"
     monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(project_root))
     monkeypatch.setenv(
         "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT",
@@ -175,11 +175,11 @@ def test_register_clean_ticket_uses_configured_store_root(
     )
     monkeypatch.setenv(
         "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT",
-        "~/Documents/KCS Authoring",
+        "~/Library/Application Support/KCS Authoring",
     )
     monkeypatch.setenv(
         "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF",
-        "user_documents_kcs_authoring",
+        "user_application_support_kcs_authoring",
     )
 
     result = register_clean_ticket_arguments(
@@ -204,8 +204,14 @@ def test_register_clean_ticket_uses_configured_store_root(
         / "monitoring-001"
         / APPROVED_TICKET_CLEAN_TEXT_FILE_NAME
     ).exists()
-    assert result["clean_ticket_storage_hint"] == "~/Documents/KCS Authoring"
-    assert result["clean_ticket_storage_ref"] == "user_documents_kcs_authoring"
+    assert (
+        result["clean_ticket_storage_hint"]
+        == "~/Library/Application Support/KCS Authoring"
+    )
+    assert (
+        result["clean_ticket_storage_ref"]
+        == "user_application_support_kcs_authoring"
+    )
 
 
 def test_register_clean_ticket_generates_ref_from_text(
@@ -220,6 +226,28 @@ def test_register_clean_ticket_generates_ref_from_text(
     assert isinstance(result["ticket_ref"], str)
     assert result["ticket_ref"].startswith("ticket-")
     assert result["next_arguments"] == {"ticket_ref": result["ticket_ref"]}
+
+
+def test_register_clean_ticket_accepts_operator_ticket_ref(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+
+    result = register_clean_ticket_arguments(
+        {
+            "clean_ticket_text": "Customer Ticket Content\nSafe sanitized text.",
+            "ticket_ref": "ticket-96024747",
+        }
+    )
+    arguments = approved_ticket_author_arguments({"ticket_ref": "ticket-96024747"})
+
+    assert result["ticket_ref"] == "ticket-96024747"
+    assert result["next_arguments"] == {"ticket_ref": "ticket-96024747"}
+    assert arguments["case_ref"] == "approved-ticket-ticket-96024747"
+    assert arguments["approved_summary_text"] == (
+        "Customer Ticket Content\nSafe sanitized text."
+    )
 
 
 def test_register_clean_ticket_accepts_large_complete_transcript(

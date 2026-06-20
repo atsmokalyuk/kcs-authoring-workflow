@@ -104,6 +104,14 @@ const projectRoot = resolveProjectRoot();
 const bundledProjectRoot = path.resolve(__dirname, "..", "python");
 const isBundledProject = projectRoot === bundledProjectRoot;
 
+function appSupportKcsAuthoringRoot() {
+  const home = os.homedir();
+  if (!home) {
+    return "";
+  }
+  return path.join(home, "Library", "Application Support", "KCS Authoring");
+}
+
 function resolveUvCommand() {
   const explicit = runtimeOverride("KCS_AUTHORING_MVP_UV_COMMAND");
   if (explicit) {
@@ -197,13 +205,13 @@ const childEnv = {
   KCS_AUTHORING_MVP_REPO_ROOT: projectRoot,
   KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT:
     process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT ||
-    (isBundledProject ? path.join(os.homedir(), "Documents", "KCS Authoring") : ""),
+    (isBundledProject ? appSupportKcsAuthoringRoot() : ""),
   KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT:
     process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT ||
-    (isBundledProject ? "~/Documents/KCS Authoring" : ""),
+    (isBundledProject ? "~/Library/Application Support/KCS Authoring" : ""),
   KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF:
     process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF ||
-    (isBundledProject ? "user_documents_kcs_authoring" : ""),
+    (isBundledProject ? "user_application_support_kcs_authoring" : ""),
   KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT:
     process.env.KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT ||
     (isBundledProject
