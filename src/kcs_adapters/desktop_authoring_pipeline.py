@@ -21,11 +21,11 @@ from kcs_adapters.desktop_workflow import (
     approved_summary_reviewer_only_html,
     approved_summary_reviewer_only_preview,
     approved_summary_reviewer_only_preview_text,
-    draft_author_failure_result,
     execute_approved_summary_pipeline,
     safe_candidate_list,
     safe_candidate_string,
 )
+from kcs_adapters.desktop_workflow_results import draft_author_failure_result
 from kcs_core.decision import decide_kcs_action
 from kcs_core.errors import ContractValidationError
 from kcs_core.evidence_builder import (

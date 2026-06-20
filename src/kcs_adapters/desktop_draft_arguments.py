@@ -6,8 +6,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from kcs_adapters import desktop_payload as _desktop_payload
-from kcs_adapters.desktop_workflow import (
-    PendingDraftSelection,
+from kcs_adapters.desktop_operator_selection import PendingDraftSelection
+from kcs_adapters.desktop_workflow_results import (
     selection_error_result,
     split_required_result,
 )

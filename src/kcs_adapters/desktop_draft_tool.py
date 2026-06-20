@@ -25,6 +25,8 @@ from kcs_adapters.desktop_workflow import (
     SemanticExtractionProviderUnavailableError,
     attach_pending_selection,
     finalize_author_result_with_bundle,
+)
+from kcs_adapters.desktop_workflow_results import (
     operator_selection_expired_result,
     operator_selection_unavailable_result,
     semantic_provider_unavailable_result,
