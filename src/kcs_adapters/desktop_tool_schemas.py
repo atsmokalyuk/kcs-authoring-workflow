@@ -9,6 +9,14 @@ from kcs_core.json_payload import JsonDict
 from kcs_core.models import ArticleType
 
 
+def _string_array_schema(description: str) -> JsonDict:
+    return {
+        "type": "array",
+        "description": description,
+        "items": {"type": "string"},
+    }
+
+
 def approved_summary_input_schema() -> JsonDict:
     return object_schema(
         properties={
@@ -213,10 +221,14 @@ def submit_semantic_review_input_schema() -> JsonDict:
                     "exactly schema_version, case_ref, extraction_source_ref, "
                     "source_refs, and items. The array must be named items, "
                     "not candidates. Copy case_ref and allowed source_refs "
-                    "from the prepared packet's required_submit_shape. Do not "
-                    "include article drafts, HTML, recommended_action, item, "
-                    "item_candidates, raw ticket text, local paths, or "
-                    "publication flags."
+                    "from the prepared packet's required_submit_shape. Use "
+                    "plain string arrays for symptoms, confirmed_facts, "
+                    "resolution_steps, source_refs, and open_questions; "
+                    "preserve step order by array order only. Do not submit "
+                    "objects such as {order, action}, {text}, or nested step "
+                    "structures. Do not include article drafts, HTML, "
+                    "recommended_action, item, item_candidates, raw ticket "
+                    "text, local paths, or publication flags."
                 ),
                 "additionalProperties": False,
                 "properties": {
@@ -230,7 +242,9 @@ def submit_semantic_review_input_schema() -> JsonDict:
                             "properties": {
                                 "article_type_hint": {"type": "string"},
                                 "candidate_id": {"type": "string"},
-                                "confirmed_facts": {"type": "array"},
+                                "confirmed_facts": _string_array_schema(
+                                    "Plain strings only; no objects."
+                                ),
                                 "environment": {
                                     "type": "object",
                                     "description": (
@@ -249,11 +263,18 @@ def submit_semantic_review_input_schema() -> JsonDict:
                                     },
                                 },
                                 "kcs_item_status": {"type": "string"},
-                                "open_questions": {"type": "array"},
+                                "open_questions": _string_array_schema(
+                                    "Plain strings only; no objects."
+                                ),
                                 "product_relation": {"type": "string"},
                                 "question": {"type": "string"},
-                                "resolution_steps": {"type": "array"},
-                                "source_refs": {"type": "array"},
+                                "resolution_steps": _string_array_schema(
+                                    "Plain strings only; no objects. Preserve "
+                                    "step order by array order."
+                                ),
+                                "source_refs": _string_array_schema(
+                                    "Allowed excerpt refs only."
+                                ),
                                 "summary": {"type": "string"},
                                 "supportability": {"type": "string"},
                                 "supportability_basis": {"type": "string"},
@@ -262,7 +283,9 @@ def submit_semantic_review_input_schema() -> JsonDict:
                                 "supported_resolution_or_workaround": {
                                     "type": "string"
                                 },
-                                "symptoms": {"type": "array"},
+                                "symptoms": _string_array_schema(
+                                    "Plain strings only; no objects."
+                                ),
                                 "visibility_hint": {"type": "string"},
                             },
                             "required": [
@@ -276,7 +299,7 @@ def submit_semantic_review_input_schema() -> JsonDict:
                         },
                     },
                     "schema_version": {"type": "string"},
-                    "source_refs": {"type": "array"},
+                    "source_refs": _string_array_schema("Allowed excerpt refs only."),
                 },
                 "required": [
                     "schema_version",
@@ -429,6 +452,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "byte_length": {"type": "integer"},
     "candidate_environment_field_names": {"type": "array"},
     "candidate_item_field_names": {"type": "array"},
+    "candidate_plain_string_array_fields": {"type": "array"},
     "case_ref": {"type": "string"},
     "checks": {"type": "array"},
     "clean_ticket_sha256": {"type": "string"},

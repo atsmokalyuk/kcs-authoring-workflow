@@ -32,9 +32,9 @@ _TARGET_ARTICLE_ACTIONS = frozenset(
 )
 _MAX_TITLE_LENGTH = 180
 _MAX_LIST_ITEMS = 20
-_MAX_LIST_ITEM_LENGTH = 600
+_MAX_LIST_ITEM_LENGTH = 4_000
 _MAX_PARAGRAPH_LENGTH = 600
-_MAX_HTML_LENGTH = 12_000
+_MAX_HTML_LENGTH = 24_000
 _MAX_METADATA_LENGTH = 180
 _MAX_REPORT_CODE_LENGTH = 80
 _PUBLIC_VISIBILITY_CLASS = "public_customer_safe"
@@ -104,6 +104,55 @@ _SYSTEMCTL_RESTART_RE = re.compile(
     re.I,
 )
 _RUN_COMMAND_DESCRIPTION_SPLIT_RE = re.compile(r"\s+to\s+", re.I)
+_COLON_COMMAND_SPLIT_RE = re.compile(r":\s+", re.S)
+_SHELL_COMMAND_START_RE = re.compile(
+    r"^(?:"
+    r"awk|cat|chmod|chown|cp|curl|fail2ban-client|fail2ban-regex|find|"
+    r"firewall-cmd|grep|iptables|journalctl|mkdir|mv|nft|plesk|rpm|sed|"
+    r"service|systemctl|tail|ufw"
+    r")\b",
+    re.I,
+)
+_RISKY_RESOLUTION_ACTION_RE = re.compile(
+    r"\b(?:delete\s+from|drop\s+table|iptables|nft|plesk\s+db|rm\s+-rf|"
+    r"truncate|ufw)\b",
+    re.I,
+)
+_RISKY_RESOLUTION_SAFETY_RE = re.compile(
+    r"\b(?:warning|note|important|back\s+up|backup|rollback)\b",
+    re.I,
+)
+_RISKY_RESOLUTION_WARNING_HTML = (
+    "<p><code>Warning:</code> Review this action before applying it because "
+    "it can affect access, traffic handling, or stored data.</p>"
+)
+_TITLE_SOLUTION_CLAUSE_RE = re.compile(
+    r"\s*(?:,|;| - | – | — )?\s*\b"
+    r"(?:mitigated|resolved|fixed|addressed|solved|worked\s+around)\b.*$",
+    re.I,
+)
+_TITLE_CAUSE_CONNECTOR_RE = re.compile(
+    r"^(?P<symptom>.+?)\s+(?:caused\s+by|due\s+to)\s+(?P<cause>.+)$",
+    re.I,
+)
+_RESOLUTION_OUTCOME_SYMPTOM_RE = re.compile(
+    r"\b(?:after|once|when)\b[^.?!]{0,80}\b(?:block|fix|mitigat|restart|"
+    r"reload|resolv)|\b(?:dropped|decreased|resolved|started\s+working|"
+    r"began\s+working)\b",
+    re.I,
+)
+_INLINE_CONFIG_CONTENT_RE = re.compile(
+    r"^(?P<description>.+?)\s+with\s+the\s+following\s+content:\s+"
+    r"(?P<content>.+)$",
+    re.I | re.S,
+)
+_CONFIG_SECTION_RE = re.compile(r"^\[[^\]\n]{1,80}\]")
+_CONFIG_ASSIGNMENT_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_.-]{1,80}\s*=")
+_KCS_TRIGGER_LINE_RE = re.compile(
+    r"^(?:CONFIG_TEXT|MYSQL_(?:LIN|WIN)|PLESK_(?:ERROR|INFO|WARN)|"
+    r"SVM_(?:ERROR|INFO|WARN)|PS(?:\s|>|&gt;))",
+    re.I,
+)
 _PLESK_SSH_RESOLUTION_STEP = "Connect to the Plesk server via SSH."
 _PLESK_SSH_RESOLUTION_URL = (
     "https://support.plesk.com/hc/en-us/articles/"
@@ -192,7 +241,7 @@ def _public_article_candidate(
         "candidate_id": decision.candidate_id,
         "recommended_action": decision.recommended_action,
         "status": decision.status,
-        "title": _title(candidate, article_type),
+        "title": _title(evidence, candidate, article_type),
         "article_type": article_type.value,
         "applicable_to": _applicable_to(evidence.environment),
         "symptoms": _symptoms(evidence, candidate),
@@ -310,6 +359,7 @@ def _ordered_list(values: list[str], indent: int = 0) -> list[str]:
 
 
 def _resolution_ordered_list(values: list[str]) -> list[str]:
+    values = _merge_resolution_support_blocks(values)
     _ensure_list_bound(values)
     lines = ["  <ol>"]
     for value in values:
@@ -338,16 +388,126 @@ def _resolution_ordered_list_item(value: str) -> list[str]:
     linked = _linked_resolution_list_item(value)
     if linked is not None:
         return [f"    {linked}"]
+    warning_lines = _risky_resolution_warning_lines(value)
+    support_step = _resolution_support_block_step(value)
+    if support_step is not None:
+        description, support_block = support_step
+        return [
+            "    <li>",
+            f"      <p>{_inline_markup(description)}</p>",
+            *warning_lines,
+            f"      {_code_paragraph(support_block)}",
+            "    </li>",
+        ]
     command_step = _run_command_step(value)
     if command_step is None:
+        command_step = _colon_command_step(value)
+    if command_step is None:
+        if warning_lines:
+            return [
+                "    <li>",
+                f"      <p>{_inline_markup(value)}</p>",
+                *warning_lines,
+                "    </li>",
+            ]
         return [f"    {_ordered_list_item(value)}"]
     description, command = command_step
     return [
         "    <li>",
         f"      <p>{_inline_markup(description)}</p>",
-        f"      <p><code># {escape(command)}</code></p>",
+        *warning_lines,
+        f"      {_code_paragraph(command)}",
         "    </li>",
     ]
+
+
+def _merge_resolution_support_blocks(values: list[str]) -> list[str]:
+    merged: list[str] = []
+    for value in values:
+        if merged and _is_resolution_support_block(value):
+            merged[-1] = f"{merged[-1].rstrip()}\n{value.strip()}"
+        else:
+            merged.append(value)
+    return merged
+
+
+def _is_resolution_support_block(value: str) -> bool:
+    text = value.strip()
+    if not text:
+        return False
+    if _kcs_code_block(text):
+        return True
+    if text.startswith(("# ", "$ ", "C:\\>")):
+        return True
+    return _command_line_needs_shell_prompt(text)
+
+
+def _resolution_support_block_step(value: str) -> tuple[str, str] | None:
+    inline_config_step = _inline_config_support_block_step(value)
+    if inline_config_step is not None:
+        return inline_config_step
+    lines = value.splitlines()
+    if len(lines) < 2:
+        return None
+    for index, line in enumerate(lines[1:], start=1):
+        if _is_resolution_support_block(line):
+            description = " ".join(
+                part.strip() for part in lines[:index] if part.strip()
+            )
+            support_block = "\n".join(lines[index:]).strip()
+            if description and support_block:
+                return description, support_block
+            return None
+    return None
+
+
+def _inline_config_support_block_step(value: str) -> tuple[str, str] | None:
+    match = _INLINE_CONFIG_CONTENT_RE.match(value.strip())
+    if match is None:
+        return None
+    content = match.group("content").strip()
+    if not _looks_like_config_text(content):
+        return None
+    description = match.group("description").strip().rstrip(":")
+    if not description:
+        return None
+    return f"{description}:", _config_text_block_from_inline(content)
+
+
+def _looks_like_config_text(value: str) -> bool:
+    text = value.strip()
+    if _CONFIG_SECTION_RE.search(text):
+        return True
+    return len(_CONFIG_ASSIGNMENT_RE.findall(text)) >= 2
+
+
+def _config_text_block_from_inline(value: str) -> str:
+    return "CONFIG_TEXT:\n" + "\n".join(_inline_config_lines(value))
+
+
+def _inline_config_lines(value: str) -> list[str]:
+    text = value.strip()
+    section = _CONFIG_SECTION_RE.match(text)
+    lines: list[str] = []
+    if section is not None:
+        lines.append(section.group(0))
+        text = text[section.end() :].strip()
+    if not text:
+        return lines
+    split = re.split(
+        r"\s+(?=[A-Za-z_][A-Za-z0-9_.-]{1,80}\s*=)",
+        text,
+    )
+    lines.extend(part.strip() for part in split if part.strip())
+    return lines
+
+
+def _risky_resolution_warning_lines(value: str) -> list[str]:
+    if not _RISKY_RESOLUTION_ACTION_RE.search(value):
+        return []
+    if _RISKY_RESOLUTION_SAFETY_RE.search(value):
+        return []
+    return [f"      {_RISKY_RESOLUTION_WARNING_HTML}"]
 
 
 def _linked_resolution_list_item(value: str) -> str | None:
@@ -382,6 +542,24 @@ def _run_command_step(value: str) -> tuple[str, str] | None:
     return description, command
 
 
+def _colon_command_step(value: str) -> tuple[str, str] | None:
+    text = value.strip().rstrip(".")
+    parts = _COLON_COMMAND_SPLIT_RE.split(text, maxsplit=1)
+    if len(parts) != 2:
+        return None
+    description = parts[0].strip()
+    command = parts[1].strip()
+    if not description or not command:
+        return None
+    if not _command_line_needs_shell_prompt(command) and not _kcs_code_block(command):
+        return None
+    return f"{_sentence_case(description.rstrip('.'))}:", command
+
+
+def _kcs_code_block(value: str) -> bool:
+    return bool(_KCS_TRIGGER_LINE_RE.search(value.strip()))
+
+
 def _command_step_description(command: str, description: str | None) -> str:
     if description:
         return f"{_sentence_case(description.strip().rstrip('.'))}:"
@@ -389,6 +567,47 @@ def _command_step_description(command: str, description: str | None) -> str:
     if restart_match is not None:
         return f"Restart {restart_match.group('service')}:"
     return "Run the following command:"
+
+
+def _code_paragraph(value: str) -> str:
+    lines = _kcs_trigger_block_lines(value)
+    rendered: list[str] = []
+    for line in lines:
+        stripped = line.rstrip()
+        if not stripped:
+            rendered.append("<br>")
+            continue
+        rendered.append(f"<code>{escape(_code_line(stripped))}</code>")
+    return "<p>" + "<br>\n        ".join(rendered) + "</p>"
+
+
+def _kcs_trigger_block_lines(value: str) -> list[str]:
+    lines = value.splitlines() or [value]
+    if not lines:
+        return [value]
+    first = lines[0].strip()
+    if first.upper() != "CONFIG_TEXT:":
+        return lines
+    for index, line in enumerate(lines[1:], start=1):
+        if line.strip():
+            return [
+                f"CONFIG_TEXT: {line.rstrip()}",
+                *lines[1:index],
+                *lines[index + 1 :],
+            ]
+    return lines
+
+
+def _code_line(value: str) -> str:
+    if _KCS_TRIGGER_LINE_RE.search(value):
+        return value
+    if _command_line_needs_shell_prompt(value):
+        return f"# {value}"
+    return value
+
+
+def _command_line_needs_shell_prompt(value: str) -> bool:
+    return bool(_SHELL_COMMAND_START_RE.search(value.strip()))
 
 
 def _sentence_case(value: str) -> str:
@@ -724,14 +943,35 @@ def _article_type(value: str) -> ArticleType:
         return ArticleType.NONE
 
 
-def _title(candidate: Mapping[str, Any], article_type: ArticleType) -> str:
+def _title(
+    evidence: NormalizedTicketEvidencePacket,
+    candidate: Mapping[str, Any],
+    article_type: ArticleType,
+) -> str:
     for key in ("title", "summary", "question"):
         value = _string(candidate.get(key))
         if value:
-            return value
+            return _customer_issue_title(value)
     if article_type == ArticleType.HOWTO_QA:
         return "How-to article candidate"
+    symptom = _first_string(_symptoms(evidence, candidate))
+    cause = _cause(evidence, candidate)
+    if symptom and cause:
+        return _customer_issue_title(f"{symptom}: {cause}")
+    if symptom:
+        return symptom
     return "KCS article candidate"
+
+
+def _customer_issue_title(value: str) -> str:
+    title = _TITLE_SOLUTION_CLAUSE_RE.sub("", value).strip(" -–—,:;")
+    match = _TITLE_CAUSE_CONNECTOR_RE.match(title)
+    if match is not None:
+        symptom = match.group("symptom").strip(" -–—,:;")
+        cause = match.group("cause").strip(" -–—,:;")
+        if symptom and cause:
+            return f"{symptom}: {cause}"
+    return title or value
 
 
 def _applicable_to(environment: Mapping[str, Any]) -> list[str]:
@@ -787,9 +1027,23 @@ def _environment_text_from_mapping(environment: Mapping[str, Any]) -> str:
 def _symptoms(
     evidence: NormalizedTicketEvidencePacket, candidate: Mapping[str, Any]
 ) -> list[str]:
-    return _candidate_list(candidate, "symptoms") or _candidate_list(
+    symptoms = _candidate_list(candidate, "symptoms") or _candidate_list(
         candidate, "summary"
     ) or list(evidence.symptoms)
+    filtered = [
+        symptom
+        for symptom in symptoms
+        if not _RESOLUTION_OUTCOME_SYMPTOM_RE.search(symptom)
+    ]
+    return filtered or symptoms
+
+
+def _first_string(values: list[str]) -> str:
+    for value in values:
+        clean = _string(value)
+        if clean:
+            return clean
+    return ""
 
 
 def _cause(

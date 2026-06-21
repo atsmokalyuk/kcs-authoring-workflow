@@ -48,8 +48,13 @@ _FACT_RE = re.compile(
     re.I,
 )
 _SUBMIT_FORBIDDEN_TEXT_RE = re.compile(
-    r"</?\s*[a-z][a-z0-9:-]*(?:\s|/?>)|^\s*#{1,6}\s+|```",
+    r"</?\s*[a-z][a-z0-9:-]*(?:\s|/?>)|```",
     re.I | re.M,
+)
+_SUBMIT_MARKDOWN_HEADING_RE = re.compile(r"^\s*#{1,6}\s+\S.*$", re.M)
+_SUBMIT_CONFIG_TEXT_RE = re.compile(r"\bCONFIG_TEXT:", re.I)
+_SUBMIT_CONFIG_COMMENT_PATH_RE = re.compile(
+    r"^\s*#{1,6}\s+/[A-Za-z0-9_./:-]+", re.M
 )
 _SAFE_CONFIG_PLACEHOLDER_RE = re.compile(r"<[A-Z][A-Z0-9_:-]{1,40}>")
 _SUBMIT_FORBIDDEN_LOCAL_PATH_RE = re.compile(
@@ -72,6 +77,15 @@ _SUBMIT_FORBIDDEN_COMPACT_KEYS = frozenset(
         "publicoutputapproved",
         "recommendedaction",
         "revieweronlyhtml",
+    }
+)
+_SUBMIT_PLAIN_STRING_ARRAY_FIELDS = frozenset(
+    {
+        "confirmed_facts",
+        "open_questions",
+        "resolution_steps",
+        "source_refs",
+        "symptoms",
     }
 )
 SEMANTIC_REVIEW_SUBMIT_MAX_TEXT_BYTES = 4000
@@ -180,6 +194,7 @@ def semantic_review_packet(
             "source_refs",
             "symptoms",
             "confirmed_facts",
+            "open_questions",
             "supported_cause",
             "supported_resolution_or_workaround",
             "resolution_steps",
@@ -190,6 +205,13 @@ def semantic_review_packet(
             "platform",
             "product",
         ],
+        "candidate_plain_string_array_fields": [
+            "source_refs",
+            "symptoms",
+            "confirmed_facts",
+            "resolution_steps",
+            "open_questions",
+        ],
         "required_submit_shape": {
             "candidate_semantic_extraction": {
                 "case_ref": semantic_review_ref,
@@ -198,18 +220,28 @@ def semantic_review_packet(
                     {
                         "article_type_hint": "technical_scr",
                         "candidate_id": "candidate-001",
-                        "confirmed_facts": [],
+                        "confirmed_facts": [
+                            "Plain string fact grounded in excerpt refs."
+                        ],
                         "environment": {},
                         "kcs_item_status": "candidate_allowed",
+                        "open_questions": [
+                            "Plain string open question when evidence is unclear."
+                        ],
                         "product_relation": "plesk_owned",
-                        "resolution_steps": [],
+                        "resolution_steps": [
+                            "Plain string executable step grounded in excerpt refs."
+                        ],
                         "source_refs": ["excerpt-001"],
                         "summary": "",
                         "supportability": "supported",
                         "supportability_basis": "explicit_input_mention",
                         "supported_cause": "",
                         "supported_resolution_or_workaround": "",
-                        "symptoms": [],
+                        "symptoms": [
+                            "Plain string customer-visible symptom grounded "
+                            "in excerpt refs."
+                        ],
                         "visibility_hint": "public_customer_safe",
                     }
                 ],
@@ -219,10 +251,41 @@ def semantic_review_packet(
             "semantic_review_ref": semantic_review_ref,
         },
         "resolution_step_requirements": [
+            "Use symptoms for issue discovery only: start with the customer's "
+            "visible issue statement, then add only observed facts that narrow "
+            "the issue to the supported cause. Do not put resolution outcomes "
+            "such as 'CPU dropped after blocking traffic' in symptoms.",
+            "Use candidate summary/title for the customer-visible problem, "
+            "not for the fix. Do not include solution wording such as "
+            "'mitigated with', 'fixed by', or 'resolved by' in summary/title.",
             "Each technical_scr candidate must include standalone executable "
             "resolution_steps.",
+            "Use only actions and implementation details that are present in "
+            "selected_excerpts. Do not fill missing commands, configuration "
+            "content, rule bodies, or paths from general knowledge.",
             "Prefer command-level actions with command names and arguments "
             "when the excerpts provide them.",
+            "When a step creates, edits, configures, enables, disables, or "
+            "blocks a file, rule, filter, jail, service, port, or traffic, the "
+            "step must include the exact command, exact configuration content, "
+            "or an approved how-to link found in selected_excerpts.",
+            "For multi-line configuration snippets, submit one resolution step "
+            "as 'Describe the file/change: CONFIG_TEXT:' followed by the "
+            "sanitized configuration lines from selected_excerpts. Do not use "
+            "shell heredoc markers such as <<EOF in the semantic submission.",
+            "Submit symptoms, confirmed_facts, resolution_steps, source_refs, "
+            "and open_questions as arrays of plain strings only. Preserve "
+            "resolution order by array order. Do not submit objects such as "
+            "{order, action}, {text}, {label}, or nested step structures.",
+            "Custom or risky mitigations such as custom filters, firewall "
+            "rule changes, rate limits, or direct traffic blocks are allowed "
+            "when selected_excerpts show they were the actual supported "
+            "resolution. Include reviewer/public-vs-internal boundary and "
+            "warning, backup, or rollback evidence only when selected_excerpts "
+            "provide it; do not invent missing safety commands.",
+            "Prefer a single linear main resolution path, but preserve staged "
+            "or conditional mitigations when selected_excerpts show they were "
+            "part of the actual ticket resolution.",
             "Use concrete ports, service names, rule names, and verification "
             "targets when they are present in selected_excerpts.",
             "Do not submit vague steps such as 'create a rule' or 'block the "
@@ -275,6 +338,7 @@ def semantic_review_extraction_from_submission(
     """Validate Claude-proposed semantic extraction against prepared excerpts."""
 
     _ensure_bounded_submit_payload(candidate_semantic_extraction)
+    _ensure_plain_string_submit_arrays(candidate_semantic_extraction)
     _ensure_no_forbidden_submit_values(candidate_semantic_extraction)
     ensure_safe_sanitized_payload(candidate_semantic_extraction)
     validation = validate_candidate_semantic_extraction(
@@ -412,6 +476,21 @@ def _ensure_no_forbidden_submit_values(value: object) -> None:
         _ensure_no_forbidden_submit_string(value)
 
 
+def _ensure_plain_string_submit_arrays(value: object) -> None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in _SUBMIT_PLAIN_STRING_ARRAY_FIELDS and isinstance(item, list):
+                if any(not isinstance(member, str) for member in item):
+                    raise SemanticReviewError(
+                        "semantic_review_plain_string_arrays_required"
+                    )
+            _ensure_plain_string_submit_arrays(item)
+        return
+    if isinstance(value, list):
+        for item in value:
+            _ensure_plain_string_submit_arrays(item)
+
+
 def _ensure_no_forbidden_submit_mapping(value: dict[object, object]) -> None:
     for key, item in value.items():
         if isinstance(key, str):
@@ -425,8 +504,22 @@ def _ensure_no_forbidden_submit_string(value: str) -> None:
     html_checked_value = _SAFE_CONFIG_PLACEHOLDER_RE.sub("", value)
     if _SUBMIT_FORBIDDEN_TEXT_RE.search(html_checked_value):
         raise SemanticReviewError("semantic_review_submission_forbidden")
+    if _submit_markdown_heading_forbidden(html_checked_value):
+        raise SemanticReviewError("semantic_review_submission_forbidden")
     if _SUBMIT_FORBIDDEN_LOCAL_PATH_RE.search(value):
         raise SemanticReviewError("semantic_review_submission_forbidden")
+
+
+def _submit_markdown_heading_forbidden(value: str) -> bool:
+    matches = list(_SUBMIT_MARKDOWN_HEADING_RE.finditer(value))
+    if not matches:
+        return False
+    if not _SUBMIT_CONFIG_TEXT_RE.search(value):
+        return True
+    return any(
+        _SUBMIT_CONFIG_COMMENT_PATH_RE.fullmatch(match.group(0)) is None
+        for match in matches
+    )
 
 
 def _ensure_submit_candidate_count(

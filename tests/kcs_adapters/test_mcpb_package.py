@@ -167,6 +167,7 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     ]
     assert "selected excerpts only" in prepare_tool["description"]
     assert "candidate_semantic_extraction_v1" in prepare_tool["description"]
+    assert "arrays of plain strings only" in prepare_tool["description"]
     assert "Do not draft an article" in prepare_tool["description"]
     submit_tool = next(
         tool
@@ -175,6 +176,7 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     )
     assert "candidate_semantic_extraction_v1" in submit_tool["description"]
     assert "selected_excerpts source refs" in submit_tool["description"]
+    assert "arrays of plain strings only" in submit_tool["description"]
     assert "Do not submit article drafts" in submit_tool["description"]
     behavior_tool = next(
         tool

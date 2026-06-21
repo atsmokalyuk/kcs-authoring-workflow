@@ -47,11 +47,11 @@
       "name": "kcs_draft_article"
     },
     {
-      "description": "Return a bounded Claude-visible semantic-review packet for one pending clean-ticket semantic review. Call this only with the semantic_review_ref returned by kcs_draft_article. The packet contains selected excerpts only, not the full ticket. Use it to identify atomic KCS item candidates in candidate_semantic_extraction_v1 format only. Do not draft an article, choose a KCS action, return HTML, or submit item/item_candidates payloads through kcs_draft_article.",
+      "description": "Return a bounded Claude-visible semantic-review packet for one pending clean-ticket semantic review. Call this only with the semantic_review_ref returned by kcs_draft_article. The packet contains selected excerpts only, not the full ticket. Use it to identify atomic KCS item candidates in candidate_semantic_extraction_v1 format only. The packet includes required_submit_shape; use that shape exactly and name the candidate array items, not candidates. Submit symptoms, confirmed_facts, resolution_steps, source_refs, and open_questions as arrays of plain strings only; preserve resolution order by array order. Do not draft an article, choose a KCS action, return HTML, or submit item/item_candidates payloads through kcs_draft_article.",
       "name": "kcs_prepare_semantic_review"
     },
     {
-      "description": "Submit Claude-proposed semantic item identification for a prepared semantic review. Accepts only candidate_semantic_extraction_v1 grounded in the selected_excerpts source refs returned by kcs_prepare_semantic_review. Do not submit article drafts, HTML, recommended_action, item, item_candidates, raw ticket text, local paths, or publication flags. Python validates the extraction, then continues the normal draft or split-required pipeline.",
+      "description": "Submit Claude-proposed semantic item identification for a prepared semantic review. Accepts only candidate_semantic_extraction_v1 grounded in the selected_excerpts source refs returned by kcs_prepare_semantic_review. Use the required_submit_shape exactly. Submit symptoms, confirmed_facts, resolution_steps, source_refs, and open_questions as arrays of plain strings only; do not submit step objects such as {order, action}. Do not submit article drafts, HTML, recommended_action, item, item_candidates, raw ticket text, local paths, or publication flags. Python validates the extraction, then continues the normal draft or split-required pipeline.",
       "name": "kcs_submit_semantic_review"
     },
     {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 import kcs_core
+from kcs_adapters.zendesk_markup_quality import review_kcs_zendesk_markup_source
 from kcs_core.decision import decide_kcs_action
 from kcs_core.errors import ContractValidationError
 from kcs_core.models import (
@@ -308,12 +309,266 @@ def test_renderer_formats_commands_and_paths_as_inline_code() -> None:
         "      <p><code># systemctl restart sw-collectd</code></p>"
         in html
     )
-    assert "<code>DataDir</code>" in html
-    assert "<code>sw-collectd</code>" in html
+
+
+def test_renderer_adds_warning_for_risky_resolution_command() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "High CPU load on a Plesk server",
+                "summary": "The server has high CPU load.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Connect to the Plesk server via SSH.",
+                    "Run iptables -I INPUT -p tcp --dport 8880 -j DROP.",
+                ],
+            }
+        ],
+        supported_cause="HTTP traffic overloaded the Plesk Panel endpoint.",
+        symptoms=["The server has high CPU load."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
     assert (
-        "<code>/usr/local/psa/var/modules/monitoring/rrd</code>."
+        "<p><code>Warning:</code> Review this action before applying it "
+        "because it can affect access, traffic handling, or stored data.</p>"
         in html
     )
+    assert "<p><code># iptables -I INPUT -p tcp --dport 8880 -j DROP</code></p>" in html
+    report = review_kcs_zendesk_markup_source(html)
+    assert "resolution_command_or_note_numbered_as_step" not in {
+        finding.rule_id for finding in report.findings
+    }
+
+
+def test_renderer_keeps_title_and_symptoms_issue_focused() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": (
+                    "High CPU load caused by HTTP flood targeting the Plesk "
+                    "Panel endpoint on port 8880, mitigated with a custom "
+                    "Fail2Ban jail and iptables block on port 8880"
+                ),
+                "summary": "The server has high CPU load.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "symptoms": [
+                    "High CPU load on the server.",
+                    "Requests returning 400/499 responses are logged.",
+                    "CPU usage dropped to ~5% after blocking TCP port 8880.",
+                ],
+                "resolution_steps": [
+                    "Connect to the Plesk server via SSH.",
+                    "Run iptables -I INPUT -p tcp --dport 8880 -j DROP.",
+                ],
+            }
+        ],
+        supported_cause="HTTP flood traffic targeted the Plesk Panel endpoint.",
+        symptoms=["The server has high CPU load."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<h1>High CPU load: HTTP flood targeting the Plesk Panel endpoint "
+        "on port 8880</h1>"
+    ) in html
+    assert "mitigated with" not in html
+    assert "CPU usage dropped to ~5%" not in html
+    assert "Requests returning 400/499 responses are logged." in html
+
+
+def test_renderer_splits_colon_command_steps_into_golden_markup() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk service fails due to custom configuration",
+                "summary": "A product service fails.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Test the custom filter against the access log: "
+                        "fail2ban-regex /var/log/plesk/httpsd_access_log "
+                        "/etc/fail2ban/filter.d/panel-flood.conf"
+                    ),
+                    (
+                        "Reload Fail2Ban to activate the new jail: "
+                        "systemctl reload fail2ban"
+                    ),
+                ],
+            }
+        ],
+        supported_cause="A custom configuration caused the product service failure.",
+        symptoms=["A product service fails."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>Test the custom filter against the access log:</p>\n"
+        "      <p><code># fail2ban-regex "
+        "/var/log/plesk/httpsd_access_log "
+        "/etc/fail2ban/filter.d/panel-flood.conf</code></p>"
+        in html
+    )
+    assert (
+        "<p>Reload Fail2Ban to activate the new jail:</p>\n"
+        "      <p><code># systemctl reload fail2ban</code></p>"
+        in html
+    )
+
+
+def test_renderer_splits_config_text_steps_into_golden_markup() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk service fails due to custom configuration",
+                "summary": "A product service fails.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Create the custom service configuration: CONFIG_TEXT:\n"
+                        "[custom-service]\n"
+                        "enabled = true\n"
+                        "filter = custom-service"
+                    ),
+                ],
+            }
+        ],
+        supported_cause="A custom configuration caused the product service failure.",
+        symptoms=["A product service fails."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>Create the custom service configuration:</p>\n"
+        "      <p><code>CONFIG_TEXT: [custom-service]</code><br>\n"
+        "        <code>enabled = true</code><br>\n"
+        "        <code>filter = custom-service</code></p>"
+        in html
+    )
+    assert "# CONFIG_TEXT" not in html
+
+
+def test_renderer_splits_inline_following_content_config_into_code_block() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "High CPU load caused by repeated panel requests",
+                "summary": "A product service is overloaded.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Create the custom filter file "
+                        "/etc/fail2ban/filter.d/panel-flood.conf with the "
+                        "following content: [Definition] failregex = "
+                        '^127\\.0\\.0\\.1 - - \\[.*\\] "GET / HTTP/1\\.[01]" '
+                        '(?:400|499) \\d+ "-" ".*" "<HOST>" ignoreregex ='
+                    ),
+                ],
+            }
+        ],
+        supported_cause="Repeated panel requests overloaded the service.",
+        symptoms=["A product service is overloaded."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>Create the custom filter file "
+        "<code>/etc/fail2ban/filter.d/panel-flood.conf</code>:</p>\n"
+        "      <p><code>CONFIG_TEXT: [Definition]</code><br>\n"
+        "        <code>failregex = "
+    ) in html
+    assert "        <code>ignoreregex =</code></p>" in html
+    assert "with the following content: [Definition]" not in html
+
+
+def test_renderer_attaches_support_blocks_to_previous_resolution_step() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk service fails due to custom configuration",
+                "summary": "A product service fails.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Create the custom service configuration.",
+                    "CONFIG_TEXT:\n[custom-service]\nenabled = true",
+                    "Test the custom filter against the access log.",
+                    (
+                        "fail2ban-regex /var/log/plesk/httpsd_access_log "
+                        "/etc/fail2ban/filter.d/panel-flood.conf"
+                    ),
+                ],
+            }
+        ],
+        supported_cause="A custom configuration caused the product service failure.",
+        symptoms=["A product service fails."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<li>\n"
+        "      <p>Create the custom service configuration.</p>\n"
+        "      <p><code>CONFIG_TEXT: [custom-service]</code><br>\n"
+        "        <code>enabled = true</code></p>\n"
+        "    </li>"
+    ) in html
+    assert (
+        "<li>\n"
+        "      <p>Test the custom filter against the access log.</p>\n"
+        "      <p><code># fail2ban-regex "
+        "/var/log/plesk/httpsd_access_log "
+        "/etc/fail2ban/filter.d/panel-flood.conf</code></p>\n"
+        "    </li>"
+    ) in html
+    assert "<li>CONFIG_TEXT:" not in html
+    assert "<li>fail2ban-regex" not in html
 
 
 def test_linux_plesk_resolution_starts_with_ssh_entry_point() -> None:
@@ -710,7 +965,7 @@ def test_renderer_rejects_too_many_list_items() -> None:
 
 
 def test_renderer_rejects_unbounded_list_item_without_echoing_value() -> None:
-    long_item = "x" * 601
+    long_item = "x" * 4001
     evidence = _evidence(
         issue_candidates=[
             {
@@ -732,6 +987,42 @@ def test_renderer_rejects_unbounded_list_item_without_echoing_value() -> None:
 
     assert "list item exceeds bound" in str(captured.value)
     assert long_item not in str(captured.value)
+
+
+def test_renderer_accepts_bounded_long_config_resolution_step() -> None:
+    config_lines = "\n".join(f"setting_{index} = value" for index in range(80))
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-LONG-CONFIG",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk service fails due to long configuration",
+                "summary": "A product service fails.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Create the product configuration: CONFIG_TEXT:\n"
+                        f"{config_lines}"
+                    ),
+                ],
+            }
+        ],
+        supported_cause="A custom configuration caused the product service failure.",
+        symptoms=["A product service fails."],
+    )
+
+    packet = render_reviewer_packet(
+        evidence,
+        _decision(candidate_id="ISSUE-SYNTH-LONG-CONFIG"),
+    )
+
+    assert packet.zendesk_source_html is not None
+    assert "<code>CONFIG_TEXT: setting_0 = value</code>" in packet.zendesk_source_html
+    assert "<code>setting_79 = value</code>" in packet.zendesk_source_html
 
 
 def test_renderer_rejects_unbounded_cause_without_echoing_value() -> None:

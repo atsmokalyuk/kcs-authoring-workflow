@@ -248,7 +248,9 @@ def _prepare_semantic_review_descriptor() -> McpToolDescriptor:
             "shape exactly and name the candidate array items, not candidates. "
             "For technical_scr candidates, resolution_steps must be standalone "
             "and executable with concrete command/action detail from the "
-            "selected excerpts. "
+            "selected excerpts. Submit symptoms, confirmed_facts, "
+            "resolution_steps, source_refs, and open_questions as arrays of "
+            "plain strings only; preserve resolution order by array order. "
             "Do not draft an article, choose a KCS action, return HTML, or "
             "submit item/item_candidates payloads through kcs_draft_article."
         ),
@@ -266,11 +268,14 @@ def _submit_semantic_review_descriptor() -> McpToolDescriptor:
             "kcs_prepare_semantic_review. Use the required_submit_shape from "
             "the prepared packet exactly: schema_version, case_ref, "
             "extraction_source_ref, source_refs, and items. Do not use a "
-            "candidates key. Do not submit article drafts, HTML, "
-            "recommended_action, item, item_candidates, raw ticket text, local "
-            "paths, or publication flags. Python validates the extraction, "
-            "including executable resolution-step detail, then continues the "
-            "normal draft or split-required pipeline."
+            "candidates key. Use plain string arrays for symptoms, "
+            "confirmed_facts, resolution_steps, source_refs, and "
+            "open_questions; do not submit step objects such as {order, "
+            "action}. Do not submit article drafts, HTML, recommended_action, "
+            "item, item_candidates, raw ticket text, local paths, or "
+            "publication flags. Python validates the extraction, including "
+            "executable resolution-step detail, then continues the normal "
+            "draft or split-required pipeline."
         ),
         input_schema=_desktop_tool_schemas.submit_semantic_review_input_schema(),
     )

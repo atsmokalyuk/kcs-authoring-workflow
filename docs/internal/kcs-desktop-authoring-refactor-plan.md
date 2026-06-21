@@ -394,6 +394,13 @@ Implement this as small reviewable slices, not as one large commit:
   - update tool names, descriptors, manifest, README, stdio smoke, installed
     wrapper smoke, and Desktop log checks;
   - keep bounded selected excerpts only and defer browsing/chunk tools.
+- `KCS-14: KCS style and markup parity`
+  - bring renderer, Zendesk HTML quality gates, and style checks closer to the
+    mature `plesk_support` KCS article workflow;
+  - enforce source-document-backed KCS content standards for titles, symptoms,
+    cause, resolution, language style, and Zendesk markup;
+  - keep enforcement deterministic where possible and treat any optional style
+    judge as reviewer-assist feedback, not publication approval.
 
 ## Review Breakpoints
 
@@ -459,6 +466,13 @@ Current review checkpoint artifact:
   - status: complete after `gpt-5.3-codex-spark` review;
   - lighter review after source/installed smoke and log checks pass;
   - focus on Desktop-visible schema wording and no manual fallback.
+- `KCS-14: KCS style and markup parity`
+  - external/code review required before marking complete;
+  - focus on parity with source KCS Style Guide, Article Quality criteria, KCS
+    practices, and portable `plesk_support` rules;
+  - review must check title/symptom/cause/resolution semantics, Zendesk trigger
+    markup, command/config formatting, language style, blocker/warning
+    taxonomy, and no subject-matter hardcoding.
 
 Review bundle should include:
 
@@ -562,6 +576,22 @@ Current branch status:
   - KCS-13d raises the bounded semantic-review budget to 144,000 total
     selected-excerpt bytes and the generic MCP tool-result cap to 256 KB while
     keeping forbidden-key checks and no-full-ticket output.
+- `KCS-14` is the next hardening slice for KCS article style and markup parity:
+  - use the attached/source-of-truth KCS Style Guide, Article Quality criteria,
+    KCS practices, and approved article examples as requirements;
+  - target result-level parity with mature `plesk_support` KCS behavior, not
+    code-level parity or wholesale feature copying;
+  - port only applicable, boundary-safe checks from `plesk_support`;
+  - prefer the cleaner `kcs-authoring-workflow` architecture whenever an
+    equivalent rule can be expressed as a deterministic renderer, quality, or
+    style contract;
+  - do not port old chat-flow behavior, subject-specific heuristics,
+    duplicated abstractions, or adapter code that would weaken the current
+    tool-owned workflow;
+  - strengthen deterministic gates before reviewer bundle write;
+  - keep style/markup blockers separate from safety/readiness blockers;
+  - do not hardcode ticket subject matter, product incidents, commands, or
+    Plesk component-specific solutions.
 
 ## Output Boundary
 
@@ -628,6 +658,10 @@ are detected.
     through the existing draft/split pipeline.
 13. Implement `KCS-13d`: MCPB manifest, docs, stdio smoke, installed smoke, and
     Desktop log checker alignment for the new tools.
+14. Implement `KCS-14`: style and markup parity hardening:
+    title, symptoms, cause, resolution completeness, language style,
+    command/config formatting, Zendesk trigger markup, and blocker/warning
+    taxonomy.
 
 ## Test Plan
 
@@ -677,6 +711,24 @@ Unit and regression coverage must verify:
 - valid semantic-review submissions either continue to normal draft output or
   return the existing split-required operator-selection flow;
 - simple deterministic tickets bypass semantic review and still draft normally.
+- KCS-14 renderer/style tests verify:
+  - titles describe the customer-visible issue and, when available, append the
+    error/cause clue after a colon instead of including solution wording;
+  - Symptoms start with the customer's observable issue and include only
+    narrowing facts needed to identify the cause;
+  - Cause is analysis, not procedure;
+  - Resolution steps are executable from the article when the ticket contains
+    the operational details;
+  - commands and config blocks are nested inside the relevant numbered action
+    step, not numbered as independent steps;
+  - `CONFIG_TEXT`, `PLESK_ERROR`, `SVM_ERROR`, `MYSQL_LIN`, `MYSQL_WIN`,
+    shell commands, paths, and errors follow Zendesk/KCS trigger formatting;
+  - language is impersonal, concise, and free of source-ticket first-person
+    wording or product-diminishing phrasing;
+  - risky or custom actions preserve ticket-supported steps and add reviewer
+    warnings when needed, without inventing commands or online-sourced
+    remediation;
+  - style/markup gates do not produce KCS-ready or publish-approved status.
 
 Validation commands:
 

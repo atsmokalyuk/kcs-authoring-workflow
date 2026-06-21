@@ -447,6 +447,15 @@ def _approved_ticket_blocked_tool_result_text(
 def _semantic_review_blocked_tool_result_text(
     structured: Mapping[str, Any],
 ) -> str:
+    plain_string_hint = ""
+    if structured.get("debug_code") == "semantic_review_plain_string_arrays_required":
+        plain_string_hint = (
+            "\n\nSubmit shape correction: symptoms, confirmed_facts, "
+            "resolution_steps, source_refs, and open_questions must be arrays "
+            "of plain strings only. Preserve resolution order by array order; "
+            "do not submit objects such as {order, action}, {text}, or nested "
+            "step structures."
+        )
     status = {
         "auto_publish_allowed": structured.get("auto_publish_allowed"),
         "debug_code": structured.get("debug_code"),
@@ -468,6 +477,7 @@ def _semantic_review_blocked_tool_result_text(
         "by calling kcs_draft_article again with the same clean ticket_ref. "
         "Do not ask to re-register unless the workflow_state is "
         "semantic_review_metadata_blocked.\n\n"
+        f"{plain_string_hint}\n\n"
         "Compact status:\n"
         "```json\n"
         f"{_compact_json(status)}\n"

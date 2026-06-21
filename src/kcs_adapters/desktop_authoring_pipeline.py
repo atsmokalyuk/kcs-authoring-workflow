@@ -454,11 +454,27 @@ def _render_approved_summary_reviewer_packet(
 ) -> KcsReviewerPacket:
     try:
         return render_reviewer_packet(evidence, decision)
-    except ContractValidationError:
+    except ContractValidationError as exc:
         raise ApprovedSummaryPipelineStageError(
             failure_stage="renderer",
-            debug_code="approved_summary_renderer_failed",
+            debug_code=_approved_summary_renderer_debug_code(exc),
         ) from None
+
+
+def _approved_summary_renderer_debug_code(exc: ContractValidationError) -> str:
+    message = str(exc).casefold()
+    if "unsafe value" in message or "unsafe code" in message:
+        return "approved_summary_renderer_safety_failed"
+    if "exceeds bound" in message:
+        return "approved_summary_renderer_bounds_failed"
+    if (
+        "public_customer_safe visibility" in message
+        or "public_solution_safe" in message
+    ):
+        return "approved_summary_renderer_visibility_blocked"
+    if "candidate_id must match" in message:
+        return "approved_summary_renderer_candidate_mismatch"
+    return "approved_summary_renderer_failed"
 
 
 def _build_approved_summary_readiness(

@@ -258,10 +258,10 @@ def test_desktop_workflow_builds_reviewer_draft_preview_and_quality_gaps() -> No
                 "cause": "A required product service is stopped.",
                 "resolution_steps": ["Run systemctl restart product-service."],
                 "symptoms": ["A safe Plesk task fails."],
-                "title": "Plesk task has a safe synthetic issue",
+                "title": "Plesk task fails: required product service is stopped",
             },
             zendesk_source_html=(
-                "<h1>Plesk task has a safe synthetic issue</h1>"
+                "<h1>Plesk task fails: required product service is stopped</h1>"
                 "<h2>Applicable to</h2><ul><li>Plesk for Linux</li></ul>"
                 "<h2>Symptoms</h2><ol><li>A safe Plesk task fails.</li></ol>"
                 "<h2>Cause</h2><p>A required product service is stopped.</p>"
@@ -285,10 +285,12 @@ def test_desktop_workflow_builds_reviewer_draft_preview_and_quality_gaps() -> No
         "resolution_steps": ["Run systemctl restart product-service."],
         "status": "reviewer_only",
         "symptoms": ["A safe Plesk task fails."],
-        "title": "Plesk task has a safe synthetic issue",
+        "title": "Plesk task fails: required product service is stopped",
     }
     assert preview == draft
-    assert "Title: Plesk task has a safe synthetic issue" in preview_text
+    assert (
+        "Title: Plesk task fails: required product service is stopped" in preview_text
+    )
     assert approved_summary_reuse_search_status(execution.arguments) == "checked"
     assert approved_summary_quality_gaps(execution, draft) == [
         {"kind": "reference_not_provided", "severity": "info"}

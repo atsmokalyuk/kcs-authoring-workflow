@@ -116,7 +116,9 @@ def quality_blocked_result(
         "failure_stage": "renderer",
         "item_ref": result.get("item_ref"),
         "kcs_ready": False,
+        "manual_draft_allowed": False,
         "network_calls": False,
+        "next_required_action": "restart_with_ticket_ref",
         "ok": False,
         "pipeline_ok": False,
         "provider_calls": False,
@@ -129,6 +131,7 @@ def quality_blocked_result(
         "reuse_search_status": result.get("reuse_search_status"),
         "review_summary": {
             "draft_available": False,
+            "next_required_action": "restart_with_ticket_ref",
             "reason": "reviewer_html_quality_blocked",
         },
         "reviewer_bundle_written": False,

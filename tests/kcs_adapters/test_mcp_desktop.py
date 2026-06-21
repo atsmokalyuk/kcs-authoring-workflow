@@ -972,6 +972,11 @@ def _assert_submit_semantic_review_tool(tool: Mapping[str, Any]) -> None:
     assert "items" in extraction_schema["properties"]
     assert "candidates" not in extraction_schema["properties"]
     item_schema = extraction_schema["properties"]["items"]["items"]
+    assert item_schema["properties"]["symptoms"]["items"]["type"] == "string"
+    assert item_schema["properties"]["confirmed_facts"]["items"]["type"] == "string"
+    assert item_schema["properties"]["resolution_steps"]["items"]["type"] == "string"
+    assert item_schema["properties"]["source_refs"]["items"]["type"] == "string"
+    assert item_schema["properties"]["open_questions"]["items"]["type"] == "string"
     environment_schema = item_schema["properties"]["environment"]
     assert environment_schema["additionalProperties"] is False
     assert set(environment_schema["properties"]) == {
@@ -1815,6 +1820,17 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
     assert extraction_shape["schema_version"] == "candidate_semantic_extraction_v1"
     assert "items" in extraction_shape
     assert "candidates" not in extraction_shape
+    shape_item = extraction_shape["items"][0]
+    assert isinstance(shape_item["symptoms"][0], str)
+    assert isinstance(shape_item["confirmed_facts"][0], str)
+    assert isinstance(shape_item["resolution_steps"][0], str)
+    assert packet["candidate_plain_string_array_fields"] == [
+        "source_refs",
+        "symptoms",
+        "confirmed_facts",
+        "resolution_steps",
+        "open_questions",
+    ]
     assert packet["candidate_item_field_names"]
     assert packet["candidate_environment_field_names"] == [
         "applicable_to",
@@ -1828,6 +1844,8 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
     )
     assert "candidate array key must be items" in result_text
     assert "resolution_steps must be standalone and executable" in result_text
+    assert "arrays of plain strings only" in result_text
+    assert "{order, action}" in result_text
     assert "Do not draft an article" in packet_text
     assert "Do not copy local workstation paths" in result_text
     assert "Sanitized server configuration or log paths may be included" in result_text
@@ -2218,6 +2236,14 @@ def test_submit_semantic_review_accepts_firewall_resolution_actions(
     )
     extraction["items"][0]["resolution_steps"] = [
         "Connect to the Plesk server via SSH.",
+        (
+            "Confirm with a reviewer whether the custom Fail2Ban mitigation "
+            "should be public or internal before KCS handoff."
+        ),
+        (
+            "Run iptables-save to back up firewall rules before applying "
+            "traffic mitigation."
+        ),
         "Run fail2ban-client reload after adding the panel flood jail.",
         "Run iptables -I INPUT -p tcp --dport 8880 -j DROP.",
         "Verify CPU status and confirm port 8880 flood traffic is no longer processed.",
@@ -2242,6 +2268,89 @@ def test_submit_semantic_review_accepts_firewall_resolution_actions(
     assert structured["debug_code"] == "draft_only_reuse_search_missing"
     assert structured["draft_generated"] is True
     assert structured["reviewer_bundle_written"] is True
+
+
+def test_submit_semantic_review_accepts_ticket_supported_risky_action_without_rollback(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction["items"][0]["summary"] = (
+        "High CPU load caused by HTTP flood traffic to the Plesk Panel"
+    )
+    extraction["items"][0]["resolution_steps"] = [
+        "Connect to the Plesk server via SSH.",
+        "Run iptables -I INPUT -p tcp --dport 8880 -j DROP.",
+        "Verify CPU status and confirm port 8880 flood traffic is no longer processed.",
+    ]
+    extraction["items"][0]["supported_resolution_or_workaround"] = (
+        "Block the abusive panel HTTP traffic on port 8880 and verify CPU "
+        "usage drops."
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["debug_code"] == "draft_only_reuse_search_missing"
+    assert structured["draft_generated"] is True
+    assert structured["reviewer_bundle_written"] is True
+    assert "risky_visible_step_without_warning_or_backup" not in structured["blockers"]
+
+
+def test_submit_semantic_review_blocks_vague_technical_resolution_actions(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction["items"][0]["summary"] = (
+        "High CPU load caused by HTTP flood traffic to the Plesk Panel"
+    )
+    extraction["items"][0]["resolution_steps"] = [
+        "Connect to the Plesk server via SSH.",
+        (
+            "Create a custom Fail2Ban filter at "
+            "/etc/fail2ban/filter.d/panel-flood.conf matching repeated "
+            "requests."
+        ),
+        "Create a custom jail for the panel flood traffic.",
+        "Block the flood traffic on the affected port.",
+    ]
+    extraction["items"][0]["supported_resolution_or_workaround"] = (
+        "Create a custom Fail2Ban filter and jail, then block the abusive "
+        "traffic."
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["debug_code"] == "reviewer_html_quality_blocked"
+    assert structured["draft_generated"] is False
+    assert structured["manual_draft_allowed"] is False
+    assert structured["reviewer_bundle_written"] is False
+    assert "resolution_action_missing_implementation_detail" in structured["blockers"]
 
 
 def test_submit_semantic_review_multiple_candidates_returns_split_required(
@@ -2359,6 +2468,46 @@ def test_submit_semantic_review_rejects_broad_item_payload(
     assert structured["manual_draft_allowed"] is False
 
 
+def test_submit_semantic_review_rejects_structured_resolution_step_objects(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction["items"][0]["resolution_steps"] = [
+        {
+            "action": "Restart Plesk panel services.",
+            "order": 1,
+        }
+    ]
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    result = response["result"]
+    structured = result["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_submit_blocked"
+    assert (
+        structured["debug_code"]
+        == "semantic_review_plain_string_arrays_required"
+    )
+    assert structured["draft_generated"] is False
+    assert structured["manual_draft_allowed"] is False
+    text = result["content"][0]["text"]
+    assert "arrays of plain strings only" in text
+    assert "{order, action}" in text
+    assert "Restart Plesk panel services" not in text
+
+
 def test_submit_semantic_review_rejects_too_many_candidates(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
@@ -2461,10 +2610,19 @@ def test_submit_semantic_review_accepts_server_absolute_paths(
     )
     extraction = _semantic_review_extraction(packet)
     extraction["items"][0]["resolution_steps"].insert(
-        1, "Edit /etc/product/service.conf and restart the service."
+        1,
+        (
+            "Run sed -i 's/enabled = false/enabled = true/' "
+            "/etc/product/service.conf to enable the product service "
+            "configuration."
+        ),
     )
     extraction["items"][0]["resolution_steps"].insert(
-        2, "Edit /etc/fail2ban/jail.d/panel-flood.local and reload fail2ban."
+        2,
+        (
+            "Run systemctl restart product-service after updating "
+            "/etc/product/service.conf."
+        ),
     )
 
     response = _call_tool(
@@ -2495,6 +2653,41 @@ def test_submit_semantic_review_accepts_config_placeholders(
     extraction["items"][0]["resolution_steps"].insert(
         1,
         "Create a filter rule with failregex = ^<HOST> .* GET / HTTP/1.1.",
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["debug_code"] == "draft_only_reuse_search_missing"
+    assert structured["draft_generated"] is True
+    assert structured["reviewer_bundle_written"] is True
+
+
+def test_submit_semantic_review_accepts_config_text_path_comment(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction["items"][0]["resolution_steps"].insert(
+        1,
+        (
+            "Create the product configuration: CONFIG_TEXT:\n"
+            "# /etc/product/service.conf\n"
+            "[product-service]\n"
+            "enabled = true"
+        ),
     )
 
     response = _call_tool(
@@ -3481,7 +3674,7 @@ def test_draft_article_primary_local_provider_uses_final_fix_not_diagnostics(
     assert structured["draft_generated"] is True
     html = _tool_html_resource_text(response)
     assert (
-        "<h1>Monitoring graphs show no data in Plesk due to custom unowned "
+        "<h1>Monitoring graphs show no data in Plesk: custom unowned "
         "collectd configuration file</h1>"
     ) in html
     assert "Plesk Monitoring graphs show no data." in html
@@ -4970,6 +5163,36 @@ def test_run_approved_summary_pipeline_reports_renderer_stage(
     assert structured["failure_stage"] == "renderer"
     assert structured["debug_code"] == "approved_summary_renderer_failed"
     assert "synthetic renderer failure" not in text
+    checks = {check["kind"]: check["ok"] for check in structured["checks"]}
+    assert checks["decision"] is True
+    assert checks["renderer"] is False
+
+
+def test_run_approved_summary_pipeline_classifies_renderer_safety_stage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_render_reviewer_packet(*_args: object, **_kwargs: object) -> object:
+        raise ContractValidationError("public article candidate contains unsafe value")
+
+    monkeypatch.setattr(
+        desktop_authoring_pipeline,
+        "render_reviewer_packet",
+        fake_render_reviewer_packet,
+    )
+
+    response = _call_tool(
+        _initialized_transport(tool_name_style=TOOL_NAME_STYLE_CANONICAL),
+        TOOL_RUN_APPROVED_SUMMARY_PIPELINE,
+        _approved_summary_args(debug=True),
+    )
+
+    text = json.dumps(response, sort_keys=True)
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["pipeline_ok"] is False
+    assert structured["failure_stage"] == "renderer"
+    assert structured["debug_code"] == "approved_summary_renderer_safety_failed"
+    assert "public article candidate contains unsafe value" not in text
     checks = {check["kind"]: check["ok"] for check in structured["checks"]}
     assert checks["decision"] is True
     assert checks["renderer"] is False

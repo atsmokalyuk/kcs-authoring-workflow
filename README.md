@@ -47,8 +47,11 @@ Current active design work is tracked in
 `docs/internal/kcs-desktop-authoring-refactor-plan.md`. `KCS-12` established
 the local Claude Desktop MCPB adapter with clean-ticket registration,
 `ticket_ref` drafting, compact status output, and local reviewer bundles.
-`KCS-13` is the planned controlled semantic-review fallback for complex/noisy
-clean tickets when deterministic Python item identification is low-confidence.
+`KCS-13` implemented the controlled semantic-review fallback for
+complex/noisy clean tickets when deterministic Python item identification is
+low-confidence. `KCS-14` is the next planned hardening slice for KCS style and
+markup parity with the source style/AQ documents and portable `plesk_support`
+rules.
 
 Implemented code slices:
 
@@ -517,8 +520,8 @@ tools are not loaded into the active chat.
 - Historical parent Jira item: PAUX-7083
 - Last completed implementation slice: KCS-13 Controlled Semantic Review
   Fallback
-- Current implementation slice: post-KCS-13 stabilization / next slice TBD
-- Current implementation subtask: none
+- Current implementation slice: KCS-14 KCS Style and Markup Parity
+- Current implementation subtask: planning / checkpoint definition
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
