@@ -79,7 +79,7 @@ _PRIVATE_PUBLIC_TEXT_PATTERNS = (
 )
 _SAFE_PUBLIC_TEXT_FILENAME_RE = re.compile(
     r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
-    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|pid|bak|backup|disabled|orig|old)"
+    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|local|pid|bak|backup|disabled|orig|old)"
     r"(?:\.(?:bak|backup|disabled|orig|old))?\b"
 )
 _INLINE_CODE_PATH_RE = re.compile(

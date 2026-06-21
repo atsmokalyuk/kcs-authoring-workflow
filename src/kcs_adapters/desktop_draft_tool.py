@@ -346,6 +346,12 @@ class DesktopDraftArticleTool:
                         debug_code=exc.debug_code,
                         schema_version=self._schema_version,
                     )
+                except ContractValidationError:
+                    return _author_failure_result(
+                        failure_stage="semantic_extraction",
+                        debug_code="semantic_review_packet_invalid",
+                        schema_version=self._schema_version,
+                    )
                 packet = pending_review.packet
                 result = semantic_review_required_result(
                     schema_version=self._schema_version,

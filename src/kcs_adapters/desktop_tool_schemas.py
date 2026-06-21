@@ -209,12 +209,82 @@ def submit_semantic_review_input_schema() -> JsonDict:
             "candidate_semantic_extraction": {
                 "type": "object",
                 "description": (
-                    "Strict candidate_semantic_extraction_v1 object proposed "
-                    "from the prepared selected_excerpts only. Do not include "
-                    "article drafts, HTML, recommended_action, item, "
+                    "Strict candidate_semantic_extraction_v1 object. Use "
+                    "exactly schema_version, case_ref, extraction_source_ref, "
+                    "source_refs, and items. The array must be named items, "
+                    "not candidates. Copy case_ref and allowed source_refs "
+                    "from the prepared packet's required_submit_shape. Do not "
+                    "include article drafts, HTML, recommended_action, item, "
                     "item_candidates, raw ticket text, local paths, or "
                     "publication flags."
                 ),
+                "additionalProperties": False,
+                "properties": {
+                    "case_ref": {"type": "string"},
+                    "extraction_source_ref": {"type": "string"},
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "article_type_hint": {"type": "string"},
+                                "candidate_id": {"type": "string"},
+                                "confirmed_facts": {"type": "array"},
+                                "environment": {
+                                    "type": "object",
+                                    "description": (
+                                        "Optional compact product/platform "
+                                        "metadata only. Do not include log_file, "
+                                        "services_affected, command output, "
+                                        "local paths, or arbitrary keys."
+                                    ),
+                                    "additionalProperties": False,
+                                    "properties": {
+                                        "applicable_to": {
+                                            "type": ["array", "string"]
+                                        },
+                                        "platform": {"type": "string"},
+                                        "product": {"type": "string"},
+                                    },
+                                },
+                                "kcs_item_status": {"type": "string"},
+                                "open_questions": {"type": "array"},
+                                "product_relation": {"type": "string"},
+                                "question": {"type": "string"},
+                                "resolution_steps": {"type": "array"},
+                                "source_refs": {"type": "array"},
+                                "summary": {"type": "string"},
+                                "supportability": {"type": "string"},
+                                "supportability_basis": {"type": "string"},
+                                "supported_answer": {"type": "string"},
+                                "supported_cause": {"type": "string"},
+                                "supported_resolution_or_workaround": {
+                                    "type": "string"
+                                },
+                                "symptoms": {"type": "array"},
+                                "visibility_hint": {"type": "string"},
+                            },
+                            "required": [
+                                "candidate_id",
+                                "summary",
+                                "product_relation",
+                                "supportability",
+                                "kcs_item_status",
+                                "source_refs",
+                            ],
+                        },
+                    },
+                    "schema_version": {"type": "string"},
+                    "source_refs": {"type": "array"},
+                },
+                "required": [
+                    "schema_version",
+                    "case_ref",
+                    "extraction_source_ref",
+                    "source_refs",
+                    "items",
+                ],
             },
             "semantic_review_ref": {
                 "type": "string",
@@ -357,6 +427,8 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "bundle_storage_hint": {"type": "string"},
     "bundle_storage_ref": {"type": "string"},
     "byte_length": {"type": "integer"},
+    "candidate_environment_field_names": {"type": "array"},
+    "candidate_item_field_names": {"type": "array"},
     "case_ref": {"type": "string"},
     "checks": {"type": "array"},
     "clean_ticket_sha256": {"type": "string"},
@@ -416,6 +488,8 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "ready_for_real_ticket_use": {"type": "boolean"},
     "request_schema_version": {"type": "string"},
     "request_sha256": {"type": "string"},
+    "required_submit_shape": {"type": "object"},
+    "resolution_step_requirements": {"type": "array"},
     "resources_exposed": {"type": "boolean"},
     "response_schema_version": {"type": "string"},
     "response_sha256": {"type": "string"},

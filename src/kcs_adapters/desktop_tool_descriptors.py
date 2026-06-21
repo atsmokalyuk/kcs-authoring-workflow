@@ -244,9 +244,13 @@ def _prepare_semantic_review_descriptor() -> McpToolDescriptor:
             "semantic_review_ref returned by kcs_draft_article. The packet "
             "contains selected excerpts only, not the full ticket. Use it to "
             "identify atomic KCS item candidates in candidate_semantic_extraction_v1 "
-            "format only. Do not draft an article, choose a KCS action, return "
-            "HTML, or submit item/item_candidates payloads through "
-            "kcs_draft_article."
+            "format only. The packet includes required_submit_shape; use that "
+            "shape exactly and name the candidate array items, not candidates. "
+            "For technical_scr candidates, resolution_steps must be standalone "
+            "and executable with concrete command/action detail from the "
+            "selected excerpts. "
+            "Do not draft an article, choose a KCS action, return HTML, or "
+            "submit item/item_candidates payloads through kcs_draft_article."
         ),
         input_schema=_desktop_tool_schemas.prepare_semantic_review_input_schema(),
     )
@@ -259,10 +263,14 @@ def _submit_semantic_review_descriptor() -> McpToolDescriptor:
             "Submit Claude-proposed semantic item identification for a prepared "
             "semantic review. Accepts only candidate_semantic_extraction_v1 "
             "grounded in the selected_excerpts source refs returned by "
-            "kcs_prepare_semantic_review. Do not submit article drafts, HTML, "
+            "kcs_prepare_semantic_review. Use the required_submit_shape from "
+            "the prepared packet exactly: schema_version, case_ref, "
+            "extraction_source_ref, source_refs, and items. Do not use a "
+            "candidates key. Do not submit article drafts, HTML, "
             "recommended_action, item, item_candidates, raw ticket text, local "
-            "paths, or publication flags. Python validates the extraction, then "
-            "continues the normal draft or split-required pipeline."
+            "paths, or publication flags. Python validates the extraction, "
+            "including executable resolution-step detail, then continues the "
+            "normal draft or split-required pipeline."
         ),
         input_schema=_desktop_tool_schemas.submit_semantic_review_input_schema(),
     )

@@ -291,6 +291,101 @@ def test_clean_ticket_semantic_review_metadata_validates_hash_binding(
     assert metadata["clean_ticket_sha256"] == result["clean_ticket_sha256"]
 
 
+def test_clean_ticket_semantic_review_metadata_accepts_cleanup_form_metadata(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    text = "Customer Ticket Content\nIssue: safe noisy ticket.\n"
+    ticket_ref = "ticket-semantic-review"
+    clean_dir = tmp_path / "local-data" / "approved-summaries" / ticket_ref
+    clean_dir.mkdir(parents=True)
+    clean_path = clean_dir / APPROVED_TICKET_CLEAN_TEXT_FILE_NAME
+    clean_path.write_text(text, encoding="utf-8")
+    digest = desktop_clean_ticket_metadata.clean_ticket_sha256(text)
+    metadata_path = (
+        clean_dir / desktop_clean_ticket_metadata.CLEAN_TICKET_METADATA_FILE_NAME
+    )
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "schema_version": (
+                    desktop_clean_ticket_metadata
+                    .CLEAN_TICKET_CLEANUP_FORM_METADATA_SCHEMA_VERSION
+                ),
+                "clean_ticket_ref": ticket_ref,
+                "clean_ticket_path": str(clean_path),
+                "clean_ticket_sha256": digest,
+                "confirmed_no_pii": True,
+                "scan_clean": True,
+                "updated_at": "2026-06-20T00:00:00Z",
+                "write_target": "mvp_approved_summary",
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    metadata = clean_ticket_semantic_review_metadata(
+        ticket_ref=ticket_ref,
+        approved_summary_text=text,
+    )
+
+    assert metadata == {
+        "clean_ticket_sha256": digest,
+        "schema_version": (
+            desktop_clean_ticket_metadata.CLEAN_TICKET_METADATA_SCHEMA_VERSION
+        ),
+        "semantic_review_allowed": True,
+        "source_kind": desktop_clean_ticket_metadata.CLEAN_TICKET_SOURCE_CLEANUP_FORM,
+        "ticket_ref": ticket_ref,
+    }
+
+
+def test_clean_ticket_semantic_review_metadata_rejects_unclean_cleanup_form_metadata(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    text = "Customer Ticket Content\nIssue: safe noisy ticket.\n"
+    ticket_ref = "ticket-semantic-review"
+    clean_dir = tmp_path / "local-data" / "approved-summaries" / ticket_ref
+    clean_dir.mkdir(parents=True)
+    clean_path = clean_dir / APPROVED_TICKET_CLEAN_TEXT_FILE_NAME
+    clean_path.write_text(text, encoding="utf-8")
+    digest = desktop_clean_ticket_metadata.clean_ticket_sha256(text)
+    metadata_path = (
+        clean_dir / desktop_clean_ticket_metadata.CLEAN_TICKET_METADATA_FILE_NAME
+    )
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "schema_version": (
+                    desktop_clean_ticket_metadata
+                    .CLEAN_TICKET_CLEANUP_FORM_METADATA_SCHEMA_VERSION
+                ),
+                "clean_ticket_ref": ticket_ref,
+                "clean_ticket_path": str(clean_path),
+                "clean_ticket_sha256": digest,
+                "confirmed_no_pii": True,
+                "scan_clean": False,
+                "updated_at": "2026-06-20T00:00:00Z",
+                "write_target": "mvp_approved_summary",
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        clean_ticket_semantic_review_metadata(
+            ticket_ref=ticket_ref,
+            approved_summary_text=text,
+        )
+
+    assert exc_info.value.debug_code == "clean_ticket_semantic_review_not_allowed"
+
+
 def test_clean_ticket_semantic_review_metadata_rejects_hash_mismatch(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,

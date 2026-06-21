@@ -51,9 +51,12 @@ _SUBMIT_FORBIDDEN_TEXT_RE = re.compile(
     r"</?\s*[a-z][a-z0-9:-]*(?:\s|/?>)|^\s*#{1,6}\s+|```",
     re.I | re.M,
 )
+_SAFE_CONFIG_PLACEHOLDER_RE = re.compile(r"<[A-Z][A-Z0-9_:-]{1,40}>")
 _SUBMIT_FORBIDDEN_LOCAL_PATH_RE = re.compile(
     r"(?:file://|~[/\\]|[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|"
-    r"(?<![A-Za-z0-9])/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._~+-]+)*)",
+    r"(?<![A-Za-z0-9])/(?:Users|private|tmp)(?:/[A-Za-z0-9._~+-]+)*|"
+    r"(?<![A-Za-z0-9])local-data/(?:approved-summaries|reviewer-bundles)"
+    r"(?:/[A-Za-z0-9._~+-]+)*)",
     re.I,
 )
 _SUBMIT_FORBIDDEN_COMPACT_KEYS = frozenset(
@@ -157,7 +160,7 @@ def semantic_review_packet(
         "allowed_output_schema": CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION,
         "allowed_source_refs": [excerpt["source_ref"] for excerpt in excerpts],
         "auto_publish_allowed": False,
-        "case_ref": f"semantic-review-{ticket_ref}",
+        "case_ref": semantic_review_ref,
         "excerpt_count": len(excerpts),
         "excerpt_total_bytes": excerpt_total_bytes,
         "manual_draft_allowed": False,
@@ -165,6 +168,70 @@ def semantic_review_packet(
         "network_calls": False,
         "ok": True,
         "public_output_approved": False,
+        "candidate_item_field_names": [
+            "candidate_id",
+            "summary",
+            "product_relation",
+            "supportability",
+            "supportability_basis",
+            "kcs_item_status",
+            "article_type_hint",
+            "visibility_hint",
+            "source_refs",
+            "symptoms",
+            "confirmed_facts",
+            "supported_cause",
+            "supported_resolution_or_workaround",
+            "resolution_steps",
+            "environment",
+        ],
+        "candidate_environment_field_names": [
+            "applicable_to",
+            "platform",
+            "product",
+        ],
+        "required_submit_shape": {
+            "candidate_semantic_extraction": {
+                "case_ref": semantic_review_ref,
+                "extraction_source_ref": "semantic-review-submit-001",
+                "items": [
+                    {
+                        "article_type_hint": "technical_scr",
+                        "candidate_id": "candidate-001",
+                        "confirmed_facts": [],
+                        "environment": {},
+                        "kcs_item_status": "candidate_allowed",
+                        "product_relation": "plesk_owned",
+                        "resolution_steps": [],
+                        "source_refs": ["excerpt-001"],
+                        "summary": "",
+                        "supportability": "supported",
+                        "supportability_basis": "explicit_input_mention",
+                        "supported_cause": "",
+                        "supported_resolution_or_workaround": "",
+                        "symptoms": [],
+                        "visibility_hint": "public_customer_safe",
+                    }
+                ],
+                "schema_version": CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION,
+                "source_refs": [excerpt["source_ref"] for excerpt in excerpts],
+            },
+            "semantic_review_ref": semantic_review_ref,
+        },
+        "resolution_step_requirements": [
+            "Each technical_scr candidate must include standalone executable "
+            "resolution_steps.",
+            "Prefer command-level actions with command names and arguments "
+            "when the excerpts provide them.",
+            "Use concrete ports, service names, rule names, and verification "
+            "targets when they are present in selected_excerpts.",
+            "Do not submit vague steps such as 'create a rule' or 'block the "
+            "traffic' without the concrete action detail.",
+            "Do not copy local workstation paths, reviewer-bundle paths, "
+            "command output, or raw transcript text into the submission.",
+            "Sanitized server configuration or log paths may be included only "
+            "when needed for standalone executable resolution evidence.",
+        ],
         "result_kind": "semantic_review_packet",
         "schema_version": SEMANTIC_REVIEW_PACKET_SCHEMA_VERSION,
         "selected_excerpts": excerpts,
@@ -175,7 +242,6 @@ def semantic_review_packet(
             "Identify atomic KCS item candidates only. Do not draft an "
             "article, choose a KCS action, or produce Zendesk HTML."
         ),
-        "ticket_ref": ticket_ref,
         "writes_files": False,
     }
     packet["semantic_review_packet_sha256"] = _packet_sha256(packet)
@@ -356,7 +422,8 @@ def _ensure_no_forbidden_submit_mapping(value: dict[object, object]) -> None:
 
 
 def _ensure_no_forbidden_submit_string(value: str) -> None:
-    if _SUBMIT_FORBIDDEN_TEXT_RE.search(value):
+    html_checked_value = _SAFE_CONFIG_PLACEHOLDER_RE.sub("", value)
+    if _SUBMIT_FORBIDDEN_TEXT_RE.search(html_checked_value):
         raise SemanticReviewError("semantic_review_submission_forbidden")
     if _SUBMIT_FORBIDDEN_LOCAL_PATH_RE.search(value):
         raise SemanticReviewError("semantic_review_submission_forbidden")

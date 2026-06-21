@@ -922,6 +922,8 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
             )
             assert "selected excerpts only" in tool["description"]
             assert "candidate_semantic_extraction_v1" in tool["description"]
+            assert "required_submit_shape" in tool["description"]
+            assert "items, not candidates" in tool["description"]
             assert "Do not draft an article" in tool["description"]
             schema = tool["inputSchema"]
             assert set(schema["properties"]) == {"semantic_review_ref"}
@@ -953,6 +955,8 @@ def _assert_submit_semantic_review_tool(tool: Mapping[str, Any]) -> None:
     )
     assert "candidate_semantic_extraction_v1" in tool["description"]
     assert "selected_excerpts source refs" in tool["description"]
+    assert "required_submit_shape" in tool["description"]
+    assert "Do not use a candidates key" in tool["description"]
     assert "Do not submit article drafts" in tool["description"]
     schema = tool["inputSchema"]
     assert set(schema["properties"]) == {
@@ -962,6 +966,25 @@ def _assert_submit_semantic_review_tool(tool: Mapping[str, Any]) -> None:
     assert schema["required"] == [
         "semantic_review_ref",
         "candidate_semantic_extraction",
+    ]
+    extraction_schema = schema["properties"]["candidate_semantic_extraction"]
+    assert extraction_schema["additionalProperties"] is False
+    assert "items" in extraction_schema["properties"]
+    assert "candidates" not in extraction_schema["properties"]
+    item_schema = extraction_schema["properties"]["items"]["items"]
+    environment_schema = item_schema["properties"]["environment"]
+    assert environment_schema["additionalProperties"] is False
+    assert set(environment_schema["properties"]) == {
+        "applicable_to",
+        "platform",
+        "product",
+    }
+    assert extraction_schema["required"] == [
+        "schema_version",
+        "case_ref",
+        "extraction_source_ref",
+        "source_refs",
+        "items",
     ]
     assert tool["annotations"]["readOnlyHint"] is False
     assert tool["annotations"]["idempotentHint"] is False
@@ -1781,8 +1804,82 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
     assert packet["allowed_source_refs"] == [
         excerpt["source_ref"] for excerpt in packet["selected_excerpts"]
     ]
-    assert "DO-NOT-RETURN-FULL-TICKET-SENTINEL" not in packet_text
+    required_shape = packet["required_submit_shape"]
+    assert set(required_shape) == {
+        "candidate_semantic_extraction",
+        "semantic_review_ref",
+    }
+    assert required_shape["semantic_review_ref"] == draft["semantic_review_ref"]
+    extraction_shape = required_shape["candidate_semantic_extraction"]
+    assert extraction_shape["case_ref"] == draft["semantic_review_ref"]
+    assert extraction_shape["schema_version"] == "candidate_semantic_extraction_v1"
+    assert "items" in extraction_shape
+    assert "candidates" not in extraction_shape
+    assert packet["candidate_item_field_names"]
+    assert packet["candidate_environment_field_names"] == [
+        "applicable_to",
+        "platform",
+        "product",
+    ]
+    assert packet["resolution_step_requirements"]
+    result_text = prepare_response["result"]["content"][0]["text"]
+    assert "Call kcs_submit_semantic_review with this exact argument shape" in (
+        result_text
+    )
+    assert "candidate array key must be items" in result_text
+    assert "resolution_steps must be standalone and executable" in result_text
     assert "Do not draft an article" in packet_text
+    assert "Do not copy local workstation paths" in result_text
+    assert "Sanitized server configuration or log paths may be included" in result_text
+    assert '"candidates"' not in json.dumps(packet["required_submit_shape"])
+    assert "DO-NOT-RETURN-FULL-TICKET-SENTINEL" not in packet_text
+
+
+def test_prepare_semantic_review_omits_numeric_ticket_ref_from_packet(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    transport = _initialized_transport(
+        adapter=KcsDesktopMcpAdapter(
+            reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
+        )
+    )
+    _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
+        {
+            "clean_ticket_text": (
+                "Customer Ticket Content\n"
+                "Customer reports that a product task fails with an error.\n"
+                "The investigation mentions one possible cause, then another.\n"
+                "Support restarted one service and later discussed another issue."
+            ),
+            "ticket_ref": "ticket-96016087",
+        },
+    )
+    draft_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {"ticket_ref": "ticket-96016087", "debug": True},
+    )
+    assert draft_response is not None
+    draft = draft_response["result"]["structuredContent"]
+    assert draft["workflow_state"] == "semantic_review_required"
+    assert draft["ticket_ref"] == "ticket-96016087"
+
+    prepare_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_PREPARE_SEMANTIC_REVIEW),
+        {"semantic_review_ref": draft["semantic_review_ref"]},
+    )
+
+    assert prepare_response is not None
+    packet = prepare_response["result"]["structuredContent"]
+    packet_text = json.dumps(packet, sort_keys=True)
+    assert packet["case_ref"] == draft["semantic_review_ref"]
+    assert "ticket_ref" not in packet
+    assert "ticket-96016087" not in packet_text
 
 
 def test_prepare_semantic_review_is_one_shot(
@@ -2108,6 +2205,45 @@ def test_submit_semantic_review_single_candidate_continues_to_draft(
     assert "candidate_semantic_extraction" not in response_text
 
 
+def test_submit_semantic_review_accepts_firewall_resolution_actions(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction["items"][0]["summary"] = (
+        "High CPU load caused by HTTP flood traffic to the Plesk Panel"
+    )
+    extraction["items"][0]["resolution_steps"] = [
+        "Connect to the Plesk server via SSH.",
+        "Run fail2ban-client reload after adding the panel flood jail.",
+        "Run iptables -I INPUT -p tcp --dport 8880 -j DROP.",
+        "Verify CPU status and confirm port 8880 flood traffic is no longer processed.",
+    ]
+    extraction["items"][0]["supported_resolution_or_workaround"] = (
+        "Reload the Fail2Ban jail, block the abusive panel HTTP traffic on "
+        "port 8880, and verify CPU usage drops."
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["debug_code"] == "draft_only_reuse_search_missing"
+    assert structured["draft_generated"] is True
+    assert structured["reviewer_bundle_written"] is True
+
+
 def test_submit_semantic_review_multiple_candidates_returns_split_required(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
@@ -2280,7 +2416,7 @@ def test_submit_semantic_review_rejects_local_path_values(
     assert structured["manual_draft_allowed"] is False
 
 
-def test_submit_semantic_review_rejects_unix_absolute_paths(
+def test_submit_semantic_review_rejects_claude_extra_environment_path(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2288,8 +2424,106 @@ def test_submit_semantic_review_rejects_unix_absolute_paths(
         tmp_path, monkeypatch
     )
     extraction = _semantic_review_extraction(packet)
-    extraction["items"][0]["resolution_steps"] = [
-        "Edit /etc/product/service.conf and restart the service."
+    extraction["items"][0]["environment"] = {
+        "applicable_to": ["Plesk for Linux"],
+        "log_file": "/var/log/plesk/httpsd_access_log",
+        "services_affected": ["sw-engine-fpm", "sw-cp-server"],
+    }
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    result = response["result"]
+    structured = result["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_submit_blocked"
+    assert structured["debug_code"] == "semantic_review_submission_invalid"
+    assert structured["draft_generated"] is False
+    assert structured["manual_draft_allowed"] is False
+    text = result["content"][0]["text"]
+    assert "same clean ticket_ref" in text
+    assert "semantic_review_metadata_blocked" in text
+    assert "re-register" in text
+
+
+def test_submit_semantic_review_accepts_server_absolute_paths(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction["items"][0]["resolution_steps"].insert(
+        1, "Edit /etc/product/service.conf and restart the service."
+    )
+    extraction["items"][0]["resolution_steps"].insert(
+        2, "Edit /etc/fail2ban/jail.d/panel-flood.local and reload fail2ban."
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["debug_code"] == "draft_only_reuse_search_missing"
+    assert structured["draft_generated"] is True
+    assert structured["reviewer_bundle_written"] is True
+
+
+def test_submit_semantic_review_accepts_config_placeholders(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction["items"][0]["resolution_steps"].insert(
+        1,
+        "Create a filter rule with failregex = ^<HOST> .* GET / HTTP/1.1.",
+    )
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured["debug_code"] == "draft_only_reuse_search_missing"
+    assert structured["draft_generated"] is True
+    assert structured["reviewer_bundle_written"] is True
+
+
+def test_submit_semantic_review_rejects_html_tags(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction["items"][0]["confirmed_facts"] = [
+        "The semantic candidate contains <script>alert(1)</script>."
     ]
 
     response = _call_tool(
