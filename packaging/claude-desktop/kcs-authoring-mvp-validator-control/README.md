@@ -196,6 +196,13 @@ Do not invent reuse/search proof. If explicit reuse/search proof is not
 available, the local workflow marks reuse search as skipped and
 continues with reviewer-only drafting.
 
+Do not invent missing resolution implementation details. If a ticket gives the
+resolution outcome or a high-level resolution description but does not include
+the exact executable procedure needed to apply and verify it, the pipeline may
+block with `approved_summary_resolution_steps_incomplete`. That blocker is
+expected. An operator can add verified resolution detail and rerun the workflow;
+Claude must not infer the missing procedure.
+
 The tool returns compact reviewer-only draft/status metadata:
 
 ```text

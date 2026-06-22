@@ -47,9 +47,11 @@ DEFAULT_CODEX_NODE = (
 )
 PROTOCOL_VERSION = "2025-11-25"
 TOOL_NAME = "kcs_draft_article"
+TICKET_REF_TOOL_NAME = "kcs_draft_ticket"
 REGISTER_TOOL_NAME = "kcs_register_clean_ticket"
 PREPARE_SEMANTIC_REVIEW_TOOL_NAME = "kcs_prepare_semantic_review"
 SUBMIT_SEMANTIC_REVIEW_TOOL_NAME = "kcs_submit_semantic_review"
+BEHAVIOR_TOOL_NAME = "support_get_behavior_instructions"
 CALL_REQUEST_IDS = (3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 APPROVED_TICKET_STORE_ROOT_ENV = "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT"
 _BUNDLE_FILE_ROOTS = (REPO_ROOT,)
@@ -324,7 +326,7 @@ def _run_split_choice_smoke(
                 {"name": TOOL_NAME, "arguments": _multi_item_summary_args()},
             ),
         )
-        submit_arguments = _selected_submit_arguments(split)
+        submit_arguments = _selected_submit_arguments(split, option_index=1)
         selected = _send_jsonrpc(
             process,
             _request(
@@ -333,7 +335,23 @@ def _run_split_choice_smoke(
                 {"name": TOOL_NAME, "arguments": submit_arguments},
             ),
         )
-        return {"initialize": initialize, "selected": selected, "split": split}
+        selected_again = _send_jsonrpc(
+            process,
+            _request(
+                10,
+                "tools/call",
+                {
+                    "name": TOOL_NAME,
+                    "arguments": _structured(selected).get("next_arguments", {}),
+                },
+            ),
+        )
+        return {
+            "initialize": initialize,
+            "selected": selected,
+            "selected_again": selected_again,
+            "split": split,
+        }
     finally:
         _close_process(process)
 
@@ -904,6 +922,7 @@ def _initialize_ok(response: dict[str, Any]) -> bool:
     result = response.get("result", {})
     return (
         result.get("protocolVersion") == PROTOCOL_VERSION
+        and "kcs_draft_ticket" in str(result.get("instructions", ""))
         and "kcs_draft_article" in str(result.get("instructions", ""))
         and "kcs_register_clean_ticket" in str(result.get("instructions", ""))
     )
@@ -965,7 +984,7 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
     if not isinstance(value, dict):
         return False
     tools = value.get("tools")
-    if not isinstance(tools, list) or len(tools) != 5:
+    if not isinstance(tools, list) or len(tools) != 6:
         return False
     register_tool = next(
         (
@@ -983,12 +1002,11 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
         ),
         None,
     )
-    behavior_tool = next(
+    ticket_tool = next(
         (
             item
             for item in tools
-            if isinstance(item, dict)
-            and item.get("name") == "support_get_behavior_instructions"
+            if isinstance(item, dict) and item.get("name") == TICKET_REF_TOOL_NAME
         ),
         None,
     )
@@ -1010,66 +1028,71 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
         ),
         None,
     )
+    behavior_tool = next(
+        (
+            item
+            for item in tools
+            if isinstance(item, dict) and item.get("name") == BEHAVIOR_TOOL_NAME
+        ),
+        None,
+    )
     if (
         register_tool is None
         or tool is None
-        or behavior_tool is None
+        or ticket_tool is None
         or prepare_tool is None
         or submit_tool is None
+        or behavior_tool is None
     ):
         return False
     register_description = str(register_tool.get("description", ""))
+    ticket_description = str(ticket_tool.get("description", ""))
     description = str(tool.get("description", ""))
     prepare_description = str(prepare_tool.get("description", ""))
     submit_description = str(submit_tool.get("description", ""))
+    behavior_description = str(behavior_tool.get("description", ""))
     long_description = str(value.get("long_description", ""))
     return (
         "clean_ticket_text" in register_description
-        and "clean.ticket.txt" in register_description
-        and "automatic first step" in register_description
         and "next_arguments" in register_description
-        and "Claude Desktop file card is not a filesystem path"
-        in register_description
-        and "do not inspect upload directories" in register_description
-        and "approved_summary_text" in description
-        and "Python validates the input and owns semantic extraction" in description
+        and "/draft <ticket_ref>" in ticket_description
+        and "only ticket_ref" in ticket_description
+        and "Do not ask for an attachment" in ticket_description
+        and "short approved_summary_text" in description
         and "structured item" not in description
-        and "Prefer ticket_ref" in description
-        and "kcs_register_clean_ticket first" in description
-        and "approved_summary_text only as a fallback" in description
-        and "Claude Desktop file card is not a filesystem path" in description
-        and "do not inspect upload directories" in description
-        and "file_content_unavailable" in description
+        and "/draft <ticket_ref>" in description
+        and "use kcs_draft_ticket" in description
         and "raw comments" not in description
         and "internal notes" not in description
         and "show the returned candidates in a native Claude Desktop choice popup"
         not in description
-        and "reviewer-only Zendesk HTML" in description
-        and "selected excerpts only" in prepare_description
-        and "candidate_semantic_extraction_v1" in prepare_description
-        and "Do not draft an article" in prepare_description
+        and "semantic_review_required" in prepare_description
+        and "bounded excerpts" in prepare_description
         and "candidate_semantic_extraction_v1" in submit_description
-        and "selected_excerpts source refs" in submit_description
-        and "Do not submit article drafts" in submit_description
+        and "No article draft" in submit_description
+        and "Legacy compatibility helper" in behavior_description
+        and "continue /draft" in behavior_description
+        and "Use only the listed KCS Authoring tools" in long_description
+        and "legacy instruction requires" in long_description
+        and "support_get_behavior_instructions" in long_description
+        and "Plesk Support Assistant Local" in long_description
+        and "Do not report Plesk Support Assistant Local as missing"
+        in long_description
         and "one primary read-only tool" not in long_description
     )
 
 
 def _tool_surface_ok(response: dict[str, Any]) -> bool:
     tools = response.get("result", {}).get("tools", [])
-    if len(tools) != 5:
+    if len(tools) != 6:
         return False
     register_tool = next(
         (item for item in tools if item.get("name") == REGISTER_TOOL_NAME),
         None,
     )
     tool = next((item for item in tools if item.get("name") == TOOL_NAME), None)
-    behavior_tool = next(
-        (
-            item
-            for item in tools
-            if item.get("name") == "support_get_behavior_instructions"
-        ),
+    ticket_tool = next(
+        (item for item in tools if item.get("name") == TICKET_REF_TOOL_NAME),
         None,
     )
     prepare_tool = next(
@@ -1088,16 +1111,24 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         ),
         None,
     )
+    behavior_tool = next(
+        (item for item in tools if item.get("name") == BEHAVIOR_TOOL_NAME),
+        None,
+    )
     if (
         register_tool is None
         or tool is None
-        or behavior_tool is None
+        or ticket_tool is None
         or prepare_tool is None
         or submit_tool is None
+        or behavior_tool is None
     ):
         return False
     register_properties = register_tool.get("inputSchema", {}).get("properties", {})
     register_annotations = register_tool.get("annotations", {})
+    ticket_properties = ticket_tool.get("inputSchema", {}).get("properties", {})
+    ticket_annotations = ticket_tool.get("annotations", {})
+    ticket_description = str(ticket_tool.get("description", ""))
     properties = tool.get("inputSchema", {}).get("properties", {})
     annotations = tool.get("annotations", {})
     prepare_properties = prepare_tool.get("inputSchema", {}).get("properties", {})
@@ -1106,6 +1137,9 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
     submit_properties = submit_tool.get("inputSchema", {}).get("properties", {})
     submit_annotations = submit_tool.get("annotations", {})
     submit_description = str(submit_tool.get("description", ""))
+    behavior_properties = behavior_tool.get("inputSchema", {}).get("properties", {})
+    behavior_annotations = behavior_tool.get("annotations", {})
+    behavior_description = str(behavior_tool.get("description", ""))
     description = str(tool.get("description", ""))
     debug_description = str(properties.get("debug", {}).get("description", ""))
     return (
@@ -1117,13 +1151,21 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         and register_annotations.get("idempotentHint") is False
         and register_annotations.get("openWorldHint") is False
         and register_annotations.get("readOnlyHint") is False
+        and set(ticket_properties) == {"debug", "ticket_ref"}
+        and ticket_tool.get("inputSchema", {}).get("required") == ["ticket_ref"]
+        and ticket_annotations.get("destructiveHint") is False
+        and ticket_annotations.get("idempotentHint") is False
+        and ticket_annotations.get("openWorldHint") is False
+        and ticket_annotations.get("readOnlyHint") is False
+        and "/draft <ticket_ref>" in ticket_description
+        and "only ticket_ref" in ticket_description
+        and "Do not ask for an attachment" in ticket_description
         and set(properties)
         == {
             "approved_summary_text",
             "debug",
             "operator_selected_item_ref",
             "operator_selection_ref",
-            "ticket_ref",
         }
         and "item" not in properties
         and "item_candidates" not in properties
@@ -1131,10 +1173,8 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         and annotations.get("idempotentHint") is False
         and annotations.get("openWorldHint") is False
         and annotations.get("readOnlyHint") is False
-        and "Python validates the input and owns semantic extraction" in description
-        and "Claude Desktop file card is not a filesystem path" in description
-        and "do not inspect upload directories" in description
-        and "file_content_unavailable" in description
+        and "/draft <ticket_ref>" in description
+        and "use kcs_draft_ticket" in description
         and "raw comments" not in description
         and "internal notes" not in description
         and "reviewer-only Zendesk HTML" in debug_description
@@ -1146,9 +1186,8 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         and prepare_annotations.get("idempotentHint") is True
         and prepare_annotations.get("openWorldHint") is False
         and prepare_annotations.get("readOnlyHint") is True
-        and "selected excerpts only" in prepare_description
-        and "candidate_semantic_extraction_v1" in prepare_description
-        and "Do not draft an article" in prepare_description
+        and "semantic_review_required" in prepare_description
+        and "bounded excerpts" in prepare_description
         and set(submit_properties)
         == {"candidate_semantic_extraction", "semantic_review_ref"}
         and submit_tool.get("inputSchema", {}).get("required")
@@ -1158,13 +1197,15 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
         and submit_annotations.get("openWorldHint") is False
         and submit_annotations.get("readOnlyHint") is False
         and "candidate_semantic_extraction_v1" in submit_description
-        and "selected_excerpts source refs" in submit_description
-        and "Do not submit article drafts" in submit_description
-        and behavior_tool.get("annotations", {}).get("destructiveHint") is False
-        and behavior_tool.get("annotations", {}).get("idempotentHint") is True
-        and behavior_tool.get("annotations", {}).get("openWorldHint") is False
-        and behavior_tool.get("annotations", {}).get("readOnlyHint") is True
-        and behavior_tool.get("inputSchema", {}).get("properties", {}) == {}
+        and "No article draft" in submit_description
+        and set(behavior_properties) == set()
+        and behavior_tool.get("inputSchema", {}).get("required") == []
+        and behavior_annotations.get("destructiveHint") is False
+        and behavior_annotations.get("idempotentHint") is True
+        and behavior_annotations.get("openWorldHint") is False
+        and behavior_annotations.get("readOnlyHint") is True
+        and "Legacy compatibility helper" in behavior_description
+        and "continue /draft" in behavior_description
     )
 
 
@@ -1279,15 +1320,19 @@ def _non_debug_labeled_draft_text_ok(response: dict[str, Any]) -> bool:
     )
 
 
-def _selected_submit_arguments(split_response: dict[str, Any]) -> dict[str, Any]:
+def _selected_submit_arguments(
+    split_response: dict[str, Any],
+    *,
+    option_index: int = 1,
+) -> dict[str, Any]:
     structured = _structured(split_response)
     choice_request = structured.get("operator_choice_request")
     if not isinstance(choice_request, dict):
         raise SmokeError("split_choice_missing")
     options = choice_request.get("options")
-    if not isinstance(options, list) or len(options) < 2:
+    if not isinstance(options, list) or len(options) <= option_index:
         raise SmokeError("split_choice_missing")
-    selected = options[1]
+    selected = options[option_index]
     if not isinstance(selected, dict):
         raise SmokeError("split_choice_missing")
     submit_arguments = selected.get("submit_arguments")
@@ -1299,6 +1344,7 @@ def _selected_submit_arguments(split_response: dict[str, Any]) -> dict[str, Any]
 def _split_choice_ok(responses: dict[str, dict[str, Any]]) -> bool:
     split = _structured(responses["split"])
     selected = _structured(responses["selected"])
+    selected_again = _structured(responses["selected_again"])
     choice_request = split.get("operator_choice_request")
     if not isinstance(choice_request, dict):
         return False
@@ -1321,6 +1367,14 @@ def _split_choice_ok(responses: dict[str, dict[str, Any]]) -> bool:
         and selected.get("debug_code") == "draft_only_reuse_search_missing"
         and selected.get("reviewer_bundle_written") is True
         and selected.get("writes_files") is True
+        and selected.get("next_arguments")
+        == {
+            "operator_selected_item_ref": "candidate-001",
+            "operator_selection_ref": split.get("operator_selection_ref"),
+        }
+        and selected_again.get("draft_generated") is True
+        and selected_again.get("item_ref") == "candidate-001"
+        and "next_arguments" not in selected_again
         and isinstance(selected.get("html_path"), str)
         and _bundle_file_ok(
             str(selected.get("html_path")),
@@ -1410,7 +1464,8 @@ def _semantic_review_invalid_submit_ok(
     return (
         responses["submit"].get("result", {}).get("isError") is False
         and submit.get("workflow_state") == "semantic_review_submit_blocked"
-        and submit.get("debug_code") == "semantic_review_submission_forbidden"
+        and submit.get("debug_code")
+        == "semantic_review_forbidden_html_or_markdown"
         and submit.get("draft_generated") is False
         and submit.get("reviewer_bundle_written") is False
         and submit.get("manual_draft_allowed") is False
@@ -1427,7 +1482,8 @@ def _split_choice_text_ok(response: dict[str, Any]) -> bool:
     return (
         text.startswith("Multiple KCS article candidates were detected.")
         and "Operator selection is required before drafting." in text
-        and "Use a native single-choice popup" in text
+        and "Use the native single-choice popup" in text
+        and "Do not answer with a prose-only candidate list." in text
         and "submit_arguments" in text
         and "Do not draft manually." in text
         and "candidate-002" in text

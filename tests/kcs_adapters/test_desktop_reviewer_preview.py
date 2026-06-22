@@ -16,7 +16,10 @@ from kcs_core.models import ArticleType
 def _execution() -> SimpleNamespace:
     return SimpleNamespace(
         arguments={"item": {"reuse_search_checked": True}},
-        decision=SimpleNamespace(article_type=ArticleType.TECHNICAL_SCR.value),
+        decision=SimpleNamespace(
+            article_type=ArticleType.TECHNICAL_SCR.value,
+            recommended_action="create_candidate",
+        ),
         payload={
             "issue_candidates": [
                 {
@@ -87,6 +90,36 @@ def test_quality_gaps_use_html_quality_and_reuse_status(monkeypatch) -> None:
 
     assert {"kind": "html_quality_checked", "severity": "info"} in gaps
     assert {"kind": "reuse_search_skipped", "severity": "warning"} not in gaps
+
+
+def test_quality_gaps_block_resolution_delegated_to_existing_kb() -> None:
+    gaps = approved_summary_quality_gaps(
+        _execution(),
+        {
+            "applicable_to": ["Plesk for Linux"],
+            "cause": "A known product issue affects generated web configuration.",
+            "resolution": (
+                "Open the existing Plesk knowledge base article for bug "
+                "PPPM-5892 at "
+                "https://support.plesk.com/hc/en-us/articles/115001678209 "
+                "and apply the documented fix."
+            ),
+            "resolution_steps": [
+                (
+                    "Open the existing Plesk knowledge base article for bug "
+                    "PPPM-5892 at "
+                    "https://support.plesk.com/hc/en-us/articles/115001678209 "
+                    "and apply the documented fix."
+                )
+            ],
+            "symptoms": ["Apache fails to start."],
+        },
+    )
+
+    assert {
+        "kind": "resolution_delegates_to_existing_kb_article",
+        "severity": "blocker",
+    } in gaps
 
 
 def test_safe_candidate_fields_normalize_scalar_and_list_values() -> None:

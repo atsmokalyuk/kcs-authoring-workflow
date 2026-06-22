@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -58,6 +59,15 @@ ApprovedSummaryInputError = _desktop_payload.ApprovedSummaryInputError
 ApprovedSummaryPayloadArgumentError = (
     _desktop_payload.ApprovedSummaryPayloadArgumentError
 )
+_EXPLICIT_SUPPORT_ARTICLE_URL_RE = re.compile(
+    r"https://support\.plesk\.com/hc/en-us/articles/(?P<article_id>[A-Za-z0-9_-]+)",
+    re.I,
+)
+_EXPLICIT_EXISTING_ARTICLE_CONTEXT_RE = re.compile(
+    r"\b(?:existing|knowledge\s+base|kb|article|documented\s+fix|"
+    r"refer(?:ence|red)?|open|apply|follow)\b",
+    re.I,
+)
 
 
 class DesktopAuthoringArgumentError(ValueError):
@@ -94,9 +104,7 @@ def pipeline_status_result(
     return approved_summary_pipeline_status(
         execution,
         schema_version=schema_version,
-        reuse_search_status=approved_summary_reuse_search_status(
-            execution.arguments
-        ),
+        reuse_search_status=_approved_summary_pipeline_reuse_status(execution),
     )
 
 
@@ -109,7 +117,7 @@ def author_result(
 
     status = pipeline_status_result(execution, schema_version=schema_version)
     draft = approved_summary_reviewer_only_draft(execution)
-    return {
+    result = {
         **status,
         "article_type": execution.decision.article_type,
         "atomic_item": _approved_summary_atomic_item(execution),
@@ -128,6 +136,11 @@ def author_result(
         ),
         "should_be_kcs_article": _approved_summary_should_be_article(execution),
     }
+    existing_article_review = _existing_article_review_summary(execution, draft)
+    if existing_article_review is not None:
+        result["existing_article_review"] = existing_article_review
+        result["selected_reuse_match"] = dict(execution.decision.selected_reuse_match)
+    return result
 
 
 def author_failure_result(
@@ -147,6 +160,28 @@ def author_failure_result(
         next_action = "register_complete_clean_ticket_with_final_evidence"
         result["manual_draft_allowed"] = False
         result["next_required_action"] = next_action
+        result["review_summary"] = {
+            "draft_available": False,
+            "next_required_action": next_action,
+            "reason": debug_code,
+        }
+    if debug_code == "approved_summary_resolution_steps_incomplete":
+        next_action = "add_operator_confirmed_resolution_detail"
+        result["manual_draft_allowed"] = False
+        result["next_required_action"] = next_action
+        result["operator_resolution_detail_policy"] = {
+            "can_retry_after_operator_evidence": True,
+            "do_not_invent_resolution_procedure": True,
+            "reason": (
+                "Resolution evidence does not contain enough concrete "
+                "procedure detail for a standalone KCS draft."
+            ),
+            "accepted_detail_examples": [
+                "exact executable procedure and verification used in the ticket",
+                "exact procedure confirmed by the operator",
+                "explicit customer-confirmed procedure and outcome",
+            ],
+        }
         result["review_summary"] = {
             "draft_available": False,
             "next_required_action": next_action,
@@ -501,17 +536,145 @@ def _approved_summary_reuse_results(
     arguments: Mapping[str, Any],
 ) -> ReuseSearchResultsPacket:
     reuse_checked = approved_summary_reuse_was_checked(arguments)
+    explicit_match = _explicit_existing_article_match(arguments)
     return ReuseSearchResultsPacket(
         search_run_ref=_approved_summary_reuse_search_run_ref(arguments),
         searched=True,
         search_source=(
+            "operator_explicit_existing_article_reference"
+            if explicit_match is not None
+            else (
             "operator_approved_summary"
             if reuse_checked
             else "operator_approved_summary_reuse_skipped"
+            )
         ),
-        matches=[],
+        matches=[explicit_match] if explicit_match is not None else [],
         blockers=[],
     )
+
+
+def _existing_article_review_summary(
+    execution: ApprovedSummaryExecution,
+    draft: Mapping[str, Any],
+) -> JsonDict | None:
+    match = execution.decision.selected_reuse_match
+    if match is None:
+        return None
+    suggested_change = _existing_article_suggested_change(draft)
+    review: JsonDict = {
+        "action": execution.decision.recommended_action,
+        "do_not_create_duplicate": True,
+        "match_ref": match.get("match_ref"),
+        "content_status": match.get("content_status"),
+        "publication_status": match.get("publication_status"),
+        "operator_summary": (
+            "Matched an existing public article. Do not create a duplicate. "
+            "Use this result to reuse the matched article, or to flag/update "
+            "only concrete coverage gaps from this ticket."
+        ),
+    }
+    if suggested_change:
+        review["suggested_change"] = suggested_change
+    else:
+        review["review_recommendation"] = "reuse_existing_article_without_new_content"
+    return review
+
+
+def _existing_article_suggested_change(draft: Mapping[str, Any]) -> JsonDict:
+    symptoms = safe_candidate_list(draft, "symptoms")
+    resolution_steps = safe_candidate_list(draft, "resolution_steps")
+    resolution_coverage, omitted_duplicate_steps = (
+        _split_existing_article_resolution_steps(resolution_steps)
+    )
+    suggested_change: JsonDict = {}
+    if symptoms:
+        suggested_change["symptoms_to_check_or_add"] = symptoms
+    if resolution_coverage:
+        suggested_change["resolution_coverage_to_verify"] = resolution_coverage
+    if omitted_duplicate_steps:
+        suggested_change["omitted_duplicate_resolution_steps"] = (
+            omitted_duplicate_steps
+        )
+    return suggested_change
+
+
+def _split_existing_article_resolution_steps(
+    resolution_steps: list[str],
+) -> tuple[list[str], list[str]]:
+    coverage_to_verify: list[str] = []
+    omitted_duplicate_steps: list[str] = []
+    for step in resolution_steps:
+        if _is_existing_article_delegation_step(step):
+            omitted_duplicate_steps.append(step)
+        else:
+            coverage_to_verify.append(step)
+    return coverage_to_verify, omitted_duplicate_steps
+
+
+def _is_existing_article_delegation_step(step: str) -> bool:
+    return (
+        _EXPLICIT_SUPPORT_ARTICLE_URL_RE.search(step) is not None
+        and _EXPLICIT_EXISTING_ARTICLE_CONTEXT_RE.search(step) is not None
+    )
+
+
+def _approved_summary_pipeline_reuse_status(
+    execution: ApprovedSummaryExecution,
+) -> str:
+    if execution.decision.selected_reuse_match is not None:
+        return "checked"
+    return approved_summary_reuse_search_status(execution.arguments)
+
+
+def _explicit_existing_article_match(
+    arguments: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    item = _desktop_payload.approved_summary_optional_item_object(arguments)
+    if item is None:
+        return None
+    text = _explicit_existing_article_text(item)
+    if not _EXPLICIT_EXISTING_ARTICLE_CONTEXT_RE.search(text):
+        return None
+    match = _EXPLICIT_SUPPORT_ARTICLE_URL_RE.search(text)
+    if match is None:
+        return None
+    article_type = str(
+        item.get("article_type") or item.get("article_type_hint") or "technical_scr"
+    )
+    return {
+        "article_type": article_type,
+        "candidate_id": str(item.get("candidate_id") or ""),
+        "content_status": "partial",
+        "identity": {
+            "cause": str(item.get("supported_cause") or ""),
+            "resolution_or_answer": str(
+                item.get("supported_resolution_or_workaround")
+                or item.get("supported_answer")
+                or ""
+            ),
+        },
+        "match_ref": f"kb-{match.group('article_id')}",
+        "publication_status": "public",
+    }
+
+
+def _explicit_existing_article_text(item: Mapping[str, Any]) -> str:
+    values: list[str] = []
+    for key in (
+        "summary",
+        "supported_cause",
+        "supported_resolution_or_workaround",
+        "supported_answer",
+    ):
+        value = item.get(key)
+        if isinstance(value, str):
+            values.append(value)
+    for key in ("confirmed_facts", "resolution_steps", "answer_steps", "symptoms"):
+        value = item.get(key)
+        if isinstance(value, list):
+            values.extend(part for part in value if isinstance(part, str))
+    return "\n".join(values)
 
 
 def _approved_summary_reuse_search_run_ref(arguments: Mapping[str, Any]) -> str:

@@ -17,6 +17,7 @@ TOOL_AUTHOR_APPROVED_SUMMARY = "kcs.author_approved_summary"
 TOOL_AUTHOR_TICKET = "kcs.author_ticket"
 TOOL_REGISTER_CLEAN_TICKET = "kcs.register_clean_ticket"
 TOOL_DRAFT_ARTICLE = "kcs.draft_article"
+TOOL_DRAFT_TICKET = "kcs.draft_ticket"
 TOOL_PREPARE_SEMANTIC_REVIEW = "kcs.prepare_semantic_review"
 TOOL_SUBMIT_SEMANTIC_REVIEW = "kcs.submit_semantic_review"
 TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS = "support.get_behavior_instructions"
@@ -24,6 +25,7 @@ TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS = "support.get_behavior_instructions"
 DESKTOP_OPERATOR_TOOLS = frozenset(
     {
         TOOL_REGISTER_CLEAN_TICKET,
+        TOOL_DRAFT_TICKET,
         TOOL_DRAFT_ARTICLE,
         TOOL_PREPARE_SEMANTIC_REVIEW,
         TOOL_SUBMIT_SEMANTIC_REVIEW,
@@ -44,6 +46,7 @@ CLAUDE_DESKTOP_TOOL_ALIASES = {
     TOOL_AUTHOR_TICKET: "kcs_author_ticket",
     TOOL_REGISTER_CLEAN_TICKET: "kcs_register_clean_ticket",
     TOOL_DRAFT_ARTICLE: "kcs_draft_article",
+    TOOL_DRAFT_TICKET: "kcs_draft_ticket",
     TOOL_PREPARE_SEMANTIC_REVIEW: "kcs_prepare_semantic_review",
     TOOL_SUBMIT_SEMANTIC_REVIEW: "kcs_submit_semantic_review",
     TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS: "support_get_behavior_instructions",
@@ -74,6 +77,7 @@ __all__ = [
     "TOOL_AUTHOR_APPROVED_SUMMARY",
     "TOOL_AUTHOR_TICKET",
     "TOOL_DRAFT_ARTICLE",
+    "TOOL_DRAFT_TICKET",
     "TOOL_GET_MCP_READINESS",
     "TOOL_GET_POLICY_SUMMARY",
     "TOOL_NAME_STYLE_CANONICAL",

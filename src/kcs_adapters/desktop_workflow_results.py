@@ -150,7 +150,7 @@ def semantic_review_submit_failure_result(
         {
             "draft_generated": False,
             "manual_draft_allowed": False,
-            "next_required_action": "restart_with_ticket_ref",
+            "next_required_action": "operator_review_semantic_submission_blocker",
             "reviewer_bundle_written": False,
             "should_be_kcs_article": True,
             "workflow_state": "semantic_review_submit_blocked",
@@ -158,7 +158,7 @@ def semantic_review_submit_failure_result(
     )
     result["review_summary"] = {
         "draft_available": False,
-        "next_required_action": "restart_with_ticket_ref",
+        "next_required_action": "operator_review_semantic_submission_blocker",
         "reason": debug_code,
         "workflow_state": "semantic_review_submit_blocked",
     }

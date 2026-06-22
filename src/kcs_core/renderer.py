@@ -42,6 +42,13 @@ _FLAG_EXISTING_WARNING = "flag_existing_requires_existing_article_review"
 _SAFE_METADATA_KEY_RE = re.compile(r"[A-Za-z][A-Za-z0-9_:-]*")
 _SAFE_METADATA_VALUE_RE = re.compile(r"[A-Za-z0-9_.:-]+")
 _SAFE_REPORT_CODE_RE = re.compile(r"[a-z][a-z0-9_]*")
+_SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
+    r"https://support\.plesk\.com/hc/en-us/articles/[A-Za-z0-9_-]+",
+    re.I,
+)
+_SAFE_PUBLIC_TECH_PATH_RE = re.compile(
+    r"(?<![\w<])/(?:etc|usr|var|opt)/[A-Za-z0-9_./%:+-]+"
+)
 _PRIVATE_METADATA_PATTERNS = (
     re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}\b", re.I),
     re.compile(
@@ -99,12 +106,24 @@ _INLINE_CODE_COMMAND_RE = re.compile(
     r"(?=(?:\s+to\b|\.|,|$))",
     re.I,
 )
+_INLINE_GUI_PATH_RE = re.compile(
+    r"\bPlesk\s*>\s*"
+    r"[A-Za-z0-9][A-Za-z0-9 .&/()_+-]*"
+    r"(?:\s*>\s*[A-Za-z0-9][A-Za-z0-9 .&/()_+-]*)+",
+    re.I,
+)
 _SYSTEMCTL_RESTART_RE = re.compile(
     r"^systemctl\s+restart\s+(?P<service>[A-Za-z0-9_.@-]+)$",
     re.I,
 )
 _RUN_COMMAND_DESCRIPTION_SPLIT_RE = re.compile(r"\s+to\s+", re.I)
 _COLON_COMMAND_SPLIT_RE = re.compile(r":\s+", re.S)
+_COMMAND_CONFIRMATION_SPLIT_RE = re.compile(
+    r"\s+and\s+(?P<confirmation>"
+    r"(?:confirm(?:ing)?|verify(?:ing)?|check(?:ing)?|ensure|follow(?:ing)?|"
+    r"select(?:ing)?|answer(?:ing)?)\b.+)$",
+    re.I | re.S,
+)
 _SHELL_COMMAND_START_RE = re.compile(
     r"^(?:"
     r"awk|cat|chmod|chown|cp|curl|fail2ban-client|fail2ban-regex|find|"
@@ -538,6 +557,9 @@ def _run_command_step(value: str) -> tuple[str, str] | None:
     description_source = parts[1].strip() if len(parts) == 2 else None
     if not command:
         return None
+    command, description_source = _split_command_confirmation(
+        command, description_source
+    )
     description = _command_step_description(command, description_source)
     return description, command
 
@@ -551,9 +573,55 @@ def _colon_command_step(value: str) -> tuple[str, str] | None:
     command = parts[1].strip()
     if not description or not command:
         return None
+    command, confirmation = _split_command_confirmation(command, None)
+    if confirmation:
+        description = _description_with_confirmation(description, confirmation)
     if not _command_line_needs_shell_prompt(command) and not _kcs_code_block(command):
         return None
     return f"{_sentence_case(description.rstrip('.'))}:", command
+
+
+def _split_command_confirmation(
+    command: str, description_source: str | None
+) -> tuple[str, str | None]:
+    match = _COMMAND_CONFIRMATION_SPLIT_RE.search(command)
+    if match is None:
+        return command, description_source
+    executable = command[: match.start()].strip()
+    if not executable or not _command_line_needs_shell_prompt(executable):
+        return command, description_source
+    confirmation = _sentence_case(match.group("confirmation").strip().rstrip("."))
+    confirmation = _normalize_confirmation_phrase(confirmation)
+    if description_source:
+        return executable, _description_with_confirmation(
+            description_source, confirmation
+        )
+    return executable, confirmation
+
+
+def _description_with_confirmation(description: str, confirmation: str) -> str:
+    base = re.sub(
+        r"\s+by\s+running\s*$",
+        "",
+        description.strip().rstrip("."),
+        flags=re.I,
+    )
+    return f"{base} and {confirmation.rstrip('.')}"
+
+
+def _normalize_confirmation_phrase(value: str) -> str:
+    replacements = {
+        "Confirming ": "confirm ",
+        "Verifying ": "verify ",
+        "Checking ": "check ",
+        "Following ": "follow ",
+        "Selecting ": "select ",
+        "Answering ": "answer ",
+    }
+    for prefix, replacement in replacements.items():
+        if value.startswith(prefix):
+            return replacement + value[len(prefix) :]
+    return value
 
 
 def _kcs_code_block(value: str) -> bool:
@@ -599,6 +667,7 @@ def _kcs_trigger_block_lines(value: str) -> list[str]:
 
 
 def _code_line(value: str) -> str:
+    value = _strip_wrapping_command_quotes(value)
     if _KCS_TRIGGER_LINE_RE.search(value):
         return value
     if _command_line_needs_shell_prompt(value):
@@ -607,7 +676,18 @@ def _code_line(value: str) -> str:
 
 
 def _command_line_needs_shell_prompt(value: str) -> bool:
-    return bool(_SHELL_COMMAND_START_RE.search(value.strip()))
+    return bool(_SHELL_COMMAND_START_RE.search(_strip_wrapping_command_quotes(value)))
+
+
+def _strip_wrapping_command_quotes(value: str) -> str:
+    stripped = value.strip()
+    if len(stripped) < 2:
+        return stripped
+    if stripped[0] == stripped[-1] and stripped[0] in {"'", '"', "`"}:
+        inner = stripped[1:-1].strip()
+        if _SHELL_COMMAND_START_RE.search(inner):
+            return inner
+    return stripped
 
 
 def _sentence_case(value: str) -> str:
@@ -626,19 +706,33 @@ def _unordered_list(values: list[str]) -> list[str]:
 
 
 def _inline_markup(value: str) -> str:
-    spans = _inline_code_spans(value)
+    spans = _inline_markup_spans(value)
     if not spans:
         return escape(value)
     parts: list[str] = []
     position = 0
-    for start, end in spans:
+    for start, end, tag in spans:
         if start > position:
             parts.append(escape(value[position:start]))
-        parts.append(f"<code>{escape(value[start:end])}</code>")
+        parts.append(f"<{tag}>{escape(value[start:end])}</{tag}>")
         position = end
     if position < len(value):
         parts.append(escape(value[position:]))
     return "".join(parts)
+
+
+def _inline_markup_spans(value: str) -> list[tuple[int, int, str]]:
+    spans: list[tuple[int, int, str]] = [
+        (start, end, "code") for start, end in _inline_code_spans(value)
+    ]
+    occupied = [(start, end) for start, end, _tag in spans]
+    for match in _INLINE_GUI_PATH_RE.finditer(value):
+        span = _trim_gui_path_span(value, match.span())
+        if _span_overlaps(span, occupied):
+            continue
+        spans.append((span[0], span[1], "strong"))
+        occupied.append(span)
+    return sorted(spans, key=lambda item: (item[0], item[1]))
 
 
 def _inline_code_spans(value: str) -> list[tuple[int, int]]:
@@ -652,6 +746,17 @@ def _inline_code_spans(value: str) -> list[tuple[int, int]]:
                 continue
             spans.append(span)
     return sorted(spans)
+
+
+def _trim_gui_path_span(value: str, span: tuple[int, int]) -> tuple[int, int]:
+    start, end = span
+    while end > start and value[end - 1] in ",;:":
+        end -= 1
+    if end > start and value[end - 1] == ".":
+        last_segment = value[start : end - 1].rsplit(">", 1)[-1].strip()
+        if re.search(r"\.[A-Za-z]{2,63}$", last_segment) is None:
+            end -= 1
+    return start, end
 
 
 def _trim_inline_code_span(value: str, span: tuple[int, int]) -> tuple[int, int]:
@@ -822,9 +927,17 @@ def _public_article_text_values(
 
 
 def _contains_private_public_text(value: str) -> bool:
-    text_without_safe_filenames = _SAFE_PUBLIC_TEXT_FILENAME_RE.sub("", value)
-    return bool(text_without_safe_filenames) and any(
-        pattern.search(text_without_safe_filenames)
+    text_without_safe_public_refs = _SAFE_PUBLIC_SUPPORT_URL_RE.sub("", value)
+    text_without_safe_public_refs = _SAFE_PUBLIC_TECH_PATH_RE.sub(
+        "",
+        text_without_safe_public_refs,
+    )
+    text_without_safe_public_refs = _SAFE_PUBLIC_TEXT_FILENAME_RE.sub(
+        "",
+        text_without_safe_public_refs,
+    )
+    return bool(text_without_safe_public_refs) and any(
+        pattern.search(text_without_safe_public_refs)
         for pattern in _PRIVATE_PUBLIC_TEXT_PATTERNS
     )
 

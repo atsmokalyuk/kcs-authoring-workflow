@@ -383,6 +383,47 @@ def test_desktop_workflow_owns_pending_selection_state() -> None:
     )
 
     assert selected["item_ref"] == "candidate-001"
+    assert workflow.pending_selection is not None
+
+    remaining = workflow.mark_selected_candidate_drafted("candidate-001")
+
+    assert remaining is None
+    assert workflow.pending_selection is None
+
+
+def test_desktop_workflow_keeps_pending_selection_for_remaining_candidates() -> None:
+    workflow = DesktopDraftWorkflow(
+        provider=_Provider(_extraction_payload()),
+        selection_ttl_seconds=60,
+    )
+    pending = workflow.start_pending_selection(
+        [
+            _desktop_candidate("candidate-001", "First safe issue"),
+            _desktop_candidate("candidate-002", "Second safe issue"),
+        ],
+        approved_summary_text="Approved sanitized summary.",
+    )
+
+    selected = workflow.selected_candidate(
+        selection_ref=pending.selection_ref,
+        selected_item_ref="candidate-001",
+    )
+    remaining = workflow.mark_selected_candidate_drafted("candidate-001")
+
+    assert selected["item_ref"] == "candidate-001"
+    assert remaining is not None
+    assert remaining.selection_ref == pending.selection_ref
+    assert remaining.selected_candidate_refs == ("candidate-001",)
+    assert workflow.pending_selection is remaining
+
+    second = workflow.selected_candidate(
+        selection_ref=pending.selection_ref,
+        selected_item_ref="candidate-002",
+    )
+    done = workflow.mark_selected_candidate_drafted("candidate-002")
+
+    assert second["item_ref"] == "candidate-002"
+    assert done is None
     assert workflow.pending_selection is None
 
 

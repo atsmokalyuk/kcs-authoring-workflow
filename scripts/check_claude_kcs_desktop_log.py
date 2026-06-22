@@ -171,11 +171,6 @@ def _tool_surface_checks(line: str) -> dict[str, bool]:
             "kcs_submit_semantic_review",
             {"candidate_semantic_extraction", "semantic_review_ref"},
         ),
-        "support_helper_schema_exact": _tool_properties_exact(
-            tools,
-            "support_get_behavior_instructions",
-            set(),
-        ),
         "tool_names_exact": set(tools) == _EXPECTED_TOOL_NAMES,
     }
 
@@ -223,7 +218,6 @@ _EXPECTED_TOOL_NAMES = frozenset(
         "kcs_prepare_semantic_review",
         "kcs_register_clean_ticket",
         "kcs_submit_semantic_review",
-        "support_get_behavior_instructions",
     }
 )
 _MUTATING_TOOLS = frozenset(
@@ -236,7 +230,6 @@ _MUTATING_TOOLS = frozenset(
 _READ_ONLY_TOOLS = frozenset(
     {
         "kcs_prepare_semantic_review",
-        "support_get_behavior_instructions",
     }
 )
 

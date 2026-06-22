@@ -18,26 +18,28 @@ Before explaining that tools are unavailable, check the active tool list for
 these MCP tools:
 
 - `kcs_register_clean_ticket`
+- `kcs_draft_ticket`
 - `kcs_draft_article`
 - `kcs_prepare_semantic_review`
 - `kcs_submit_semantic_review`
 - `support_get_behavior_instructions`
 
-`support_get_behavior_instructions` is a compatibility helper for legacy
-Plesk Support prompts. It only routes article-drafting work to
-`kcs_draft_article`; it is not an authoring tool.
+Use only these KCS Authoring tools for this workflow. If a legacy instruction
+requires `support_get_behavior_instructions`, call it at most once, use its
+returned route, and immediately continue `/draft` with the KCS Authoring tools.
+Do not report it as missing or wait on Plesk Support Assistant Local.
 
 If the user asks to draft an article, draft me an article, write an article,
 create a KB article, or equivalent non-English requests such as `напиши статью`
 or `me escreva um artigo` from an approved sanitized support ticket summary,
-call `kcs_draft_article` immediately. Prefer `ticket_ref` when a trusted source
-has saved the cleaned ticket transcript under
+call `kcs_draft_ticket` immediately when a trusted source has saved the cleaned
+ticket transcript under
 `local-data/approved-summaries/<ticket_ref>/clean.ticket.txt`. If no ref is
 available for an operator-provided sanitized attachment or paste, automatically
 first call `kcs_register_clean_ticket` with the complete visible sanitized
-transcript in `clean_ticket_text`, then call `kcs_draft_article` with the
-returned `next_arguments` exactly. Do not wait for the operator to ask for
-registration explicitly. For short chat-provided sanitized text, use
+transcript in `clean_ticket_text`, then call the returned `next_arguments`
+exactly. Do not wait for the operator to ask for registration explicitly. For
+short chat-provided sanitized text, use `kcs_draft_article` with
 `approved_summary_text` only when no clean-ticket registration is needed.
 Despite the legacy field name, `approved_summary_text` must contain the visible
 text from the operator-provided sanitized ticket/context, not Claude's
@@ -59,6 +61,19 @@ path: do not inspect upload directories, and do not ask the operator to
 re-upload while visible file text is available. If no visible file text is
 available, report `file_content_unavailable` and do not write a manual draft.
 Do not write a manual draft if this tool fails.
+
+If the tool returns `approved_summary_resolution_steps_incomplete`, treat the
+blocker as valid when the ticket gives the resolution outcome or a high-level
+resolution description but does not include the exact executable procedure
+needed to apply and verify it. Do not invent missing implementation details.
+The operator may provide operator-confirmed resolution detail and rerun the
+same pipeline; that added detail is approved evidence, not a manual/freehand
+draft.
+
+When a resolution uses a Plesk panel screen, use a concrete navigation path from
+the Plesk home page, for example `Plesk > Domains > example.com > Hosting
+Settings`. The renderer/style gate expects such GUI paths to be bold in Zendesk
+HTML.
 
 The Desktop-visible primary input is intentionally thin:
 

@@ -8,6 +8,7 @@ sanitized operator-approved text.
 
 from __future__ import annotations
 
+import re
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -55,6 +56,20 @@ from kcs_core.semantic_extraction import (
 )
 from kcs_core.validation import EvidenceValidationResult
 
+_LINUX_ENVIRONMENT_RE = re.compile(
+    r"\b(?:apache|centos|cloudlinux|debian|httpd|linux|nginx|"
+    r"red\s*hat|rhel|rpm|systemctl|ubuntu)\b|/(?:etc|usr|var)/",
+    re.I,
+)
+_WINDOWS_ENVIRONMENT_RE = re.compile(
+    r"\b(?:iis|rdp|windows|winrm|powershell)\b|[A-Za-z]:\\",
+    re.I,
+)
+_PLATFORM_TYPE_BY_MATCH_FLAGS = {
+    (False, True): "Linux",
+    (True, False): "Windows",
+}
+
 SEMANTIC_PROVIDER_ENV = _desktop_semantic_providers.SEMANTIC_PROVIDER_ENV
 SEMANTIC_PROVIDER_APPROVED_SUMMARY = (
     _desktop_semantic_providers.SEMANTIC_PROVIDER_APPROVED_SUMMARY
@@ -93,6 +108,12 @@ operator_choice_review_summary = (
 )
 selected_pending_candidate = _desktop_operator_selection.selected_pending_candidate
 split_candidate_cards = _desktop_operator_selection.split_candidate_cards
+pending_selection_after_draft = (
+    _desktop_operator_selection.pending_selection_after_draft
+)
+remaining_operator_choice_status = (
+    _desktop_operator_selection.remaining_operator_choice_status
+)
 draft_author_failure_result = _desktop_workflow_results.draft_author_failure_result
 operator_selection_expired_result = (
     _desktop_workflow_results.operator_selection_expired_result
@@ -286,7 +307,10 @@ class DesktopDraftWorkflow:
         return self._pending_semantic_review
 
     def item_candidates_from_summary(
-        self, approved_summary_text: str
+        self,
+        approved_summary_text: str,
+        *,
+        source_kind: str | None = None,
     ) -> list[JsonDict]:
         """Call the semantic provider and return Desktop draft candidates."""
 
@@ -297,7 +321,13 @@ class DesktopDraftWorkflow:
             "approved_summary_text": approved_summary_text,
             "request_kind": "desktop_draft_article",
         }
-        ensure_safe_sanitized_payload(provider_context)
+        if source_kind:
+            provider_context["source_kind"] = source_kind
+        if (
+            provider_context.get("source_kind")
+            != _desktop_semantic_providers.SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET
+        ):
+            ensure_safe_sanitized_payload(provider_context)
         extraction = provider.propose_candidates(provider_context)
         return desktop_item_candidates_from_semantic_extraction(extraction)
 
@@ -306,12 +336,14 @@ class DesktopDraftWorkflow:
         item_candidates: list[JsonDict],
         *,
         approved_summary_text: str,
+        approved_summary_source_kind: str | None = None,
     ) -> PendingDraftSelection:
         """Store split-required candidates for a deterministic second call."""
 
         self._pending_selection = new_pending_draft_selection(
             item_candidates,
             approved_summary_text=approved_summary_text,
+            approved_summary_source_kind=approved_summary_source_kind,
             ttl_seconds=self._selection_ttl_seconds,
         )
         return self._pending_selection
@@ -321,12 +353,14 @@ class DesktopDraftWorkflow:
         *,
         approved_summary_text: str,
         ticket_ref: str,
+        source_kind: str | None = None,
     ) -> PendingSemanticReview:
         """Store a bounded semantic-review packet for a deterministic next call."""
 
         self._pending_semantic_review = new_pending_semantic_review(
             approved_summary_text=approved_summary_text,
             ticket_ref=ticket_ref,
+            source_kind=source_kind,
             ttl_seconds=self._selection_ttl_seconds,
         )
         return self._pending_semantic_review
@@ -354,7 +388,7 @@ class DesktopDraftWorkflow:
         *,
         semantic_review_ref: object,
         candidate_semantic_extraction: object,
-    ) -> tuple[list[JsonDict], str, str]:
+    ) -> tuple[list[JsonDict], str, str, str | None]:
         """Validate a semantic-review submit and return Desktop candidates."""
 
         pending = self._pending_semantic_review_for_submit(semantic_review_ref)
@@ -364,19 +398,27 @@ class DesktopDraftWorkflow:
                 candidate_semantic_extraction=candidate_semantic_extraction,
             )
         except ContractValidationError as exc:
-            self._pending_semantic_review = None
             raise SemanticReviewSubmissionInvalidError(
                 "semantic_review_submission_invalid"
             ) from exc
         except Exception as exc:
-            self._pending_semantic_review = None
             debug_code = getattr(
                 exc, "debug_code", "semantic_review_submission_invalid"
             )
             raise SemanticReviewSubmissionInvalidError(str(debug_code)) from exc
         self._pending_semantic_review = None
-        candidates = desktop_item_candidates_from_semantic_extraction(extraction)
-        return candidates, pending.approved_summary_text, pending.ticket_ref
+        candidates = desktop_item_candidates_from_semantic_extraction(
+            extraction,
+            fallback_environment=_minimal_environment_from_text(
+                pending.approved_summary_text
+            ),
+        )
+        return (
+            candidates,
+            pending.approved_summary_text,
+            pending.ticket_ref,
+            pending.source_kind,
+        )
 
     def _pending_semantic_review_for_submit(
         self,
@@ -402,7 +444,7 @@ class DesktopDraftWorkflow:
         selection_ref: object,
         selected_item_ref: object,
     ) -> JsonDict:
-        """Return selected candidate and clear state after a valid selection."""
+        """Return a selected pending candidate without consuming the selection."""
 
         pending_selection = self._pending_selection
         if pending_selection is None:
@@ -419,8 +461,46 @@ class DesktopDraftWorkflow:
             candidate = selected_pending_candidate(pending_selection, selected_item_ref)
         except ContractValidationError as exc:
             raise OperatorSelectionInvalidError from exc
-        self._pending_selection = None
         return candidate
+
+    def mark_selected_candidate_drafted(
+        self,
+        selected_item_ref: object,
+    ) -> PendingDraftSelection | None:
+        """Mark one pending candidate as drafted and return remaining state."""
+
+        pending_selection = self._pending_selection
+        if pending_selection is None or not isinstance(selected_item_ref, str):
+            self._pending_selection = None
+            return None
+        self._pending_selection = pending_selection_after_draft(
+            pending_selection,
+            selected_item_ref,
+        )
+        return self._pending_selection
+
+
+def _minimal_environment_from_text(text: str) -> JsonDict:
+    """Infer only draft-level product/platform metadata from clean ticket text."""
+
+    platform = _platform_type_from_text(text)
+    if not platform:
+        return {}
+    return {
+        "applicable_to": [f"Plesk for {platform}"],
+        "platform": platform,
+        "product": "Plesk",
+    }
+
+
+def _platform_type_from_text(text: str) -> str:  # noqa: C901
+    return _PLATFORM_TYPE_BY_MATCH_FLAGS.get(
+        (
+            bool(_WINDOWS_ENVIRONMENT_RE.search(text)),
+            bool(_LINUX_ENVIRONMENT_RE.search(text)),
+        ),
+        "",
+    )
 
 
 def execute_approved_summary_pipeline(

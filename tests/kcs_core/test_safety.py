@@ -347,6 +347,21 @@ def test_sanitized_payload_allows_public_plesk_support_article_url() -> None:
     )
 
 
+def test_evidence_safety_allows_public_plesk_support_article_url() -> None:
+    packet = _safe_packet(
+        supported_resolution_or_workaround=(
+            "Follow public KB article "
+            "https://support.plesk.com/hc/en-us/articles/115001678209 "
+            "and verify the repair succeeds."
+        ),
+    )
+
+    result = validate_evidence_safety(packet)
+
+    assert result.ok is True
+    assert result.blockers == ()
+
+
 def test_ensure_evidence_safe_raises_for_blocked_packet() -> None:
     packet = _safe_packet(symptoms=["The server IP is 10.0.0.8."])
 

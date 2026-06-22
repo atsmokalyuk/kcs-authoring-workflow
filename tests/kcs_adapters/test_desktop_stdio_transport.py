@@ -85,6 +85,7 @@ def test_stdio_transport_factory_receives_desktop_visible_tools() -> None:
     assert response is not None
     assert {tool["name"] for tool in response["result"]["tools"]} == {
         "kcs_register_clean_ticket",
+        "kcs_draft_ticket",
         "kcs_draft_article",
         "kcs_prepare_semantic_review",
         "kcs_submit_semantic_review",

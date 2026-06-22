@@ -109,14 +109,18 @@ def draft_article_authoring_args_from_candidate(
     approved_summary_text: str,
     candidate: Mapping[str, Any],
     debug: bool,
+    approved_summary_source_kind: str | None = None,
 ) -> JsonDict:
-    return draft_article_with_normalized_item(
-        {
-            "approved_summary_text": approved_summary_text,
-            "debug": debug,
-            "item": dict(candidate),
-        }
-    )
+    arguments: JsonDict = {
+        "approved_summary_text": approved_summary_text,
+        "debug": debug,
+        "item": dict(candidate),
+    }
+    if approved_summary_source_kind == "approved_clean_ticket":
+        arguments["_approved_summary_text_source"] = (
+            _desktop_payload.APPROVED_SUMMARY_TEXT_SOURCE_APPROVED_CLEAN_TICKET
+        )
+    return draft_article_with_normalized_item(arguments)
 
 
 def draft_article_candidates_with_refs(

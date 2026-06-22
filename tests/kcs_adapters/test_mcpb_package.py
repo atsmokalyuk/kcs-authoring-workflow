@@ -103,17 +103,22 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert manifest["server"]["entry_point"] == "server/index.js"
     assert manifest["server"]["mcp_config"]["command"] == "node"
     assert {tool["name"] for tool in manifest["tools"]} == expected_tool_names
-    assert "primary tool is kcs_draft_article" in manifest["long_description"]
-    assert "kcs_prepare_semantic_review" in manifest["long_description"]
-    assert "kcs_submit_semantic_review" in manifest["long_description"]
-    assert "selected excerpts only" in manifest["long_description"]
-    assert "support_get_behavior_instructions compatibility helper" in (
+    assert "Use kcs_draft_ticket for /draft <ticket_ref>" in (
         manifest["long_description"]
     )
-    assert "Claude Desktop-owned provider calls" in manifest["long_description"]
-    assert "Claude CLI/Code dependency" in manifest["long_description"]
-    assert "API-key dependency" in manifest["long_description"]
-    assert "Claude Desktop-owned provider calls" in manifest["long_description"]
+    assert "Use only the listed KCS Authoring tools" in (
+        manifest["long_description"]
+    )
+    assert "legacy instruction requires" in manifest["long_description"]
+    assert "support_get_behavior_instructions" in manifest["long_description"]
+    assert "Plesk Support Assistant Local" in manifest["long_description"]
+    assert "Do not report Plesk Support Assistant Local as missing" in (
+        manifest["long_description"]
+    )
+    assert "kcs_prepare_semantic_review" in manifest["long_description"]
+    assert "kcs_submit_semantic_review" in manifest["long_description"]
+    assert "Claude CLI/Code" in manifest["long_description"]
+    assert "API key" in manifest["long_description"]
     assert all(
         not tool["name"].startswith("kcs_validate_")
         for tool in manifest["tools"]
@@ -124,67 +129,47 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
         for tool in manifest["tools"]
         if tool["name"] == "kcs_register_clean_ticket"
     )
-    assert "Register one approved sanitized" in register_tool["description"]
-    assert "automatic first step" in register_tool["description"]
-    assert "even when long" in register_tool["description"]
+    assert "sanitized ticket text is visible" in register_tool["description"]
+    assert "no ticket_ref exists" in register_tool["description"]
     assert "clean_ticket_text" in register_tool["description"]
-    assert "clean.ticket.txt" in register_tool["description"]
-    assert "next_arguments for kcs_draft_article" in register_tool["description"]
+    assert "next_arguments" in register_tool["description"]
+    draft_ticket_tool = next(
+        tool for tool in manifest["tools"] if tool["name"] == "kcs_draft_ticket"
+    )
+    assert "Use immediately" in draft_ticket_tool["description"]
+    assert "/draft <ticket_ref>" in draft_ticket_tool["description"]
+    assert "only ticket_ref" in draft_ticket_tool["description"]
+    assert "Do not ask for an attachment" in draft_ticket_tool["description"]
     draft_tool = next(
         tool for tool in manifest["tools"] if tool["name"] == "kcs_draft_article"
     )
-    assert "Primary KCS authoring tool" in draft_tool["description"]
-    assert "ticket_ref" in draft_tool["description"]
-    assert "approved_summary_text" in draft_tool["description"]
-    assert "operator-provided sanitized attachment or long paste" in (
-        draft_tool["description"]
-    )
-    assert "kcs_register_clean_ticket first" in draft_tool["description"]
-    assert "approved_summary_text only as a fallback" in draft_tool["description"]
-    assert "upload filenames, paths, item, item_candidates" in draft_tool[
+    assert "short approved_summary_text" in draft_tool["description"]
+    assert "For /draft <ticket_ref>, use kcs_draft_ticket" in draft_tool[
         "description"
     ]
-    assert "Claude Desktop file card is not a filesystem path" in draft_tool[
-        "description"
-    ]
-    assert "do not inspect upload directories" in draft_tool["description"]
-    assert "file_content_unavailable" in draft_tool["description"]
-    assert "Python validates the input and owns semantic extraction" in (
-        draft_tool["description"]
-    )
     assert "raw comments" not in draft_tool["description"]
     assert "internal notes" not in draft_tool["description"]
-    assert "operator_selection_ref" in draft_tool["description"]
-    assert "operator_selected_item_ref" in draft_tool["description"]
-    assert "reviewer-only Zendesk HTML" in draft_tool["description"]
     prepare_tool = next(
         tool
         for tool in manifest["tools"]
         if tool["name"] == "kcs_prepare_semantic_review"
     )
-    assert "bounded Claude-visible semantic-review packet" in prepare_tool[
-        "description"
-    ]
-    assert "selected excerpts only" in prepare_tool["description"]
-    assert "candidate_semantic_extraction_v1" in prepare_tool["description"]
-    assert "arrays of plain strings only" in prepare_tool["description"]
-    assert "Do not draft an article" in prepare_tool["description"]
+    assert "semantic_review_required" in prepare_tool["description"]
+    assert "bounded excerpts" in prepare_tool["description"]
     submit_tool = next(
         tool
         for tool in manifest["tools"]
         if tool["name"] == "kcs_submit_semantic_review"
     )
     assert "candidate_semantic_extraction_v1" in submit_tool["description"]
-    assert "selected_excerpts source refs" in submit_tool["description"]
-    assert "arrays of plain strings only" in submit_tool["description"]
-    assert "Do not submit article drafts" in submit_tool["description"]
+    assert "No article draft" in submit_tool["description"]
     behavior_tool = next(
         tool
         for tool in manifest["tools"]
         if tool["name"] == "support_get_behavior_instructions"
     )
-    assert "Compatibility helper" in behavior_tool["description"]
-    assert "kcs_draft_article" in behavior_tool["description"]
+    assert "Legacy compatibility helper" in behavior_tool["description"]
+    assert "continue /draft" in behavior_tool["description"]
     assert "copy the tool content verbatim" not in draft_tool["description"]
     assert "Do not rewrite it into a Markdown article" not in draft_tool["description"]
     assert "let me know if you want adjustments" not in draft_tool["description"]
@@ -202,10 +187,8 @@ def test_mcpb_manifest_requires_no_user_config_or_secrets() -> None:
     assert "${user_config.repository_root}" not in text
     assert "${user_config.uv_command}" not in text
     assert manifest["server"]["mcp_config"]["env"] == {}
-    assert "Installing this MCPB is the only required Claude Desktop setup step" in (
-        manifest["long_description"]
-    )
-    assert "autodetected local runtime" in manifest["long_description"]
+    assert "Local KCS Authoring Workflow adapter" in manifest["long_description"]
+    assert "external semantic-provider setup" in manifest["long_description"]
     assert "/Users/" not in text
     assert "api_key" not in text.casefold()
     assert "token" not in text.casefold()
@@ -419,11 +402,9 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "readOnlyHint": False,
                     },
                     "description": (
-                        "Register one approved sanitized transcript. "
-                        "Use clean_ticket_text. Writes clean.ticket.txt and "
-                        "returns next_arguments. A Claude Desktop file card is "
-                        "not a filesystem path; do not inspect upload "
-                        "directories."
+                        "Use only when sanitized ticket text is visible and no "
+                        "ticket_ref exists. Stores clean_ticket_text and "
+                        "returns next_arguments."
                     ),
                     "inputSchema": {
                         "properties": {
@@ -443,10 +424,30 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "readOnlyHint": False,
                     },
                     "description": (
-                        "Prefer ticket_ref. Python validates the input and "
-                        "owns semantic extraction. A Claude Desktop file card "
-                        "is not a filesystem path; do not inspect upload "
-                        "directories. file_content_unavailable."
+                        "Use immediately for /draft <ticket_ref>. Call with "
+                        "only ticket_ref and optional debug. Do not ask for an "
+                        "attachment."
+                    ),
+                    "inputSchema": {
+                        "properties": {
+                            "debug": {},
+                            "ticket_ref": {},
+                        },
+                        "required": ["ticket_ref"],
+                    },
+                    "name": "kcs_draft_ticket",
+                },
+                {
+                    "annotations": {
+                        "destructiveHint": False,
+                        "idempotentHint": False,
+                        "openWorldHint": False,
+                        "readOnlyHint": False,
+                    },
+                    "description": (
+                        "Use only for short approved_summary_text or operator "
+                        "selection. For /draft <ticket_ref>, use "
+                        "kcs_draft_ticket."
                     ),
                     "inputSchema": {
                         "properties": {
@@ -459,7 +460,6 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                             },
                             "operator_selected_item_ref": {},
                             "operator_selection_ref": {},
-                            "ticket_ref": {},
                         }
                     },
                     "name": "kcs_draft_article",
@@ -472,10 +472,9 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "readOnlyHint": True,
                     },
                     "description": (
-                        "Return a bounded Claude-visible semantic-review packet "
-                        "with selected excerpts only in "
-                        "candidate_semantic_extraction_v1 format. Do not draft "
-                        "an article."
+                        "Call only after semantic_review_required. Returns "
+                        "bounded excerpts and submit instructions for item "
+                        "identification."
                     ),
                     "inputSchema": {
                         "properties": {"semantic_review_ref": {}},
@@ -491,9 +490,9 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "readOnlyHint": False,
                     },
                     "description": (
-                        "Submit candidate_semantic_extraction_v1 grounded in "
-                        "selected_excerpts source refs. Do not submit article "
-                        "drafts."
+                        "Submit candidate_semantic_extraction_v1 from the "
+                        "prepared packet. No article draft, HTML, item, "
+                        "item_candidates, or raw ticket text."
                     ),
                     "inputSchema": {
                         "properties": {
@@ -514,8 +513,13 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "openWorldHint": False,
                         "readOnlyHint": True,
                     },
-                    "description": "Compatibility helper for kcs_draft_article.",
-                    "inputSchema": {"properties": {}},
+                    "description": (
+                        "Legacy compatibility helper. If called, use the "
+                        "returned route and immediately continue /draft with "
+                        "kcs_draft_ticket or the returned next tool. Do not "
+                        "report this helper as unavailable."
+                    ),
+                    "inputSchema": {"properties": {}, "required": []},
                     "name": "support_get_behavior_instructions",
                 },
             ]
@@ -655,8 +659,9 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
                     "text": (
                         "Multiple KCS article candidates were detected. "
                         "Operator selection is required before drafting.\n\n"
-                        "Use a native single-choice popup if Claude Desktop "
-                        "provides one. submit_arguments. Do not draft manually.\n"
+                        "Use the native single-choice popup when Claude Desktop "
+                        "provides one. Do not answer with a prose-only candidate "
+                        "list. submit_arguments. Do not draft manually.\n"
                         "candidate-002"
                     ),
                     "type": "text",
@@ -716,11 +721,36 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
     }
 
     try:
-        assert module._selected_submit_arguments(split) == {
+        assert module._selected_submit_arguments(split, option_index=1) == {
             "operator_selected_item_ref": "candidate-002",
             "operator_selection_ref": "operator-selection-abc",
         }
-        assert module._split_choice_ok({"selected": selected, "split": split}) is True
+        assert module._split_choice_ok(
+            {
+                "selected": {
+                    "result": {
+                        **selected["result"],
+                        "structuredContent": {
+                            **selected["result"]["structuredContent"],
+                            "next_arguments": {
+                                "operator_selected_item_ref": "candidate-001",
+                                "operator_selection_ref": "operator-selection-abc",
+                            },
+                        },
+                    }
+                },
+                "selected_again": {
+                    "result": {
+                        "structuredContent": {
+                            "debug_code": "draft_only_reuse_search_missing",
+                            "draft_generated": True,
+                            "item_ref": "candidate-001",
+                        }
+                    }
+                },
+                "split": split,
+            }
+        ) is True
     finally:
         module.REPO_ROOT = old_repo_root
 
@@ -893,16 +923,6 @@ def test_claude_desktop_log_check_accepts_latest_thin_tool_surface(
                         }
                     },
                     "name": "kcs_submit_semantic_review",
-                },
-                {
-                    "annotations": {
-                        "destructiveHint": False,
-                        "idempotentHint": True,
-                        "openWorldHint": False,
-                        "readOnlyHint": True,
-                    },
-                    "inputSchema": {"properties": {}},
-                    "name": "support_get_behavior_instructions",
                 },
             ]
         },
@@ -1809,7 +1829,7 @@ def test_install_script_replaces_stale_claude_registry_manifest(
     )
     description = draft_tool["description"]
     assert "ticket_ref" in description
-    assert "approved_summary_text" in description
+    assert "short approved_summary_text" in description
     assert "structured item" not in description
     unrelated = registry["extensions"]["unrelated.extension"]
     assert unrelated["manifest"]["name"] == "keep-me"

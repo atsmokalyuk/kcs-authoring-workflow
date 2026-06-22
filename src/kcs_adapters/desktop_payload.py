@@ -70,6 +70,7 @@ APPROVED_SUMMARY_FALSE_ONLY_ARGS = frozenset(
 )
 APPROVED_SUMMARY_PIPELINE_ARGS = frozenset(
     {
+        "_approved_summary_text_source",
         "applicable_to",
         "approved_summary_text",
         "article_type",
@@ -127,6 +128,7 @@ APPROVED_SUMMARY_PIPELINE_ARGS = frozenset(
         "writes_files",
     }
 )
+APPROVED_SUMMARY_TEXT_SOURCE_APPROVED_CLEAN_TICKET = "approved_clean_ticket"
 APPROVED_SUMMARY_ITEM_FIELDS = frozenset(
     {
         "answer_steps",
@@ -315,23 +317,33 @@ def require_approved_summary_false_only_args(arguments: Mapping[str, Any]) -> No
 def approved_summary_text_argument(arguments: Mapping[str, Any]) -> str:
     value = arguments.get("approved_summary_text")
     if isinstance(value, str) and value.strip():
-        try:
-            ensure_safe_sanitized_payload(value)
-        except ContractValidationError:
-            raise ApprovedSummaryInputError(
-                "approved_summary_text_invalid"
-            ) from None
-        if TOOL_ARGUMENT_ARTIFACT_RE.search(value):
-            raise ApprovedSummaryInputError(
-                "approved_summary_text_invalid"
-            ) from None
-        return value.strip()
+        return _checked_approved_summary_text_value(value, arguments)
     if value is not None:
         raise ApprovedSummaryInputError("approved_summary_text_invalid") from None
     text = approved_summary_text_from_structured_arguments(arguments)
     if text:
         return text
     raise ApprovedSummaryInputError("approved_summary_text_invalid") from None
+
+
+def _checked_approved_summary_text_value(
+    value: str,
+    arguments: Mapping[str, Any],
+) -> str:
+    if (
+        arguments.get("_approved_summary_text_source")
+        == APPROVED_SUMMARY_TEXT_SOURCE_APPROVED_CLEAN_TICKET
+    ):
+        if TOOL_ARGUMENT_ARTIFACT_RE.search(value):
+            raise ApprovedSummaryInputError("approved_summary_text_invalid") from None
+        return value.strip()
+    try:
+        ensure_safe_sanitized_payload(value)
+    except ContractValidationError:
+        raise ApprovedSummaryInputError("approved_summary_text_invalid") from None
+    if TOOL_ARGUMENT_ARTIFACT_RE.search(value):
+        raise ApprovedSummaryInputError("approved_summary_text_invalid") from None
+    return value.strip()
 
 
 def approved_summary_checked_item(

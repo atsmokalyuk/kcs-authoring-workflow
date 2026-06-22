@@ -22,9 +22,11 @@ class PendingDraftSelection:
 
     selection_ref: str
     approved_summary_text: str
+    approved_summary_source_kind: str | None
     candidate_refs: tuple[str, ...]
     item_candidates: tuple[JsonDict, ...]
     item_candidate_cards: tuple[JsonDict, ...]
+    selected_candidate_refs: tuple[str, ...]
     expires_at: float
 
 
@@ -32,6 +34,7 @@ def new_pending_draft_selection(
     item_candidates: list[JsonDict],
     *,
     approved_summary_text: str,
+    approved_summary_source_kind: str | None = None,
     ttl_seconds: float,
 ) -> PendingDraftSelection:
     """Create opaque in-memory selection state for one split-required result."""
@@ -43,6 +46,7 @@ def new_pending_draft_selection(
             f"{secrets.token_urlsafe(_DRAFT_SELECTION_REF_BYTES)}"
         ),
         approved_summary_text=approved_summary_text,
+        approved_summary_source_kind=approved_summary_source_kind,
         candidate_refs=tuple(
             candidate["item_ref"]
             for candidate in item_candidates
@@ -50,6 +54,7 @@ def new_pending_draft_selection(
         ),
         item_candidates=tuple(dict(candidate) for candidate in item_candidates),
         item_candidate_cards=tuple(item_candidate_cards),
+        selected_candidate_refs=(),
         expires_at=time.monotonic() + ttl_seconds,
     )
 
@@ -92,6 +97,7 @@ def operator_choice_request(
             "value": candidate["item_ref"],
         }
         for candidate in pending_selection.item_candidate_cards
+        if candidate["item_ref"] not in pending_selection.selected_candidate_refs
     ]
     request: JsonDict = {
         "automatic_item_retry_allowed": False,
@@ -112,9 +118,16 @@ def operator_choice_review_summary(
 ) -> JsonDict:
     """Return compact review summary for a pending operator choice."""
 
+    remaining_count = len(
+        [
+            candidate_ref
+            for candidate_ref in pending_selection.candidate_refs
+            if candidate_ref not in pending_selection.selected_candidate_refs
+        ]
+    )
     return {
         "mode": "single_select",
-        "option_count": len(pending_selection.item_candidate_cards),
+        "option_count": remaining_count,
         "presentation": "native_choice_popup_preferred",
         "prose_only_choice_allowed": False,
         "selection_ref": pending_selection.selection_ref,
@@ -149,10 +162,66 @@ def selected_pending_candidate(
 ) -> JsonDict:
     """Return the selected pending candidate or raise a contract error."""
 
+    if selected_item_ref in pending_selection.selected_candidate_refs:
+        raise ContractValidationError("operator selection already used")
     for candidate in pending_selection.item_candidates:
         if candidate.get("item_ref") == selected_item_ref:
             return dict(candidate)
     raise ContractValidationError("operator selection invalid")
+
+
+def pending_selection_after_draft(
+    pending_selection: PendingDraftSelection,
+    selected_item_ref: str,
+) -> PendingDraftSelection | None:
+    """Return updated pending state after one selected candidate was drafted."""
+
+    selected_refs = tuple(
+        dict.fromkeys((*pending_selection.selected_candidate_refs, selected_item_ref))
+    )
+    if all(ref in selected_refs for ref in pending_selection.candidate_refs):
+        return None
+    return PendingDraftSelection(
+        selection_ref=pending_selection.selection_ref,
+        approved_summary_text=pending_selection.approved_summary_text,
+        approved_summary_source_kind=(
+            pending_selection.approved_summary_source_kind
+        ),
+        candidate_refs=pending_selection.candidate_refs,
+        item_candidates=pending_selection.item_candidates,
+        item_candidate_cards=pending_selection.item_candidate_cards,
+        selected_candidate_refs=selected_refs,
+        expires_at=pending_selection.expires_at,
+    )
+
+
+def remaining_operator_choice_status(
+    pending_selection: PendingDraftSelection,
+    *,
+    submit_tool: str,
+) -> JsonDict:
+    """Return compact next-choice metadata for remaining candidates."""
+
+    remaining_candidates = [
+        candidate
+        for candidate in pending_selection.item_candidate_cards
+        if candidate["item_ref"] not in pending_selection.selected_candidate_refs
+    ]
+    choice_request = operator_choice_request(
+        pending_selection,
+        submit_tool=submit_tool,
+    )
+    status: JsonDict = {
+        "next_required_action": "operator_select_remaining_item",
+        "next_tool": submit_tool,
+        "remaining_item_candidates": remaining_candidates,
+        "remaining_operator_choice_request": choice_request,
+        "remaining_selection_ref": pending_selection.selection_ref,
+    }
+    if len(remaining_candidates) == 1:
+        status["next_arguments"] = choice_request["options"][0]["submit_arguments"]
+    ensure_safe_sanitized_payload(status)
+    return status
 
 
 def _safe_choice_text(value: object, *, fallback: str) -> str:
@@ -175,6 +244,8 @@ __all__ = [
     "new_pending_draft_selection",
     "operator_choice_request",
     "operator_choice_review_summary",
+    "pending_selection_after_draft",
+    "remaining_operator_choice_status",
     "selected_pending_candidate",
     "split_candidate_cards",
 ]

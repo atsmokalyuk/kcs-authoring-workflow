@@ -10,6 +10,7 @@ from typing import Any
 from kcs_adapters import desktop_authoring_pipeline as _desktop_authoring_pipeline
 from kcs_adapters import desktop_draft_arguments as _desktop_draft_arguments
 from kcs_adapters import desktop_payload as _desktop_payload
+from kcs_adapters import desktop_semantic_providers as _desktop_semantic_providers
 from kcs_adapters.desktop_semantic_review import SemanticReviewError
 from kcs_adapters.desktop_stdio_transport import McpArgumentError
 from kcs_adapters.desktop_tool_names import (
@@ -27,6 +28,7 @@ from kcs_adapters.desktop_workflow import (
     SemanticExtractionProviderUnavailableError,
     attach_pending_selection,
     finalize_author_result_with_bundle,
+    remaining_operator_choice_status,
 )
 from kcs_adapters.desktop_workflow_results import (
     operator_selection_expired_result,
@@ -105,7 +107,7 @@ class DesktopDraftArticleTool:
     def submit_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
         """Validate semantic-review candidates and continue normal drafting."""
 
-        candidates, approved_summary_text, ticket_ref = (
+        candidates, approved_summary_text, ticket_ref, approved_summary_source_kind = (
             self._draft_workflow.submitted_semantic_review_candidates(
                 semantic_review_ref=arguments.get("semantic_review_ref"),
                 candidate_semantic_extraction=arguments.get(
@@ -136,6 +138,7 @@ class DesktopDraftArticleTool:
             pending_selection = self._new_pending_draft_selection(
                 candidates,
                 approved_summary_text=approved_summary_text,
+                approved_summary_source_kind=approved_summary_source_kind,
             )
             attach_pending_selection(
                 result,
@@ -151,6 +154,7 @@ class DesktopDraftArticleTool:
                 approved_summary_text=approved_summary_text,
                 candidate=candidates[0],
                 debug=False,
+                approved_summary_source_kind=approved_summary_source_kind,
             )
         )
         result["approved_summary_source"] = "semantic_review"
@@ -163,10 +167,12 @@ class DesktopDraftArticleTool:
         item_candidates: list[JsonDict],
         *,
         approved_summary_text: str,
+        approved_summary_source_kind: str | None = None,
     ) -> PendingDraftSelection:
         return self._draft_workflow.start_pending_selection(
             item_candidates,
             approved_summary_text=approved_summary_text,
+            approved_summary_source_kind=approved_summary_source_kind,
         )
 
     def _draft_article_primary_surface_result(
@@ -216,14 +222,17 @@ class DesktopDraftArticleTool:
         arguments: Mapping[str, Any],
         *,
         ticket_ref_for_semantic_review: str | None = None,
+        semantic_source_kind: str | None = None,
     ) -> JsonDict:
-        approved_summary_text = _desktop_payload.approved_summary_text_argument(
-            arguments
+        approved_summary_text = _approved_summary_text_for_semantic_source(
+            arguments,
+            semantic_source_kind=semantic_source_kind,
         )
         try:
             candidates = _desktop_draft_arguments.draft_article_candidates_with_refs(
                 self._draft_workflow.item_candidates_from_summary(
-                    approved_summary_text
+                    approved_summary_text,
+                    source_kind=semantic_source_kind,
                 )
             )
         except SemanticExtractionProviderUnavailableError:
@@ -260,6 +269,7 @@ class DesktopDraftArticleTool:
             pending_selection = self._new_pending_draft_selection(
                 candidates,
                 approved_summary_text=approved_summary_text,
+                approved_summary_source_kind=semantic_source_kind,
             )
             attach_pending_selection(
                 result,
@@ -272,6 +282,7 @@ class DesktopDraftArticleTool:
                 approved_summary_text=approved_summary_text,
                 candidate=candidates[0],
                 debug=arguments.get("debug") is True,
+                approved_summary_source_kind=semantic_source_kind,
             )
         )
 
@@ -310,6 +321,9 @@ class DesktopDraftArticleTool:
         result = self._draft_article_from_primary_summary(
             summary_arguments,
             ticket_ref_for_semantic_review=ticket_ref,
+            semantic_source_kind=(
+                _desktop_semantic_providers.SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET
+            ),
         )
         result["approved_summary_source"] = "local_clean_ticket"
         result["ticket_ref"] = ticket_ref
@@ -338,6 +352,10 @@ class DesktopDraftArticleTool:
                         self._draft_workflow.start_pending_semantic_review(
                             approved_summary_text=approved_summary_text,
                             ticket_ref=ticket_ref,
+                            source_kind=(
+                                _desktop_semantic_providers
+                                .SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET
+                            ),
                         )
                     )
                 except SemanticReviewError as exc:
@@ -400,13 +418,35 @@ class DesktopDraftArticleTool:
                 schema_version=self._schema_version,
                 submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
             )
-        return self._draft_article_primary_author_result(
+        result = self._draft_article_primary_author_result(
             _desktop_draft_arguments.draft_article_authoring_args_from_candidate(
                 approved_summary_text=pending_selection.approved_summary_text,
                 candidate=candidate,
                 debug=arguments.get("debug") is True,
+                approved_summary_source_kind=(
+                    pending_selection.approved_summary_source_kind
+                ),
             )
         )
+        if result.get("draft_generated") is True and isinstance(
+            selected_item_ref,
+            str,
+        ):
+            remaining_selection = (
+                self._draft_workflow.mark_selected_candidate_drafted(
+                    selected_item_ref,
+                )
+            )
+            if remaining_selection is not None:
+                result.update(
+                    remaining_operator_choice_status(
+                        remaining_selection,
+                        submit_tool=claude_desktop_tool_alias(
+                            TOOL_DRAFT_ARTICLE,
+                        ),
+                    )
+                )
+        return result
 
     def _draft_article_primary_author_result(
         self,
@@ -458,6 +498,19 @@ def _ticket_author_arguments(arguments: Mapping[str, Any]) -> JsonDict:
 
 def _ticket_ref_from_arguments(arguments: Mapping[str, Any]) -> str:
     return _desktop_authoring_pipeline.ticket_ref_from_arguments(arguments)
+
+
+def _approved_summary_text_for_semantic_source(
+    arguments: Mapping[str, Any],
+    *,
+    semantic_source_kind: str | None,
+) -> str:
+    if (
+        semantic_source_kind
+        == _desktop_semantic_providers.SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET
+    ):
+        return str(arguments.get("approved_summary_text", "")).strip()
+    return _desktop_payload.approved_summary_text_argument(arguments)
 
 
 def _likely_kcs_material(text: str) -> bool:

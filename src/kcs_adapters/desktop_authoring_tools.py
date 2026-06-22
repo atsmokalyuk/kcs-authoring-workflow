@@ -126,6 +126,36 @@ class DesktopAuthoringTools:
     def draft_article(self, arguments: Mapping[str, Any]) -> JsonDict:
         return self._draft_article_tool.draft_article(arguments)
 
+    def draft_ticket(self, arguments: Mapping[str, Any]) -> JsonDict:
+        try:
+            _require_args(
+                arguments,
+                frozenset({"debug", "ticket_ref"}),
+                required=frozenset({"ticket_ref"}),
+            )
+        except McpArgumentError:
+            return {
+                "auto_publish_allowed": False,
+                "debug_code": "draft_article_args_invalid",
+                "draft_generated": False,
+                "failure_stage": "input_validation",
+                "manual_draft_allowed": False,
+                "network_calls": False,
+                "ok": False,
+                "pipeline_ok": False,
+                "public_output_approved": False,
+                "ready_for_real_ticket_use": False,
+                "result_kind": "draft_article_authoring",
+                "reviewer_bundle_written": False,
+                "schema_version": self._schema_version,
+                "validation_ok": False,
+                "writes_files": False,
+            }
+        draft_arguments = {"ticket_ref": arguments["ticket_ref"]}
+        if "debug" in arguments:
+            draft_arguments["debug"] = arguments["debug"]
+        return self._draft_article_tool.draft_article(draft_arguments)
+
     def prepare_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
         try:
             _require_args(
@@ -187,7 +217,9 @@ class DesktopAuthoringTools:
         _require_args(arguments, frozenset(), required=frozenset())
         return {
             "auto_publish_allowed": False,
+            "manual_draft_allowed": False,
             "network_calls": False,
+            "next_required_action": "continue_kcs_authoring_workflow",
             "ok": True,
             "public_output_approved": False,
             "result_kind": "behavior_instructions",

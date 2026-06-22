@@ -22,7 +22,7 @@
     "validator",
     "claude-desktop"
   ],
-  "long_description": "Starts the bundled KCS Authoring Workflow stdio MCP server through an autodetected local runtime: uv first, then python3.11/python3 fallback. Installing this MCPB is the only required Claude Desktop setup step for the default local adapter; no repository path, Claude CLI/Code, API key, or semantic-provider configuration is required. The primary tool is kcs_draft_article for reviewer-only KCS article drafting from operator-provided sanitized ticket text or a local ticket_ref. kcs_prepare_semantic_review and kcs_submit_semantic_review form a bounded follow-up flow for low-confidence item identification: prepare returns selected excerpts only, never the full ticket, and submit accepts only candidate_semantic_extraction_v1 grounded in those excerpt refs. A small support_get_behavior_instructions compatibility helper exists for legacy Plesk Support prompts and only routes to kcs_draft_article. It performs no Zendesk writes, Help Center publication, Claude Desktop-owned provider calls, Claude CLI/Code dependency, or API-key dependency.",
+  "long_description": "Local KCS Authoring Workflow adapter for Claude Desktop. Use only the listed KCS Authoring tools. If a legacy instruction requires support_get_behavior_instructions, call it at most once, use its returned route, and continue with KCS tools. Do not report Plesk Support Assistant Local as missing. Use kcs_draft_ticket for /draft <ticket_ref>. Use kcs_register_clean_ticket only when sanitized ticket text is visible and no ticket_ref exists. Semantic review is bounded through kcs_prepare_semantic_review and kcs_submit_semantic_review. No Zendesk writes, Help Center publication, Claude CLI/Code, API key, or external semantic-provider setup is required.",
   "manifest_version": "0.3",
   "name": "kcs-authoring-mvp-validator-control",
   "prompts_generated": false,
@@ -39,23 +39,27 @@
   },
   "tools": [
     {
-      "description": "Register one approved sanitized support-ticket transcript as a configured clean ticket file. Use this when Claude Desktop receives a draft-article request with an operator-provided sanitized attachment or long paste and no ticket_ref yet. This is the automatic first step for attachment-based drafting. Pass the complete visible sanitized transcript, even when long, in clean_ticket_text and optionally an opaque ticket_ref; do not pass uploaded filenames, local paths, Claude upload paths, item, item_candidates, aliases, or reference article bodies. A Claude Desktop file card is not a filesystem path: do not inspect upload directories, and use the visible file text as clean_ticket_text. The tool writes clean.ticket.txt under the configured approved-summaries store and returns exact next_arguments for kcs_draft_article.",
+      "description": "Use immediately for /draft <ticket_ref>. Call with only ticket_ref and optional debug. Do not ask for an attachment.",
+      "name": "kcs_draft_ticket"
+    },
+    {
+      "description": "Use only when sanitized ticket text is visible and no ticket_ref exists. Stores clean_ticket_text and returns next_arguments.",
       "name": "kcs_register_clean_ticket"
     },
     {
-      "description": "Primary KCS authoring tool for sanitized support-ticket article requests. Prefer ticket_ref when a trusted source has saved the cleaned ticket transcript under the configured approved-summaries store. For an operator-provided sanitized attachment or long paste with no ticket_ref, call kcs_register_clean_ticket first and then call this tool with the returned next_arguments. Use approved_summary_text only as a fallback for short inline sanitized text when clean-ticket registration is not needed. Do not summarize, redact labeled sections, or pass upload filenames, paths, item, item_candidates, aliases, or reference article bodies. A Claude Desktop file card is not a filesystem path; do not inspect upload directories or ask the operator to re-upload while visible file text is available. If no visible file text is available, report file_content_unavailable and do not draft manually. Python validates the input and owns semantic extraction, decision, rendering, and local bundle output. Successful results return compact status plus local reviewer bundle refs; reviewer-only Zendesk HTML is written to the local bundle and returned inline only when debug=true is used for explicit smoke/debug compatibility. If split_required is returned, call again with only operator_selection_ref and operator_selected_item_ref.",
+      "description": "Use only for short approved_summary_text or operator selection. For /draft <ticket_ref>, use kcs_draft_ticket.",
       "name": "kcs_draft_article"
     },
     {
-      "description": "Return a bounded Claude-visible semantic-review packet for one pending clean-ticket semantic review. Call this only with the semantic_review_ref returned by kcs_draft_article. The packet contains selected excerpts only, not the full ticket. Use it to identify atomic KCS item candidates in candidate_semantic_extraction_v1 format only. The packet includes required_submit_shape; use that shape exactly and name the candidate array items, not candidates. Submit symptoms, confirmed_facts, resolution_steps, source_refs, and open_questions as arrays of plain strings only; preserve resolution order by array order. Do not draft an article, choose a KCS action, return HTML, or submit item/item_candidates payloads through kcs_draft_article.",
+      "description": "Call only after semantic_review_required. Returns bounded excerpts and submit instructions for item identification.",
       "name": "kcs_prepare_semantic_review"
     },
     {
-      "description": "Submit Claude-proposed semantic item identification for a prepared semantic review. Accepts only candidate_semantic_extraction_v1 grounded in the selected_excerpts source refs returned by kcs_prepare_semantic_review. Use the required_submit_shape exactly. Submit symptoms, confirmed_facts, resolution_steps, source_refs, and open_questions as arrays of plain strings only; do not submit step objects such as {order, action}. Do not submit article drafts, HTML, recommended_action, item, item_candidates, raw ticket text, local paths, or publication flags. Python validates the extraction, then continues the normal draft or split-required pipeline.",
+      "description": "Submit candidate_semantic_extraction_v1 from the prepared packet. No article draft, HTML, item, item_candidates, or raw ticket text.",
       "name": "kcs_submit_semantic_review"
     },
     {
-      "description": "Compatibility helper for legacy Plesk Support behavior-instruction requests. Returns the minimal KCS Authoring route: use kcs_draft_article for sanitized ticket article drafting.",
+      "description": "Legacy compatibility helper. If called, use the returned route and continue /draft with KCS Authoring tools.",
       "name": "support_get_behavior_instructions"
     }
   ],

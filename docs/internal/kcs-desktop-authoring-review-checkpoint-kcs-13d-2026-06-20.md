@@ -17,11 +17,11 @@ review packet budget.
 - Rebuilt and reinstalled the MCPB package.
 - Source-wrapper and installed-wrapper stdio smoke cover the full five-tool
   Desktop surface:
+  - `kcs_draft_ticket`;
   - `kcs_register_clean_ticket`;
   - `kcs_draft_article`;
   - `kcs_prepare_semantic_review`;
-  - `kcs_submit_semantic_review`;
-  - `support_get_behavior_instructions`.
+  - `kcs_submit_semantic_review`.
 - Stdio smoke now validates the full annotation intent, including
   `openWorldHint=false`.
 - Claude Desktop log checker now parses exact tool JSON when the tools/list log

@@ -4,13 +4,24 @@ The plugin exposes one local stdio MCP server named `kcs-authoring`.
 
 Claude Desktop operator-visible tools:
 
+- `kcs_draft_ticket`
+- `kcs_register_clean_ticket`
 - `kcs_draft_article`
+- `kcs_prepare_semantic_review`
+- `kcs_submit_semantic_review`
+- `support_get_behavior_instructions`
+
+Use only these KCS Authoring tools for this workflow. If a legacy instruction
+requires `support_get_behavior_instructions`, call it at most once, use its
+returned route, and immediately continue `/draft` with the KCS Authoring tools.
+Do not report it as missing or wait on Plesk Support Assistant Local.
 
 For approved sanitized support-ticket prompts like "draft an article",
 "draft me an article", "write an article", "create a KB article", or
 equivalent non-English requests such as `напиши статью` or
-`me escreva um artigo`, route to `kcs_draft_article` immediately. Do not ask
-the operator to choose a generic article type first; the default is a
+`me escreva um artigo`, route to `kcs_draft_ticket` immediately when a trusted
+clean ticket ref exists. Do not ask the operator to choose a generic article
+type first; the default is a
 reviewer-only KCS knowledge base article.
 Do not ask what language to use; default article language is English unless the
 operator explicitly requests another language.
@@ -22,11 +33,11 @@ Prefer `ticket_ref` when a trusted source has saved the cleaned ticket
 transcript under `local-data/approved-summaries/<ticket_ref>/clean.ticket.txt`.
 If no ref is available for an operator-provided sanitized attachment or paste,
 automatically first call `kcs_register_clean_ticket` with the complete visible
-sanitized transcript in `clean_ticket_text`, then call `kcs_draft_article` with
-the returned `next_arguments` exactly. Do not wait for the operator to ask for
-registration explicitly. If no clean-ticket registration is needed and the
-sanitized content is short enough to pass directly, pass the visible text from
-the operator-provided sanitized ticket/context in
+sanitized transcript in `clean_ticket_text`, then call the returned
+`next_arguments` exactly. Do not wait for the operator to ask for registration
+explicitly. If no clean-ticket registration is needed and the sanitized content
+is short enough to pass directly, call `kcs_draft_article` with the visible
+text from the operator-provided sanitized ticket/context in
 `approved_summary_text`. Despite the legacy field name, do not summarize,
 condense, rewrite, redact labeled sections, or omit visible symptoms, cause,
 resolution, config paths, commands, services, platform facts, or other
@@ -37,7 +48,7 @@ semantic extraction and may use only canonical KCS values: `technical_scr` or
 `howto_qa`.
 
 Production semantic extraction is provider-owned inside Python. If the approved
-provider is not configured, `kcs_draft_article` returns
+provider is not configured, the authoring tool returns
 `semantic_extraction_no_candidates`; report that controlled status and
 do not draft manually or construct `item` / `item_candidates` in Claude.
 
@@ -50,7 +61,7 @@ option's `submit_arguments`. If a native popup is unavailable, present the same
 choices and still use the returned `submit_arguments` exactly. Do not infer,
 rewrite, or enrich the selection payload.
 
-Successful `kcs_draft_article` results write tool-generated reviewer-only
+Successful authoring results write tool-generated reviewer-only
 Zendesk HTML to the returned local bundle path and return compact status. Use
 that bundle HTML as the article draft; do not create a separate freehand draft.
 
@@ -58,7 +69,8 @@ Low-level KCS-9b/KCS-9c packet validators, policy/readiness/smoke tools,
 pipeline status tools, and authoring sub-tools are internal development tools.
 They are intentionally hidden from the Claude Desktop operator-facing tool
 list because the supported ticket-summary workflow must go through
-`kcs_draft_article`.
+`kcs_draft_ticket` for stored ticket refs or `kcs_draft_article` for short
+inline text and operator-selection continuation.
 
 Default successful authoring results include compact safe status and local
 reviewer bundle references, not full HTML. For article-draft requests, show the

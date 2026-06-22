@@ -101,10 +101,15 @@ _WINDOWS_PLATFORM_RE = re.compile(
 )
 
 
-def semantic_extraction_from_approved_summary_text(text: str) -> JsonDict | None:
+def semantic_extraction_from_approved_summary_text(
+    text: str,
+    *,
+    approved_clean_ticket: bool = False,
+) -> JsonDict | None:
     """Build semantic candidates from explicit approved sanitized summary text."""
 
-    ensure_safe_sanitized_payload(text)
+    if not approved_clean_ticket:
+        ensure_safe_sanitized_payload(text)
     sections = _approved_summary_item_sections(text)
     items = []
     for index, section in enumerate(sections, start=1):

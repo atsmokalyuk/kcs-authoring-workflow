@@ -311,6 +311,43 @@ def test_renderer_formats_commands_and_paths_as_inline_code() -> None:
     )
 
 
+def test_renderer_formats_plesk_gui_paths_as_bold() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "SSL warning is shown for a domain in Plesk",
+                "summary": "A domain shows an SSL warning.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Go to Plesk > Domains > example.com > Hosting "
+                        "Settings."
+                    ),
+                    "Select the required certificate.",
+                ],
+            }
+        ],
+        supported_cause="The domain does not have the required certificate selected.",
+        symptoms=["An SSL warning is shown for the domain."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<li>Go to <strong>Plesk &gt; Domains &gt; example.com &gt; "
+        "Hosting Settings</strong>.</li>"
+    ) in html
+    report = review_kcs_zendesk_markup_source(html)
+    assert "gui_path_not_bold" not in {finding.rule_id for finding in report.findings}
+
+
 def test_renderer_adds_warning_for_risky_resolution_command() -> None:
     evidence = _evidence(
         issue_candidates=[
@@ -438,6 +475,75 @@ def test_renderer_splits_colon_command_steps_into_golden_markup() -> None:
         "      <p><code># systemctl reload fail2ban</code></p>"
         in html
     )
+
+
+def test_renderer_keeps_command_confirmation_out_of_code_paragraph() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Apache fails to start due to a missing certificate file",
+                "summary": "Apache fails to start.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "After applying the fix, verify the Apache configuration "
+                        "by running: plesk repair web and confirming server-wide "
+                        "configuration parameters for web servers repair successfully "
+                        "without an apache-config -t failure"
+                    ),
+                ],
+            }
+        ],
+        supported_cause=(
+            "A broken Plesk web server configuration references a missing "
+            "certificate file."
+        ),
+        symptoms=["Apache fails to start."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>After applying the fix, verify the Apache configuration and confirm "
+        "server-wide configuration parameters for web servers "
+        "repair successfully without an apache-config -t failure:</p>\n"
+        "      <p><code># plesk repair web</code></p>"
+    ) in html
+    assert "plesk repair web and confirming" not in html
+
+
+def test_renderer_formats_quoted_shell_command_with_prompt() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Apache fails to start due to a missing certificate file",
+                "summary": "Apache fails to start.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": ["Run 'plesk repair web'."],
+            }
+        ],
+        supported_cause="A broken Plesk web server configuration.",
+        symptoms=["Apache fails to start."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert "<p><code># plesk repair web</code></p>" in html
+    assert "&#x27;plesk repair web&#x27;" not in html
 
 
 def test_renderer_splits_config_text_steps_into_golden_markup() -> None:
@@ -887,6 +993,40 @@ def test_public_article_text_allows_standalone_safe_filenames(
     packet = render_reviewer_packet(
         _evidence(issue_candidates=[candidate]),
         _decision(candidate_id="ISSUE-SYNTH-SAFE-FILENAME"),
+    )
+
+    assert packet.public_article_candidate is not None
+    assert packet.auto_publish_allowed is False
+
+
+@pytest.mark.parametrize(
+    "safe_public_text",
+    [
+        (
+            "Apache fails to start with AH00526 in "
+            "/etc/httpd/conf/plesk.conf.d/server.conf."
+        ),
+        (
+            "Run plesk repair web and follow "
+            "https://support.plesk.com/hc/en-us/articles/115001678209."
+        ),
+    ],
+)
+def test_public_article_text_allows_public_technical_refs(
+    safe_public_text: str,
+) -> None:
+    candidate = {
+        "candidate_id": "ISSUE-SYNTH-SAFE-TECH-REF",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "title": "Apache fails to start with reusable error",
+        "summary": safe_public_text,
+        "public_solution_safe": True,
+        "resolution_steps": [safe_public_text],
+    }
+
+    packet = render_reviewer_packet(
+        _evidence(issue_candidates=[candidate]),
+        _decision(candidate_id="ISSUE-SYNTH-SAFE-TECH-REF"),
     )
 
     assert packet.public_article_candidate is not None

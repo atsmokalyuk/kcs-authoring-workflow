@@ -9,6 +9,7 @@ from kcs_adapters.desktop_tool_names import (
     TOOL_AUTHOR_APPROVED_SUMMARY,
     TOOL_AUTHOR_TICKET,
     TOOL_DRAFT_ARTICLE,
+    TOOL_DRAFT_TICKET,
     TOOL_GET_MCP_READINESS,
     TOOL_GET_POLICY_SUMMARY,
     TOOL_PREPARE_SEMANTIC_REVIEW,
@@ -38,6 +39,12 @@ class McpToolDescriptor:
 
 def tool_descriptors() -> tuple[McpToolDescriptor, ...]:
     return (
+        _draft_ticket_descriptor(),
+        _register_clean_ticket_descriptor(),
+        _draft_article_descriptor(),
+        _prepare_semantic_review_descriptor(),
+        _submit_semantic_review_descriptor(),
+        _support_get_behavior_instructions_descriptor(),
         _policy_summary_descriptor(),
         _readiness_descriptor(),
         _validate_handoff_request_descriptor(),
@@ -48,11 +55,6 @@ def tool_descriptors() -> tuple[McpToolDescriptor, ...]:
         _approved_summary_pipeline_descriptor(),
         _author_approved_summary_descriptor(),
         _author_ticket_descriptor(),
-        _register_clean_ticket_descriptor(),
-        _draft_article_descriptor(),
-        _prepare_semantic_review_descriptor(),
-        _submit_semantic_review_descriptor(),
-        _support_get_behavior_instructions_descriptor(),
     )
 
 
@@ -179,20 +181,8 @@ def _register_clean_ticket_descriptor() -> McpToolDescriptor:
     descriptor = _descriptor(
         name=TOOL_REGISTER_CLEAN_TICKET,
         description=(
-            "Register one approved sanitized support-ticket transcript as a "
-            "configured clean ticket file. Use this when Claude Desktop "
-            "receives a draft-article request with an operator-provided "
-            "sanitized attachment or long paste and no ticket_ref yet. This is "
-            "the automatic first step for attachment-based drafting. Pass the "
-            "complete visible sanitized transcript, even when long, in "
-            "clean_ticket_text and optionally an opaque ticket_ref; do not pass "
-            "uploaded filenames, "
-            "local paths, Claude upload paths, item, item_candidates, aliases, "
-            "or reference article bodies. A Claude Desktop file card is not a "
-            "filesystem path: do not inspect upload directories, and use the "
-            "visible file text as clean_ticket_text. The tool writes "
-            "clean.ticket.txt under the configured approved-summaries store "
-            "and returns exact next_arguments for kcs_draft_article."
+            "Use only when sanitized ticket text is visible and no ticket_ref "
+            "exists. Stores clean_ticket_text and returns next_arguments."
         ),
         input_schema=_desktop_tool_schemas.register_clean_ticket_input_schema(),
     )
@@ -205,30 +195,24 @@ def _draft_article_descriptor() -> McpToolDescriptor:
     descriptor = _descriptor(
         name=TOOL_DRAFT_ARTICLE,
         description=(
-            "Primary KCS authoring tool for sanitized support-ticket article "
-            "requests. Prefer ticket_ref when the cleaned ticket transcript "
-            "has been saved by a trusted source under the configured "
-            "approved-summaries store. For an operator-provided sanitized "
-            "attachment or long paste with no ticket_ref, call "
-            "kcs_register_clean_ticket first and then call this tool with the "
-            "returned next_arguments. Use approved_summary_text only as a "
-            "fallback for short inline sanitized text when clean-ticket "
-            "registration is not needed. Do not summarize, redact labeled "
-            "sections, or pass upload filenames, paths, item, item_candidates, "
-            "aliases, or reference article bodies. A Claude Desktop file card "
-            "is not a filesystem path; do not inspect upload directories or "
-            "ask the operator to re-upload while visible file text is "
-            "available. If no visible file text is available, report "
-            "file_content_unavailable and do not draft manually. "
-            "Python validates the input and owns semantic extraction, decision, "
-            "rendering, and local bundle output. Successful results return "
-            "compact status plus local reviewer bundle refs; reviewer-only "
-            "Zendesk HTML is written to the local bundle and returned inline "
-            "only when debug=true is used for explicit smoke/debug "
-            "compatibility. If split_required is returned, call again with "
-            "only operator_selection_ref and operator_selected_item_ref."
+            "Use only for short approved_summary_text or operator selection. "
+            "For `/draft <ticket_ref>`, use kcs_draft_ticket."
         ),
         input_schema=_desktop_tool_schemas.draft_article_input_schema(),
+    )
+    descriptor.annotations["idempotentHint"] = False
+    descriptor.annotations["readOnlyHint"] = False
+    return descriptor
+
+
+def _draft_ticket_descriptor() -> McpToolDescriptor:
+    descriptor = _descriptor(
+        name=TOOL_DRAFT_TICKET,
+        description=(
+            "Use immediately for `/draft <ticket_ref>`. Call with only "
+            "ticket_ref and optional debug. Do not ask for an attachment."
+        ),
+        input_schema=_desktop_tool_schemas.draft_ticket_input_schema(),
     )
     descriptor.annotations["idempotentHint"] = False
     descriptor.annotations["readOnlyHint"] = False
@@ -239,20 +223,10 @@ def _prepare_semantic_review_descriptor() -> McpToolDescriptor:
     return _descriptor(
         name=TOOL_PREPARE_SEMANTIC_REVIEW,
         description=(
-            "Return a bounded Claude-visible semantic-review packet for one "
-            "pending clean-ticket semantic review. Call this only with the "
-            "semantic_review_ref returned by kcs_draft_article. The packet "
-            "contains selected excerpts only, not the full ticket. Use it to "
-            "identify atomic KCS item candidates in candidate_semantic_extraction_v1 "
-            "format only. The packet includes required_submit_shape; use that "
-            "shape exactly and name the candidate array items, not candidates. "
-            "For technical_scr candidates, resolution_steps must be standalone "
-            "and executable with concrete command/action detail from the "
-            "selected excerpts. Submit symptoms, confirmed_facts, "
-            "resolution_steps, source_refs, and open_questions as arrays of "
-            "plain strings only; preserve resolution order by array order. "
-            "Do not draft an article, choose a KCS action, return HTML, or "
-            "submit item/item_candidates payloads through kcs_draft_article."
+            "Call only after semantic_review_required. Returns bounded "
+            "excerpts and submit instructions for item identification. "
+            "If several separately searchable issues are visible, submit all "
+            "candidate items; Python handles operator selection."
         ),
         input_schema=_desktop_tool_schemas.prepare_semantic_review_input_schema(),
     )
@@ -262,20 +236,9 @@ def _submit_semantic_review_descriptor() -> McpToolDescriptor:
     descriptor = _descriptor(
         name=TOOL_SUBMIT_SEMANTIC_REVIEW,
         description=(
-            "Submit Claude-proposed semantic item identification for a prepared "
-            "semantic review. Accepts only candidate_semantic_extraction_v1 "
-            "grounded in the selected_excerpts source refs returned by "
-            "kcs_prepare_semantic_review. Use the required_submit_shape from "
-            "the prepared packet exactly: schema_version, case_ref, "
-            "extraction_source_ref, source_refs, and items. Do not use a "
-            "candidates key. Use plain string arrays for symptoms, "
-            "confirmed_facts, resolution_steps, source_refs, and "
-            "open_questions; do not submit step objects such as {order, "
-            "action}. Do not submit article drafts, HTML, recommended_action, "
-            "item, item_candidates, raw ticket text, local paths, or "
-            "publication flags. Python validates the extraction, including "
-            "executable resolution-step detail, then continues the normal "
-            "draft or split-required pipeline."
+            "Submit candidate_semantic_extraction_v1 from the prepared packet. "
+            "Submit all separately searchable candidates visible in the packet. "
+            "No article draft, HTML, item, item_candidates, or raw ticket text."
         ),
         input_schema=_desktop_tool_schemas.submit_semantic_review_input_schema(),
     )
@@ -288,9 +251,9 @@ def _support_get_behavior_instructions_descriptor() -> McpToolDescriptor:
     return _descriptor(
         name=TOOL_SUPPORT_GET_BEHAVIOR_INSTRUCTIONS,
         description=(
-            "Compatibility helper for legacy Plesk Support behavior-instruction "
-            "requests. Returns the minimal KCS Authoring route: use "
-            "kcs_draft_article for sanitized ticket article drafting."
+            "Legacy compatibility helper. If called, use the returned route "
+            "and immediately continue /draft with kcs_draft_ticket or the "
+            "returned next tool. Do not report this helper as unavailable."
         ),
         input_schema=_desktop_tool_schemas.object_schema(),
     )

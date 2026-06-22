@@ -75,6 +75,40 @@ def _write_clean_ticket_text(
     )
 
 
+def _write_cleanup_form_metadata(
+    root,
+    text: str,
+    *,
+    ticket_ref: str = "ticket-001",
+) -> None:
+    clean_dir = root / "local-data" / "approved-summaries" / ticket_ref
+    clean_path = clean_dir / APPROVED_TICKET_CLEAN_TEXT_FILE_NAME
+    digest = desktop_clean_ticket_metadata.clean_ticket_sha256(text)
+    metadata_path = (
+        clean_dir / desktop_clean_ticket_metadata.CLEAN_TICKET_METADATA_FILE_NAME
+    )
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "schema_version": (
+                    desktop_clean_ticket_metadata
+                    .CLEAN_TICKET_CLEANUP_FORM_METADATA_SCHEMA_VERSION
+                ),
+                "clean_ticket_ref": ticket_ref,
+                "clean_ticket_path": str(clean_path),
+                "clean_ticket_sha256": digest,
+                "confirmed_no_pii": True,
+                "scan_clean": True,
+                "updated_at": "2026-06-20T00:00:00Z",
+                "version": 1,
+                "write_target": "mvp_approved_summary",
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_desktop_ticket_ref_loads_and_merges_local_approved_summary(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
@@ -130,6 +164,82 @@ def test_desktop_ticket_ref_loads_clean_ticket_text_file(
     assert "schema_version" not in arguments
     assert "ticket_ref" not in arguments
     assert "item" not in arguments
+
+
+def test_desktop_ticket_ref_loads_cleanup_clean_ticket_with_urls_and_paths(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    text = (
+        "Customer Ticket Content\n"
+        "The update failed with curl: (6) Could not resolve host.\n"
+        "The investigation checked /etc/resolv.conf and "
+        "/etc/httpd/conf/plesk.conf.d/server.conf.\n"
+        "The support article used during analysis was "
+        "https://support.plesk.com/hc/en-us/articles/12377512781975.\n"
+        "Resolution: fixed the network DNS issue and regenerated Apache "
+        "configuration.\n"
+    )
+    _write_clean_ticket_text(tmp_path, text, ticket_ref="ticket-clean-form")
+    _write_cleanup_form_metadata(tmp_path, text, ticket_ref="ticket-clean-form")
+
+    arguments = approved_ticket_author_arguments(
+        {
+            "ticket_ref": "ticket-clean-form",
+            "debug": True,
+        }
+    )
+    metadata = clean_ticket_semantic_review_metadata(
+        ticket_ref="ticket-clean-form",
+        approved_summary_text=text.strip(),
+    )
+
+    assert arguments["approved_summary_text"] == text
+    assert arguments["case_ref"] == "approved-ticket-ticket-clean-form"
+    assert metadata["source_kind"] == (
+        desktop_clean_ticket_metadata.CLEAN_TICKET_SOURCE_CLEANUP_FORM
+    )
+
+
+def test_desktop_ticket_ref_rejects_clean_ticket_file_tool_artifact(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    text = (
+        "Customer Ticket Content\n"
+        "Issue: safe ticket.\n"
+        '<parameter name="ticket_ref">ticket-001</parameter>\n'
+        "Resolution: fixed the configuration.\n"
+    )
+    _write_clean_ticket_text(tmp_path, text, ticket_ref="ticket-clean-form")
+    _write_cleanup_form_metadata(tmp_path, text, ticket_ref="ticket-clean-form")
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        approved_ticket_author_arguments({"ticket_ref": "ticket-clean-form"})
+
+    assert exc_info.value.debug_code == "approved_ticket_summary_invalid"
+
+
+def test_desktop_ticket_ref_rejects_clean_ticket_file_secret_artifact(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    text = (
+        "Customer Ticket Content\n"
+        "Issue: safe ticket.\n"
+        "Authorization: Bearer abc123\n"
+        "Resolution: fixed the configuration.\n"
+    )
+    _write_clean_ticket_text(tmp_path, text, ticket_ref="ticket-clean-form")
+    _write_cleanup_form_metadata(tmp_path, text, ticket_ref="ticket-clean-form")
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        approved_ticket_author_arguments({"ticket_ref": "ticket-clean-form"})
+
+    assert exc_info.value.debug_code == "approved_ticket_summary_invalid"
 
 
 def test_register_clean_ticket_writes_clean_ticket_file(
@@ -319,6 +429,7 @@ def test_clean_ticket_semantic_review_metadata_accepts_cleanup_form_metadata(
                 "confirmed_no_pii": True,
                 "scan_clean": True,
                 "updated_at": "2026-06-20T00:00:00Z",
+                "version": 1,
                 "write_target": "mvp_approved_summary",
             },
             sort_keys=True,
@@ -328,7 +439,7 @@ def test_clean_ticket_semantic_review_metadata_accepts_cleanup_form_metadata(
 
     metadata = clean_ticket_semantic_review_metadata(
         ticket_ref=ticket_ref,
-        approved_summary_text=text,
+        approved_summary_text=text.strip(),
     )
 
     assert metadata == {
@@ -397,13 +508,22 @@ def test_clean_ticket_semantic_review_metadata_rejects_hash_mismatch(
             "ticket_ref": "ticket-semantic-review",
         }
     )
+    clean_path = (
+        tmp_path
+        / "local-data"
+        / "approved-summaries"
+        / "ticket-semantic-review"
+        / APPROVED_TICKET_CLEAN_TEXT_FILE_NAME
+    )
+    clean_path.write_text(
+        "Customer Ticket Content\nIssue: safe noisy ticket changed.",
+        encoding="utf-8",
+    )
 
     with pytest.raises(ApprovedSummaryInputError) as exc_info:
         clean_ticket_semantic_review_metadata(
             ticket_ref="ticket-semantic-review",
-            approved_summary_text=(
-                "Customer Ticket Content\nIssue: safe noisy ticket changed."
-            ),
+            approved_summary_text="Customer Ticket Content\nIssue: safe noisy ticket.",
         )
 
     assert exc_info.value.debug_code == "clean_ticket_hash_mismatch"

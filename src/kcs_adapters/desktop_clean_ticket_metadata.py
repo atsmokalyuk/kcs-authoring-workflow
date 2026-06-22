@@ -36,6 +36,7 @@ _ALLOWED_METADATA_KEYS = frozenset(
         "source_kind",
         "ticket_ref",
         "updated_at",
+        "version",
         "write_target",
     }
 )

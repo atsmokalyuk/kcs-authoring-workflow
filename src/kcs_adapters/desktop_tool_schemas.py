@@ -113,14 +113,7 @@ def register_clean_ticket_input_schema() -> JsonDict:
         properties={
             "clean_ticket_text": {
                 "type": "string",
-                "description": (
-                    "Complete visible approved sanitized ticket transcript. "
-                    "Do not summarize, condense, rewrite, redact labeled "
-                    "sections, or omit visible symptoms, cause, resolution, "
-                    "config paths, commands, services, platform facts, or other "
-                    "sanitized evidence. Do not include tool-call XML, "
-                    "parameter tags, or MCP argument markup inside this text."
-                ),
+                "description": "Complete visible approved sanitized ticket text.",
             },
             "debug": {
                 "type": "boolean",
@@ -128,11 +121,7 @@ def register_clean_ticket_input_schema() -> JsonDict:
             },
             "ticket_ref": {
                 "type": "string",
-                "description": (
-                    "Optional opaque safe ref for the clean ticket file. Do not "
-                    "pass filenames, absolute paths, Claude upload paths, or "
-                    "arbitrary local paths."
-                ),
+                "description": "Optional opaque clean-ticket ref, not a file path.",
             },
         },
         required=["clean_ticket_text"],
@@ -145,16 +134,8 @@ def draft_article_input_schema() -> JsonDict:
             "approved_summary_text": {
                 "type": "string",
                 "description": (
-                    "Fallback for short inline sanitized support-ticket text "
-                    "when clean-ticket registration is not needed. For "
-                    "attachments, long pasted tickets, or any case where no "
-                    "ticket_ref exists yet, call kcs_register_clean_ticket "
-                    "first. If this field is used, pass the visible sanitized "
-                    "text as-is. Do not summarize, condense, rewrite, redact "
-                    "labeled sections, or omit symptoms, cause, resolution, "
-                    "config paths, commands, services, platform facts, or other "
-                    "visible evidence before calling the tool. Do not pass "
-                    "uploaded filenames, local paths, or Claude upload paths."
+                    "Short inline sanitized text only. For long text or "
+                    "attachments, call kcs_register_clean_ticket first."
                 ),
             },
             "debug": {
@@ -168,29 +149,31 @@ def draft_article_input_schema() -> JsonDict:
             },
             "operator_selected_item_ref": {
                 "type": "string",
-                "description": (
-                    "Opaque item ref selected by the operator from a previous "
-                    "split-required result."
-                ),
+                "description": "Opaque item ref from a split-required result.",
             },
             "operator_selection_ref": {
                 "type": "string",
+                "description": "Opaque selection ref from a split-required result.",
+            },
+        }
+    )
+
+
+def draft_ticket_input_schema() -> JsonDict:
+    return object_schema(
+        properties={
+            "debug": {
+                "type": "boolean",
                 "description": (
-                    "Opaque selection ref returned by a previous split-required "
-                    "result."
+                    "Use true only for explicit debug or smoke compatibility."
                 ),
             },
             "ticket_ref": {
                 "type": "string",
-                "description": (
-                    "Opaque ref for a configured cleaned ticket transcript. "
-                    "Use only refs prepared by a trusted source under "
-                    "local-data/approved-summaries; do not pass filenames, "
-                    "absolute paths, Claude upload paths, or arbitrary local "
-                    "paths."
-                ),
+                "description": "Opaque clean-ticket ref for /draft <ticket_ref>.",
             },
-        }
+        },
+        required=["ticket_ref"],
     )
 
 
@@ -199,12 +182,7 @@ def prepare_semantic_review_input_schema() -> JsonDict:
         properties={
             "semantic_review_ref": {
                 "type": "string",
-                "description": (
-                    "Opaque semantic-review ref returned by kcs_draft_article "
-                    "when workflow_state is semantic_review_required. Do not "
-                    "pass ticket text, item payloads, article drafts, paths, or "
-                    "candidate extraction here."
-                ),
+                "description": "Opaque semantic-review ref from the previous result.",
             }
         },
         required=["semantic_review_ref"],
@@ -217,105 +195,13 @@ def submit_semantic_review_input_schema() -> JsonDict:
             "candidate_semantic_extraction": {
                 "type": "object",
                 "description": (
-                    "Strict candidate_semantic_extraction_v1 object. Use "
-                    "exactly schema_version, case_ref, extraction_source_ref, "
-                    "source_refs, and items. The array must be named items, "
-                    "not candidates. Copy case_ref and allowed source_refs "
-                    "from the prepared packet's required_submit_shape. Use "
-                    "plain string arrays for symptoms, confirmed_facts, "
-                    "resolution_steps, source_refs, and open_questions; "
-                    "preserve step order by array order only. Do not submit "
-                    "objects such as {order, action}, {text}, or nested step "
-                    "structures. Do not include article drafts, HTML, "
-                    "recommended_action, item, item_candidates, raw ticket "
-                    "text, local paths, or publication flags."
+                    "candidate_semantic_extraction_v1 only, following the "
+                    "prepared packet required_submit_shape. Python validates."
                 ),
-                "additionalProperties": False,
-                "properties": {
-                    "case_ref": {"type": "string"},
-                    "extraction_source_ref": {"type": "string"},
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "article_type_hint": {"type": "string"},
-                                "candidate_id": {"type": "string"},
-                                "confirmed_facts": _string_array_schema(
-                                    "Plain strings only; no objects."
-                                ),
-                                "environment": {
-                                    "type": "object",
-                                    "description": (
-                                        "Optional compact product/platform "
-                                        "metadata only. Do not include log_file, "
-                                        "services_affected, command output, "
-                                        "local paths, or arbitrary keys."
-                                    ),
-                                    "additionalProperties": False,
-                                    "properties": {
-                                        "applicable_to": {
-                                            "type": ["array", "string"]
-                                        },
-                                        "platform": {"type": "string"},
-                                        "product": {"type": "string"},
-                                    },
-                                },
-                                "kcs_item_status": {"type": "string"},
-                                "open_questions": _string_array_schema(
-                                    "Plain strings only; no objects."
-                                ),
-                                "product_relation": {"type": "string"},
-                                "question": {"type": "string"},
-                                "resolution_steps": _string_array_schema(
-                                    "Plain strings only; no objects. Preserve "
-                                    "step order by array order."
-                                ),
-                                "source_refs": _string_array_schema(
-                                    "Allowed excerpt refs only."
-                                ),
-                                "summary": {"type": "string"},
-                                "supportability": {"type": "string"},
-                                "supportability_basis": {"type": "string"},
-                                "supported_answer": {"type": "string"},
-                                "supported_cause": {"type": "string"},
-                                "supported_resolution_or_workaround": {
-                                    "type": "string"
-                                },
-                                "symptoms": _string_array_schema(
-                                    "Plain strings only; no objects."
-                                ),
-                                "visibility_hint": {"type": "string"},
-                            },
-                            "required": [
-                                "candidate_id",
-                                "summary",
-                                "product_relation",
-                                "supportability",
-                                "kcs_item_status",
-                                "source_refs",
-                            ],
-                        },
-                    },
-                    "schema_version": {"type": "string"},
-                    "source_refs": _string_array_schema("Allowed excerpt refs only."),
-                },
-                "required": [
-                    "schema_version",
-                    "case_ref",
-                    "extraction_source_ref",
-                    "source_refs",
-                    "items",
-                ],
             },
             "semantic_review_ref": {
                 "type": "string",
-                "description": (
-                    "Opaque semantic-review ref returned by "
-                    "kcs_draft_article and used by "
-                    "kcs_prepare_semantic_review."
-                ),
+                "description": "Opaque semantic-review ref from the prepared packet.",
             },
         },
         required=["semantic_review_ref", "candidate_semantic_extraction"],
@@ -450,6 +336,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "bundle_storage_hint": {"type": "string"},
     "bundle_storage_ref": {"type": "string"},
     "byte_length": {"type": "integer"},
+    "candidate_count_policy": {"type": "string"},
     "candidate_environment_field_names": {"type": "array"},
     "candidate_item_field_names": {"type": "array"},
     "candidate_plain_string_array_fields": {"type": "array"},
@@ -466,6 +353,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "draft_request_ready": {"type": "boolean"},
     "draft_sections": {"type": "object"},
     "evidence_valid": {"type": "boolean"},
+    "existing_article_review": {"type": "object"},
     "excerpt_count": {"type": "integer"},
     "excerpt_total_bytes": {"type": "integer"},
     "draft_status": {"type": "string"},
@@ -492,6 +380,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "operator_choice_request": {"type": "object"},
     "operator_prompt": {"type": "string"},
     "operator_prompt_style": {"type": "string"},
+    "operator_resolution_detail_policy": {"type": "object"},
     "operator_selected_item_ref": {"type": "string"},
     "operator_selection_ref": {"type": "string"},
     "original_article_type": {"type": "string"},
@@ -510,6 +399,9 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "recommended_action": {"type": "string"},
     "ready_for_reviewer": {"type": "boolean"},
     "ready_for_real_ticket_use": {"type": "boolean"},
+    "remaining_item_candidates": {"type": "array"},
+    "remaining_operator_choice_request": {"type": "object"},
+    "remaining_selection_ref": {"type": "string"},
     "request_schema_version": {"type": "string"},
     "request_sha256": {"type": "string"},
     "required_submit_shape": {"type": "object"},
@@ -528,6 +420,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "reuse_search_status": {"type": "string"},
     "schema_version": {"type": "string"},
     "selected_excerpts": {"type": "array"},
+    "selected_reuse_match": {"type": "object"},
     "server_name": {"type": "string"},
     "server_version": {"type": "string"},
     "should_be_kcs_article": {"type": "boolean"},

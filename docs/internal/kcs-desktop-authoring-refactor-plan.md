@@ -36,31 +36,36 @@ must remain Python-owned, explicit, bounded, and untrusted until it validates as
 Keep the Desktop-visible MCP surface narrow:
 
 - one registration tool: `kcs_register_clean_ticket`;
-- one primary authoring tool: `kcs_draft_article`;
-- one read-only no-arg compatibility helper:
-  `support_get_behavior_instructions`;
+- one ticket-ref authoring tool for `/draft <ticket_ref>`:
+  `kcs_draft_ticket`;
+- one short-text/selection authoring tool: `kcs_draft_article`;
+- two bounded semantic-review tools:
+  `kcs_prepare_semantic_review` and `kcs_submit_semantic_review`;
 - `kcs_register_clean_ticket` input args only:
   - `clean_ticket_text`;
   - `ticket_ref`;
   - `debug`;
 - `kcs_draft_article` input args only:
-  - `ticket_ref`;
   - `approved_summary_text`;
   - `operator_selection_ref`;
   - `operator_selected_item_ref`;
   - `debug`;
+- `kcs_draft_ticket` input args only:
+  - `ticket_ref`;
+  - `debug`;
 - no `item`, `item_candidates`, `reference_article_html`, broad aliases,
   provider internals, schema internals, or Desktop-owned extraction payloads.
 
-`support_get_behavior_instructions` is only a legacy Plesk Support routing
-helper. It must not accept ticket content, item payloads, provider internals,
-reference article bodies, or any drafting payload.
+`support_get_behavior_instructions` is an internal legacy compatibility helper
+only. It is not part of the Claude Desktop operator-visible tool surface and
+must not be advertised as an authoring route.
 
 Valid call shapes:
 
 - optional clean-ticket registration call: `clean_ticket_text`, optionally
   `ticket_ref` and `debug`;
-- first call: `ticket_ref`, optionally `debug`;
+- first ticket-ref call: `kcs_draft_ticket` with `ticket_ref`, optionally
+  `debug`;
 - first call fallback for short pasted text: `approved_summary_text`,
   optionally `debug`;
 - second call: `operator_selection_ref` and `operator_selected_item_ref`,
@@ -198,15 +203,33 @@ New Desktop-visible tools:
 
 `kcs_draft_article` must not accept semantic-review payloads. Its schema stays:
 
-- `ticket_ref`;
 - `approved_summary_text`;
 - `operator_selection_ref`;
 - `operator_selected_item_ref`;
 - `debug`.
 
+Ticket-ref drafting stays on `kcs_draft_ticket`:
+
+- `ticket_ref`;
+- `debug`.
+
 `kcs_prepare_semantic_review` returns only precomputed bounded selected
 excerpts. Do not use "chunks" in Desktop-facing docs, manifest wording, or tool
 descriptions.
+
+Resolution evidence rule:
+
+- If the clean ticket gives the resolution outcome or a high-level resolution
+  description but does not include the exact executable procedure needed to
+  apply and verify it, `approved_summary_resolution_steps_incomplete` is a
+  valid blocker.
+- Claude and Python must not infer the missing implementation details.
+- The operator may resolve this blocker by adding explicit
+  operator-confirmed resolution detail as approved evidence, then rerunning the
+  workflow. This is not manual/freehand drafting; the added detail becomes
+  validated input to the same KCS pipeline.
+- If no operator-confirmed detail is available, the candidate remains blocked
+  or is flagged for review instead of producing a speculative article.
 
 MVP packet caps:
 
@@ -719,8 +742,14 @@ Unit and regression coverage must verify:
   - Cause is analysis, not procedure;
   - Resolution steps are executable from the article when the ticket contains
     the operational details;
+  - when the ticket does not contain exact executable resolution detail, the pipeline
+    blocks with `approved_summary_resolution_steps_incomplete` and may proceed
+    only after operator-confirmed resolution detail is added as evidence;
   - commands and config blocks are nested inside the relevant numbered action
     step, not numbered as independent steps;
+  - concrete Plesk panel navigation paths are written from the home page, for
+    example `Plesk > Domains > example.com > Hosting Settings`, and rendered in
+    bold in Zendesk HTML;
   - `CONFIG_TEXT`, `PLESK_ERROR`, `SVM_ERROR`, `MYSQL_LIN`, `MYSQL_WIN`,
     shell commands, paths, and errors follow Zendesk/KCS trigger formatting;
   - language is impersonal, concise, and free of source-ticket first-person

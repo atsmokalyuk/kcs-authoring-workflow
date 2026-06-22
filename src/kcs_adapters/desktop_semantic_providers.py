@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
 from typing import Any, Protocol
 
+from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
 from kcs_core.models import ArticleType
 from kcs_core.sanitizer import ensure_safe_ref, ensure_safe_sanitized_payload
@@ -24,6 +26,18 @@ SEMANTIC_PROVIDER_ENV = "KCS_AUTHORING_SEMANTIC_PROVIDER"
 SEMANTIC_PROVIDER_APPROVED_SUMMARY = "approved_summary"
 SEMANTIC_PROVIDER_FIXTURE = "fixture"
 SEMANTIC_PROVIDER_APPROVED = "approved"
+SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET = "approved_clean_ticket"
+
+_SEMANTIC_TEXT_TOOL_ARTIFACT_RE = re.compile(
+    r"</?\s*(?:function|parameter|tool_call)\b|<\s*parameter\s+name\s*=",
+    re.I,
+)
+_SEMANTIC_TEXT_SECRET_ARTIFACT_RE = re.compile(
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----|"
+    r"\bauthorization\s*:\s*bearer\s+\S+|"
+    r"\b(?:api[_-]?key|password|passwd|secret|token)\s*[:=]\s*\S+",
+    re.I,
+)
 
 
 class SemanticExtractionProviderUnavailableError(RuntimeError):
@@ -87,7 +101,7 @@ class ApprovedSummarySemanticExtractionProvider:
     def propose_candidates(
         self, context: Mapping[str, Any]
     ) -> CandidateSemanticExtraction | Mapping[str, Any]:
-        ensure_safe_sanitized_payload(context)
+        _ensure_semantic_provider_context_safe(context)
         text = str(context.get("approved_summary_text", "")).strip()
         if not text:
             raise NoSemanticCandidatesError
@@ -95,7 +109,12 @@ class ApprovedSummarySemanticExtractionProvider:
             semantic_extraction_from_approved_summary_text,
         )
 
-        extraction = semantic_extraction_from_approved_summary_text(text)
+        extraction = semantic_extraction_from_approved_summary_text(
+            text,
+            approved_clean_ticket=(
+                context.get("source_kind") == SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET
+            ),
+        )
         if extraction is None:
             raise NoSemanticCandidatesError
         ensure_safe_sanitized_payload(extraction)
@@ -141,6 +160,19 @@ def semantic_provider_from_environment() -> SemanticExtractionProvider:
     if provider_name == SEMANTIC_PROVIDER_FIXTURE:
         return FixtureSemanticExtractionProvider()
     return UnavailableSemanticExtractionProvider()
+
+
+def _ensure_semantic_provider_context_safe(context: Mapping[str, Any]) -> None:
+    if context.get("source_kind") != SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET:
+        ensure_safe_sanitized_payload(context)
+        return
+    text = str(context.get("approved_summary_text", ""))
+    if not text.strip():
+        raise ContractValidationError("approved_summary_text is empty")
+    if _SEMANTIC_TEXT_TOOL_ARTIFACT_RE.search(text):
+        raise ContractValidationError("approved clean ticket contains tool artifact")
+    if _SEMANTIC_TEXT_SECRET_ARTIFACT_RE.search(text):
+        raise ContractValidationError("approved clean ticket contains secret artifact")
 
 
 def _fixture_extraction(items: list[JsonDict]) -> JsonDict:

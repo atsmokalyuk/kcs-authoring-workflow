@@ -53,6 +53,13 @@ low-confidence. `KCS-14` is the next planned hardening slice for KCS style and
 markup parity with the source style/AQ documents and portable `plesk_support`
 rules.
 
+Resolution steps must remain evidence-grounded. If the ticket gives the
+resolution outcome or a high-level resolution description but does not include
+the exact executable procedure needed to apply and verify it, the workflow
+should block with `approved_summary_resolution_steps_incomplete` instead of
+inventing implementation details. The operator may add operator-confirmed
+resolution detail and rerun the same pipeline.
+
 Implemented code slices:
 
 ```text
@@ -178,12 +185,13 @@ content, write Zendesk, or generate customer replies.
 KCS-12 is implemented as adapter-layer `kcs_adapters.mcp_desktop` stdio MCP
 logic outside `kcs_core`, plus a reproducible Claude Desktop MCPB package
 source under `packaging/claude-desktop/`. The default Claude Desktop surface
-exposes `kcs_register_clean_ticket` for sanitized attachment/long-paste
-registration, `kcs_draft_article` for authoring from `ticket_ref` or short
-inline sanitized text, and a compatibility behavior helper. Python owns
-semantic extraction, workflow state, validation, KCS decisions, rendering,
-local reviewer bundle writing, and output safety. Default successful results
-return compact status plus local bundle refs and hashes; full
+exposes `kcs_draft_ticket` for `/draft <ticket_ref>`,
+`kcs_register_clean_ticket` for sanitized attachment/long-paste registration,
+`kcs_draft_article` for short inline text or operator selection continuation,
+and bounded semantic-review prepare/submit tools. Python owns semantic
+extraction, workflow state, validation, KCS decisions, rendering, local
+reviewer bundle writing, and output safety. Default successful results return
+compact status plus local bundle refs and hashes; full
 `reviewer_only_html` is returned only in explicit debug/smoke compatibility
 mode. KCS-12 does not read raw tickets, call Claude/provider APIs, expose MCP
 resources/prompts, change KCS decisions, publish content, write Zendesk, or

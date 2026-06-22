@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import Any
 
 from kcs_adapters.desktop_workflow_status import approved_summary_reuse_was_checked
 from kcs_adapters.zendesk_markup_quality import review_reviewer_only_html
 from kcs_core.json_payload import JsonDict
-from kcs_core.models import ArticleType, KcsReviewerPacket
+from kcs_core.models import ArticleType, KcsReviewerPacket, RecommendedAction
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
+
+_EXISTING_KB_AS_RESOLUTION_RE = re.compile(
+    r"\b(?:open|use|follow|refer\s+to|apply)\b[^.?!\n]{0,180}"
+    r"https://support\.plesk\.com/hc/en-us/articles/[A-Za-z0-9_-]+|"
+    r"https://support\.plesk\.com/hc/en-us/articles/[A-Za-z0-9_-]+"
+    r"[^.?!\n]{0,180}\b(?:apply|documented\s+fix|existing\s+(?:kb|knowledge\s+base))\b",
+    re.I,
+)
 
 
 def approved_summary_reviewer_only_draft(execution: Any) -> JsonDict:
@@ -116,10 +125,50 @@ def approved_summary_quality_gaps(
         gaps.append({"kind": "reference_not_provided", "severity": "info"})
     else:
         gaps.extend(approved_summary_reference_section_gaps(reference_text, draft))
+    gaps.extend(
+        approved_summary_existing_article_resolution_gaps_for_execution(
+            execution, draft
+        )
+    )
     if not approved_summary_reuse_was_checked(execution.arguments):
         gaps.append({"kind": "reuse_search_skipped", "severity": "warning"})
     gaps.extend(approved_summary_html_quality_gaps(execution))
     return gaps
+
+
+def approved_summary_existing_article_resolution_gaps(
+    draft: Mapping[str, Any],
+) -> list[JsonDict]:
+    """Block new drafts that delegate the fix to an existing KB article."""
+
+    resolution_text = "\n".join(
+        [
+            safe_candidate_string(draft, "resolution"),
+            *safe_candidate_list(draft, "resolution_steps"),
+        ]
+    )
+    if not _EXISTING_KB_AS_RESOLUTION_RE.search(resolution_text):
+        return []
+    return [
+        {
+            "kind": "resolution_delegates_to_existing_kb_article",
+            "severity": "blocker",
+        }
+    ]
+
+
+def approved_summary_existing_article_resolution_gaps_for_execution(
+    execution: Any,
+    draft: Mapping[str, Any],
+) -> list[JsonDict]:
+    """Return existing-KB delegation gaps only for new article candidates."""
+
+    if (
+        execution.decision.recommended_action
+        != RecommendedAction.CREATE_CANDIDATE.value
+    ):
+        return []
+    return approved_summary_existing_article_resolution_gaps(draft)
 
 
 def approved_summary_html_quality_gaps(execution: Any) -> list[JsonDict]:
@@ -242,6 +291,8 @@ def safe_candidate_list(candidate: Mapping[str, Any], key: str) -> list[str]:
 __all__ = [
     "approved_summary_applicable_to",
     "approved_summary_html_quality_gaps",
+    "approved_summary_existing_article_resolution_gaps",
+    "approved_summary_existing_article_resolution_gaps_for_execution",
     "approved_summary_open_questions",
     "approved_summary_public_candidate",
     "approved_summary_quality_gaps",

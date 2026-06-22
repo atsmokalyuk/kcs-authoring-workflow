@@ -66,6 +66,12 @@ _CLEAN_TICKET_TOOL_ARTIFACT_RE = re.compile(
     r"</?\s*(?:function|parameter|tool_call)\b|<\s*parameter\s+name\s*=",
     re.I,
 )
+_CLEAN_TICKET_SECRET_ARTIFACT_RE = re.compile(
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----|"
+    r"\bauthorization\s*:\s*bearer\s+\S+|"
+    r"\b(?:api[_-]?key|password|passwd|secret|token)\s*[:=]\s*\S+",
+    re.I,
+)
 _FINAL_EVIDENCE_MARKERS = (
     "backed up",
     "disabled",
@@ -222,12 +228,13 @@ def approved_ticket_file_payload(ticket_ref: str) -> JsonDict:
     path = approved_ticket_summary_path(ticket_ref)
     if path.is_file() or path.is_symlink():
         payload = _read_approved_ticket_file_payload(path)
+        _validate_approved_ticket_file_payload(payload, ticket_ref=ticket_ref)
     else:
         payload = _read_approved_ticket_clean_text_payload(
             approved_ticket_clean_text_path(ticket_ref),
             ticket_ref=ticket_ref,
         )
-    _validate_approved_ticket_file_payload(payload, ticket_ref=ticket_ref)
+        _validate_approved_ticket_clean_text_payload(payload, ticket_ref=ticket_ref)
     return payload
 
 
@@ -279,13 +286,19 @@ def clean_ticket_semantic_review_metadata(
     """Validate clean-ticket metadata before semantic-review fallback."""
 
     try:
+        metadata_text = _read_approved_ticket_clean_text_payload(
+            approved_ticket_clean_text_path(ticket_ref),
+            ticket_ref=ticket_ref,
+        )["approved_summary_text"]
         return (
             desktop_clean_ticket_metadata.validate_clean_ticket_metadata_for_semantic_review(
                 path=approved_ticket_clean_metadata_path(ticket_ref),
                 ticket_ref=ticket_ref,
-                text=approved_summary_text,
+                text=metadata_text,
             )
         )
+    except ApprovedSummaryInputError:
+        raise
     except desktop_clean_ticket_metadata.CleanTicketMetadataError as exc:
         raise ApprovedSummaryInputError(exc.debug_code) from None
 
@@ -350,12 +363,21 @@ def _read_approved_ticket_clean_text_payload(
         raise ApprovedSummaryInputError("approved_ticket_summary_invalid") from None
     if not text.strip():
         raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
-    ensure_safe_sanitized_payload(text)
+    _ensure_approved_clean_ticket_file_text_safe(text)
     return {
         "approved_summary_text": text,
         "schema_version": APPROVED_TICKET_FILE_SCHEMA_VERSION,
         "ticket_ref": ticket_ref,
     }
+
+
+def _ensure_approved_clean_ticket_file_text_safe(text: str) -> None:
+    """Apply file-source hard blockers without rejecting normal technical text."""
+
+    if _clean_ticket_text_has_tool_artifact(text):
+        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
+    if _CLEAN_TICKET_SECRET_ARTIFACT_RE.search(text):
+        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
 
 
 def _validate_approved_ticket_file_payload(
@@ -376,6 +398,23 @@ def _validate_approved_ticket_file_payload(
         raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
     if payload.get("ticket_ref") != ticket_ref:
         raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
+
+
+def _validate_approved_ticket_clean_text_payload(
+    payload: Mapping[str, Any],
+    *,
+    ticket_ref: str,
+) -> None:
+    if any(key not in APPROVED_TICKET_FILE_KEYS for key in payload):
+        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
+    if payload.get("schema_version") != APPROVED_TICKET_FILE_SCHEMA_VERSION:
+        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
+    if payload.get("ticket_ref") != ticket_ref:
+        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
+    text = payload.get("approved_summary_text")
+    if not isinstance(text, str) or not text.strip():
+        raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
+    _ensure_approved_clean_ticket_file_text_safe(text)
 
 
 def _require_known_args(

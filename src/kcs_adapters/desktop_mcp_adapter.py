@@ -20,6 +20,7 @@ from kcs_adapters.desktop_tool_names import (
     TOOL_AUTHOR_APPROVED_SUMMARY,
     TOOL_AUTHOR_TICKET,
     TOOL_DRAFT_ARTICLE,
+    TOOL_DRAFT_TICKET,
     TOOL_GET_MCP_READINESS,
     TOOL_GET_POLICY_SUMMARY,
     TOOL_PREPARE_SEMANTIC_REVIEW,
@@ -106,6 +107,7 @@ class KcsDesktopMcpAdapter:
             TOOL_REGISTER_CLEAN_TICKET: (
                 self._authoring_tools.register_clean_ticket
             ),
+            TOOL_DRAFT_TICKET: self._authoring_tools.draft_ticket,
             TOOL_DRAFT_ARTICLE: self._authoring_tools.draft_article,
             TOOL_PREPARE_SEMANTIC_REVIEW: (
                 self._authoring_tools.prepare_semantic_review

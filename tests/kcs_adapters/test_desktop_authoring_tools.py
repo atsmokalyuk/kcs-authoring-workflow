@@ -46,3 +46,5 @@ def test_support_behavior_instructions_shape(tmp_path) -> None:
     assert result["result_kind"] == "behavior_instructions"
     assert result["should_be_kcs_article"] is True
     assert result["writes_files"] is False
+    assert result["manual_draft_allowed"] is False
+    assert result["next_required_action"] == "continue_kcs_authoring_workflow"

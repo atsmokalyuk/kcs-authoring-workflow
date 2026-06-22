@@ -238,10 +238,6 @@ _GUI_PATH_RE = re.compile(
     r"[A-Z][A-Za-z0-9 &/+-]+",
     re.I,
 )
-_TOOLS_SETTINGS_GUI_PATH_RE = re.compile(
-    r"(?:Plesk\s*(?:&gt;|>)\s*)?Tools\s*&(?:amp;)?\s*Settings\s*(?:&gt;|>)\s*[^<\n]+",
-    re.I,
-)
 _PLESK_INFO_ERROR_TRIGGER_RE = re.compile(
     r"\bPLESK_INFO:\s*(?:[45]\d\d\b|[^<\n]*(?:bad gateway|error|fail(?:ed|ure|s)?|"
     r"cannot|unable|denied|timeout|unavailable|not found|forbidden|exception|"
@@ -934,15 +930,13 @@ def _path_and_trigger_findings(source_html: str) -> tuple[KcsZendeskMarkupFindin
                 "verification command when needed.",
             )
         )
-    if _TOOLS_SETTINGS_GUI_PATH_RE.search(source_html) and not _gui_path_is_bold(
-        source_html
-    ):
+    if _GUI_PATH_RE.search(source_html) and not _gui_path_is_bold(source_html):
         findings.append(
             _finding(
                 "gui_path_not_bold",
                 "warning",
-                "Zendesk source should format GUI paths such as Plesk > Tools & "
-                "Settings > Fail2Ban > Jails in bold.",
+                "Zendesk source should format GUI paths such as Plesk > "
+                "Domains > example.com > Hosting Settings in bold.",
             )
         )
     return tuple(findings)
@@ -1208,7 +1202,7 @@ def _has_raw_windows_plesk_path_without_placeholder(source_html: str) -> bool:
 
 
 def _gui_path_is_bold(source_html: str) -> bool:
-    for match in _TOOLS_SETTINGS_GUI_PATH_RE.finditer(source_html):
+    for match in _GUI_PATH_RE.finditer(source_html):
         if _is_inside_strong(source_html, match.start(), match.end()):
             return True
     return False

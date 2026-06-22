@@ -106,6 +106,9 @@ _SAFE_FILENAME_RE = re.compile(
     r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|local|pid|bak|backup|disabled|orig|old)"
     r"(?:\.(?:bak|backup|disabled|orig|old))?\b"
 )
+_SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
+    r"https://support\.plesk\.com/hc/en-us/articles/[0-9A-Za-z_-]+"
+)
 _PRIVATE_PATH_RE = re.compile(
     r"(?:/Users/|/home/|C:\\Users\\)", re.I
 )
@@ -273,7 +276,11 @@ def _strings_from(value: Any) -> tuple[str, ...]:
 def _contains_unsafe_identifier(value: str) -> bool:
     if not value:
         return False
-    text_without_safe_filenames = _SAFE_FILENAME_RE.sub("", value)
+    text_without_safe_public_urls = _SAFE_PUBLIC_SUPPORT_URL_RE.sub("", value)
+    text_without_safe_filenames = _SAFE_FILENAME_RE.sub(
+        "",
+        text_without_safe_public_urls,
+    )
     return (
         bool(_SECRET_RE.search(text_without_safe_filenames))
         or bool(_EMAIL_RE.search(text_without_safe_filenames))

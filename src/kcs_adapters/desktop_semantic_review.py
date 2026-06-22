@@ -56,9 +56,18 @@ _SUBMIT_CONFIG_TEXT_RE = re.compile(r"\bCONFIG_TEXT:", re.I)
 _SUBMIT_CONFIG_COMMENT_PATH_RE = re.compile(
     r"^\s*#{1,6}\s+/[A-Za-z0-9_./:-]+", re.M
 )
-_SAFE_CONFIG_PLACEHOLDER_RE = re.compile(r"<[A-Z][A-Z0-9_:-]{1,40}>")
+_SUBMIT_SHELL_PROMPT_COMMAND_RE = re.compile(
+    r"^\s*#\s+[a-z0-9_./-]+(?:\s|$)", re.M
+)
+_SAFE_CONFIG_PLACEHOLDER_RE = re.compile(
+    r"<(?:"
+    r"DOMAIN|EMAIL|HOST|HOSTNAME|IP|IPV4|IPV6|PERSON_NAME|SERVER|URL|USER|"
+    r"domain|email|host|hostname|ip|ipv4|ipv6|server|url|user"
+    r")>",
+    re.I,
+)
 _SUBMIT_FORBIDDEN_LOCAL_PATH_RE = re.compile(
-    r"(?:file://|~[/\\]|[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|"
+    r"(?:file://|~[/\\]|(?<![A-Za-z0-9])[A-Za-z]:[\\/]|\\\\[^\\\s]+\\[^\\\s]+|"
     r"(?<![A-Za-z0-9])/(?:Users|private|tmp)(?:/[A-Za-z0-9._~+-]+)*|"
     r"(?<![A-Za-z0-9])local-data/(?:approved-summaries|reviewer-bundles)"
     r"(?:/[A-Za-z0-9._~+-]+)*)",
@@ -88,6 +97,21 @@ _SUBMIT_PLAIN_STRING_ARRAY_FIELDS = frozenset(
         "symptoms",
     }
 )
+_SUBMIT_ALLOWED_PLATFORM_VALUES = frozenset(
+    {
+        "Linux",
+        "Plesk for Linux",
+        "Plesk for Windows",
+        "Windows",
+    }
+)
+_SUBMIT_ALLOWED_PRODUCT_VALUES = frozenset({"Plesk"})
+_SUBMIT_ALLOWED_APPLICABLE_TO_VALUES = frozenset(
+    {
+        "Plesk for Linux",
+        "Plesk for Windows",
+    }
+)
 SEMANTIC_REVIEW_SUBMIT_MAX_TEXT_BYTES = 4000
 SEMANTIC_REVIEW_SUBMIT_MAX_TOTAL_BYTES = 64_000
 
@@ -106,6 +130,7 @@ class PendingSemanticReview:
 
     semantic_review_ref: str
     ticket_ref: str
+    source_kind: str | None
     allowed_source_refs: tuple[str, ...]
     approved_summary_text: str
     packet: JsonDict
@@ -117,6 +142,7 @@ def new_pending_semantic_review(
     *,
     approved_summary_text: str,
     ticket_ref: str,
+    source_kind: str | None,
     ttl_seconds: float,
 ) -> PendingSemanticReview:
     """Create a bounded semantic-review packet and pending state."""
@@ -139,6 +165,7 @@ def new_pending_semantic_review(
         packet=packet,
         packet_prepared=False,
         semantic_review_ref=semantic_review_ref,
+        source_kind=source_kind,
         ticket_ref=ticket_ref,
     )
 
@@ -155,6 +182,7 @@ def prepared_pending_semantic_review(
         packet=pending.packet,
         packet_prepared=True,
         semantic_review_ref=pending.semantic_review_ref,
+        source_kind=pending.source_kind,
         ticket_ref=pending.ticket_ref,
     )
 
@@ -205,6 +233,14 @@ def semantic_review_packet(
             "platform",
             "product",
         ],
+        "candidate_count_policy": (
+            "Return every separately searchable KCS item candidate visible in "
+            "selected_excerpts, up to max_candidates. Do not choose the first "
+            "candidate yourself. If selected_excerpts contain two unrelated "
+            "customer-visible issues, submit two items in one "
+            "candidate_semantic_extraction_v1 payload; Python will return the "
+            "operator choice request."
+        ),
         "candidate_plain_string_array_fields": [
             "source_refs",
             "symptoms",
@@ -277,6 +313,12 @@ def semantic_review_packet(
             "and open_questions as arrays of plain strings only. Preserve "
             "resolution order by array order. Do not submit objects such as "
             "{order, action}, {text}, {label}, or nested step structures.",
+            "Use environment only for normalized product/platform metadata: "
+            "product may be 'Plesk'; platform may be 'Linux', 'Windows', "
+            "'Plesk for Linux', or 'Plesk for Windows'; applicable_to may "
+            "contain only 'Plesk for Linux' or 'Plesk for Windows'. Put IPv4, "
+            "IPv6, ports, services, and log paths in confirmed_facts or "
+            "resolution_steps when excerpt-grounded, not in environment.",
             "Custom or risky mitigations such as custom filters, firewall "
             "rule changes, rate limits, or direct traffic blocks are allowed "
             "when selected_excerpts show they were the actual supported "
@@ -303,7 +345,8 @@ def semantic_review_packet(
         "submit_tool": "kcs_submit_semantic_review",
         "task": (
             "Identify atomic KCS item candidates only. Do not draft an "
-            "article, choose a KCS action, or produce Zendesk HTML."
+            "article, choose a KCS action, choose a candidate yourself, or "
+            "produce Zendesk HTML."
         ),
         "writes_files": False,
     }
@@ -355,6 +398,7 @@ def semantic_review_extraction_from_submission(
     )
     if extraction.case_ref != pending.packet.get("case_ref"):
         raise SemanticReviewError("semantic_review_case_ref_invalid")
+    _ensure_submit_environment_values(extraction)
     _ensure_submit_candidate_count(extraction)
     _ensure_submit_source_refs(
         extraction,
@@ -496,18 +540,18 @@ def _ensure_no_forbidden_submit_mapping(value: dict[object, object]) -> None:
         if isinstance(key, str):
             compact_key = key.replace("_", "").replace("-", "").casefold()
             if compact_key in _SUBMIT_FORBIDDEN_COMPACT_KEYS:
-                raise SemanticReviewError("semantic_review_submission_forbidden")
+                raise SemanticReviewError("semantic_review_forbidden_field")
         _ensure_no_forbidden_submit_values(item)
 
 
 def _ensure_no_forbidden_submit_string(value: str) -> None:
     html_checked_value = _SAFE_CONFIG_PLACEHOLDER_RE.sub("", value)
     if _SUBMIT_FORBIDDEN_TEXT_RE.search(html_checked_value):
-        raise SemanticReviewError("semantic_review_submission_forbidden")
+        raise SemanticReviewError("semantic_review_forbidden_html_or_markdown")
     if _submit_markdown_heading_forbidden(html_checked_value):
-        raise SemanticReviewError("semantic_review_submission_forbidden")
+        raise SemanticReviewError("semantic_review_forbidden_html_or_markdown")
     if _SUBMIT_FORBIDDEN_LOCAL_PATH_RE.search(value):
-        raise SemanticReviewError("semantic_review_submission_forbidden")
+        raise SemanticReviewError("semantic_review_local_ref_blocked")
 
 
 def _submit_markdown_heading_forbidden(value: str) -> bool:
@@ -515,9 +559,13 @@ def _submit_markdown_heading_forbidden(value: str) -> bool:
     if not matches:
         return False
     if not _SUBMIT_CONFIG_TEXT_RE.search(value):
-        return True
+        return any(
+            _SUBMIT_SHELL_PROMPT_COMMAND_RE.fullmatch(match.group(0)) is None
+            for match in matches
+        )
     return any(
         _SUBMIT_CONFIG_COMMENT_PATH_RE.fullmatch(match.group(0)) is None
+        and _SUBMIT_SHELL_PROMPT_COMMAND_RE.fullmatch(match.group(0)) is None
         for match in matches
     )
 
@@ -527,6 +575,47 @@ def _ensure_submit_candidate_count(
 ) -> None:
     if len(extraction.items) > SEMANTIC_REVIEW_MAX_CANDIDATES:
         raise SemanticReviewError("semantic_review_too_many_candidates")
+
+
+def _ensure_submit_environment_values(
+    extraction: CandidateSemanticExtraction,
+) -> None:
+    for item in extraction.items:
+        environment = item.environment
+        if not environment:
+            continue
+        if not isinstance(environment, dict):
+            raise SemanticReviewError("semantic_review_environment_invalid")
+        _ensure_optional_allowed_environment_text(
+            environment.get("platform"),
+            allowed_values=_SUBMIT_ALLOWED_PLATFORM_VALUES,
+        )
+        _ensure_optional_allowed_environment_text(
+            environment.get("product"),
+            allowed_values=_SUBMIT_ALLOWED_PRODUCT_VALUES,
+        )
+        applicable_to = environment.get("applicable_to")
+        if applicable_to is None:
+            continue
+        values = [applicable_to] if isinstance(applicable_to, str) else applicable_to
+        if not isinstance(values, list) or not values:
+            raise SemanticReviewError("semantic_review_environment_invalid")
+        for value in values:
+            _ensure_optional_allowed_environment_text(
+                value,
+                allowed_values=_SUBMIT_ALLOWED_APPLICABLE_TO_VALUES,
+            )
+
+
+def _ensure_optional_allowed_environment_text(
+    value: object,
+    *,
+    allowed_values: frozenset[str],
+) -> None:
+    if value is None:
+        return
+    if not isinstance(value, str) or value not in allowed_values:
+        raise SemanticReviewError("semantic_review_environment_invalid")
 
 
 def _ensure_submit_source_refs(
