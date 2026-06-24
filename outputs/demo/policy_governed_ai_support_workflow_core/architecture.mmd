@@ -1,0 +1,32 @@
+flowchart LR
+    subgraph Inputs
+        A["Sanitized clean ticket"]
+        B["Optional explicit article reference"]
+        C["Optional semantic-review candidates"]
+    end
+
+    subgraph PythonCore["Python workflow core"]
+        D["Sanitizer and safety gates"]
+        E["Evidence builder"]
+        F["KCS decision engine"]
+        G["Renderer"]
+        H["Readiness validator"]
+    end
+
+    subgraph Adapters
+        I["Claude Desktop MCP adapter"]
+        J["Clean-ticket store"]
+        K["Reviewer bundle writer"]
+    end
+
+    A --> J
+    J --> D
+    B --> D
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> K
+    I --> J
+    I --> C
