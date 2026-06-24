@@ -27,6 +27,7 @@ from kcs_adapters.desktop_draft_output import (
 )
 from kcs_adapters.desktop_reviewer_bundle import write_desktop_reviewer_bundle
 from kcs_adapters.desktop_semantic_candidates import (
+    desktop_candidate_set_from_semantic_extraction,
     desktop_item_candidates_from_semantic_extraction,
 )
 from kcs_adapters.desktop_semantic_review import (
@@ -103,6 +104,9 @@ PendingDraftSelection = _desktop_operator_selection.PendingDraftSelection
 attach_pending_selection = _desktop_operator_selection.attach_pending_selection
 new_pending_draft_selection = _desktop_operator_selection.new_pending_draft_selection
 operator_choice_request = _desktop_operator_selection.operator_choice_request
+operator_choice_submit_options = (
+    _desktop_operator_selection.operator_choice_submit_options
+)
 operator_choice_review_summary = (
     _desktop_operator_selection.operator_choice_review_summary
 )
@@ -337,6 +341,7 @@ class DesktopDraftWorkflow:
         *,
         approved_summary_text: str,
         approved_summary_source_kind: str | None = None,
+        semantic_item_outcomes: list[JsonDict] | None = None,
     ) -> PendingDraftSelection:
         """Store split-required candidates for a deterministic second call."""
 
@@ -344,6 +349,7 @@ class DesktopDraftWorkflow:
             item_candidates,
             approved_summary_text=approved_summary_text,
             approved_summary_source_kind=approved_summary_source_kind,
+            semantic_item_outcomes=semantic_item_outcomes,
             ttl_seconds=self._selection_ttl_seconds,
         )
         return self._pending_selection
@@ -388,7 +394,7 @@ class DesktopDraftWorkflow:
         *,
         semantic_review_ref: object,
         candidate_semantic_extraction: object,
-    ) -> tuple[list[JsonDict], str, str, str | None]:
+    ) -> tuple[list[JsonDict], str, str, str | None, list[JsonDict]]:
         """Validate a semantic-review submit and return Desktop candidates."""
 
         pending = self._pending_semantic_review_for_submit(semantic_review_ref)
@@ -407,17 +413,20 @@ class DesktopDraftWorkflow:
             )
             raise SemanticReviewSubmissionInvalidError(str(debug_code)) from exc
         self._pending_semantic_review = None
-        candidates = desktop_item_candidates_from_semantic_extraction(
+        candidates, semantic_item_outcomes = (
+            desktop_candidate_set_from_semantic_extraction(
             extraction,
             fallback_environment=_minimal_environment_from_text(
                 pending.approved_summary_text
             ),
+            )
         )
         return (
             candidates,
             pending.approved_summary_text,
             pending.ticket_ref,
             pending.source_kind,
+            semantic_item_outcomes,
         )
 
     def _pending_semantic_review_for_submit(

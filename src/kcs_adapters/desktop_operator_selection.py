@@ -26,6 +26,7 @@ class PendingDraftSelection:
     candidate_refs: tuple[str, ...]
     item_candidates: tuple[JsonDict, ...]
     item_candidate_cards: tuple[JsonDict, ...]
+    semantic_item_outcomes: tuple[JsonDict, ...]
     selected_candidate_refs: tuple[str, ...]
     expires_at: float
 
@@ -35,6 +36,7 @@ def new_pending_draft_selection(
     *,
     approved_summary_text: str,
     approved_summary_source_kind: str | None = None,
+    semantic_item_outcomes: list[JsonDict] | None = None,
     ttl_seconds: float,
 ) -> PendingDraftSelection:
     """Create opaque in-memory selection state for one split-required result."""
@@ -54,6 +56,9 @@ def new_pending_draft_selection(
         ),
         item_candidates=tuple(dict(candidate) for candidate in item_candidates),
         item_candidate_cards=tuple(item_candidate_cards),
+        semantic_item_outcomes=tuple(
+            dict(item) for item in semantic_item_outcomes or item_candidate_cards
+        ),
         selected_candidate_refs=(),
         expires_at=time.monotonic() + ttl_seconds,
     )
@@ -87,19 +92,11 @@ def operator_choice_request(
 ) -> JsonDict:
     """Return deterministic operator choice request payload."""
 
-    options = [
-        {
-            "label": str(candidate.get("title") or candidate["item_ref"]),
-            "submit_arguments": {
-                "operator_selected_item_ref": candidate["item_ref"],
-                "operator_selection_ref": pending_selection.selection_ref,
-            },
-            "value": candidate["item_ref"],
-        }
-        for candidate in pending_selection.item_candidate_cards
-        if candidate["item_ref"] not in pending_selection.selected_candidate_refs
-    ]
+    options = operator_choice_submit_options(pending_selection)
     request: JsonDict = {
+        "all_submit_arguments": [
+            option["submit_arguments"] for option in options
+        ],
         "automatic_item_retry_allowed": False,
         "manual_draft_allowed": False,
         "mode": "single_select",
@@ -111,6 +108,25 @@ def operator_choice_request(
     }
     ensure_safe_sanitized_payload(request)
     return request
+
+
+def operator_choice_submit_options(
+    pending_selection: PendingDraftSelection,
+) -> list[JsonDict]:
+    """Return exact per-option submit arguments for deterministic fallback."""
+
+    return [
+        {
+            "label": str(candidate.get("title") or candidate["item_ref"]),
+            "submit_arguments": {
+                "operator_selected_item_ref": candidate["item_ref"],
+                "operator_selection_ref": pending_selection.selection_ref,
+            },
+            "value": candidate["item_ref"],
+        }
+        for candidate in pending_selection.item_candidate_cards
+        if candidate["item_ref"] not in pending_selection.selected_candidate_refs
+    ]
 
 
 def operator_choice_review_summary(
@@ -143,16 +159,25 @@ def attach_pending_selection(
     """Attach deterministic pending selection refs and choice request."""
 
     result["item_candidates"] = list(pending_selection.item_candidate_cards)
-    result["operator_choice_options"] = list(pending_selection.item_candidate_cards)
-    result["operator_choice_request"] = operator_choice_request(
+    choice_request = operator_choice_request(
         pending_selection,
         submit_tool=submit_tool,
     )
+    result["operator_choice_options"] = choice_request["options"]
+    result["operator_choice_request"] = choice_request
+    result["operator_choice_submit_options"] = choice_request["options"]
+    result["operator_all_submit_arguments"] = choice_request[
+        "all_submit_arguments"
+    ]
     result["operator_selection_ref"] = pending_selection.selection_ref
     result["operator_choice_confirmed"] = False
+    result["semantic_item_outcomes"] = list(pending_selection.semantic_item_outcomes)
     result["review_summary"]["operator_selection_ref"] = pending_selection.selection_ref
     result["review_summary"]["operator_choice_request"] = (
         operator_choice_review_summary(pending_selection)
+    )
+    result["review_summary"]["semantic_item_outcomes"] = list(
+        pending_selection.semantic_item_outcomes
     )
 
 
@@ -190,6 +215,7 @@ def pending_selection_after_draft(
         candidate_refs=pending_selection.candidate_refs,
         item_candidates=pending_selection.item_candidates,
         item_candidate_cards=pending_selection.item_candidate_cards,
+        semantic_item_outcomes=pending_selection.semantic_item_outcomes,
         selected_candidate_refs=selected_refs,
         expires_at=pending_selection.expires_at,
     )
@@ -216,7 +242,9 @@ def remaining_operator_choice_status(
         "next_tool": submit_tool,
         "remaining_item_candidates": remaining_candidates,
         "remaining_operator_choice_request": choice_request,
+        "remaining_operator_choice_submit_options": choice_request["options"],
         "remaining_selection_ref": pending_selection.selection_ref,
+        "semantic_item_outcomes": list(pending_selection.semantic_item_outcomes),
     }
     if len(remaining_candidates) == 1:
         status["next_arguments"] = choice_request["options"][0]["submit_arguments"]
@@ -244,6 +272,7 @@ __all__ = [
     "new_pending_draft_selection",
     "operator_choice_request",
     "operator_choice_review_summary",
+    "operator_choice_submit_options",
     "pending_selection_after_draft",
     "remaining_operator_choice_status",
     "selected_pending_candidate",

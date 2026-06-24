@@ -103,6 +103,106 @@ def test_semantic_extraction_howto_uses_question_as_symptom_fallback() -> None:
     )
 
 
+def test_semantic_extraction_howto_normalizes_first_person_question_title() -> None:
+    payload = _extraction_payload()
+    item = dict(payload["items"][0])
+    item.update(
+        {
+            "article_type_hint": ArticleType.HOWTO_QA.value,
+            "question": "How can I check OPcache in Plesk?",
+            "supported_answer": "Open Plesk > Domains > example.com > PHP Settings.",
+            "supported_cause": None,
+            "supported_resolution_or_workaround": None,
+            "symptoms": [],
+            "summary": "Checking OPcache in Plesk",
+        }
+    )
+    payload["items"] = [item]
+
+    candidates = desktop_item_candidates_from_semantic_extraction(payload)
+
+    assert candidates[0]["title"] == "How to check OPcache in Plesk?"
+    assert candidates[0]["summary"] == "How to check OPcache in Plesk?"
+    assert candidates[0]["question"] == "How to check OPcache in Plesk?"
+
+
+def test_semantic_extraction_howto_preserves_customer_error_question() -> None:
+    payload = _extraction_payload()
+    item = dict(payload["items"][0])
+    question = (
+        "Can we create an account to manage our licence when my.plesk.com says "
+        "the email address does not exist or our message is considered spam?"
+    )
+    item.update(
+        {
+            "article_type_hint": ArticleType.HOWTO_QA.value,
+            "question": question,
+            "supported_answer": "Contact Customer Success at cs@plesk.com.",
+            "supported_cause": None,
+            "supported_resolution_or_workaround": None,
+            "symptoms": [],
+            "summary": (
+                "Licensing or my.plesk.com account issue forwarded to "
+                "Customer Success"
+            ),
+        }
+    )
+    payload["items"] = [item]
+
+    candidates = desktop_item_candidates_from_semantic_extraction(payload)
+
+    assert candidates[0]["title"] == (
+        "Can we create an account to manage our licence?"
+    )
+    assert candidates[0]["summary"] == (
+        "Can we create an account to manage our licence?"
+    )
+    assert candidates[0]["question"] == question
+    assert "Customer Success" not in candidates[0]["title"]
+    assert "Customer Success" in candidates[0]["supported_answer"]
+
+
+def test_semantic_extraction_action_like_cause_with_question_becomes_howto() -> None:
+    payload = _extraction_payload()
+    item = dict(payload["items"][0])
+    item.update(
+        {
+            "article_type_hint": ArticleType.TECHNICAL_SCR.value,
+            "question": (
+                "How to disable Nextcloud maintenance mode using the OCC "
+                "command on a Plesk server?"
+            ),
+            "resolution_steps": [
+                (
+                    "Run: sudo -u system-user /var/www/vhosts/example.com/occ "
+                    "maintenance:mode --off"
+                ),
+            ],
+            "supported_answer": "Run OCC as the domain system user.",
+            "supported_cause": (
+                "Use the correct system user or PHP version on the Plesk server."
+            ),
+            "supported_resolution_or_workaround": None,
+            "symptoms": [],
+            "summary": (
+                "How to disable Nextcloud maintenance mode using the OCC command "
+                "on a Plesk server"
+            ),
+        }
+    )
+    payload["items"] = [item]
+
+    candidates = desktop_item_candidates_from_semantic_extraction(payload)
+
+    assert candidates[0]["article_type"] == ArticleType.HOWTO_QA.value
+    assert candidates[0]["title"] == (
+        "How to disable Nextcloud maintenance mode using the OCC command on "
+        "a Plesk server?"
+    )
+    assert "supported_cause" not in candidates[0]
+    assert candidates[0]["answer_steps"] == item["resolution_steps"]
+
+
 def test_semantic_extraction_invalid_output_is_controlled() -> None:
     with pytest.raises(ContractValidationError):
         desktop_item_candidates_from_semantic_extraction(

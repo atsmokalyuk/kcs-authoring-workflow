@@ -107,7 +107,13 @@ class DesktopDraftArticleTool:
     def submit_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
         """Validate semantic-review candidates and continue normal drafting."""
 
-        candidates, approved_summary_text, ticket_ref, approved_summary_source_kind = (
+        (
+            candidates,
+            approved_summary_text,
+            ticket_ref,
+            approved_summary_source_kind,
+            semantic_item_outcomes,
+        ) = (
             self._draft_workflow.submitted_semantic_review_candidates(
                 semantic_review_ref=arguments.get("semantic_review_ref"),
                 candidate_semantic_extraction=arguments.get(
@@ -119,11 +125,14 @@ class DesktopDraftArticleTool:
             candidates
         )
         if not candidates:
-            return _author_failure_result(
+            result = _author_failure_result(
                 failure_stage="semantic_extraction",
                 debug_code="semantic_review_submission_invalid",
                 schema_version=self._schema_version,
             )
+            result["semantic_item_outcomes"] = semantic_item_outcomes
+            result["review_summary"]["semantic_item_outcomes"] = semantic_item_outcomes
+            return result
         if len(candidates) > 1:
             result = _desktop_draft_arguments.draft_article_split_required_result(
                 {"item_candidates": candidates},
@@ -139,6 +148,7 @@ class DesktopDraftArticleTool:
                 candidates,
                 approved_summary_text=approved_summary_text,
                 approved_summary_source_kind=approved_summary_source_kind,
+                semantic_item_outcomes=semantic_item_outcomes,
             )
             attach_pending_selection(
                 result,
@@ -147,6 +157,8 @@ class DesktopDraftArticleTool:
             )
             result["approved_summary_source"] = "semantic_review"
             result["reviewer_bundle_written"] = False
+            result["semantic_item_outcomes"] = semantic_item_outcomes
+            result["review_summary"]["semantic_item_outcomes"] = semantic_item_outcomes
             result["ticket_ref"] = ticket_ref
             return result
         result = self._draft_article_primary_author_result(
@@ -159,6 +171,7 @@ class DesktopDraftArticleTool:
         )
         result["approved_summary_source"] = "semantic_review"
         result["result_kind"] = "draft_article_authoring"
+        result["semantic_item_outcomes"] = semantic_item_outcomes
         result["ticket_ref"] = ticket_ref
         return result
 
@@ -168,11 +181,13 @@ class DesktopDraftArticleTool:
         *,
         approved_summary_text: str,
         approved_summary_source_kind: str | None = None,
+        semantic_item_outcomes: list[JsonDict] | None = None,
     ) -> PendingDraftSelection:
         return self._draft_workflow.start_pending_selection(
             item_candidates,
             approved_summary_text=approved_summary_text,
             approved_summary_source_kind=approved_summary_source_kind,
+            semantic_item_outcomes=semantic_item_outcomes,
         )
 
     def _draft_article_primary_surface_result(
@@ -427,6 +442,9 @@ class DesktopDraftArticleTool:
                     pending_selection.approved_summary_source_kind
                 ),
             )
+        )
+        result["semantic_item_outcomes"] = list(
+            pending_selection.semantic_item_outcomes
         )
         if result.get("draft_generated") is True and isinstance(
             selected_item_ref,

@@ -876,7 +876,7 @@ def _semantic_review_candidate_extraction(
     allowed_refs = packet.get("allowed_source_refs")
     if not isinstance(allowed_refs, list) or not allowed_refs:
         raise SmokeError("semantic_review_packet_invalid")
-    source_ref = str(allowed_refs[0])
+    source_refs = [str(ref) for ref in allowed_refs]
     resolution = (
         "<h1>Article draft</h1>"
         if invalid_submit
@@ -903,7 +903,7 @@ def _semantic_review_candidate_extraction(
                     "Run systemctl restart sw-cp-server.",
                     "Open Plesk and confirm the task completes successfully.",
                 ],
-                "source_refs": [source_ref],
+                "source_refs": source_refs,
                 "summary": "Plesk task fails with an error",
                 "supportability": "supported",
                 "supportability_basis": "not_checked",
@@ -914,7 +914,7 @@ def _semantic_review_candidate_extraction(
             }
         ],
         "schema_version": "candidate_semantic_extraction_v1",
-        "source_refs": [source_ref],
+        "source_refs": source_refs,
     }
 
 

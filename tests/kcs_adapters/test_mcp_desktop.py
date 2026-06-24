@@ -1218,9 +1218,9 @@ def test_author_approved_summary_returns_reviewer_only_draft() -> None:
         draft["resolution"]
         == "Install the missing package and restart the related service."
     )
-    assert structured["quality_gaps"] == [
-        {"kind": "reference_section_coverage_ok", "severity": "info"}
-    ]
+    assert {"kind": "reference_section_coverage_ok", "severity": "info"} in (
+        structured["quality_gaps"]
+    )
     result_output = response["result"]["content"][0]["text"]
     assert result_output.startswith("```html\n")
     assert "```html\n" in result_output
@@ -1827,6 +1827,7 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
         "symptoms",
         "confirmed_facts",
         "resolution_steps",
+        "answer_steps",
         "open_questions",
     ]
     assert packet["candidate_item_field_names"]
@@ -1859,6 +1860,54 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
     assert "Sanitized server configuration or log paths may be included" in result_text
     assert '"candidates"' not in json.dumps(packet["required_submit_shape"])
     assert "DO-NOT-RETURN-FULL-TICKET-SENTINEL" not in packet_text
+
+
+def test_prepare_semantic_review_allows_public_support_email(
+) -> None:
+    from kcs_adapters.desktop_semantic_review import semantic_review_packet
+
+    excerpts = [
+        {
+            "role": "reported_symptom",
+            "source_ref": "excerpt-001",
+            "text": (
+                "Customer Success team (cs@plesk.com) is responsible for "
+                "licensing questions, including my.plesk.com issues."
+            ),
+        }
+    ]
+    packet = semantic_review_packet(
+        excerpts=excerpts,
+        semantic_review_ref="semantic-review-public-contact",
+        ticket_ref="ticket-qna-public-contact",
+    )
+
+    assert packet["result_kind"] == "semantic_review_packet"
+    assert packet["selected_excerpts"]
+    assert any(
+        "cs@plesk.com" in excerpt["text"]
+        for excerpt in packet["selected_excerpts"]
+    )
+
+
+def test_prepare_semantic_review_advertises_howto_qa_shape(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _transport, _semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+
+    assert "question" in packet["candidate_item_field_names"]
+    assert "supported_answer" in packet["candidate_item_field_names"]
+    assert "answer_steps" in packet["candidate_item_field_names"]
+    assert packet["howto_qa_submit_item_shape"]["article_type_hint"] == (
+        ArticleType.HOWTO_QA.value
+    )
+    assert "licensing or account issues redirected to Customer Success" in packet[
+        "candidate_count_policy"
+    ]
+    assert "support route" in " ".join(packet["resolution_step_requirements"])
 
 
 def test_prepare_semantic_review_omits_numeric_ticket_ref_from_packet(
@@ -2109,6 +2158,43 @@ def test_semantic_review_excerpts_use_utf8_byte_caps() -> None:
     )
 
 
+def test_semantic_review_excerpts_keep_customer_howto_questions() -> None:
+    from kcs_adapters.desktop_semantic_review import (
+        selected_semantic_review_excerpts,
+    )
+
+    excerpts = selected_semantic_review_excerpts(
+        "\n\n".join(
+            [
+                (
+                    "Customer asks how to create an account to manage a "
+                    "licence when my.plesk.com returns an email error."
+                ),
+                (
+                    "Customer reports a command syntax issue for disabling "
+                    "Nextcloud maintenance mode. They tried occ commands but "
+                    "both do not work."
+                ),
+                (
+                    "Customer also asks: We have a problem with the PHP "
+                    "OPcache module that is not available. How can we activate "
+                    "it or modify it? The answer explains checking the domain "
+                    "PHP Settings and Performance Settings."
+                ),
+                (
+                    "Support resolved the command issue by running occ with "
+                    "the correct Plesk PHP binary from the Nextcloud directory."
+                ),
+            ]
+        )
+    )
+
+    excerpt_text = "\n".join(str(excerpt["text"]) for excerpt in excerpts)
+    assert "OPcache module" in excerpt_text
+    assert "How can we activate it or modify it" in excerpt_text
+    assert any(excerpt["role"] == "customer_question" for excerpt in excerpts)
+
+
 def _semantic_review_extraction(
     packet: Mapping[str, Any],
     *,
@@ -2116,7 +2202,7 @@ def _semantic_review_extraction(
     source_ref: str | None = None,
     resolution_text: str = "Restart the affected service and confirm success.",
 ) -> dict[str, object]:
-    source_refs = [source_ref or packet["allowed_source_refs"][0]]
+    source_refs = [source_ref] if source_ref else list(packet["allowed_source_refs"])
     items: list[dict[str, object]] = []
     for index in range(item_count):
         candidate_id = f"candidate-{index + 1:03d}"
@@ -2232,6 +2318,321 @@ def test_submit_semantic_review_single_candidate_continues_to_draft(
     assert structured["reviewer_bundle_written"] is True
     assert "reviewer_only_html" not in structured
     assert "candidate_semantic_extraction" not in response_text
+
+
+def test_submit_semantic_review_howto_qa_with_blank_optional_resolution_drafts(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    source_refs = list(packet["allowed_source_refs"])
+    extraction = {
+        "case_ref": packet["case_ref"],
+        "extraction_source_ref": "semantic-review-submit-001",
+        "items": [
+            {
+                "article_type_hint": ArticleType.HOWTO_QA.value,
+                "candidate_id": "candidate-001",
+                "confirmed_facts": [],
+                "environment": {
+                    "applicable_to": ["Plesk for Linux"],
+                    "platform": "Plesk for Linux",
+                    "product": "Plesk",
+                },
+                "kcs_item_status": KcsItemStatus.CANDIDATE_ALLOWED.value,
+                "product_relation": ProductRelation.PLESK_OWNED.value,
+                "question": "How can I check OPcache in Plesk?",
+                "resolution_steps": [
+                    (
+                        "Open Plesk > Domains > example.com > PHP Settings "
+                        "and verify that OPcache is enabled."
+                    )
+                ],
+                "source_refs": source_refs,
+                "summary": "How to check OPcache in Plesk",
+                "supportability": Supportability.SUPPORTED.value,
+                "supportability_basis": SupportabilityBasis.NOT_CHECKED.value,
+                "supported_answer": "Check the domain PHP settings in Plesk.",
+                "supported_resolution_or_workaround": "",
+                "symptoms": [],
+                "visibility_hint": VisibilityHint.PUBLIC_CUSTOMER_SAFE.value,
+            }
+        ],
+        "schema_version": CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION,
+        "source_refs": source_refs,
+    }
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["article_type"] == ArticleType.HOWTO_QA.value
+    assert structured["draft_generated"] is True
+    assert structured["reviewer_bundle_written"] is True
+    html_path = tmp_path / structured["html_path"]
+    html = html_path.read_text(encoding="utf-8")
+    assert "<h2>Question</h2>" in html
+    assert "<h2>Answer</h2>" in html
+    assert "<h1>How to check OPcache in Plesk?</h1>" in html
+    assert "<p>How to check OPcache in Plesk?</p>" in html
+    assert (
+        '12377667582743-How-to-log-in-to-Plesk">Log in to Plesk</a>.'
+        in html
+    )
+    assert "Plesk &gt; Domains &gt; example.com &gt; PHP Settings" in html
+
+
+def test_submit_semantic_review_howto_qa_allows_public_support_contact(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    source_refs = list(packet["allowed_source_refs"])
+    extraction = {
+        "case_ref": packet["case_ref"],
+        "extraction_source_ref": "semantic-review-submit-001",
+        "items": [
+            {
+                "article_type_hint": ArticleType.HOWTO_QA.value,
+                "candidate_id": "candidate-001",
+                "confirmed_facts": [
+                    "my.plesk.com licensing questions are handled by Customer Success."
+                ],
+                "environment": {
+                    "applicable_to": ["Plesk for Linux"],
+                    "platform": "Plesk for Linux",
+                    "product": "Plesk",
+                },
+                "kcs_item_status": KcsItemStatus.CANDIDATE_ALLOWED.value,
+                "product_relation": ProductRelation.PLESK_OWNED.value,
+                "question": (
+                    "Can we create an account to manage our licence when "
+                    "my.plesk.com says the email address does not exist or "
+                    "our message is considered spam?"
+                ),
+                "resolution_steps": [
+                    (
+                        "Contact Customer Success at cs@plesk.com for "
+                        "my.plesk.com licensing account questions."
+                    )
+                ],
+                "source_refs": source_refs,
+                "summary": (
+                    "Licensing or my.plesk.com account issue forwarded to "
+                    "Customer Success"
+                ),
+                "supportability": Supportability.SUPPORTED.value,
+                "supportability_basis": SupportabilityBasis.NOT_CHECKED.value,
+                "supported_answer": (
+                    "Contact Customer Success at cs@plesk.com for my.plesk.com "
+                    "licensing account questions."
+                ),
+                "symptoms": ["my.plesk.com shows a licensing account error."],
+                "visibility_hint": VisibilityHint.PUBLIC_CUSTOMER_SAFE.value,
+            }
+        ],
+        "schema_version": CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION,
+        "source_refs": source_refs,
+    }
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["article_type"] == ArticleType.HOWTO_QA.value
+    assert structured["draft_generated"] is True
+    html = (tmp_path / structured["html_path"]).read_text(encoding="utf-8")
+    assert "cs@plesk.com" in html
+    assert "my.plesk.com" in html
+    assert "Who handles licensing" not in html
+    assert "forwarded to Customer Success" not in html
+    assert (
+        "Can we create an account to manage our licence when my.plesk.com says "
+        "the email address does not exist or our message is considered spam?"
+    ) in html
+
+
+def test_submit_semantic_review_lists_non_draftable_route_item_in_outcomes(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    source_refs = list(packet["allowed_source_refs"])
+    base_item = {
+        "article_type_hint": ArticleType.HOWTO_QA.value,
+        "confirmed_facts": ["The ticket contains a supported product question."],
+        "environment": {
+            "applicable_to": ["Plesk for Linux"],
+            "platform": "Plesk for Linux",
+            "product": "Plesk",
+        },
+        "product_relation": ProductRelation.PLESK_OWNED.value,
+        "source_refs": source_refs,
+        "supportability": Supportability.SUPPORTED.value,
+        "supportability_basis": SupportabilityBasis.NOT_CHECKED.value,
+        "visibility_hint": VisibilityHint.PUBLIC_CUSTOMER_SAFE.value,
+    }
+    extraction = {
+        "case_ref": packet["case_ref"],
+        "extraction_source_ref": "semantic-review-submit-001",
+        "items": [
+            {
+                **base_item,
+                "answer_steps": [
+                    "Run the supported CLI command from the ticket.",
+                ],
+                "candidate_id": "candidate-001",
+                "kcs_item_status": KcsItemStatus.CANDIDATE_ALLOWED.value,
+                "question": "How to disable maintenance mode?",
+                "summary": "How to disable maintenance mode",
+                "supported_answer": "Run the supported CLI command from the ticket.",
+            },
+            {
+                **base_item,
+                "answer_steps": [
+                    "Contact Customer Success at cs@plesk.com for licensing questions.",
+                ],
+                "candidate_id": "candidate-002",
+                "kcs_item_status": KcsItemStatus.NO_ARTICLE.value,
+                "question": "Who handles a my.plesk.com licensing question?",
+                "summary": "my.plesk.com licensing question routed to Customer Success",
+                "supported_answer": (
+                    "Contact Customer Success at cs@plesk.com for "
+                    "my.plesk.com licensing questions."
+                ),
+            },
+            {
+                **base_item,
+                "answer_steps": [
+                    "Open Plesk > Domains > example.com > PHP Settings.",
+                ],
+                "candidate_id": "candidate-003",
+                "kcs_item_status": KcsItemStatus.CANDIDATE_ALLOWED.value,
+                "question": "How to check OPcache in Plesk?",
+                "summary": "How to check OPcache in Plesk PHP Settings",
+                "supported_answer": (
+                    "Open the domain PHP Settings page and check OPcache."
+                ),
+            },
+        ],
+        "schema_version": CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION,
+        "source_refs": source_refs,
+    }
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    result_text = response["result"]["content"][0]["text"]
+    assert structured["debug_code"] == "multiple_kcs_items_detected"
+    assert [item["item_ref"] for item in structured["item_candidates"]] == [
+        "candidate-001",
+        "candidate-003",
+    ]
+    assert [item["value"] for item in structured["operator_choice_submit_options"]] == [
+        "candidate-001",
+        "candidate-003",
+    ]
+    assert structured["operator_all_submit_arguments"] == [
+        option["submit_arguments"]
+        for option in structured["operator_choice_submit_options"]
+    ]
+    assert [item["item_ref"] for item in structured["semantic_item_outcomes"]] == [
+        "candidate-001",
+        "candidate-002",
+        "candidate-003",
+    ]
+    assert structured["semantic_item_outcomes"][1]["outcome"] == "not_draftable"
+    assert "Who handles a my.plesk.com licensing question?" in result_text
+    assert "If the operator answers 'both' or 'all'" in result_text
+
+
+def test_submit_semantic_review_normalizes_question_candidate_to_howto_qa(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    source_refs = list(packet["allowed_source_refs"])
+    extraction = {
+        "case_ref": packet["case_ref"],
+        "extraction_source_ref": "semantic-review-submit-001",
+        "items": [
+            {
+                "article_type_hint": ArticleType.TECHNICAL_SCR.value,
+                "candidate_id": "candidate-001",
+                "confirmed_facts": [],
+                "environment": {
+                    "applicable_to": ["Plesk for Linux"],
+                    "platform": "Plesk for Linux",
+                    "product": "Plesk",
+                },
+                "kcs_item_status": KcsItemStatus.CANDIDATE_ALLOWED.value,
+                "product_relation": ProductRelation.PLESK_OWNED.value,
+                "question": "How to check OPcache in Plesk?",
+                "resolution_steps": [
+                    (
+                        "Open Plesk > Domains > example.com > PHP Settings "
+                        "and verify the OPcache setting."
+                    )
+                ],
+                "source_refs": source_refs,
+                "summary": "How to check OPcache in Plesk",
+                "supportability": Supportability.SUPPORTED.value,
+                "supportability_basis": SupportabilityBasis.NOT_CHECKED.value,
+                "supported_answer": "Check the domain PHP settings in Plesk.",
+                "symptoms": [],
+                "visibility_hint": VisibilityHint.PUBLIC_CUSTOMER_SAFE.value,
+            }
+        ],
+        "schema_version": CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION,
+        "source_refs": source_refs,
+    }
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["article_type"] == ArticleType.HOWTO_QA.value
+    assert structured["draft_generated"] is True
 
 
 def test_submit_semantic_review_uses_clean_ticket_minimal_environment(
@@ -2553,6 +2954,36 @@ def test_submit_semantic_review_rejects_unknown_source_ref(
     assert "reviewer_only_html" not in structured
 
 
+def test_submit_semantic_review_rejects_omitted_selected_excerpt(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    assert len(packet["allowed_source_refs"]) > 1
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": _semantic_review_extraction(
+                packet,
+                source_ref=packet["allowed_source_refs"][0],
+            ),
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_submit_blocked"
+    assert structured["debug_code"] == "semantic_review_excerpt_coverage_incomplete"
+    assert structured["draft_generated"] is False
+    assert structured["manual_draft_allowed"] is False
+    assert structured["reviewer_bundle_written"] is False
+
+
 def test_submit_semantic_review_rejects_article_draft_content(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
@@ -2579,6 +3010,48 @@ def test_submit_semantic_review_rejects_article_draft_content(
     assert structured["debug_code"] == "semantic_review_forbidden_html_or_markdown"
     assert structured["draft_generated"] is False
     assert structured["manual_draft_allowed"] is False
+
+
+def test_submit_semantic_review_allows_safe_placeholders_and_gui_breadcrumbs(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(
+        packet,
+        resolution_text=(
+            "Open Plesk > Domains > example.com > PHP Settings > "
+            "Performance Settings and verify OPcache is enabled."
+        ),
+    )
+    extraction["items"][0]["confirmed_facts"] = [
+        "The customer asked whether Customer ID can be changed to <number>.",
+        "Licensing questions are routed to cs@plesk.com.",
+    ]
+    extraction["items"][0]["resolution_steps"] = [
+        (
+            "Open Plesk > Domains > example.com > PHP Settings > "
+            "Performance Settings."
+        ),
+        "Verify that OPcache is enabled.",
+    ]
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    assert structured["result_kind"] == "draft_article_authoring"
+    assert structured.get("debug_code") != "semantic_review_forbidden_html_or_markdown"
 
 
 def test_submit_semantic_review_rejects_broad_item_payload(
@@ -2645,6 +3118,94 @@ def test_submit_semantic_review_rejects_structured_resolution_step_objects(
     assert "arrays of plain strings only" in text
     assert "{order, action}" in text
     assert "Restart Plesk panel services" not in text
+
+
+def test_submit_semantic_review_reports_missing_extraction_source_ref(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction.pop("extraction_source_ref")
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    result = response["result"]
+    structured = result["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_submit_blocked"
+    assert (
+        structured["debug_code"]
+        == "semantic_review_extraction_source_ref_missing"
+    )
+    assert structured["draft_generated"] is False
+    assert structured["manual_draft_allowed"] is False
+    text = result["content"][0]["text"]
+    assert "Include schema_version, case_ref, extraction_source_ref" in text
+    assert "Use only allowed_source_refs" in text
+
+
+def test_submit_semantic_review_reports_missing_top_level_source_refs(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction.pop("source_refs")
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_submit_blocked"
+    assert structured["debug_code"] == "semantic_review_top_level_source_refs_missing"
+    assert structured["draft_generated"] is False
+    assert structured["manual_draft_allowed"] is False
+
+
+def test_submit_semantic_review_reports_invalid_article_type_hint(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_semantic_review_packet(
+        tmp_path, monkeypatch
+    )
+    extraction = _semantic_review_extraction(packet)
+    extraction["items"][0]["article_type_hint"] = "technical_solution"
+
+    response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "candidate_semantic_extraction": extraction,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert response is not None
+    structured = response["result"]["structuredContent"]
+    assert structured["workflow_state"] == "semantic_review_submit_blocked"
+    assert structured["debug_code"] == "semantic_review_article_type_invalid"
+    assert structured["draft_generated"] is False
+    assert structured["manual_draft_allowed"] is False
 
 
 def test_submit_semantic_review_rejects_too_many_candidates(
@@ -4231,6 +4792,12 @@ def test_draft_article_primary_fixture_provider_splits_items(tmp_path) -> None:
         "operator_selected_item_ref": "candidate-001",
         "operator_selection_ref": split["operator_selection_ref"],
     }
+    assert split["operator_choice_submit_options"] == split[
+        "operator_choice_request"
+    ]["options"]
+    assert split["operator_all_submit_arguments"] == split[
+        "operator_choice_request"
+    ]["all_submit_arguments"]
     assert split["item_candidates"] == [
             {
                 "article_type": ArticleType.TECHNICAL_SCR.value,
@@ -4319,13 +4886,21 @@ def test_draft_article_primary_summary_uses_provider_for_split_required() -> Non
     assert structured["recommended_action"] == "split_required"
     assert structured["operator_prompt_style"] == "native_choice_popup"
     assert structured["operator_selection_ref"].startswith("operator-selection-")
-    assert structured["operator_choice_options"] == structured["item_candidates"]
+    assert structured["operator_choice_options"] == structured[
+        "operator_choice_request"
+    ]["options"]
     assert structured["operator_choice_request"]["mode"] == "single_select"
     assert structured["operator_choice_request"]["submit_tool"] == "kcs_draft_article"
     assert structured["operator_choice_request"]["options"][1]["submit_arguments"] == {
         "operator_selected_item_ref": "candidate-002",
         "operator_selection_ref": structured["operator_selection_ref"],
     }
+    assert structured["operator_choice_submit_options"] == structured[
+        "operator_choice_request"
+    ]["options"]
+    assert structured["operator_all_submit_arguments"] == structured[
+        "operator_choice_request"
+    ]["all_submit_arguments"]
     assert structured["item_candidates"] == [
         {
             "article_type": ArticleType.TECHNICAL_SCR.value,

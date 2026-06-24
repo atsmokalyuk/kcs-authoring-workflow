@@ -38,6 +38,7 @@ _ALLOWED_EXTRACTION_FIELDS = frozenset(
 _ALLOWED_ITEM_FIELDS = frozenset(
     {
         "article_type_hint",
+        "answer_steps",
         "candidate_id",
         "confirmed_facts",
         "eol_role",
@@ -184,7 +185,7 @@ class CandidateKcsItem:
             supported_resolution_or_workaround=normalize_optional_string(
                 data.get("supported_resolution_or_workaround")
             ),
-            resolution_steps=tuple(normalize_string_list(data.get("resolution_steps"))),
+            resolution_steps=tuple(_semantic_resolution_steps(data)),
             question=normalize_optional_string(data.get("question")),
             supported_answer=normalize_optional_string(data.get("supported_answer")),
             open_questions=tuple(normalize_string_list(data.get("open_questions"))),
@@ -448,6 +449,14 @@ def _validate_item(item: CandidateKcsItem) -> None:
 def _validate_classification_rules(item: CandidateKcsItem) -> None:
     _validate_eol_rules(item)
     _validate_product_relation_rules(item)
+
+
+def _semantic_resolution_steps(data: Mapping[str, Any]) -> list[str]:
+    resolution_steps = normalize_string_list(data.get("resolution_steps"))
+    answer_steps = normalize_string_list(data.get("answer_steps"))
+    if resolution_steps:
+        return resolution_steps
+    return answer_steps
 
 
 def _validate_eol_rules(item: CandidateKcsItem) -> None:

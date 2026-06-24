@@ -237,8 +237,10 @@ def _submit_semantic_review_descriptor() -> McpToolDescriptor:
         name=TOOL_SUBMIT_SEMANTIC_REVIEW,
         description=(
             "Submit candidate_semantic_extraction_v1 from the prepared packet. "
-            "Submit all separately searchable candidates visible in the packet. "
-            "No article draft, HTML, item, item_candidates, or raw ticket text."
+            "Submit all separately searchable candidates and support-route "
+            "answers visible in the packet, including licensing/customer-success "
+            "routing items. No article draft, HTML, item, item_candidates, or "
+            "raw ticket text."
         ),
         input_schema=_desktop_tool_schemas.submit_semantic_review_input_schema(),
     )

@@ -8,6 +8,7 @@ from kcs_adapters.desktop_operator_selection import (
     new_pending_draft_selection,
     operator_choice_request,
     operator_choice_review_summary,
+    operator_choice_submit_options,
     selected_pending_candidate,
     split_candidate_cards,
 )
@@ -40,6 +41,13 @@ def test_pending_selection_builds_choice_request() -> None:
         "operator_selected_item_ref": "candidate-001",
         "operator_selection_ref": pending.selection_ref,
     }
+    assert request["all_submit_arguments"] == [
+        {
+            "operator_selected_item_ref": "candidate-001",
+            "operator_selection_ref": pending.selection_ref,
+        }
+    ]
+    assert operator_choice_submit_options(pending) == request["options"]
     assert review_summary["selection_ref"] == pending.selection_ref
 
 
@@ -61,6 +69,12 @@ def test_attach_pending_selection_updates_result() -> None:
     assert result["operator_selection_ref"] == pending.selection_ref
     assert result["operator_choice_confirmed"] is False
     assert result["operator_choice_request"]["submit_tool"] == "kcs_draft_article"
+    assert result["operator_choice_submit_options"] == result[
+        "operator_choice_request"
+    ]["options"]
+    assert result["operator_all_submit_arguments"] == result[
+        "operator_choice_request"
+    ]["all_submit_arguments"]
     assert (
         result["review_summary"]["operator_choice_request"]["selection_ref"]
         == pending.selection_ref
@@ -112,6 +126,10 @@ def test_desktop_workflow_reexports_operator_selection_helpers() -> None:
         is new_pending_draft_selection
     )
     assert desktop_workflow.operator_choice_request is operator_choice_request
+    assert (
+        desktop_workflow.operator_choice_submit_options
+        is operator_choice_submit_options
+    )
     assert (
         desktop_workflow.operator_choice_review_summary
         is operator_choice_review_summary

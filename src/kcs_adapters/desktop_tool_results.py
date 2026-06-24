@@ -559,6 +559,25 @@ def _semantic_review_blocked_tool_result_text(
             "reviewer files, item/item_candidates, recommended_action, or "
             "publication flags."
         )
+    if structured.get("debug_code") in {
+        "semantic_review_case_ref_missing",
+        "semantic_review_extraction_source_ref_missing",
+        "semantic_review_item_required_field_missing",
+        "semantic_review_item_source_refs_missing",
+        "semantic_review_items_missing",
+        "semantic_review_schema_version_invalid",
+        "semantic_review_submit_payload_not_object",
+        "semantic_review_top_level_source_refs_missing",
+    }:
+        plain_string_hint = (
+            "\n\nSubmit shape correction: submit exactly the prepared "
+            "candidate_semantic_extraction_v1 object. Include schema_version, "
+            "case_ref, extraction_source_ref, top-level source_refs, and "
+            "items. Each item must include candidate_id, summary, "
+            "product_relation, supportability, kcs_item_status, and item "
+            "source_refs. Use only allowed_source_refs from the prepared "
+            "semantic review packet."
+        )
     status = {
         "auto_publish_allowed": structured.get("auto_publish_allowed"),
         "debug_code": structured.get("debug_code"),
@@ -660,9 +679,13 @@ def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
         "operator_selection_ref": structured.get("operator_selection_ref"),
         "recommended_action": structured.get("recommended_action"),
         "result_kind": structured.get("result_kind"),
+        "semantic_item_outcomes": structured.get("semantic_item_outcomes"),
     }
     options_text = (
         "\n".join(option_lines) if option_lines else "No safe options returned."
+    )
+    outcome_text = _semantic_item_outcome_text(
+        structured.get("semantic_item_outcomes")
     )
     return (
         "Multiple KCS article candidates were detected. Operator selection is "
@@ -671,8 +694,12 @@ def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
         "Do not answer with a prose-only candidate list. If no popup is "
         "available, show these options and then continue only by calling "
         "kcs_draft_article with exactly the selected option's submit_arguments. "
+        "If the operator answers 'both' or 'all', call each listed option's "
+        "submit_arguments sequentially in order, without calling "
+        "kcs_submit_semantic_review again. "
         "Do not call kcs_submit_semantic_review again for this choice. Do not "
         "draft manually.\n\n"
+        f"{outcome_text}"
         "Candidate options:\n"
         f"{options_text}\n\n"
         "Compact status:\n"
@@ -680,6 +707,21 @@ def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
         f"{_compact_json(status)}\n"
         "```"
     )
+
+
+def _semantic_item_outcome_text(value: object) -> str:
+    if not isinstance(value, list) or not value:
+        return ""
+    lines = ["All identified KCS items and outcomes:"]
+    for index, item in enumerate(value, start=1):
+        if not isinstance(item, Mapping):
+            continue
+        title = str(item.get("title") or item.get("item_ref") or f"Item {index}")
+        outcome = str(item.get("outcome") or item.get("kcs_item_status") or "unknown")
+        lines.append(f"{index}. {title} — {outcome}")
+    if len(lines) == 1:
+        return ""
+    return "\n".join(lines) + "\n\n"
 
 
 def _tool_result_payload_for_generic_safety(value: object) -> object:

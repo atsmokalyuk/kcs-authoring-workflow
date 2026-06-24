@@ -486,7 +486,9 @@ def apply_approved_summary_item_defaults(
 
 
 def promote_resolution_steps_to_supported_resolution(item: JsonDict) -> None:
-    if "supported_resolution_or_workaround" in item or "supported_answer" in item:
+    if _optional_string_value(item.get("supported_resolution_or_workaround")):
+        return
+    if _optional_string_value(item.get("supported_answer")):
         return
     resolution_steps = optional_string_list(item, "resolution_steps")
     if resolution_steps:
@@ -870,10 +872,18 @@ def optional_string(item: Mapping[str, Any], key: str) -> str | None:
     value = item.get(key)
     if value is None:
         return None
-    if not isinstance(value, str) or not value.strip():
+    if isinstance(value, str) and not value.strip():
+        return None
+    if not isinstance(value, str):
         raise ContractValidationError("approved summary field invalid")
     ensure_safe_sanitized_payload(value)
     return value.strip()
+
+
+def _optional_string_value(value: object) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
 
 
 def required_string_list(item: Mapping[str, Any], key: str) -> list[str]:
