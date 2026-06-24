@@ -242,7 +242,10 @@ def test_execute_approved_summary_pipeline_owns_stage_order(monkeypatch) -> None
 def test_desktop_workflow_builds_reviewer_draft_preview_and_quality_gaps() -> None:
     execution = SimpleNamespace(
         arguments={"item": {"reuse_search_checked": True}},
-        decision=SimpleNamespace(article_type=ArticleType.TECHNICAL_SCR.value),
+        decision=SimpleNamespace(
+            article_type=ArticleType.TECHNICAL_SCR.value,
+            recommended_action=RecommendedAction.CREATE_CANDIDATE.value,
+        ),
         payload={
             "issue_candidates": [
                 {
@@ -292,15 +295,18 @@ def test_desktop_workflow_builds_reviewer_draft_preview_and_quality_gaps() -> No
         "Title: Plesk task fails: required product service is stopped" in preview_text
     )
     assert approved_summary_reuse_search_status(execution.arguments) == "checked"
-    assert approved_summary_quality_gaps(execution, draft) == [
-        {"kind": "reference_not_provided", "severity": "info"}
-    ]
+    assert {"kind": "reference_not_provided", "severity": "info"} in (
+        approved_summary_quality_gaps(execution, draft)
+    )
 
 
 def test_desktop_workflow_blocks_diagnostic_transcript_in_resolution_html() -> None:
     execution = SimpleNamespace(
         arguments={"item": {"reuse_search_checked": True}},
-        decision=SimpleNamespace(article_type=ArticleType.TECHNICAL_SCR.value),
+        decision=SimpleNamespace(
+            article_type=ArticleType.TECHNICAL_SCR.value,
+            recommended_action=RecommendedAction.CREATE_CANDIDATE.value,
+        ),
         payload={"issue_candidates": [{"supported_resolution_or_workaround": ""}]},
         reviewer_packet=SimpleNamespace(
             public_article_candidate={

@@ -219,7 +219,7 @@ def test_draft_tool_semantic_submit_preserves_clean_file_source_kind(tmp_path) -
                             "Connect to the Plesk server via SSH.",
                             "Run the command from the ticket: # plesk repair web.",
                         ],
-                        "source_refs": source_refs[:1],
+                        "source_refs": source_refs,
                         "summary": "Plesk web server configuration repair is required",
                         "supportability": "supported",
                         "supportability_basis": "explicit_input_mention",
@@ -234,7 +234,7 @@ def test_draft_tool_semantic_submit_preserves_clean_file_source_kind(tmp_path) -
                     }
                 ],
                 "schema_version": "candidate_semantic_extraction_v1",
-                "source_refs": source_refs[:1],
+                "source_refs": source_refs,
             },
             "semantic_review_ref": pending.semantic_review_ref,
         }
