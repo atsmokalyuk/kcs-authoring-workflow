@@ -36,6 +36,8 @@ _SAFE_FILENAME_RE = re.compile(
 _SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
     r"https://support\.plesk\.com/hc/en-us/articles/[0-9A-Za-z_-]+"
 )
+_SAFE_PUBLIC_SUPPORT_EMAIL_RE = re.compile(r"\bcs@plesk\.com\b", re.I)
+_SAFE_PUBLIC_PLESK_HOST_RE = re.compile(r"\bmy\.plesk\.com\b", re.I)
 _RAW_ID_VALUE_RE = re.compile(r"\d{6,}")
 _SAFE_REF_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,79}")
 _SAFE_ID_KEYS = frozenset({"candidate_id"})
@@ -291,8 +293,14 @@ def _contains_private_raw_text(value: str) -> bool:
     if any(fragment in normalized for fragment in _UNSAFE_RAW_VALUE_FRAGMENTS):
         return True
     text_without_safe_public_urls = _SAFE_PUBLIC_SUPPORT_URL_RE.sub("", value)
-    text_without_safe_filenames = _SAFE_FILENAME_RE.sub(
+    text_without_safe_public_contacts = _SAFE_PUBLIC_SUPPORT_EMAIL_RE.sub(
         "", text_without_safe_public_urls
+    )
+    text_without_safe_public_hosts = _SAFE_PUBLIC_PLESK_HOST_RE.sub(
+        "", text_without_safe_public_contacts
+    )
+    text_without_safe_filenames = _SAFE_FILENAME_RE.sub(
+        "", text_without_safe_public_hosts
     )
     return any(
         pattern.search(text_without_safe_filenames)

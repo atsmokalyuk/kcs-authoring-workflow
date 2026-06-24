@@ -131,11 +131,34 @@ def test_sanitizer_accepts_local_config_file_path() -> None:
     )
 
 
+def test_sanitizer_accepts_public_plesk_support_contact() -> None:
+    ensure_safe_sanitized_payload(
+        "Customer Success team (cs@plesk.com) handles my.plesk.com questions."
+    )
+
+
 def test_evidence_safety_accepts_local_config_file_path() -> None:
     packet = _safe_packet(
         supported_resolution_or_workaround=(
             "Edit /etc/fail2ban/jail.d/plesk-panel-flood.local and reload fail2ban."
         )
+    )
+
+    result = validate_evidence_safety(packet)
+
+    assert result.ok is True
+    assert result.blockers == ()
+
+
+def test_evidence_safety_accepts_public_plesk_support_contact() -> None:
+    packet = _safe_packet(
+        confirmed_facts=[
+            "Customer Success team handles my.plesk.com licensing questions."
+        ],
+        supported_resolution_or_workaround=(
+            "Contact Customer Success at cs@plesk.com for my.plesk.com "
+            "licensing account questions."
+        ),
     )
 
     result = validate_evidence_safety(packet)

@@ -46,6 +46,8 @@ _SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
     r"https://support\.plesk\.com/hc/en-us/articles/[A-Za-z0-9_-]+",
     re.I,
 )
+_SAFE_PUBLIC_SUPPORT_EMAIL_RE = re.compile(r"\bcs@plesk\.com\b", re.I)
+_SAFE_PUBLIC_PLESK_HOST_RE = re.compile(r"\bmy\.plesk\.com\b", re.I)
 _SAFE_PUBLIC_TECH_PATH_RE = re.compile(
     r"(?<![\w<])/(?:etc|usr|var|opt)/[A-Za-z0-9_./%:+-]+"
 )
@@ -127,8 +129,8 @@ _COMMAND_CONFIRMATION_SPLIT_RE = re.compile(
 _SHELL_COMMAND_START_RE = re.compile(
     r"^(?:"
     r"awk|cat|chmod|chown|cp|curl|fail2ban-client|fail2ban-regex|find|"
-    r"firewall-cmd|grep|iptables|journalctl|mkdir|mv|nft|plesk|rpm|sed|"
-    r"service|systemctl|tail|ufw"
+    r"firewall-cmd|grep|iptables|journalctl|mkdir|mv|nft|occ|php|plesk|"
+    r"rpm|sed|service|sudo|systemctl|tail|ufw"
     r")\b",
     re.I,
 )
@@ -177,6 +179,11 @@ _PLESK_SSH_RESOLUTION_URL = (
     "https://support.plesk.com/hc/en-us/articles/"
     "12377512781975-How-to-connect-to-a-Plesk-server-via-SSH"
 )
+_PLESK_LOGIN_STEP = "Log in to Plesk."
+_PLESK_LOGIN_URL = (
+    "https://support.plesk.com/hc/en-us/articles/"
+    "12377667582743-How-to-log-in-to-Plesk"
+)
 _PLESK_RDP_RESOLUTION_STEP = "Connect to the Plesk server via RDP."
 _PLESK_RDP_RESOLUTION_URL = (
     "https://support.plesk.com/hc/en-us/articles/"
@@ -184,6 +191,22 @@ _PLESK_RDP_RESOLUTION_URL = (
 )
 _PLESK_SSH_STEP_RE = re.compile(r"\b(?:connect|log in).{0,80}\bssh\b", re.I)
 _PLESK_RDP_STEP_RE = re.compile(r"\b(?:connect|log in).{0,80}\brdp\b", re.I)
+_PLESK_LOGIN_STEP_RE = re.compile(r"\blog\s+in\s+to\s+Plesk\b", re.I)
+_PLESK_GUI_NAV_STEP_RE = re.compile(
+    r"\bPlesk\s*&?gt;\s*|\bPlesk\s*>\s*|"
+    r"\b(?:open|go\s+to|navigate\s+to)\s+Plesk\b|"
+    r"\b(?:Domains|Tools\s*&\s*Settings|Websites\s*&\s*Domains)"
+    r"\s*(?:>|&gt;)",
+    re.I,
+)
+_SERVER_COMMAND_STEP_RE = re.compile(
+    r"(?:^|\b)(?:run|execute)\s*:?\s+[^.]{0,160}\b(?:sudo|/opt/plesk/|"
+    r"\./?occ|systemctl|service|apachectl|nginx|fail2ban-client|iptables|"
+    r"ip6tables)\b|"
+    r"\b(?:sudo|/opt/plesk/|\./?occ|systemctl|service|apachectl|nginx|"
+    r"fail2ban-client|iptables|ip6tables)\b",
+    re.I,
+)
 _WINDOWS_SERVER_STEP_RE = re.compile(
     r"\b(?:powershell|cmd|iisreset|reg|sc|net|dir|plesk)\b|"
     r"[A-Z]:\\|%plesk_dir%|%plesk_bin%|program files",
@@ -343,10 +366,10 @@ def _howto_qa_html(candidate: Mapping[str, object]) -> str:
     lines.append(_paragraph(_string(candidate.get("question")), "question"))
     lines.append("<h2>Answer</h2>")
     answer_steps = _string_list(candidate.get("answer_steps"))
-    if len(answer_steps) > 1:
-        lines.extend(_ordered_list(answer_steps))
-    elif answer_steps:
-        lines.append(_paragraph(answer_steps[0], "answer"))
+    if answer_steps:
+        for answer_step in answer_steps:
+            _ensure_text_bound("answer", answer_step, _MAX_PARAGRAPH_LENGTH)
+        lines.extend(_resolution_ordered_list(answer_steps))
     else:
         lines.append("<p></p>")
     return "\n".join(lines)
@@ -388,6 +411,12 @@ def _resolution_ordered_list(values: list[str]) -> list[str]:
 
 
 def _ordered_list_item(value: str) -> str:
+    if value == _PLESK_LOGIN_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_LOGIN_URL}">Log in to Plesk</a>.'
+            "</li>"
+        )
     if value == _PLESK_SSH_RESOLUTION_STEP:
         return (
             "<li>"
@@ -928,6 +957,14 @@ def _public_article_text_values(
 
 def _contains_private_public_text(value: str) -> bool:
     text_without_safe_public_refs = _SAFE_PUBLIC_SUPPORT_URL_RE.sub("", value)
+    text_without_safe_public_refs = _SAFE_PUBLIC_SUPPORT_EMAIL_RE.sub(
+        "",
+        text_without_safe_public_refs,
+    )
+    text_without_safe_public_refs = _SAFE_PUBLIC_PLESK_HOST_RE.sub(
+        "",
+        text_without_safe_public_refs,
+    )
     text_without_safe_public_refs = _SAFE_PUBLIC_TECH_PATH_RE.sub(
         "",
         text_without_safe_public_refs,
@@ -1245,11 +1282,43 @@ def _environment_text(evidence: NormalizedTicketEvidencePacket) -> str:
 def _answer_steps(
     evidence: NormalizedTicketEvidencePacket, candidate: Mapping[str, Any]
 ) -> list[str]:
-    return (
+    steps = (
         _candidate_list(candidate, "answer_steps")
         or _candidate_list(candidate, "supported_answer")
         or _resolution_steps(evidence, candidate)
     )
+    return _answer_steps_with_required_entry_point(evidence, steps)
+
+
+def _answer_steps_with_required_entry_point(
+    evidence: NormalizedTicketEvidencePacket, steps: list[str]
+) -> list[str]:
+    if not steps:
+        return steps
+    entrypoint = _answer_entry_point(evidence, steps)
+    if entrypoint is None:
+        return steps
+    entrypoint_text, present_re = entrypoint
+    if any(present_re.search(step) for step in steps):
+        return steps
+    return [entrypoint_text, *steps]
+
+
+def _answer_entry_point(
+    evidence: NormalizedTicketEvidencePacket, steps: list[str]
+) -> tuple[str, re.Pattern[str]] | None:
+    if _answer_requires_server_access(steps):
+        if _is_windows_plesk_resolution(evidence, steps):
+            return _PLESK_RDP_RESOLUTION_STEP, _PLESK_RDP_STEP_RE
+        if _is_linux_plesk_resolution(evidence):
+            return _PLESK_SSH_RESOLUTION_STEP, _PLESK_SSH_STEP_RE
+    if any(_PLESK_GUI_NAV_STEP_RE.search(step) for step in steps):
+        return _PLESK_LOGIN_STEP, _PLESK_LOGIN_STEP_RE
+    return None
+
+
+def _answer_requires_server_access(steps: list[str]) -> bool:
+    return any(_SERVER_COMMAND_STEP_RE.search(step) for step in steps)
 
 
 def _question(candidate: Mapping[str, Any]) -> str:

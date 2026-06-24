@@ -251,7 +251,11 @@ def test_resolution_steps_are_ordered_inside_resolution_container() -> None:
 
     assert html is not None
     assert '<div class="resolution">\n  <ol>' in html
-    assert "<li>Log in to Plesk.</li>" in html
+    assert (
+        '<a href="https://support.plesk.com/hc/en-us/articles/'
+        '12377667582743-How-to-log-in-to-Plesk">Log in to Plesk</a>.'
+        in html
+    )
     assert "<li>Go to Mail &gt; Mail Settings.</li>" in html
     assert "<li>Enable the required mail setting.</li>" in html
 
@@ -826,7 +830,6 @@ def test_howto_qa_renders_question_and_answer_sections() -> None:
                 "title": "How to change PHP version in Plesk",
                 "question": "How to change PHP version in Plesk?",
                 "answer_steps": [
-                    "Log in to Plesk.",
                     "Open Domains > example.com > Hosting Settings.",
                     "Select the required PHP version.",
                 ],
@@ -849,9 +852,57 @@ def test_howto_qa_renders_question_and_answer_sections() -> None:
     assert "<h2>Answer</h2>" in packet.zendesk_source_html
     assert "<h2>Symptoms</h2>" not in packet.zendesk_source_html
     assert (
+        '<a href="https://support.plesk.com/hc/en-us/articles/'
+        '12377667582743-How-to-log-in-to-Plesk">Log in to Plesk</a>.'
+        in packet.zendesk_source_html
+    )
+    assert (
         "Domains &gt; example.com &gt; Hosting Settings"
         in packet.zendesk_source_html
     )
+
+
+def test_howto_qa_server_command_answer_starts_with_ssh_link() -> None:
+    evidence = _evidence(
+        supported_cause=None,
+        supported_resolution_or_workaround="Disable maintenance mode.",
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-HOWTO",
+                "article_type": ArticleType.HOWTO_QA.value,
+                "title": "How to disable maintenance mode?",
+                "question": "How to disable maintenance mode?",
+                "answer_steps": [
+                    (
+                        "Run: sudo -u system-user /var/www/vhosts/example.com/"
+                        "occ maintenance:mode --off"
+                    ),
+                ],
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "answered",
+                "public_solution_safe": True,
+            }
+        ],
+    )
+
+    packet = render_reviewer_packet(
+        evidence,
+        _decision(article_type=ArticleType.HOWTO_QA, candidate_id="ISSUE-SYNTH-HOWTO"),
+    )
+
+    html = packet.zendesk_source_html
+    assert html is not None
+    assert (
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+    ) in html
+    assert "<p>Run:</p>" in html
+    assert (
+        "<code># sudo -u system-user /var/www/vhosts/example.com/occ "
+        "maintenance:mode --off</code>"
+    ) in html
 
 
 def test_internal_notes_are_separated_from_public_html() -> None:
@@ -1206,7 +1257,7 @@ def test_renderer_rejects_unbounded_question_without_echoing_value() -> None:
     assert long_question not in str(captured.value)
 
 
-def test_renderer_rejects_unbounded_single_answer_without_echoing_value() -> None:
+def test_renderer_rejects_unbounded_answer_step_without_echoing_value() -> None:
     long_answer = "x" * 601
     evidence = _evidence(
         supported_cause=None,

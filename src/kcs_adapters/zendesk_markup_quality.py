@@ -110,6 +110,7 @@ _ACCORDION_CONTENT_RE = re.compile(
     re.I | re.S,
 )
 _EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
+_SAFE_PUBLIC_SUPPORT_EMAIL_RE = re.compile(r"\bcs@plesk\.com\b", re.I)
 _IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _PLESK_OBSIDIAN_VERSION_RE = re.compile(
     r"\bplesk\s+obsidian\s+(?P<version>\d+(?:\.\d+){2,3})\b",
@@ -1060,7 +1061,11 @@ def _privacy_findings(source_html: str) -> tuple[KcsZendeskMarkupFinding, ...]:
                     f"Forbidden private fragment found: {fragment}",
                 )
             )
-    if _EMAIL_RE.search(source_html):
+    html_without_safe_public_email = _SAFE_PUBLIC_SUPPORT_EMAIL_RE.sub(
+        "",
+        source_html,
+    )
+    if _EMAIL_RE.search(html_without_safe_public_email):
         findings.append(
             _finding("private_email_present", "blocker", "Email-like identifier found.")
         )

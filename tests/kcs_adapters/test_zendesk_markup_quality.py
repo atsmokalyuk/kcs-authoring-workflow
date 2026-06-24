@@ -114,6 +114,22 @@ def test_zendesk_markup_quality_accepts_golden_scr_markup_fixture() -> None:
     assert review_kcs_zendesk_markup_source(source).ok is True
 
 
+def test_zendesk_markup_quality_allows_public_plesk_support_contact() -> None:
+    source = (
+        "<h1>How to contact Customer Success about a Plesk license account</h1>"
+        "<h2>Question</h2>"
+        "<p>What should be done when my.plesk.com shows a license account "
+        "error?</p>"
+        "<h2>Answer</h2>"
+        "<div class=\"resolution\"><ol>"
+        "<li>Contact Customer Success at cs@plesk.com for licensing account "
+        "questions.</li>"
+        "</ol></div>"
+    )
+
+    assert "private_email_present" not in _rule_ids(source)
+
+
 def test_zendesk_markup_quality_flags_style_guide_markup_issues() -> None:
     source = (
         "<h1>Plesk issue</h1>"
