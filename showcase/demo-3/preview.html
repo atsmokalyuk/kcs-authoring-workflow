@@ -1,0 +1,33 @@
+<h1>Apache fails to start with SSLCACertificateFile does not exist or is empty error in Plesk</h1>
+
+<p><strong>Packet status:</strong> reviewer-only preview. Not public content. Not a Zendesk write. Not auto-publishable.</p>
+
+<h2>Applicable to</h2>
+<ul>
+  <li>Plesk for Linux</li>
+</ul>
+
+<h2>Symptoms</h2>
+<ol>
+  <li>Apache fails to start with an <code>AH00526</code> syntax error in generated Apache configuration.</li>
+  <li>The error references <code>SSLCACertificateFile</code> under <code>/usr/local/psa/var/certificates/</code>, where the referenced file does not exist or is empty.</li>
+  <li>All websites show the default Apache page.</li>
+  <li><code>plesk repair web</code> fails during web server reconfiguration.</li>
+  <li>Apache configuration generation fails from the Plesk webserver template writer path.</li>
+</ol>
+
+<h2>Cause</h2>
+<p>Plesk bug <code>PPPM-5892</code> causes broken Apache configuration files that reference a missing or empty SSL CA certificate file.</p>
+
+<h2>Resolution evidence</h2>
+<ol>
+  <li>Confirm Apache service failure with <code>systemctl status httpd</code>.</li>
+  <li>Check Apache configuration syntax with <code>/usr/local/psa/admin/bin/apache-config -t</code>.</li>
+  <li>Verify that the referenced certificate file is missing or empty under <code>/usr/local/psa/var/certificates/</code>.</li>
+  <li>Apply existing public article guidance for <code>PPPM-5892</code>.</li>
+  <li>Run <code>plesk repair web</code> after applying the fix.</li>
+  <li>Start Apache and verify service status.</li>
+</ol>
+
+<h2>Reviewer note</h2>
+<p>The workflow selected <code>flag_existing</code> because a matching public article already exists. The reviewer should verify whether the existing article needs coverage improvements instead of creating a duplicate article.</p>

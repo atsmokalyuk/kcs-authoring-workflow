@@ -2,13 +2,17 @@
 
 Local workflow for runtime-independent KCS Authoring.
 
-Status: production-shaped local workflow. Enterprise/PAUX rollout is postponed;
-this repository now tracks the local product workflow. Some package IDs,
-environment variables, paths, and historical docs still use `kcs-authoring-mvp`
-for compatibility, but the implemented workflow has moved beyond a minimal MVP.
-The original MVP boundary remains the safety floor: reviewer-only output, no
-Zendesk writes, no Help Center publication, no auto-publish, compact default MCP
-output, and Python-owned validation, decision, rendering, and bundle writing.
+Status: project goal reached for now. The KCS branch has delivered the
+production-shaped local workflow, the controlled semantic-review fallback, and
+the reviewer-packet showcase artifacts. Further development is frozen unless a
+new explicitly approved slice reopens the project. Enterprise/PAUX rollout is
+postponed; this repository now tracks the local product workflow. Some package
+IDs, environment variables, paths, and historical docs still use
+`kcs-authoring-mvp` for compatibility, but the implemented workflow has moved
+beyond a minimal MVP. The original MVP boundary remains the safety floor:
+reviewer-only output, no Zendesk writes, no Help Center publication, no
+auto-publish, compact default MCP output, and Python-owned validation,
+decision, rendering, and bundle writing.
 
 Python baseline: 3.11. CI is deferred until the local command set is stable.
 
@@ -38,20 +42,53 @@ The core owns workflow decisions, validation, blockers, and readiness state.
 Claude or another LLM may draft or review text only through bounded handoff
 after the relevant contracts and gates exist.
 
+## Demo Showcase
+
+The primary portfolio/demo artifact is
+[`showcase/demo-3/`](showcase/demo-3/). It demonstrates the current controlled
+workflow on a noisy multi-candidate clean-ticket case:
+
+- one candidate is flagged for an existing public KB article instead of
+  creating a duplicate;
+- one candidate produces a reviewer-only draft artifact;
+- one candidate is blocked because the approved evidence does not contain
+  operator-confirmed resolution steps.
+
+Start with [`showcase/demo-3/README.md`](showcase/demo-3/README.md), then open:
+
+- [`PROJECT_WALKTHROUGH.md`](showcase/demo-3/PROJECT_WALKTHROUGH.md) for the
+  human-readable project walkthrough;
+- [`reviewer_packet.md`](showcase/demo-3/reviewer_packet.md) and
+  [`reviewer_packet.json`](showcase/demo-3/reviewer_packet.json) for the main
+  reviewer packet;
+- [`preview.html`](showcase/demo-3/preview.html) for the sanitized reviewer-only
+  preview;
+- [`kcs-authoring-architecture-diagram.pdf`](showcase/demo-3/kcs-authoring-architecture-diagram.pdf)
+  for the architecture diagram and caption.
+
+The demo artifacts are reviewer-only and public-safe. They do not imply a
+Zendesk write, Help Center publication, auto-publish, live RAG/search, or
+Claude-owned KCS decision.
+
 ## Current Scope
 
-Initial development follows the KCS-0..KCS-12 roadmap in
-`docs/internal/kcs-authoring-mvp-jira-tracking.md`.
+The implemented local workflow follows the KCS-0..KCS-13 roadmap tracked in
+`docs/internal/kcs-authoring-mvp-jira-tracking.md` and
+`docs/internal/kcs-desktop-authoring-refactor-plan.md`.
 
-Current active design work is tracked in
-`docs/internal/kcs-desktop-authoring-refactor-plan.md`. `KCS-12` established
-the local Claude Desktop MCPB adapter with clean-ticket registration,
-`ticket_ref` drafting, compact status output, and local reviewer bundles.
-`KCS-13` implemented the controlled semantic-review fallback for
+The latest local branch work completed the KCS-13 semantic-review fallback
+path: metadata gating, bounded semantic-review packet preparation, candidate
+submission validation, Desktop smoke alignment, multi-item drafting
+stabilization, markup/safety hardening, public HOWTO rendering safety, and
+current-gate test alignment. `KCS-12` established the local Claude Desktop MCPB
+adapter with clean-ticket registration, `ticket_ref` drafting, compact status
+output, and local reviewer bundles. `KCS-13` added the controlled fallback for
 complex/noisy clean tickets when deterministic Python item identification is
-low-confidence. `KCS-14` is the next planned hardening slice for KCS style and
-markup parity with the source style/AQ documents and portable `plesk_support`
-rules.
+low-confidence.
+
+The current project goal is reached for now. Further development is frozen.
+`KCS-14` style/markup parity, managed deployment, production rollout, and any
+additional integrations are deferred future work, not active scope.
 
 Resolution steps must remain evidence-grounded. If the ticket gives the
 resolution outcome or a high-level resolution description but does not include
@@ -77,6 +114,7 @@ KCS-9c: reviewer-only draft generation contract and artifact writer
 KCS-10: local reviewer bundle writer for audit/debug artifacts
 KCS-11: live-capable Claude/provider adapter for bounded smoke tests
 KCS-12: Claude Desktop MCP validator/control adapter and MCPB package
+KCS-13: controlled semantic-review fallback for complex/noisy clean tickets
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -197,6 +235,17 @@ mode. KCS-12 does not read raw tickets, call Claude/provider APIs, expose MCP
 resources/prompts, change KCS decisions, publish content, write Zendesk, or
 generate customer replies.
 
+KCS-13 is implemented as controlled semantic-review fallback behavior for
+complex/noisy approved clean tickets. Python first attempts deterministic item
+identification. If the ticket is likely KCS-relevant but low-confidence,
+Python returns `semantic_review_required` with a bounded next-tool contract.
+Claude Desktop may inspect only bounded sanitized excerpts and propose
+`candidate_semantic_extraction_v1`. Python validates that proposal as
+untrusted input, decides split/single/block, renders reviewer-only output, and
+writes any bundle. KCS-13 does not let Claude draft freehand articles, decide
+KCS actions, bypass validation, publish content, write Zendesk, or expose raw
+tickets.
+
 Local smoke accounting is implemented as adapter-layer
 `kcs_adapters.smoke_accounting` and the `kcs-smoke-account` console script. It
 reads an operator-provided Claude Desktop/MCP transcript or log file and returns
@@ -221,9 +270,11 @@ reviewer-assist handoff contract only. KCS-9c introduces reviewer-only draft
 contracts and local artifact writing only. KCS-10 introduces local reviewer
 bundle writing only. KCS-11 introduces a live-capable provider adapter package
 and bounded smoke layer only. KCS-12 introduces the Claude Desktop MCP
-validator/control surface and installable local MCPB package only. Real-ticket
-smoke, production transport rollout, remote MCP/internal service
-implementation, and broad adapter/client integration remain later slices.
+validator/control surface and installable local MCPB package only. KCS-13
+introduces the controlled semantic-review fallback only. Real-ticket smoke,
+production transport rollout, remote MCP/internal service implementation,
+broad adapter/client integration, and KCS-14 style/markup parity are frozen
+deferred work unless a future approved slice reopens development.
 
 ## Non-goals
 

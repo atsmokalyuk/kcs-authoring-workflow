@@ -1,0 +1,105 @@
+{
+  "schema_version": "kcs_showcase_reviewer_packet_v1",
+  "source_ticket_ref": "ticket-94893302",
+  "primary_item_ref": "candidate-001",
+  "candidate_kcs_action": "flag_existing",
+  "reviewer_state": {
+    "kcs_ready": true,
+    "ready_for_reviewer": true,
+    "auto_publish_allowed": false,
+    "public_output_approved": false,
+    "manual_review_required": true
+  },
+  "bundle_manifest": {
+    "article_type": "technical_scr",
+    "auto_publish_allowed": false,
+    "bundle_ref": "run-20260624T153244-eEJzhajb",
+    "bundle_storage_hint": "~/Documents/KCS Authoring",
+    "bundle_storage_ref": "user_documents_kcs_authoring",
+    "debug_code": "none",
+    "html_path": "local-data/reviewer-bundles/run-20260624T153244-eEJzhajb/candidate-001/reviewer_only.html",
+    "html_sha256": "b2411f0aa662ae5d3d4f9acb3b59f222a2ab88ded8151ff59190f93ba74ad61b",
+    "item_ref": "candidate-001",
+    "kcs_ready": true,
+    "manifest_path": "local-data/reviewer-bundles/run-20260624T153244-eEJzhajb/manifest.json",
+    "public_output_approved": false,
+    "ready_for_reviewer": true,
+    "recommended_action": "flag_existing",
+    "reuse_search_status": "checked",
+    "schema_version": "kcs_reviewer_bundle_v1"
+  },
+  "evidence_basis": {
+    "title": "Apache fails to start with SSLCACertificateFile does not exist or is empty error in Plesk",
+    "applicable_to": [
+      "Plesk for Linux"
+    ],
+    "symptoms": [
+      "Apache (httpd) fails to start with AH00526 syntax errors in Plesk-generated Apache configuration.",
+      "The error references an SSLCACertificateFile under /usr/local/psa/var/certificates/ that does not exist or is empty.",
+      "All websites show the default Apache page.",
+      "plesk repair web fails during web server reconfiguration.",
+      "Apache configuration generation fails with a Template_Exception from Plesk webserver template writer code."
+    ],
+    "supported_cause": "Plesk bug PPPM-5892 causes broken Apache configuration files that reference a missing or empty SSL CA certificate file.",
+    "resolution_evidence": [
+      "Confirm Apache service failure with systemctl status httpd.",
+      "Check Apache configuration syntax with /usr/local/psa/admin/bin/apache-config -t.",
+      "Verify the referenced certificate file is missing or empty under /usr/local/psa/var/certificates/.",
+      "Apply the existing public article guidance for PPPM-5892.",
+      "Run plesk repair web after applying the fix.",
+      "Start Apache and verify service status."
+    ]
+  },
+  "reuse_search": {
+    "status": "checked",
+    "selected_existing_article": {
+      "article_ref": "kb-115001678209",
+      "relationship": "same_issue_existing_public_article",
+      "recommended_handling": "Flag or update the existing article instead of creating a duplicate."
+    }
+  },
+  "draft_or_flag_content": {
+    "output_type": "existing_article_review_bundle",
+    "reviewer_only_html_path": "~/Documents/KCS Authoring/local-data/reviewer-bundles/run-20260624T153244-eEJzhajb/candidate-001/reviewer_only.html",
+    "reviewer_only_html_sha256": "b2411f0aa662ae5d3d4f9acb3b59f222a2ab88ded8151ff59190f93ba74ad61b",
+    "flag_reason": "A matching public article already exists, so the workflow should avoid duplicate article creation and route reviewer attention to coverage gaps in the existing article."
+  },
+  "validation_results": {
+    "semantic_review_completed": true,
+    "python_decision_owner": true,
+    "bundle_written": true,
+    "reuse_search_checked": true,
+    "publish_blocked_by_policy": true,
+    "manual_review_required": true
+  },
+  "blockers": [],
+  "risks": [
+    "The output is reviewer-only and must not be published automatically.",
+    "The reviewer should confirm whether the existing article fully covers the plesk repair web failure path.",
+    "The reviewer should confirm whether the existing article explicitly covers SSLCACertificateFile errors in webmail configuration files."
+  ],
+  "related_candidates_summary": [
+    {
+      "item_ref": "candidate-002",
+      "title": "Websites broken after network configuration change on Plesk server with DHCP-assigned IP",
+      "recommended_action": "draft_only",
+      "reuse_search_status": "skipped",
+      "kcs_ready": false,
+      "ready_for_reviewer": false,
+      "bundle_ref": "run-20260624T153246-2hJ-tUwC",
+      "reviewer_only_html_path": "~/Documents/KCS Authoring/local-data/reviewer-bundles/run-20260624T153246-2hJ-tUwC/candidate-002/reviewer_only.html",
+      "review_note": "Draft exists for reviewer exploration, but it is not KCS-ready until reuse search and reviewer checks are completed."
+    },
+    {
+      "item_ref": "candidate-003",
+      "title": "Let's Encrypt timeout due to IPv6 firewall filtering ports 80 and 443",
+      "recommended_action": "blocked",
+      "blocker": "approved_summary_resolution_steps_incomplete",
+      "kcs_ready": false,
+      "ready_for_reviewer": false,
+      "bundle_written": false,
+      "review_note": "The clean ticket identifies the likely cause, but the excerpts do not contain exact operator-confirmed firewall tool or command steps."
+    }
+  ],
+  "manual_review_reminder": "This packet is a reviewer-facing workflow artifact. It is not public output, not a Zendesk publication request, and not an auto-publishable article."
+}
