@@ -32,9 +32,9 @@ _TARGET_ARTICLE_ACTIONS = frozenset(
 )
 _MAX_TITLE_LENGTH = 180
 _MAX_LIST_ITEMS = 20
-_MAX_LIST_ITEM_LENGTH = 600
+_MAX_LIST_ITEM_LENGTH = 4_000
 _MAX_PARAGRAPH_LENGTH = 600
-_MAX_HTML_LENGTH = 12_000
+_MAX_HTML_LENGTH = 24_000
 _MAX_METADATA_LENGTH = 180
 _MAX_REPORT_CODE_LENGTH = 80
 _PUBLIC_VISIBILITY_CLASS = "public_customer_safe"
@@ -42,6 +42,15 @@ _FLAG_EXISTING_WARNING = "flag_existing_requires_existing_article_review"
 _SAFE_METADATA_KEY_RE = re.compile(r"[A-Za-z][A-Za-z0-9_:-]*")
 _SAFE_METADATA_VALUE_RE = re.compile(r"[A-Za-z0-9_.:-]+")
 _SAFE_REPORT_CODE_RE = re.compile(r"[a-z][a-z0-9_]*")
+_SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
+    r"https://support\.plesk\.com/hc/en-us/articles/[A-Za-z0-9_-]+",
+    re.I,
+)
+_SAFE_PUBLIC_SUPPORT_EMAIL_RE = re.compile(r"\bcs@plesk\.com\b", re.I)
+_SAFE_PUBLIC_PLESK_HOST_RE = re.compile(r"\bmy\.plesk\.com\b", re.I)
+_SAFE_PUBLIC_TECH_PATH_RE = re.compile(
+    r"(?<![\w<])/(?:etc|usr|var|opt)/[A-Za-z0-9_./%:+-]+"
+)
 _PRIVATE_METADATA_PATTERNS = (
     re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}\b", re.I),
     re.compile(
@@ -70,12 +79,138 @@ _PRIVATE_PUBLIC_TEXT_PATTERNS = (
     re.compile(r"\b(?:PLSK|EXT)\.\d{8}\.\d{4}\b", re.I),
     re.compile(r"\b(?:ticket|zendesk|zd)[-_ #:]?\d{4,}\b", re.I),
     re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
-    re.compile(r"(?:/Users/|/home/|/var/www/vhosts/|C:\\Users\\)", re.I),
+    re.compile(r"(?:/Users/|/home/|C:\\Users\\)", re.I),
     re.compile(
         r"\b(?:password|passwd|api[_-]?key|token|secret)\s*[:=-]\s*\S+",
         re.I,
     ),
     re.compile(r"\bauthorization:\s*bearer\s+\S+", re.I),
+)
+_SAFE_PUBLIC_TEXT_FILENAME_RE = re.compile(
+    r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
+    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|local|pid|bak|backup|disabled|orig|old)"
+    r"(?:\.(?:bak|backup|disabled|orig|old))?\b"
+)
+_INLINE_CODE_PATH_RE = re.compile(
+    r"(?<![\w<])/(?:etc|usr|var|opt|root|tmp)/[A-Za-z0-9_./%:+-]+"
+)
+_INLINE_CODE_TOKEN_RE = re.compile(r"\b(?:DataDir|sw-collectd)\b")
+_INLINE_CODE_COMMAND_RE = re.compile(
+    r"\bRun\s+"
+    r"(?P<command>"
+    r"[A-Za-z0-9_./%-]+"
+    r"(?:\s+(?:"
+    r"-[A-Za-z0-9_.-]+|"
+    r"/[A-Za-z0-9_./%:+-]+|"
+    r"(?!(?:to|and|then)\b)[A-Za-z0-9_.:%=+-]+"
+    r")){0,12}"
+    r")"
+    r"(?=(?:\s+to\b|\.|,|$))",
+    re.I,
+)
+_INLINE_GUI_PATH_RE = re.compile(
+    r"\bPlesk\s*>\s*"
+    r"[A-Za-z0-9][A-Za-z0-9 .&/()_+-]*"
+    r"(?:\s*>\s*[A-Za-z0-9][A-Za-z0-9 .&/()_+-]*)+",
+    re.I,
+)
+_SYSTEMCTL_RESTART_RE = re.compile(
+    r"^systemctl\s+restart\s+(?P<service>[A-Za-z0-9_.@-]+)$",
+    re.I,
+)
+_RUN_COMMAND_DESCRIPTION_SPLIT_RE = re.compile(r"\s+to\s+", re.I)
+_COLON_COMMAND_SPLIT_RE = re.compile(r":\s+", re.S)
+_COMMAND_CONFIRMATION_SPLIT_RE = re.compile(
+    r"\s+and\s+(?P<confirmation>"
+    r"(?:confirm(?:ing)?|verify(?:ing)?|check(?:ing)?|ensure|follow(?:ing)?|"
+    r"select(?:ing)?|answer(?:ing)?)\b.+)$",
+    re.I | re.S,
+)
+_SHELL_COMMAND_START_RE = re.compile(
+    r"^(?:"
+    r"awk|cat|chmod|chown|cp|curl|fail2ban-client|fail2ban-regex|find|"
+    r"firewall-cmd|grep|iptables|journalctl|mkdir|mv|nft|occ|php|plesk|"
+    r"rpm|sed|service|sudo|systemctl|tail|ufw"
+    r")\b",
+    re.I,
+)
+_RISKY_RESOLUTION_ACTION_RE = re.compile(
+    r"\b(?:delete\s+from|drop\s+table|iptables|nft|plesk\s+db|rm\s+-rf|"
+    r"truncate|ufw)\b",
+    re.I,
+)
+_RISKY_RESOLUTION_SAFETY_RE = re.compile(
+    r"\b(?:warning|note|important|back\s+up|backup|rollback)\b",
+    re.I,
+)
+_RISKY_RESOLUTION_WARNING_HTML = (
+    "<p><code>Warning:</code> Review this action before applying it because "
+    "it can affect access, traffic handling, or stored data.</p>"
+)
+_TITLE_SOLUTION_CLAUSE_RE = re.compile(
+    r"\s*(?:,|;| - | – | — )?\s*\b"
+    r"(?:mitigated|resolved|fixed|addressed|solved|worked\s+around)\b.*$",
+    re.I,
+)
+_TITLE_CAUSE_CONNECTOR_RE = re.compile(
+    r"^(?P<symptom>.+?)\s+(?:caused\s+by|due\s+to)\s+(?P<cause>.+)$",
+    re.I,
+)
+_RESOLUTION_OUTCOME_SYMPTOM_RE = re.compile(
+    r"\b(?:after|once|when)\b[^.?!]{0,80}\b(?:block|fix|mitigat|restart|"
+    r"reload|resolv)|\b(?:dropped|decreased|resolved|started\s+working|"
+    r"began\s+working)\b",
+    re.I,
+)
+_INLINE_CONFIG_CONTENT_RE = re.compile(
+    r"^(?P<description>.+?)\s+with\s+the\s+following\s+content:\s+"
+    r"(?P<content>.+)$",
+    re.I | re.S,
+)
+_CONFIG_SECTION_RE = re.compile(r"^\[[^\]\n]{1,80}\]")
+_CONFIG_ASSIGNMENT_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_.-]{1,80}\s*=")
+_KCS_TRIGGER_LINE_RE = re.compile(
+    r"^(?:CONFIG_TEXT|MYSQL_(?:LIN|WIN)|PLESK_(?:ERROR|INFO|WARN)|"
+    r"SVM_(?:ERROR|INFO|WARN)|PS(?:\s|>|&gt;))",
+    re.I,
+)
+_PLESK_SSH_RESOLUTION_STEP = "Connect to the Plesk server via SSH."
+_PLESK_SSH_RESOLUTION_URL = (
+    "https://support.plesk.com/hc/en-us/articles/"
+    "12377512781975-How-to-connect-to-a-Plesk-server-via-SSH"
+)
+_PLESK_LOGIN_STEP = "Log in to Plesk."
+_PLESK_LOGIN_URL = (
+    "https://support.plesk.com/hc/en-us/articles/"
+    "12377667582743-How-to-log-in-to-Plesk"
+)
+_PLESK_RDP_RESOLUTION_STEP = "Connect to the Plesk server via RDP."
+_PLESK_RDP_RESOLUTION_URL = (
+    "https://support.plesk.com/hc/en-us/articles/"
+    "12377247797271-How-to-connect-to-a-Plesk-server-via-RDP-with-available-credentials"
+)
+_PLESK_SSH_STEP_RE = re.compile(r"\b(?:connect|log in).{0,80}\bssh\b", re.I)
+_PLESK_RDP_STEP_RE = re.compile(r"\b(?:connect|log in).{0,80}\brdp\b", re.I)
+_PLESK_LOGIN_STEP_RE = re.compile(r"\blog\s+in\s+to\s+Plesk\b", re.I)
+_PLESK_GUI_NAV_STEP_RE = re.compile(
+    r"\bPlesk\s*&?gt;\s*|\bPlesk\s*>\s*|"
+    r"\b(?:open|go\s+to|navigate\s+to)\s+Plesk\b|"
+    r"\b(?:Domains|Tools\s*&\s*Settings|Websites\s*&\s*Domains)"
+    r"\s*(?:>|&gt;)",
+    re.I,
+)
+_SERVER_COMMAND_STEP_RE = re.compile(
+    r"(?:^|\b)(?:run|execute)\s*:?\s+[^.]{0,160}\b(?:sudo|/opt/plesk/|"
+    r"\./?occ|systemctl|service|apachectl|nginx|fail2ban-client|iptables|"
+    r"ip6tables)\b|"
+    r"\b(?:sudo|/opt/plesk/|\./?occ|systemctl|service|apachectl|nginx|"
+    r"fail2ban-client|iptables|ip6tables)\b",
+    re.I,
+)
+_WINDOWS_SERVER_STEP_RE = re.compile(
+    r"\b(?:powershell|cmd|iisreset|reg|sc|net|dir|plesk)\b|"
+    r"[A-Z]:\\|%plesk_dir%|%plesk_bin%|program files",
+    re.I,
 )
 _UNSAFE_METADATA_VALUE_FRAGMENTS = (
     "raw_ticket",
@@ -148,7 +283,7 @@ def _public_article_candidate(
         "candidate_id": decision.candidate_id,
         "recommended_action": decision.recommended_action,
         "status": decision.status,
-        "title": _title(candidate, article_type),
+        "title": _title(evidence, candidate, article_type),
         "article_type": article_type.value,
         "applicable_to": _applicable_to(evidence.environment),
         "symptoms": _symptoms(evidence, candidate),
@@ -219,7 +354,7 @@ def _technical_scr_html(candidate: Mapping[str, object]) -> str:
         lines.append(_paragraph(cause, "cause"))
     lines.append("<h2>Resolution</h2>")
     lines.append('<div class="resolution">')
-    lines.extend(_ordered_list(_string_list(candidate.get("resolution_steps")), 2))
+    lines.extend(_resolution_ordered_list(_string_list(candidate.get("resolution_steps"))))
     lines.append("</div>")
     return "\n".join(lines)
 
@@ -231,10 +366,10 @@ def _howto_qa_html(candidate: Mapping[str, object]) -> str:
     lines.append(_paragraph(_string(candidate.get("question")), "question"))
     lines.append("<h2>Answer</h2>")
     answer_steps = _string_list(candidate.get("answer_steps"))
-    if len(answer_steps) > 1:
-        lines.extend(_ordered_list(answer_steps))
-    elif answer_steps:
-        lines.append(_paragraph(answer_steps[0], "answer"))
+    if answer_steps:
+        for answer_step in answer_steps:
+            _ensure_text_bound("answer", answer_step, _MAX_PARAGRAPH_LENGTH)
+        lines.extend(_resolution_ordered_list(answer_steps))
     else:
         lines.append("<p></p>")
     return "\n".join(lines)
@@ -247,7 +382,7 @@ def _h1(value: str) -> str:
 
 def _paragraph(value: str, field_name: str) -> str:
     _ensure_text_bound(field_name, value, _MAX_PARAGRAPH_LENGTH)
-    return f"<p>{escape(value)}</p>"
+    return f"<p>{_inline_markup(value)}</p>"
 
 
 def _applicable_to_html(values: list[str]) -> list[str]:
@@ -260,14 +395,412 @@ def _ordered_list(values: list[str], indent: int = 0) -> list[str]:
     _ensure_list_bound(values)
     prefix = " " * indent
     lines = [f"{prefix}<ol>"]
-    lines.extend(f"{prefix}  <li>{escape(value)}</li>" for value in values)
+    lines.extend(f"{prefix}  {_ordered_list_item(value)}" for value in values)
     lines.append(f"{prefix}</ol>")
     return lines
 
 
+def _resolution_ordered_list(values: list[str]) -> list[str]:
+    values = _merge_resolution_support_blocks(values)
+    _ensure_list_bound(values)
+    lines = ["  <ol>"]
+    for value in values:
+        lines.extend(_resolution_ordered_list_item(value))
+    lines.append("  </ol>")
+    return lines
+
+
+def _ordered_list_item(value: str) -> str:
+    if value == _PLESK_LOGIN_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_LOGIN_URL}">Log in to Plesk</a>.'
+            "</li>"
+        )
+    if value == _PLESK_SSH_RESOLUTION_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_SSH_RESOLUTION_URL}">{escape(value)}</a>'
+            "</li>"
+        )
+    if value == _PLESK_RDP_RESOLUTION_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_RDP_RESOLUTION_URL}">{escape(value)}</a>'
+            "</li>"
+        )
+    return f"<li>{_inline_markup(value)}</li>"
+
+
+def _resolution_ordered_list_item(value: str) -> list[str]:
+    linked = _linked_resolution_list_item(value)
+    if linked is not None:
+        return [f"    {linked}"]
+    warning_lines = _risky_resolution_warning_lines(value)
+    support_step = _resolution_support_block_step(value)
+    if support_step is not None:
+        description, support_block = support_step
+        return [
+            "    <li>",
+            f"      <p>{_inline_markup(description)}</p>",
+            *warning_lines,
+            f"      {_code_paragraph(support_block)}",
+            "    </li>",
+        ]
+    command_step = _run_command_step(value)
+    if command_step is None:
+        command_step = _colon_command_step(value)
+    if command_step is None:
+        if warning_lines:
+            return [
+                "    <li>",
+                f"      <p>{_inline_markup(value)}</p>",
+                *warning_lines,
+                "    </li>",
+            ]
+        return [f"    {_ordered_list_item(value)}"]
+    description, command = command_step
+    return [
+        "    <li>",
+        f"      <p>{_inline_markup(description)}</p>",
+        *warning_lines,
+        f"      {_code_paragraph(command)}",
+        "    </li>",
+    ]
+
+
+def _merge_resolution_support_blocks(values: list[str]) -> list[str]:
+    merged: list[str] = []
+    for value in values:
+        if merged and _is_resolution_support_block(value):
+            merged[-1] = f"{merged[-1].rstrip()}\n{value.strip()}"
+        else:
+            merged.append(value)
+    return merged
+
+
+def _is_resolution_support_block(value: str) -> bool:
+    text = value.strip()
+    if not text:
+        return False
+    if _kcs_code_block(text):
+        return True
+    if text.startswith(("# ", "$ ", "C:\\>")):
+        return True
+    return _command_line_needs_shell_prompt(text)
+
+
+def _resolution_support_block_step(value: str) -> tuple[str, str] | None:
+    inline_config_step = _inline_config_support_block_step(value)
+    if inline_config_step is not None:
+        return inline_config_step
+    lines = value.splitlines()
+    if len(lines) < 2:
+        return None
+    for index, line in enumerate(lines[1:], start=1):
+        if _is_resolution_support_block(line):
+            description = " ".join(
+                part.strip() for part in lines[:index] if part.strip()
+            )
+            support_block = "\n".join(lines[index:]).strip()
+            if description and support_block:
+                return description, support_block
+            return None
+    return None
+
+
+def _inline_config_support_block_step(value: str) -> tuple[str, str] | None:
+    match = _INLINE_CONFIG_CONTENT_RE.match(value.strip())
+    if match is None:
+        return None
+    content = match.group("content").strip()
+    if not _looks_like_config_text(content):
+        return None
+    description = match.group("description").strip().rstrip(":")
+    if not description:
+        return None
+    return f"{description}:", _config_text_block_from_inline(content)
+
+
+def _looks_like_config_text(value: str) -> bool:
+    text = value.strip()
+    if _CONFIG_SECTION_RE.search(text):
+        return True
+    return len(_CONFIG_ASSIGNMENT_RE.findall(text)) >= 2
+
+
+def _config_text_block_from_inline(value: str) -> str:
+    return "CONFIG_TEXT:\n" + "\n".join(_inline_config_lines(value))
+
+
+def _inline_config_lines(value: str) -> list[str]:
+    text = value.strip()
+    section = _CONFIG_SECTION_RE.match(text)
+    lines: list[str] = []
+    if section is not None:
+        lines.append(section.group(0))
+        text = text[section.end() :].strip()
+    if not text:
+        return lines
+    split = re.split(
+        r"\s+(?=[A-Za-z_][A-Za-z0-9_.-]{1,80}\s*=)",
+        text,
+    )
+    lines.extend(part.strip() for part in split if part.strip())
+    return lines
+
+
+def _risky_resolution_warning_lines(value: str) -> list[str]:
+    if not _RISKY_RESOLUTION_ACTION_RE.search(value):
+        return []
+    if _RISKY_RESOLUTION_SAFETY_RE.search(value):
+        return []
+    return [f"      {_RISKY_RESOLUTION_WARNING_HTML}"]
+
+
+def _linked_resolution_list_item(value: str) -> str | None:
+    if value == _PLESK_SSH_RESOLUTION_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_SSH_RESOLUTION_URL}">{escape(value)}</a>'
+            "</li>"
+        )
+    if value == _PLESK_RDP_RESOLUTION_STEP:
+        return (
+            "<li>"
+            f'<a href="{_PLESK_RDP_RESOLUTION_URL}">{escape(value)}</a>'
+            "</li>"
+        )
+    return None
+
+
+def _run_command_step(value: str) -> tuple[str, str] | None:
+    text = value.strip()
+    if not text.casefold().startswith("run "):
+        return None
+    command_text = text[4:].strip().rstrip(".")
+    if not command_text:
+        return None
+    parts = _RUN_COMMAND_DESCRIPTION_SPLIT_RE.split(command_text, maxsplit=1)
+    command = parts[0].strip()
+    description_source = parts[1].strip() if len(parts) == 2 else None
+    if not command:
+        return None
+    command, description_source = _split_command_confirmation(
+        command, description_source
+    )
+    description = _command_step_description(command, description_source)
+    return description, command
+
+
+def _colon_command_step(value: str) -> tuple[str, str] | None:
+    text = value.strip().rstrip(".")
+    parts = _COLON_COMMAND_SPLIT_RE.split(text, maxsplit=1)
+    if len(parts) != 2:
+        return None
+    description = parts[0].strip()
+    command = parts[1].strip()
+    if not description or not command:
+        return None
+    command, confirmation = _split_command_confirmation(command, None)
+    if confirmation:
+        description = _description_with_confirmation(description, confirmation)
+    if not _command_line_needs_shell_prompt(command) and not _kcs_code_block(command):
+        return None
+    return f"{_sentence_case(description.rstrip('.'))}:", command
+
+
+def _split_command_confirmation(
+    command: str, description_source: str | None
+) -> tuple[str, str | None]:
+    match = _COMMAND_CONFIRMATION_SPLIT_RE.search(command)
+    if match is None:
+        return command, description_source
+    executable = command[: match.start()].strip()
+    if not executable or not _command_line_needs_shell_prompt(executable):
+        return command, description_source
+    confirmation = _sentence_case(match.group("confirmation").strip().rstrip("."))
+    confirmation = _normalize_confirmation_phrase(confirmation)
+    if description_source:
+        return executable, _description_with_confirmation(
+            description_source, confirmation
+        )
+    return executable, confirmation
+
+
+def _description_with_confirmation(description: str, confirmation: str) -> str:
+    base = re.sub(
+        r"\s+by\s+running\s*$",
+        "",
+        description.strip().rstrip("."),
+        flags=re.I,
+    )
+    return f"{base} and {confirmation.rstrip('.')}"
+
+
+def _normalize_confirmation_phrase(value: str) -> str:
+    replacements = {
+        "Confirming ": "confirm ",
+        "Verifying ": "verify ",
+        "Checking ": "check ",
+        "Following ": "follow ",
+        "Selecting ": "select ",
+        "Answering ": "answer ",
+    }
+    for prefix, replacement in replacements.items():
+        if value.startswith(prefix):
+            return replacement + value[len(prefix) :]
+    return value
+
+
+def _kcs_code_block(value: str) -> bool:
+    return bool(_KCS_TRIGGER_LINE_RE.search(value.strip()))
+
+
+def _command_step_description(command: str, description: str | None) -> str:
+    if description:
+        return f"{_sentence_case(description.strip().rstrip('.'))}:"
+    restart_match = _SYSTEMCTL_RESTART_RE.fullmatch(command)
+    if restart_match is not None:
+        return f"Restart {restart_match.group('service')}:"
+    return "Run the following command:"
+
+
+def _code_paragraph(value: str) -> str:
+    lines = _kcs_trigger_block_lines(value)
+    rendered: list[str] = []
+    for line in lines:
+        stripped = line.rstrip()
+        if not stripped:
+            rendered.append("<br>")
+            continue
+        rendered.append(f"<code>{escape(_code_line(stripped))}</code>")
+    return "<p>" + "<br>\n        ".join(rendered) + "</p>"
+
+
+def _kcs_trigger_block_lines(value: str) -> list[str]:
+    lines = value.splitlines() or [value]
+    if not lines:
+        return [value]
+    first = lines[0].strip()
+    if first.upper() != "CONFIG_TEXT:":
+        return lines
+    for index, line in enumerate(lines[1:], start=1):
+        if line.strip():
+            return [
+                f"CONFIG_TEXT: {line.rstrip()}",
+                *lines[1:index],
+                *lines[index + 1 :],
+            ]
+    return lines
+
+
+def _code_line(value: str) -> str:
+    value = _strip_wrapping_command_quotes(value)
+    if _KCS_TRIGGER_LINE_RE.search(value):
+        return value
+    if _command_line_needs_shell_prompt(value):
+        return f"# {value}"
+    return value
+
+
+def _command_line_needs_shell_prompt(value: str) -> bool:
+    return bool(_SHELL_COMMAND_START_RE.search(_strip_wrapping_command_quotes(value)))
+
+
+def _strip_wrapping_command_quotes(value: str) -> str:
+    stripped = value.strip()
+    if len(stripped) < 2:
+        return stripped
+    if stripped[0] == stripped[-1] and stripped[0] in {"'", '"', "`"}:
+        inner = stripped[1:-1].strip()
+        if _SHELL_COMMAND_START_RE.search(inner):
+            return inner
+    return stripped
+
+
+def _sentence_case(value: str) -> str:
+    if not value:
+        return value
+    return value[0].upper() + value[1:]
+
+
 def _unordered_list(values: list[str]) -> list[str]:
     _ensure_list_bound(values)
-    return ["<ul>", *[f"  <li>{escape(value)}</li>" for value in values], "</ul>"]
+    return [
+        "<ul>",
+        *[f"  <li>{_inline_markup(value)}</li>" for value in values],
+        "</ul>",
+    ]
+
+
+def _inline_markup(value: str) -> str:
+    spans = _inline_markup_spans(value)
+    if not spans:
+        return escape(value)
+    parts: list[str] = []
+    position = 0
+    for start, end, tag in spans:
+        if start > position:
+            parts.append(escape(value[position:start]))
+        parts.append(f"<{tag}>{escape(value[start:end])}</{tag}>")
+        position = end
+    if position < len(value):
+        parts.append(escape(value[position:]))
+    return "".join(parts)
+
+
+def _inline_markup_spans(value: str) -> list[tuple[int, int, str]]:
+    spans: list[tuple[int, int, str]] = [
+        (start, end, "code") for start, end in _inline_code_spans(value)
+    ]
+    occupied = [(start, end) for start, end, _tag in spans]
+    for match in _INLINE_GUI_PATH_RE.finditer(value):
+        span = _trim_gui_path_span(value, match.span())
+        if _span_overlaps(span, occupied):
+            continue
+        spans.append((span[0], span[1], "strong"))
+        occupied.append(span)
+    return sorted(spans, key=lambda item: (item[0], item[1]))
+
+
+def _inline_code_spans(value: str) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
+    for match in _INLINE_CODE_COMMAND_RE.finditer(value):
+        spans.append(_trim_inline_code_span(value, match.span("command")))
+    for pattern in (_INLINE_CODE_PATH_RE, _INLINE_CODE_TOKEN_RE):
+        for match in pattern.finditer(value):
+            span = _trim_inline_code_span(value, match.span())
+            if _span_overlaps(span, spans):
+                continue
+            spans.append(span)
+    return sorted(spans)
+
+
+def _trim_gui_path_span(value: str, span: tuple[int, int]) -> tuple[int, int]:
+    start, end = span
+    while end > start and value[end - 1] in ",;:":
+        end -= 1
+    if end > start and value[end - 1] == ".":
+        last_segment = value[start : end - 1].rsplit(">", 1)[-1].strip()
+        if re.search(r"\.[A-Za-z]{2,63}$", last_segment) is None:
+            end -= 1
+    return start, end
+
+
+def _trim_inline_code_span(value: str, span: tuple[int, int]) -> tuple[int, int]:
+    start, end = span
+    while end > start and value[end - 1] in ".,;:":
+        end -= 1
+    return start, end
+
+
+def _span_overlaps(span: tuple[int, int], spans: list[tuple[int, int]]) -> bool:
+    start, end = span
+    return any(
+        start < existing_end and end > existing_start
+        for existing_start, existing_end in spans
+    )
 
 
 def _ensure_list_bound(values: list[str]) -> None:
@@ -423,8 +956,26 @@ def _public_article_text_values(
 
 
 def _contains_private_public_text(value: str) -> bool:
-    return bool(value) and any(
-        pattern.search(value) for pattern in _PRIVATE_PUBLIC_TEXT_PATTERNS
+    text_without_safe_public_refs = _SAFE_PUBLIC_SUPPORT_URL_RE.sub("", value)
+    text_without_safe_public_refs = _SAFE_PUBLIC_SUPPORT_EMAIL_RE.sub(
+        "",
+        text_without_safe_public_refs,
+    )
+    text_without_safe_public_refs = _SAFE_PUBLIC_PLESK_HOST_RE.sub(
+        "",
+        text_without_safe_public_refs,
+    )
+    text_without_safe_public_refs = _SAFE_PUBLIC_TECH_PATH_RE.sub(
+        "",
+        text_without_safe_public_refs,
+    )
+    text_without_safe_public_refs = _SAFE_PUBLIC_TEXT_FILENAME_RE.sub(
+        "",
+        text_without_safe_public_refs,
+    )
+    return bool(text_without_safe_public_refs) and any(
+        pattern.search(text_without_safe_public_refs)
+        for pattern in _PRIVATE_PUBLIC_TEXT_PATTERNS
     )
 
 
@@ -542,31 +1093,107 @@ def _article_type(value: str) -> ArticleType:
         return ArticleType.NONE
 
 
-def _title(candidate: Mapping[str, Any], article_type: ArticleType) -> str:
+def _title(
+    evidence: NormalizedTicketEvidencePacket,
+    candidate: Mapping[str, Any],
+    article_type: ArticleType,
+) -> str:
     for key in ("title", "summary", "question"):
         value = _string(candidate.get(key))
         if value:
-            return value
+            return _customer_issue_title(value)
     if article_type == ArticleType.HOWTO_QA:
         return "How-to article candidate"
+    symptom = _first_string(_symptoms(evidence, candidate))
+    cause = _cause(evidence, candidate)
+    if symptom and cause:
+        return _customer_issue_title(f"{symptom}: {cause}")
+    if symptom:
+        return symptom
     return "KCS article candidate"
 
 
+def _customer_issue_title(value: str) -> str:
+    title = _TITLE_SOLUTION_CLAUSE_RE.sub("", value).strip(" -–—,:;")
+    match = _TITLE_CAUSE_CONNECTOR_RE.match(title)
+    if match is not None:
+        symptom = match.group("symptom").strip(" -–—,:;")
+        cause = match.group("cause").strip(" -–—,:;")
+        if symptom and cause:
+            return f"{symptom}: {cause}"
+    return title or value
+
+
 def _applicable_to(environment: Mapping[str, Any]) -> list[str]:
+    environment_text = _environment_text_from_mapping(environment)
+    if "plesk" in environment_text:
+        platform = _plesk_platform(environment_text)
+        if platform:
+            version = _string(environment.get("version"))
+            return [_plesk_applicable_to_label(platform=platform, version=version)]
     values: list[str] = []
     for key in ("product", "platform", "component", "version"):
         value = _string(environment.get(key))
         if value:
-            values.append(value)
+            values.extend(_applicable_to_values(value))
     return values
+
+
+def _applicable_to_values(value: str) -> list[str]:
+    parts = [part.strip() for part in re.split(r"[;,]", value) if part.strip()]
+    values = parts or [value]
+    return [_clean_applicable_to_value(item) for item in values]
+
+
+def _clean_applicable_to_value(value: str) -> str:
+    return value.strip().strip("[]").strip().strip("\"'")
+
+
+def _plesk_platform(environment_text: str) -> str:
+    if _looks_windows_environment(environment_text):
+        return "Windows"
+    if _looks_linux_environment(environment_text):
+        return "Linux"
+    return ""
+
+
+def _plesk_applicable_to_label(*, platform: str, version: str) -> str:
+    clean_version = _clean_applicable_to_value(version)
+    if clean_version:
+        if "plesk" in clean_version.casefold():
+            return f"{clean_version} for {platform}"
+        return f"Plesk {clean_version} for {platform}"
+    return f"Plesk for {platform}"
+
+
+def _environment_text_from_mapping(environment: Mapping[str, Any]) -> str:
+    return " ".join(
+        _string(value)
+        for value in environment.values()
+        if isinstance(value, str)
+    ).casefold()
 
 
 def _symptoms(
     evidence: NormalizedTicketEvidencePacket, candidate: Mapping[str, Any]
 ) -> list[str]:
-    return _candidate_list(candidate, "symptoms") or _candidate_list(
+    symptoms = _candidate_list(candidate, "symptoms") or _candidate_list(
         candidate, "summary"
     ) or list(evidence.symptoms)
+    filtered = [
+        symptom
+        for symptom in symptoms
+        if not _RESOLUTION_OUTCOME_SYMPTOM_RE.search(symptom)
+    ]
+    return filtered or symptoms
+
+
+def _first_string(values: list[str]) -> str:
+    for value in values:
+        clean = _string(value)
+        if clean:
+            return clean
+    return ""
 
 
 def _cause(
@@ -580,22 +1207,118 @@ def _cause(
 def _resolution_steps(
     evidence: NormalizedTicketEvidencePacket, candidate: Mapping[str, Any]
 ) -> list[str]:
-    return (
+    steps = (
         _candidate_list(candidate, "resolution_steps")
         or _candidate_list(candidate, "supported_resolution_or_workaround")
         or _candidate_list(candidate, "supported_answer")
         or _string_as_list(evidence.supported_resolution_or_workaround)
     )
+    return _resolution_steps_with_required_entry_point(evidence, steps)
+
+
+def _resolution_steps_with_required_entry_point(
+    evidence: NormalizedTicketEvidencePacket, steps: list[str]
+) -> list[str]:
+    if not steps:
+        return steps
+    if _is_windows_plesk_resolution(evidence, steps):
+        if any(_PLESK_RDP_STEP_RE.search(step) for step in steps):
+            return steps
+        return [_PLESK_RDP_RESOLUTION_STEP, *steps]
+    if not _is_linux_plesk_resolution(evidence):
+        return steps
+    if any(_PLESK_SSH_STEP_RE.search(step) for step in steps):
+        return steps
+    return [_PLESK_SSH_RESOLUTION_STEP, *steps]
+
+
+def _is_linux_plesk_resolution(evidence: NormalizedTicketEvidencePacket) -> bool:
+    environment_values = _environment_text(evidence)
+    return "plesk" in environment_values and _looks_linux_environment(
+        environment_values
+    )
+
+
+def _is_windows_plesk_resolution(
+    evidence: NormalizedTicketEvidencePacket, steps: list[str]
+) -> bool:
+    environment_values = _environment_text(evidence)
+    if "plesk" not in environment_values or not _looks_windows_environment(
+        environment_values
+    ):
+        return False
+    return any(_WINDOWS_SERVER_STEP_RE.search(step) for step in steps)
+
+
+def _looks_linux_environment(value: str) -> bool:
+    return any(
+        marker in value
+        for marker in (
+            "linux",
+            "rpm-based",
+            "rpm based",
+            "centos",
+            "alma",
+            "almalinux",
+            "rhel",
+            "red hat",
+            "debian",
+            "ubuntu",
+            "sw-collectd",
+            "systemctl",
+            "/etc/",
+        )
+    )
+
+
+def _looks_windows_environment(value: str) -> bool:
+    return "windows" in value
+
+
+def _environment_text(evidence: NormalizedTicketEvidencePacket) -> str:
+    return _environment_text_from_mapping(evidence.environment)
 
 
 def _answer_steps(
     evidence: NormalizedTicketEvidencePacket, candidate: Mapping[str, Any]
 ) -> list[str]:
-    return (
+    steps = (
         _candidate_list(candidate, "answer_steps")
         or _candidate_list(candidate, "supported_answer")
         or _resolution_steps(evidence, candidate)
     )
+    return _answer_steps_with_required_entry_point(evidence, steps)
+
+
+def _answer_steps_with_required_entry_point(
+    evidence: NormalizedTicketEvidencePacket, steps: list[str]
+) -> list[str]:
+    if not steps:
+        return steps
+    entrypoint = _answer_entry_point(evidence, steps)
+    if entrypoint is None:
+        return steps
+    entrypoint_text, present_re = entrypoint
+    if any(present_re.search(step) for step in steps):
+        return steps
+    return [entrypoint_text, *steps]
+
+
+def _answer_entry_point(
+    evidence: NormalizedTicketEvidencePacket, steps: list[str]
+) -> tuple[str, re.Pattern[str]] | None:
+    if _answer_requires_server_access(steps):
+        if _is_windows_plesk_resolution(evidence, steps):
+            return _PLESK_RDP_RESOLUTION_STEP, _PLESK_RDP_STEP_RE
+        if _is_linux_plesk_resolution(evidence):
+            return _PLESK_SSH_RESOLUTION_STEP, _PLESK_SSH_STEP_RE
+    if any(_PLESK_GUI_NAV_STEP_RE.search(step) for step in steps):
+        return _PLESK_LOGIN_STEP, _PLESK_LOGIN_STEP_RE
+    return None
+
+
+def _answer_requires_server_access(steps: list[str]) -> bool:
+    return any(_SERVER_COMMAND_STEP_RE.search(step) for step in steps)
 
 
 def _question(candidate: Mapping[str, Any]) -> str:

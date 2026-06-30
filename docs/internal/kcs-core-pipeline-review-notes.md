@@ -730,14 +730,17 @@ Result: implemented with focused MCP lifecycle, tool-surface, and safety tests.
 Key boundaries:
 
 - `kcs_adapters.mcp_desktop` stays outside `kcs_core`.
-- The server exposes only read-only validator/control tools through stdio MCP.
+- The server exposes read-only validator/control tools and a local
+  bundle-producing `kcs_draft_article` tool through stdio MCP.
 - Default Claude Desktop mode lists and accepts underscore-safe aliases only.
 - MCP resources, prompts, sampling, elicitation, server-initiated requests,
-  file writes, network calls, provider calls, Zendesk writes, Help Center
-  publication, and customer replies remain out of scope.
+  network calls, provider calls, Zendesk writes, Help Center publication, and
+  customer replies remain out of scope. `kcs_draft_article` may write reviewer
+  bundles only under `local-data/reviewer-bundles/`.
 - Tool outputs are compact `structuredContent` summaries with matching text
   JSON and no resource links, embedded resources, full packets, HTML bodies,
-  local paths, or raw validation payloads.
+  absolute local paths, or raw validation payloads by default. Bundle outputs
+  are represented by relative safe paths, hashes, and compact status fields.
 - KCS-9b/KCS-9c provider/Claude output remains untrusted and is accepted only
   through existing Python validators.
 
@@ -750,8 +753,9 @@ Implemented:
   oversized lines, non-object/batch messages, invalid ids, invalid UTF-8, and
   `NaN`/`Infinity`.
 - Added fixed KCS-12 tool surface: policy summary, MCP readiness,
-  handoff/draft request validation, handoff/draft response validation, and
-  in-memory synthetic contract smoke.
+  handoff/draft request validation, handoff/draft response validation,
+  in-memory synthetic contract smoke, and an approved sanitized summary
+  pipeline check.
 - Added console script `kcs-desktop-mcp`.
 - Added reproducible MCPB source package under `packaging/claude-desktop/` and
   `scripts/build_kcs_mcpb.py` to produce
@@ -779,3 +783,222 @@ Validation evidence:
 - MCPB Node wrapper initialize smoke:
   passed.
 - `git diff --check`: passed.
+
+## KCS-12 Claude Desktop Article Drafting Smoke Progress
+
+Date: 2026-06
+
+Scope: local Claude Desktop MCPB smoke for the operator-facing article drafting
+workflow from an approved sanitized support-ticket attachment. This note tracks
+what improved during debugging and what remains blocked before treating the
+workflow as reliable.
+
+Observed operator goal:
+
+- Prompt shape: "draft me an article" plus an approved sanitized ticket
+  attachment.
+- Expected tool path: Claude Desktop should call `kcs_draft_article` directly,
+  not ask generic article-kind or language questions and not fall back to
+  manual drafting.
+- Expected output: compact reviewer-only status plus local reviewer-bundle
+  references by default; full `reviewer_only_html` is allowed only in explicit
+  debug/smoke compatibility mode. The extension must not publish, call
+  providers, or approve public output. Bundle writes are limited to
+  `local-data/reviewer-bundles/`.
+
+Progress made:
+
+- Installed MCPB extension is discoverable and exposes the KCS Authoring tool
+  surface in Claude Desktop.
+- The default Desktop tool surface was narrowed to operator-facing tools rather
+  than low-level handoff/draft validators.
+- `kcs_draft_article` became the primary operator tool for article-draft
+  prompts and is documented in MCPB README/manifest/skill references.
+- Desktop-visible schema was tightened to the thin primary workflow:
+  `approved_summary_text`, `operator_selection_ref`,
+  `operator_selected_item_ref`, and optional `debug`. Legacy structured
+  `item`, `item_candidates`, ticket refs, reference article bodies, and broad
+  aliases remain compatibility paths only and are not exposed in the default
+  Claude Desktop tool schema.
+- `article_type` is constrained to canonical KCS values:
+  `technical_scr` and `howto_qa`. Non-canonical labels such as `break-fix`
+  are treated as aliases only at the input-normalization boundary, not as
+  stored article types.
+- Multiple semantic KCS items are now represented by Python-owned extraction
+  and pending selection state. The tool returns controlled `split_required`
+  status with compact candidate cards and an opaque
+  `operator_selection_ref` rather than producing a merged draft.
+- Resolution-step completeness was tightened so the draft path blocks thin
+  steps when the approved summary does not support enough executable detail.
+
+Errors encountered during manual Claude Desktop smoke:
+
+- Early runs asked generic writing questions such as article type/language
+  instead of using the KCS tool immediately.
+- Early tool calls failed because Claude guessed the wrong argument shape from
+  a broad schema.
+- Some failures surfaced as Desktop tool-call errors instead of compact
+  controlled tool results.
+- Drafts produced outside the tool path missed KCS requirements such as
+  reviewer-only HTML, canonical article type, proper `Applicable to` shape, and
+  concrete first connection step when supported by KCS article rules.
+- After schema improvements, Claude called `kcs_draft_article` more reliably
+  and performed semantic item identification, but it still attempted to continue
+  item-by-item after `split_required` instead of stopping for operator
+  selection.
+- Single-item retries hit `approved_summary_resolution_steps_incomplete`,
+  indicating that either the provided `approved_summary_text` did not contain
+  enough step detail to ground the submitted `resolution_steps`, or the
+  validator/debug output still needs refinement to explain the missing
+  evidence marker.
+- Follow-up analysis showed that part of this was an adapter false positive:
+  the executable-step detector accepted some commands but missed common
+  admin/diagnostic commands such as `cat`, `ls`, `chown`, `chmod`, `stat`,
+  `journalctl`, and `tail`.
+- A `ticket_ref` retry returned `approved_ticket_summary_invalid`, confirming
+  that `ticket_ref` means a local approved sanitized summary reference, not an
+  arbitrary uploaded file name or path.
+
+Latest Claude Desktop log check:
+
+- Current installed MCPB is active in Claude Desktop under the KCS Authoring
+  extension name, and `kcs_draft_article` is present in the live tool list.
+- The latest manual smoke confirmed that Claude can perform semantic item
+  identification from the sanitized attachment. For the tested ticket it
+  identified multiple candidate KCS items instead of forcing one combined
+  article.
+- The corrected terminal split behavior is visible when the tool returns
+  `multiple_kcs_items_detected`: the result includes `split_required`,
+  `automatic_item_retry_allowed=false`, `manual_draft_allowed=false`, and
+  `next_required_action=operator_select_single_item`.
+- The log showed one adapter bug before the successful controlled split
+  response: an earlier `kcs_draft_article` call with multiple item candidates
+  returned `tool_result_invalid`. This is now covered by a regression test:
+  split-required responses return compact candidate cards only, not the full
+  candidate evidence with commands, paths, and resolution steps.
+- A direct stdio smoke against the same command Claude Desktop runs
+  (`uv --project ... run kcs-desktop-mcp --tool-name-style
+  claude_desktop_aliases`) confirmed the fix outside unit tests: a
+  `kcs_draft_article` call with two detailed item candidates returned
+  `failure_stage=item_identification`,
+  `debug_code=multiple_kcs_items_detected`,
+  `recommended_action=split_required`, `isError=false`, and compact candidate
+  cards only, with no `tool_result_invalid`.
+- A second direct stdio smoke with a single selected item and concrete admin
+  commands confirmed the resolution-step false-positive fix: the result
+  returned `pipeline_ok=true`, `failure_stage=none`, `debug_code=none`,
+  `article_type=technical_scr`, `ready_for_reviewer=true`, and
+  `reviewer_only_html` present.
+- The deterministic MCPB stdio smoke was shifted for the staged diet refactor:
+  it now verifies the thin Desktop-visible `kcs_draft_article` surface and
+  controlled statuses for no candidate extraction, invalid selection refs, and
+  invalid mixed first/second-call shapes, plus a labeled-summary draft path that
+  writes a local reviewer bundle and returns debug-only `reviewer_only_html`.
+  It also runs a stateful split -> selected-draft flow in one MCP process using
+  the returned `operator_choice_request.options[*].submit_arguments`.
+  The split smoke now also verifies operator-facing fallback text so a missing
+  native Claude Desktop choice popup does not force manual drafting or
+  Claude-inferred selection payloads.
+  Legacy structured selected-item payloads remain covered by unit tests only and
+  are no longer the primary Desktop smoke path.
+- A later live-log audit found that Claude Desktop can keep using the stale
+  `extensions-installations.json` registry cache even after the unpacked MCPB
+  files are replaced. The installer now updates that registry entry, preserves
+  unrelated extensions, writes a timestamped backup, and the stdio smoke checks
+  `registry_cache_ok` for the installed wrapper so stale Desktop-visible tool
+  descriptions are caught before UI testing. A separate live-log verifier
+  checks the post-restart Claude Desktop `tools/list` log for the visible
+  non-read-only thin tool surface without echoing raw log content. It also
+  reports a compact client capability summary; current Claude Desktop logs show
+  the MCP UI extension namespace but no `elicitation` capability, so native
+  popup rendering remains client-dependent and split selection is enforced
+  through the returned `operator_choice_request` plus deterministic fallback
+  text.
+- The Desktop adapter now has a bounded semantic extraction provider seam and a
+  conservative built-in label extractor. Provider output is validated before
+  use, multiple provider-returned items produce `split_required` with an opaque
+  TTL-limited `operator_selection_ref`, and the second primary call uses only
+  `operator_selection_ref` plus `operator_selected_item_ref`.
+- Successful primary provider drafts write reviewer-only HTML to
+  `local-data/reviewer-bundles/<run>/<item>/reviewer_only.html` and return
+  compact refs, hashes, and status fields by default. Full HTML is excluded from
+  the primary Desktop-visible structured result. When reuse search is missing,
+  the result is `draft_only_reuse_search_missing` with `kcs_ready=false` instead
+  of a KCS-ready candidate.
+- The Claude Desktop GUI prompt smoke is now separated from MCP contract
+  validation. `scripts/smoke_claude_desktop_ui_prompt.py` can analyze existing
+  log windows with `--since` / `--assume-sent`, checks only client tool-call
+  arguments for stale wide-schema fields, fails fast on AppleScript hangs, and
+  writes a diagnostic screenshot on failed real UI sends. The current local
+  Desktop UI strategy is operator-submitted manual prompts plus automatic
+  log closeout. Following the `plesk_support` log-closeout pattern, the verifier
+  reports `failed_checks`, `attention`, and `next_steps`; a disconnect toast
+  after a successful draft result is classified as
+  `post_success_disconnect_observed` instead of a tool-contract failure. The
+  latest installed package hash matched Claude Desktop's registry cache, and
+  the live `tools/list` log showed the non-read-only thin schema.
+  log-only verification because Claude Desktop rate limits and macOS focus
+  behavior are outside the MCP server contract. The GUI `--send` mode remains
+  best-effort and returns explicit `send_error_code` values such as
+  `codex_accessibility_permission_required` or `osascript_timeout` instead of
+  hiding those as MCP failures.
+- No current server crash, traceback, or fresh disconnect was observed for the
+  active KCS Authoring MCP process. Older disconnects belonged to the previous
+  extension name/version and are not evidence for the latest smoke run.
+
+Current reuse/search decision:
+
+- The local MCPB does not include local RAG/reuse search.
+- For the MVP, missing explicit reuse/search proof is not a blocker for
+  reviewer-only drafting. The tool marks `reuse_search_status=skipped`, adds a
+  `reuse_search_skipped` quality warning, and continues to produce bounded
+  reviewer-only HTML when the approved summary and single item are otherwise
+  valid.
+- This is an MVP workflow decision, not evidence that an actual reuse search
+  found no matches. A future local RAG/reuse adapter can replace the skipped
+  status with structured reuse/search results.
+
+Local smoke accounting update:
+
+- Added adapter-level local smoke accounting for Claude Desktop/MCP transcript
+  review. The `kcs-smoke-account` command reads an operator-provided local
+  transcript/log file and returns value-safe JSON with observed byte/character
+  size, approximate token count, estimated Sonnet-style cost proxy, tool-call
+  count, failure markers, controlled-success markers, and manual-fallback
+  markers.
+- The accounting result is deliberately an estimate, not billing truth. Claude
+  Desktop/MCP does not expose provider `input_tokens`/`output_tokens` usage to
+  the local MCP server. Exact billing remains available only through provider
+  API usage fields in direct API transports.
+- The command does not echo transcript content, local paths, ticket text, or
+  raw provider output in success or error results. It is intended for comparing
+  smoke runs and spotting retry/manual-fallback cost, not for storing customer
+  evidence or raw logs.
+
+Current regression coverage:
+
+- Regression tests cover the logged `tool_result_invalid` path: multiple
+  item candidates must always return the controlled `split_required` tool
+  result and must not surface as a Desktop tool-call failure.
+- The installed-wrapper stdio smoke covers the selected-after-split flow: the
+  second primary call uses only the returned `operator_selection_ref` and
+  selected item ref, and does not require repeated `item_candidates` or copied
+  candidate metadata.
+- Regression tests cover common executable admin commands as valid
+  resolution-step detail while vague "disable/restart" steps remain blocked.
+- Regression tests cover the "draft me an article" visible schema shape,
+  multiple item candidates -> `split_required`, missing reuse proof ->
+  `reuse_search_status=skipped` / `draft_only_reuse_search_missing`, and
+  successful debug/smoke reviewer-only HTML when supported evidence is present.
+
+Remaining engineering actions:
+
+- Keep the selected-after-split contract stable: the second primary call must
+  use only the returned `operator_selection_ref` and selected item ref, and must
+  not require repeated `item_candidates` or copied candidate metadata.
+- Improve value-safe debug output for any remaining
+  `approved_summary_resolution_steps_incomplete` cases so it identifies the
+  missing class of evidence without echoing raw ticket content.
+- Keep the current MVP behavior explicit in code, docs, and MCPB metadata:
+  missing reuse/search proof is skipped with a warning, not silently treated as
+  a completed search.

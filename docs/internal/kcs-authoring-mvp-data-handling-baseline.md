@@ -1,7 +1,15 @@
-# KCS Authoring MVP - Data Handling Baseline
+# KCS Authoring Workflow - Data Handling Baseline
 
 ## Purpose
-Define the default data-handling rules for the KCS Authoring MVP: what data may be read, passed to Claude, stored, logged, and included in reviewer-ready output.
+Define the default data-handling rules for the KCS Authoring Workflow:
+what data may be read, passed to Claude, stored, logged, and included in
+reviewer-ready output.
+
+The file name still contains `mvp` for historical continuity. The current
+implementation is a production-shaped local workflow. Enterprise/PAUX rollout
+is postponed. Historical MVP language in this document describes the
+conservative safety floor unless a later approved section explicitly widens the
+boundary.
 
 ## Scope
 This baseline applies to:
@@ -10,10 +18,11 @@ This baseline applies to:
 - public knowledge search and reuse checks
 - temporary local/public RAG reuse checks used during prototype development
 - future approved search adapters, including kcs-search-mcp and internal KB/vector search when available and approved
-- Claude Enterprise/Desktop runtime handoff
+- Claude Desktop runtime handoff
 - fixtures and test packets
 - reviewer-ready KCS packets
-This MVP is not a publication system and does not perform customer-facing automation.
+This workflow is not a publication system and does not perform customer-facing
+automation.
 
 ## Default Rules
 
@@ -37,9 +46,9 @@ This MVP is not a publication system and does not perform customer-facing automa
 - Raw ticket data may be processed only inside approved corporate/local runtime storage.
 - Any persistent fixture derived from a real ticket must be approved and sanitized first.
 
-### MVP Cleanup Form Lane
-During the MVP, an approved cleanup form may act as the temporary sanitizer and
-preprocessor for operator-driven testing.
+### Clean-Ticket Preparation Lane
+An approved cleanup form may act as the sanitizer and preprocessor for
+operator-driven testing and production-like local drafting.
 
 Allowed lane:
 
@@ -110,6 +119,48 @@ Zendesk JSON, credentials, attachments, raw internal comments, or unapproved
 private data. Its JSON output must pass Python validation before it can become
 an accepted `NormalizedTicketEvidencePacket`.
 
+### Desktop Semantic Review Fallback
+
+The Claude Desktop MCPB may add a controlled semantic-review fallback for
+approved clean tickets when deterministic Python extraction is low-confidence.
+This is a separate, explicit Claude-visible data-egress lane, not the default
+`ticket_ref` path.
+
+Allowed lane:
+
+```text
+approved clean ticket
+  -> semantic-review eligible metadata
+  -> bounded selected excerpts
+  -> candidate_semantic_extraction_v1 proposal
+  -> Python validation / decision / rendering
+```
+
+Semantic review is allowed only when a metadata file next to the clean ticket
+explicitly allows it:
+
+```text
+local-data/approved-summaries/<ticket_ref>/clean.ticket.meta.json
+```
+
+The metadata must bind the approval to the exact clean ticket by
+`clean_ticket_sha256`. Missing metadata, `semantic_review_allowed=false`, an
+invalid schema, ticket-ref mismatch, or hash mismatch must block semantic
+review before any excerpt is returned to Claude Desktop.
+
+Claude-visible semantic-review output is limited to bounded selected excerpts.
+It must not return raw Zendesk JSON, attachments, redaction maps, full ticket
+dumps, arbitrary chunks, local absolute paths, reviewer packets, Zendesk HTML,
+article drafts, KCS decisions, publication flags, or provider payloads.
+
+Claude Desktop may propose only `candidate_semantic_extraction_v1`. Python must
+reject article drafts, Markdown or HTML, `reviewer_only_html`,
+`recommended_action`, `item`, `item_candidates`, publication flags, local paths,
+copied full ticket text, broad aliases, unknown source refs, unsafe values, and
+raw provider payloads. No reviewer bundle may be written until Python validates
+the submitted semantic extraction and runs the existing decision/rendering
+pipeline.
+
 ### Internal Comments
 - Internal Zendesk comments are internal-only by default and are not passed to Claude by default.
 If internal comments are needed for evidence, the Python/runtime layer must first summarize and sanitize them. Sanitized facts derived from internal comments may support reviewer packets, blockers, draft rationale, or reviewer questions when relevant.
@@ -142,6 +193,9 @@ If internal comments are needed for evidence, the Python/runtime layer must firs
 - Claude receives only sanitized normalized evidence packets, bounded decision/reviewer packets, and structured search results.
 - Claude may propose candidate normalized evidence fields only through an
   approved bounded extraction path.
+- Claude Desktop may receive bounded selected semantic-review excerpts only
+  when the clean ticket is explicitly marked semantic-review eligible and the
+  clean-ticket hash matches the metadata approval.
 - Claude does not receive Zendesk tokens or other credentials.
 - Claude does not call Zendesk directly.
 - Claude does not receive raw Zendesk payloads by default.
@@ -154,6 +208,9 @@ If internal comments are needed for evidence, the Python/runtime layer must firs
 - Logs may contain only operational metadata: run_id, opaque case_ref, timestamp, action/status, blocker codes, schema version, and validation summary.
 - Validation summary must be code/enum based. It must not include ticket free text, raw comments, raw article text, search snippets, customer wording, copied evidence values, or source-ticket quotes.
 - Logs must not contain raw ticket comments, raw Zendesk JSON, PII, email addresses, personal contact information, financial information, credentials, tokens, secrets, source code, private scripts, proprietary configuration, customer-provided application code, domains, IPs, hostnames, license IDs, private paths, raw internal article chunks, raw vector values, raw search queries, raw search result snippets, or source-ticket quotes.
+- Semantic-review logs may contain only refs, hashes, counts, sizes, status
+  codes, and blocker/debug codes. They must not log selected excerpt text or
+  rejected submitted values.
 
 ### Fixtures and Test Packets
 - Fixtures may be synthetic or derived from approved sanitized tickets.

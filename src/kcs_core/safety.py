@@ -101,8 +101,18 @@ _DOMAIN_RE = re.compile(
     r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.[a-z]{2,63}\b",
     re.I,
 )
+_SAFE_FILENAME_RE = re.compile(
+    r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
+    r"(?:conf|ini|cnf|yaml|yml|json|xml|php|log|local|pid|bak|backup|disabled|orig|old)"
+    r"(?:\.(?:bak|backup|disabled|orig|old))?\b"
+)
+_SAFE_PUBLIC_SUPPORT_URL_RE = re.compile(
+    r"https://support\.plesk\.com/hc/en-us/articles/[0-9A-Za-z_-]+"
+)
+_SAFE_PUBLIC_SUPPORT_EMAIL_RE = re.compile(r"\bcs@plesk\.com\b", re.I)
+_SAFE_PUBLIC_PLESK_HOST_RE = re.compile(r"\bmy\.plesk\.com\b", re.I)
 _PRIVATE_PATH_RE = re.compile(
-    r"(?:/Users/|/home/|/var/www/vhosts/|C:\\Users\\)", re.I
+    r"(?:/Users/|/home/|C:\\Users\\)", re.I
 )
 _LICENSE_RE = re.compile(r"\b(?:PLSK|EXT)\.\d{8}\.\d{4}\b", re.I)
 _RAW_TICKET_ID_RE = re.compile(r"\b(?:ticket|zendesk|zd)[-_ #:]?\d{4,}\b", re.I)
@@ -268,14 +278,27 @@ def _strings_from(value: Any) -> tuple[str, ...]:
 def _contains_unsafe_identifier(value: str) -> bool:
     if not value:
         return False
+    text_without_safe_public_urls = _SAFE_PUBLIC_SUPPORT_URL_RE.sub("", value)
+    text_without_safe_public_contacts = _SAFE_PUBLIC_SUPPORT_EMAIL_RE.sub(
+        "",
+        text_without_safe_public_urls,
+    )
+    text_without_safe_public_hosts = _SAFE_PUBLIC_PLESK_HOST_RE.sub(
+        "",
+        text_without_safe_public_contacts,
+    )
+    text_without_safe_filenames = _SAFE_FILENAME_RE.sub(
+        "",
+        text_without_safe_public_hosts,
+    )
     return (
-        bool(_SECRET_RE.search(value))
-        or bool(_EMAIL_RE.search(value))
-        or bool(_DOMAIN_RE.search(value))
-        or bool(_PRIVATE_PATH_RE.search(value))
-        or bool(_LICENSE_RE.search(value))
-        or bool(_RAW_TICKET_ID_RE.search(value))
-        or _contains_unsafe_ip(value)
+        bool(_SECRET_RE.search(text_without_safe_filenames))
+        or bool(_EMAIL_RE.search(text_without_safe_filenames))
+        or bool(_DOMAIN_RE.search(text_without_safe_filenames))
+        or bool(_PRIVATE_PATH_RE.search(text_without_safe_filenames))
+        or bool(_LICENSE_RE.search(text_without_safe_filenames))
+        or bool(_RAW_TICKET_ID_RE.search(text_without_safe_filenames))
+        or _contains_unsafe_ip(text_without_safe_filenames)
     )
 
 

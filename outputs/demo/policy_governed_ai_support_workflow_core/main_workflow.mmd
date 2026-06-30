@@ -1,0 +1,7 @@
+flowchart TD
+    A["Sanitized ticket fixture"] --> B["Normalized evidence packet"]
+    B --> C["Reuse/search result"]
+    C --> D["KCS action recommendation"]
+    D --> E["Reuse / update / draft / flag / no-article / blocker"]
+    E --> F["Validation checks"]
+    F --> G["Reviewer-ready packet"]

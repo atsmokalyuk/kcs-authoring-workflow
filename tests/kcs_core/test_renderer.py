@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 import kcs_core
+from kcs_adapters.zendesk_markup_quality import review_kcs_zendesk_markup_source
 from kcs_core.decision import decide_kcs_action
 from kcs_core.errors import ContractValidationError
 from kcs_core.models import (
@@ -250,9 +251,572 @@ def test_resolution_steps_are_ordered_inside_resolution_container() -> None:
 
     assert html is not None
     assert '<div class="resolution">\n  <ol>' in html
-    assert "<li>Log in to Plesk.</li>" in html
+    assert (
+        '<a href="https://support.plesk.com/hc/en-us/articles/'
+        '12377667582743-How-to-log-in-to-Plesk">Log in to Plesk</a>.'
+        in html
+    )
     assert "<li>Go to Mail &gt; Mail Settings.</li>" in html
     assert "<li>Enable the required mail setting.</li>" in html
+
+
+def test_renderer_formats_commands_and_paths_as_inline_code() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Monitoring graphs show no data in Plesk",
+                "summary": "Monitoring graphs show no data.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Run rpm -qf "
+                        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                        "to verify that the file is not owned by any package."
+                    ),
+                    (
+                        "Back up and disable "
+                        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf."
+                    ),
+                    "Run systemctl restart sw-collectd.",
+                ],
+            }
+        ],
+        supported_cause=(
+            "The DataDir setting points sw-collectd to "
+            "/usr/local/psa/var/modules/monitoring/rrd."
+        ),
+        symptoms=["Monitoring graphs show no data."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>Verify that the file is not owned by any package:</p>\n"
+        "      <p><code># rpm -qf "
+        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf</code></p>"
+        in html
+    )
+    assert (
+        "Back up and disable "
+        "<code>/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf</code>."
+        in html
+    )
+    assert (
+        "<p>Restart <code>sw-collectd</code>:</p>\n"
+        "      <p><code># systemctl restart sw-collectd</code></p>"
+        in html
+    )
+
+
+def test_renderer_formats_plesk_gui_paths_as_bold() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "SSL warning is shown for a domain in Plesk",
+                "summary": "A domain shows an SSL warning.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Go to Plesk > Domains > example.com > Hosting "
+                        "Settings."
+                    ),
+                    "Select the required certificate.",
+                ],
+            }
+        ],
+        supported_cause="The domain does not have the required certificate selected.",
+        symptoms=["An SSL warning is shown for the domain."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<li>Go to <strong>Plesk &gt; Domains &gt; example.com &gt; "
+        "Hosting Settings</strong>.</li>"
+    ) in html
+    report = review_kcs_zendesk_markup_source(html)
+    assert "gui_path_not_bold" not in {finding.rule_id for finding in report.findings}
+
+
+def test_renderer_adds_warning_for_risky_resolution_command() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "High CPU load on a Plesk server",
+                "summary": "The server has high CPU load.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Connect to the Plesk server via SSH.",
+                    "Run iptables -I INPUT -p tcp --dport 8880 -j DROP.",
+                ],
+            }
+        ],
+        supported_cause="HTTP traffic overloaded the Plesk Panel endpoint.",
+        symptoms=["The server has high CPU load."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p><code>Warning:</code> Review this action before applying it "
+        "because it can affect access, traffic handling, or stored data.</p>"
+        in html
+    )
+    assert "<p><code># iptables -I INPUT -p tcp --dport 8880 -j DROP</code></p>" in html
+    report = review_kcs_zendesk_markup_source(html)
+    assert "resolution_command_or_note_numbered_as_step" not in {
+        finding.rule_id for finding in report.findings
+    }
+
+
+def test_renderer_keeps_title_and_symptoms_issue_focused() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": (
+                    "High CPU load caused by HTTP flood targeting the Plesk "
+                    "Panel endpoint on port 8880, mitigated with a custom "
+                    "Fail2Ban jail and iptables block on port 8880"
+                ),
+                "summary": "The server has high CPU load.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "symptoms": [
+                    "High CPU load on the server.",
+                    "Requests returning 400/499 responses are logged.",
+                    "CPU usage dropped to ~5% after blocking TCP port 8880.",
+                ],
+                "resolution_steps": [
+                    "Connect to the Plesk server via SSH.",
+                    "Run iptables -I INPUT -p tcp --dport 8880 -j DROP.",
+                ],
+            }
+        ],
+        supported_cause="HTTP flood traffic targeted the Plesk Panel endpoint.",
+        symptoms=["The server has high CPU load."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<h1>High CPU load: HTTP flood targeting the Plesk Panel endpoint "
+        "on port 8880</h1>"
+    ) in html
+    assert "mitigated with" not in html
+    assert "CPU usage dropped to ~5%" not in html
+    assert "Requests returning 400/499 responses are logged." in html
+
+
+def test_renderer_splits_colon_command_steps_into_golden_markup() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk service fails due to custom configuration",
+                "summary": "A product service fails.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Test the custom filter against the access log: "
+                        "fail2ban-regex /var/log/plesk/httpsd_access_log "
+                        "/etc/fail2ban/filter.d/panel-flood.conf"
+                    ),
+                    (
+                        "Reload Fail2Ban to activate the new jail: "
+                        "systemctl reload fail2ban"
+                    ),
+                ],
+            }
+        ],
+        supported_cause="A custom configuration caused the product service failure.",
+        symptoms=["A product service fails."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>Test the custom filter against the access log:</p>\n"
+        "      <p><code># fail2ban-regex "
+        "/var/log/plesk/httpsd_access_log "
+        "/etc/fail2ban/filter.d/panel-flood.conf</code></p>"
+        in html
+    )
+    assert (
+        "<p>Reload Fail2Ban to activate the new jail:</p>\n"
+        "      <p><code># systemctl reload fail2ban</code></p>"
+        in html
+    )
+
+
+def test_renderer_keeps_command_confirmation_out_of_code_paragraph() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Apache fails to start due to a missing certificate file",
+                "summary": "Apache fails to start.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "After applying the fix, verify the Apache configuration "
+                        "by running: plesk repair web and confirming server-wide "
+                        "configuration parameters for web servers repair successfully "
+                        "without an apache-config -t failure"
+                    ),
+                ],
+            }
+        ],
+        supported_cause=(
+            "A broken Plesk web server configuration references a missing "
+            "certificate file."
+        ),
+        symptoms=["Apache fails to start."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>After applying the fix, verify the Apache configuration and confirm "
+        "server-wide configuration parameters for web servers "
+        "repair successfully without an apache-config -t failure:</p>\n"
+        "      <p><code># plesk repair web</code></p>"
+    ) in html
+    assert "plesk repair web and confirming" not in html
+
+
+def test_renderer_formats_quoted_shell_command_with_prompt() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Apache fails to start due to a missing certificate file",
+                "summary": "Apache fails to start.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": ["Run 'plesk repair web'."],
+            }
+        ],
+        supported_cause="A broken Plesk web server configuration.",
+        symptoms=["Apache fails to start."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert "<p><code># plesk repair web</code></p>" in html
+    assert "&#x27;plesk repair web&#x27;" not in html
+
+
+def test_renderer_splits_config_text_steps_into_golden_markup() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk service fails due to custom configuration",
+                "summary": "A product service fails.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Create the custom service configuration: CONFIG_TEXT:\n"
+                        "[custom-service]\n"
+                        "enabled = true\n"
+                        "filter = custom-service"
+                    ),
+                ],
+            }
+        ],
+        supported_cause="A custom configuration caused the product service failure.",
+        symptoms=["A product service fails."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>Create the custom service configuration:</p>\n"
+        "      <p><code>CONFIG_TEXT: [custom-service]</code><br>\n"
+        "        <code>enabled = true</code><br>\n"
+        "        <code>filter = custom-service</code></p>"
+        in html
+    )
+    assert "# CONFIG_TEXT" not in html
+
+
+def test_renderer_splits_inline_following_content_config_into_code_block() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "High CPU load caused by repeated panel requests",
+                "summary": "A product service is overloaded.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Create the custom filter file "
+                        "/etc/fail2ban/filter.d/panel-flood.conf with the "
+                        "following content: [Definition] failregex = "
+                        '^127\\.0\\.0\\.1 - - \\[.*\\] "GET / HTTP/1\\.[01]" '
+                        '(?:400|499) \\d+ "-" ".*" "<HOST>" ignoreregex ='
+                    ),
+                ],
+            }
+        ],
+        supported_cause="Repeated panel requests overloaded the service.",
+        symptoms=["A product service is overloaded."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<p>Create the custom filter file "
+        "<code>/etc/fail2ban/filter.d/panel-flood.conf</code>:</p>\n"
+        "      <p><code>CONFIG_TEXT: [Definition]</code><br>\n"
+        "        <code>failregex = "
+    ) in html
+    assert "        <code>ignoreregex =</code></p>" in html
+    assert "with the following content: [Definition]" not in html
+
+
+def test_renderer_attaches_support_blocks_to_previous_resolution_step() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk service fails due to custom configuration",
+                "summary": "A product service fails.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Create the custom service configuration.",
+                    "CONFIG_TEXT:\n[custom-service]\nenabled = true",
+                    "Test the custom filter against the access log.",
+                    (
+                        "fail2ban-regex /var/log/plesk/httpsd_access_log "
+                        "/etc/fail2ban/filter.d/panel-flood.conf"
+                    ),
+                ],
+            }
+        ],
+        supported_cause="A custom configuration caused the product service failure.",
+        symptoms=["A product service fails."],
+    )
+
+    html = render_reviewer_packet(evidence, _decision()).zendesk_source_html
+
+    assert html is not None
+    assert (
+        "<li>\n"
+        "      <p>Create the custom service configuration.</p>\n"
+        "      <p><code>CONFIG_TEXT: [custom-service]</code><br>\n"
+        "        <code>enabled = true</code></p>\n"
+        "    </li>"
+    ) in html
+    assert (
+        "<li>\n"
+        "      <p>Test the custom filter against the access log.</p>\n"
+        "      <p><code># fail2ban-regex "
+        "/var/log/plesk/httpsd_access_log "
+        "/etc/fail2ban/filter.d/panel-flood.conf</code></p>\n"
+        "    </li>"
+    ) in html
+    assert "<li>CONFIG_TEXT:" not in html
+    assert "<li>fail2ban-regex" not in html
+
+
+def test_linux_plesk_resolution_starts_with_ssh_entry_point() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk monitoring graphs show no data",
+                "summary": "Monitoring graphs show no data.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Disable the custom collectd configuration.",
+                    "Restart sw-collectd.",
+                ],
+            }
+        ],
+        supported_cause="A custom collectd configuration overrides the data path.",
+        supported_resolution_or_workaround=(
+            "Disable the custom collectd configuration and restart sw-collectd."
+        ),
+        symptoms=["Monitoring graphs show no data."],
+    )
+
+    packet = render_reviewer_packet(evidence, _decision())
+
+    assert packet.public_article_candidate is not None
+    assert packet.public_article_candidate["resolution_steps"] == [
+        "Connect to the Plesk server via SSH.",
+        "Disable the custom collectd configuration.",
+        "Restart sw-collectd.",
+    ]
+    assert packet.zendesk_source_html is not None
+    assert (
+        '<li><a href="https://support.plesk.com/hc/en-us/articles/'
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in packet.zendesk_source_html
+    )
+    assert "<li>Plesk for Linux</li>" in packet.zendesk_source_html
+
+
+def test_rpm_based_plesk_resolution_uses_linux_applicable_to_and_ssh() -> None:
+    evidence = _evidence(
+        environment={
+            "product": "Plesk with Advanced Monitoring extension",
+            "platform": "RPM-based",
+            "component": "Grafana / sw-collectd",
+        },
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk monitoring graphs show no data",
+                "summary": "Monitoring graphs show no data.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Disable the custom collectd configuration.",
+                    "Restart sw-collectd.",
+                ],
+            }
+        ],
+        supported_cause="A custom collectd configuration overrides the data path.",
+        supported_resolution_or_workaround=(
+            "Disable the custom collectd configuration and restart sw-collectd."
+        ),
+        symptoms=["Monitoring graphs show no data."],
+    )
+
+    packet = render_reviewer_packet(evidence, _decision())
+
+    assert packet.public_article_candidate is not None
+    assert packet.public_article_candidate["applicable_to"] == ["Plesk for Linux"]
+    assert packet.public_article_candidate["resolution_steps"][0] == (
+        "Connect to the Plesk server via SSH."
+    )
+    assert packet.zendesk_source_html is not None
+    assert "<li>Plesk for Linux</li>" in packet.zendesk_source_html
+    assert (
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+        in packet.zendesk_source_html
+    )
+
+
+def test_windows_resolution_starts_with_rdp_entry_point_link() -> None:
+    evidence = _evidence(
+        environment={
+            "product": "Plesk",
+            "platform": "Windows",
+            "component": "Mail",
+        },
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-RENDER",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk mail task fails on Windows",
+                "summary": "Mail delivery returns a safe queue error.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    "Open cmd as Administrator.",
+                    "Run plesk repair mail.",
+                ],
+            }
+        ],
+        supported_cause="A required mail setting is disabled.",
+        supported_resolution_or_workaround="Repair the Plesk mail configuration.",
+        symptoms=["Mail delivery returns a safe queue error."],
+    )
+
+    packet = render_reviewer_packet(evidence, _decision())
+
+    assert packet.public_article_candidate is not None
+    assert packet.public_article_candidate["resolution_steps"] == [
+        "Connect to the Plesk server via RDP.",
+        "Open cmd as Administrator.",
+        "Run plesk repair mail.",
+    ]
+    assert packet.zendesk_source_html is not None
+    assert (
+        '<li><a href="https://support.plesk.com/hc/en-us/articles/'
+        "12377247797271-How-to-connect-to-a-Plesk-server-via-RDP-with-available-"
+        'credentials">Connect to the Plesk server via RDP.</a></li>'
+        in packet.zendesk_source_html
+    )
+    assert "<li>Plesk for Windows</li>" in packet.zendesk_source_html
 
 
 def test_howto_qa_renders_question_and_answer_sections() -> None:
@@ -266,7 +830,6 @@ def test_howto_qa_renders_question_and_answer_sections() -> None:
                 "title": "How to change PHP version in Plesk",
                 "question": "How to change PHP version in Plesk?",
                 "answer_steps": [
-                    "Log in to Plesk.",
                     "Open Domains > example.com > Hosting Settings.",
                     "Select the required PHP version.",
                 ],
@@ -289,9 +852,57 @@ def test_howto_qa_renders_question_and_answer_sections() -> None:
     assert "<h2>Answer</h2>" in packet.zendesk_source_html
     assert "<h2>Symptoms</h2>" not in packet.zendesk_source_html
     assert (
+        '<a href="https://support.plesk.com/hc/en-us/articles/'
+        '12377667582743-How-to-log-in-to-Plesk">Log in to Plesk</a>.'
+        in packet.zendesk_source_html
+    )
+    assert (
         "Domains &gt; example.com &gt; Hosting Settings"
         in packet.zendesk_source_html
     )
+
+
+def test_howto_qa_server_command_answer_starts_with_ssh_link() -> None:
+    evidence = _evidence(
+        supported_cause=None,
+        supported_resolution_or_workaround="Disable maintenance mode.",
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-HOWTO",
+                "article_type": ArticleType.HOWTO_QA.value,
+                "title": "How to disable maintenance mode?",
+                "question": "How to disable maintenance mode?",
+                "answer_steps": [
+                    (
+                        "Run: sudo -u system-user /var/www/vhosts/example.com/"
+                        "occ maintenance:mode --off"
+                    ),
+                ],
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "answered",
+                "public_solution_safe": True,
+            }
+        ],
+    )
+
+    packet = render_reviewer_packet(
+        evidence,
+        _decision(article_type=ArticleType.HOWTO_QA, candidate_id="ISSUE-SYNTH-HOWTO"),
+    )
+
+    html = packet.zendesk_source_html
+    assert html is not None
+    assert (
+        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+        "Connect to the Plesk server via SSH.</a></li>"
+    ) in html
+    assert "<p>Run:</p>" in html
+    assert (
+        "<code># sudo -u system-user /var/www/vhosts/example.com/occ "
+        "maintenance:mode --off</code>"
+    ) in html
 
 
 def test_internal_notes_are_separated_from_public_html() -> None:
@@ -405,6 +1016,102 @@ def test_public_article_text_rejects_private_values_without_echo(
     assert private_value not in str(captured.value)
 
 
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "setup.php",
+        "service.log",
+        "application.ini",
+        "worker-process.pid",
+        "service.conf",
+        "02component-feature.conf",
+        "settings.yaml",
+        "metadata.json",
+    ],
+)
+def test_public_article_text_allows_standalone_safe_filenames(
+    filename: str,
+) -> None:
+    candidate = {
+        "candidate_id": "ISSUE-SYNTH-SAFE-FILENAME",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "title": "Product task fails with reusable symptom",
+        "summary": f"Diagnostic evidence references {filename}.",
+        "public_solution_safe": True,
+        "resolution_steps": [f"Review the standalone filename {filename}."],
+    }
+
+    packet = render_reviewer_packet(
+        _evidence(issue_candidates=[candidate]),
+        _decision(candidate_id="ISSUE-SYNTH-SAFE-FILENAME"),
+    )
+
+    assert packet.public_article_candidate is not None
+    assert packet.auto_publish_allowed is False
+
+
+@pytest.mark.parametrize(
+    "safe_public_text",
+    [
+        (
+            "Apache fails to start with AH00526 in "
+            "/etc/httpd/conf/plesk.conf.d/server.conf."
+        ),
+        (
+            "Run plesk repair web and follow "
+            "https://support.plesk.com/hc/en-us/articles/115001678209."
+        ),
+    ],
+)
+def test_public_article_text_allows_public_technical_refs(
+    safe_public_text: str,
+) -> None:
+    candidate = {
+        "candidate_id": "ISSUE-SYNTH-SAFE-TECH-REF",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "title": "Apache fails to start with reusable error",
+        "summary": safe_public_text,
+        "public_solution_safe": True,
+        "resolution_steps": [safe_public_text],
+    }
+
+    packet = render_reviewer_packet(
+        _evidence(issue_candidates=[candidate]),
+        _decision(candidate_id="ISSUE-SYNTH-SAFE-TECH-REF"),
+    )
+
+    assert packet.public_article_candidate is not None
+    assert packet.auto_publish_allowed is False
+
+
+@pytest.mark.parametrize(
+    "private_value",
+    [
+        "Open customer.example.net/index.php.",
+        "Open https://customer.example.net/index.php.",
+    ],
+)
+def test_public_article_text_filename_allowlist_does_not_allow_domains(
+    private_value: str,
+) -> None:
+    candidate = {
+        "candidate_id": "ISSUE-SYNTH-UNSAFE-FILENAME",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "title": "Product task fails with reusable symptom",
+        "summary": private_value,
+        "public_solution_safe": True,
+        "resolution_steps": ["Apply a public-safe resolution."],
+    }
+
+    with pytest.raises(ContractValidationError) as captured:
+        render_reviewer_packet(
+            _evidence(issue_candidates=[candidate]),
+            _decision(candidate_id="ISSUE-SYNTH-UNSAFE-FILENAME"),
+        )
+
+    assert private_value not in str(captured.value)
+
+
 def test_renderer_rejects_unbounded_title_without_echoing_value() -> None:
     long_title = "x" * 181
     evidence = _evidence(
@@ -449,7 +1156,7 @@ def test_renderer_rejects_too_many_list_items() -> None:
 
 
 def test_renderer_rejects_unbounded_list_item_without_echoing_value() -> None:
-    long_item = "x" * 601
+    long_item = "x" * 4001
     evidence = _evidence(
         issue_candidates=[
             {
@@ -471,6 +1178,42 @@ def test_renderer_rejects_unbounded_list_item_without_echoing_value() -> None:
 
     assert "list item exceeds bound" in str(captured.value)
     assert long_item not in str(captured.value)
+
+
+def test_renderer_accepts_bounded_long_config_resolution_step() -> None:
+    config_lines = "\n".join(f"setting_{index} = value" for index in range(80))
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-LONG-CONFIG",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "title": "Plesk service fails due to long configuration",
+                "summary": "A product service fails.",
+                "atomic": True,
+                "customer_reported": True,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+                "resolution_steps": [
+                    (
+                        "Create the product configuration: CONFIG_TEXT:\n"
+                        f"{config_lines}"
+                    ),
+                ],
+            }
+        ],
+        supported_cause="A custom configuration caused the product service failure.",
+        symptoms=["A product service fails."],
+    )
+
+    packet = render_reviewer_packet(
+        evidence,
+        _decision(candidate_id="ISSUE-SYNTH-LONG-CONFIG"),
+    )
+
+    assert packet.zendesk_source_html is not None
+    assert "<code>CONFIG_TEXT: setting_0 = value</code>" in packet.zendesk_source_html
+    assert "<code>setting_79 = value</code>" in packet.zendesk_source_html
 
 
 def test_renderer_rejects_unbounded_cause_without_echoing_value() -> None:
@@ -514,7 +1257,7 @@ def test_renderer_rejects_unbounded_question_without_echoing_value() -> None:
     assert long_question not in str(captured.value)
 
 
-def test_renderer_rejects_unbounded_single_answer_without_echoing_value() -> None:
+def test_renderer_rejects_unbounded_answer_step_without_echoing_value() -> None:
     long_answer = "x" * 601
     evidence = _evidence(
         supported_cause=None,

@@ -23,8 +23,12 @@ This page links the product and architecture documents to the Jira implementatio
 - KCS-10 Local reviewer bundle writer for deterministic audit/debug artifacts
 - KCS-11 Live Claude provider adapter for real provider smoke tests
 - KCS-12 Claude Desktop MCP validator/control adapter and MCPB package
-- KCS-13 Pilot with approved tickets and reviewer feedback
-- KCS-14 / future: intranet remote MCP service deployment for managed operator
+- KCS-13 Controlled semantic review fallback for complex/noisy approved clean
+  tickets
+- KCS-14 KCS style and markup parity with source KCS Style Guide, Article
+  Quality criteria, KCS practices, approved article examples, and portable
+  `plesk_support` rules
+- Future deployment slice: intranet remote MCP service deployment for managed operator
   use, connected from Claude Desktop through a custom remote connector URL
   rather than the local MCPB stdio wrapper
 

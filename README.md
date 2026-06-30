@@ -1,20 +1,34 @@
-# KCS Authoring MVP
+# KCS Authoring Workflow
 
-Internal WebPros PAUX prototype for a runtime-independent KCS Authoring core.
+Local workflow for runtime-independent KCS Authoring.
 
-Status: early implementation. Python baseline: 3.11. CI is deferred until the
-local command set is stable.
+Status: project goal reached for now. The KCS branch has delivered the
+production-shaped local workflow, the controlled semantic-review fallback, and
+the reviewer-packet showcase artifacts. Further development is frozen unless a
+new explicitly approved slice reopens the project. Enterprise/PAUX rollout is
+postponed; this repository now tracks the local product workflow. Some package
+IDs, environment variables, paths, and historical docs still use
+`kcs-authoring-mvp` for compatibility, but the implemented workflow has moved
+beyond a minimal MVP. The original MVP boundary remains the safety floor:
+reviewer-only output, no Zendesk writes, no Help Center publication, no
+auto-publish, compact default MCP output, and Python-owned validation,
+decision, rendering, and bundle writing.
+
+Python baseline: 3.11. CI is deferred until the local command set is stable.
 
 ## Overview
 
-The KCS Authoring MVP helps support engineers prepare reviewer-ready KCS output
-from approved or sanitized ticket evidence. It recommends a KCS action, records
-the evidence basis, reports blockers, and prepares reviewer-ready packets
-without publishing or writing to Zendesk or Help Center.
+The KCS Authoring Workflow helps support engineers prepare reviewer-ready KCS
+output from approved or sanitized ticket evidence. It recommends a KCS action,
+records the evidence basis, reports blockers, and prepares reviewer-only local
+bundles without publishing or writing to Zendesk or Help Center.
 
-The MVP focuses on the KCS workflow after or near ticket resolution: deciding
+The workflow focuses on KCS work after or near ticket resolution: deciding
 whether knowledge should be reused, updated, created, flagged, split, skipped,
-or blocked for review.
+or blocked for review. The primary clean-ticket path is source-independent:
+Zendesk cleanup, a web cleanup form, Claude Desktop sanitized attachment
+registration, or another approved cleanup source should all produce the same
+clean-ticket input shape before Python runs the KCS pipeline.
 
 ## Core Principle
 
@@ -28,10 +42,60 @@ The core owns workflow decisions, validation, blockers, and readiness state.
 Claude or another LLM may draft or review text only through bounded handoff
 after the relevant contracts and gates exist.
 
+## Demo Showcase
+
+The primary portfolio/demo artifact is
+[`showcase/demo-3/`](showcase/demo-3/). It demonstrates the current controlled
+workflow on a noisy multi-candidate clean-ticket case:
+
+- one candidate is flagged for an existing public KB article instead of
+  creating a duplicate;
+- one candidate produces a reviewer-only draft artifact;
+- one candidate is blocked because the approved evidence does not contain
+  operator-confirmed resolution steps.
+
+Start with [`showcase/demo-3/README.md`](showcase/demo-3/README.md), then open:
+
+- [`PROJECT_WALKTHROUGH.md`](showcase/demo-3/PROJECT_WALKTHROUGH.md) for the
+  human-readable project walkthrough;
+- [`reviewer_packet.md`](showcase/demo-3/reviewer_packet.md) and
+  [`reviewer_packet.json`](showcase/demo-3/reviewer_packet.json) for the main
+  reviewer packet;
+- [`preview.html`](showcase/demo-3/preview.html) for the sanitized reviewer-only
+  preview;
+- [`kcs-authoring-architecture-diagram.pdf`](showcase/demo-3/kcs-authoring-architecture-diagram.pdf)
+  for the architecture diagram and caption.
+
+The demo artifacts are reviewer-only and public-safe. They do not imply a
+Zendesk write, Help Center publication, auto-publish, live RAG/search, or
+Claude-owned KCS decision.
+
 ## Current Scope
 
-Initial development follows the KCS-0..KCS-12 roadmap in
-`docs/internal/kcs-authoring-mvp-jira-tracking.md`.
+The implemented local workflow follows the KCS-0..KCS-13 roadmap tracked in
+`docs/internal/kcs-authoring-mvp-jira-tracking.md` and
+`docs/internal/kcs-desktop-authoring-refactor-plan.md`.
+
+The latest local branch work completed the KCS-13 semantic-review fallback
+path: metadata gating, bounded semantic-review packet preparation, candidate
+submission validation, Desktop smoke alignment, multi-item drafting
+stabilization, markup/safety hardening, public HOWTO rendering safety, and
+current-gate test alignment. `KCS-12` established the local Claude Desktop MCPB
+adapter with clean-ticket registration, `ticket_ref` drafting, compact status
+output, and local reviewer bundles. `KCS-13` added the controlled fallback for
+complex/noisy clean tickets when deterministic Python item identification is
+low-confidence.
+
+The current project goal is reached for now. Further development is frozen.
+`KCS-14` style/markup parity, managed deployment, production rollout, and any
+additional integrations are deferred future work, not active scope.
+
+Resolution steps must remain evidence-grounded. If the ticket gives the
+resolution outcome or a high-level resolution description but does not include
+the exact executable procedure needed to apply and verify it, the workflow
+should block with `approved_summary_resolution_steps_incomplete` instead of
+inventing implementation details. The operator may add operator-confirmed
+resolution detail and rerun the same pipeline.
 
 Implemented code slices:
 
@@ -50,6 +114,7 @@ KCS-9c: reviewer-only draft generation contract and artifact writer
 KCS-10: local reviewer bundle writer for audit/debug artifacts
 KCS-11: live-capable Claude/provider adapter for bounded smoke tests
 KCS-12: Claude Desktop MCP validator/control adapter and MCPB package
+KCS-13: controlled semantic-review fallback for complex/noisy clean tickets
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -157,12 +222,38 @@ content, write Zendesk, or generate customer replies.
 
 KCS-12 is implemented as adapter-layer `kcs_adapters.mcp_desktop` stdio MCP
 logic outside `kcs_core`, plus a reproducible Claude Desktop MCPB package
-source under `packaging/claude-desktop/`. It exposes Claude Desktop-safe
-read-only validation tools for KCS-9b/KCS-9c request and response packets plus
-a synthetic contract smoke. Tool outputs are compact summaries only. KCS-12
-does not read raw tickets, call Claude/provider APIs, write files through MCP,
-expose MCP resources/prompts, change KCS decisions, publish content, write
-Zendesk, or generate customer replies.
+source under `packaging/claude-desktop/`. The default Claude Desktop surface
+exposes `kcs_draft_ticket` for `/draft <ticket_ref>`,
+`kcs_register_clean_ticket` for sanitized attachment/long-paste registration,
+`kcs_draft_article` for short inline text or operator selection continuation,
+and bounded semantic-review prepare/submit tools. Python owns semantic
+extraction, workflow state, validation, KCS decisions, rendering, local
+reviewer bundle writing, and output safety. Default successful results return
+compact status plus local bundle refs and hashes; full
+`reviewer_only_html` is returned only in explicit debug/smoke compatibility
+mode. KCS-12 does not read raw tickets, call Claude/provider APIs, expose MCP
+resources/prompts, change KCS decisions, publish content, write Zendesk, or
+generate customer replies.
+
+KCS-13 is implemented as controlled semantic-review fallback behavior for
+complex/noisy approved clean tickets. Python first attempts deterministic item
+identification. If the ticket is likely KCS-relevant but low-confidence,
+Python returns `semantic_review_required` with a bounded next-tool contract.
+Claude Desktop may inspect only bounded sanitized excerpts and propose
+`candidate_semantic_extraction_v1`. Python validates that proposal as
+untrusted input, decides split/single/block, renders reviewer-only output, and
+writes any bundle. KCS-13 does not let Claude draft freehand articles, decide
+KCS actions, bypass validation, publish content, write Zendesk, or expose raw
+tickets.
+
+Local smoke accounting is implemented as adapter-layer
+`kcs_adapters.smoke_accounting` and the `kcs-smoke-account` console script. It
+reads an operator-provided Claude Desktop/MCP transcript or log file and returns
+a value-safe JSON estimate of observed transcript size, approximate token
+count, estimated Sonnet-style cost proxy, tool-call count, failure markers, and
+manual-fallback markers. It does not provide exact provider billing usage,
+read raw tickets, call providers, write artifacts, or log transcript content.
+Exact billing requires provider API usage fields from a direct API transport.
 
 Longer-term managed deployment may replace the local MCPB stdio wrapper with
 an intranet remote MCP service. In that model Claude Desktop would connect to
@@ -179,9 +270,11 @@ reviewer-assist handoff contract only. KCS-9c introduces reviewer-only draft
 contracts and local artifact writing only. KCS-10 introduces local reviewer
 bundle writing only. KCS-11 introduces a live-capable provider adapter package
 and bounded smoke layer only. KCS-12 introduces the Claude Desktop MCP
-validator/control surface and installable local MCPB package only. Real-ticket
-smoke, production transport rollout, remote MCP/internal service
-implementation, and broad adapter/client integration remain later slices.
+validator/control surface and installable local MCPB package only. KCS-13
+introduces the controlled semantic-review fallback only. Real-ticket smoke,
+production transport rollout, remote MCP/internal service implementation,
+broad adapter/client integration, and KCS-14 style/markup parity are frozen
+deferred work unless a future approved slice reopens development.
 
 ## Non-goals
 
@@ -236,8 +329,9 @@ the repository.
 
 - Python 3.11
 - Git
-- Access to the WebPros GitHub Enterprise repository
-- Access to the relevant Jira PAUX work items
+- Access to `github.com/atsmokalyuk/kcs-authoring-workflow`
+- Access to historical PAUX/Jira context only when working on migrated
+  enterprise-tracking documents
 
 ### Setup
 
@@ -308,7 +402,7 @@ By default:
   credentials, internal article chunks, vector values, raw query logs, or
   runtime artifacts;
 - run safety/evidence gates before decision, drafting, rendering, or handoff;
-- keep `auto_publish_allowed=false` in MVP outputs.
+- keep `auto_publish_allowed=false` in all local workflow outputs.
 
 ## Source Documents
 
@@ -340,11 +434,125 @@ The generated package is written to:
 dist/kcs-authoring-mvp-validator-control.mcpb
 ```
 
-Install this MCPB in Claude Desktop, set `repository_root` to the local
-checkout, keep `uv_command=uv` unless a full path is required, enable the
-extension, and start a new chat. The package starts `kcs-desktop-mcp` through
-`uv --project <repository_root> run ...` and exposes only compact read-only
-validator/control tools.
+Install this MCPB in Claude Desktop, enable the extension, and start a new
+chat. The package embeds the local Python workflow source and starts
+`kcs-desktop-mcp` through an autodetected local runtime (`uv` first, then
+`python3.11` / `python3` fallback) without requiring a configured repository
+path, Claude CLI/Code, an API key, or a semantic-provider setting. It exposes
+compact operator tools for clean-ticket registration and article drafting.
+Successful primary article drafts may write reviewer-only bundle files under
+`local-data/reviewer-bundles/`; the tool still does not publish content or
+write Zendesk.
+
+For local development after MCPB or adapter fixes, rebuild and replace the
+installed Claude Desktop extension in one step:
+
+```bash
+python scripts/install_kcs_mcpb.py
+```
+
+The installer updates both the unpacked extension files under Claude
+Extensions and Claude Desktop's `extensions-installations.json` registry cache.
+This matters because Claude reads tool descriptions from that cache; if it is
+stale, Desktop can keep showing the old wide `item` / `item_candidates` schema
+even when the unpacked MCPB files are current. After reinstalling, restart
+Claude Desktop or reload the extension before running the next UI smoke.
+
+Run the deterministic stdio smoke against the installed MCPB wrapper before
+opening Claude Desktop:
+
+```bash
+uv run python scripts/smoke_kcs_mcpb_stdio.py
+```
+
+This smoke launches the same Node wrapper used by Claude Desktop with the
+fixture-only semantic provider explicitly enabled. It verifies the visible thin
+`kcs_draft_article` tool surface, Claude Desktop registry cache alignment when
+using the installed wrapper, controlled no-candidate, invalid-selection, and
+invalid mixed-call statuses, plus fixture labeled-summary, narrative-summary,
+raw-ticket, and live raw-ticket-shaped draft paths that write local reviewer
+bundles and return debug-only `reviewer_only_html`. It also runs a stateful
+split -> selected-draft flow in one MCP process using
+`operator_choice_request.options[*].submit_arguments` and verifies that the
+split result includes deterministic operator-facing fallback text for cases
+where Claude Desktop does not render a native choice popup.
+For the installed wrapper, expect `registry_cache_checked=true` and
+`registry_cache_ok=true`. It does not validate Claude Desktop model rendering,
+but it verifies the server-side choice contract, cache alignment, and bundle
+artifacts without manual UI work.
+
+The Desktop authoring refactor target and delivery slices are tracked in
+`docs/internal/kcs-desktop-authoring-refactor-plan.md`.
+
+After restarting Claude Desktop, verify that the live Desktop log reflects the
+same thin tool surface:
+
+```bash
+uv run python scripts/check_claude_kcs_desktop_log.py
+```
+
+Pass `--since <UTC ISO timestamp>` when checking a specific restart window.
+The check is value-safe: it reports only booleans, the latest matching
+`tools/list` timestamp, a compact client capability summary, and a log
+filename. If `client_capabilities.elicitation_declared=false`, Claude Desktop
+has not advertised MCP-native elicitation for that session, so split selection
+relies on the returned `operator_choice_request` and deterministic fallback
+text.
+
+Before running an end-to-end Claude Desktop UI prompt smoke, check whether
+macOS is allowing Codex.app to drive the UI:
+
+```bash
+uv run python scripts/smoke_claude_desktop_ui_prompt.py --check-accessibility
+```
+
+If that preflight passes, a GUI automation smoke can be attempted with:
+
+```bash
+uv run python scripts/smoke_claude_desktop_ui_prompt.py --send --prompt-kind single
+```
+
+This UI smoke sends a synthetic sanitized article prompt and then verifies the
+fresh Claude MCP log for a `kcs_draft_article` call and result. It is separate
+from the deterministic stdio smoke because it depends on macOS GUI automation
+permissions. If it returns
+`send_error_code=codex_accessibility_permission_required`, macOS is blocking
+Codex.app from controlling the computer through Accessibility; grant that
+permission in System Settings before using the GUI smoke. The script fails
+fast for this state and writes a diagnostic screenshot path instead of hanging
+or retrying blindly.
+
+The GUI-send path is best-effort because Claude Desktop rate limits and macOS
+focus behavior are outside the MCP server contract. For the preferred manual UI
+smoke, print a synthetic prompt plus the matching follow-up verifier command:
+
+```bash
+uv run python scripts/smoke_claude_desktop_ui_prompt.py \
+  --print-manual-prompt \
+  --prompt-kind raw-ticket \
+  --copy-manual-prompt
+```
+
+Paste and send the clipboard text in Claude Desktop, or send the raw text
+written to the returned `manual_prompt_path`, then run the returned
+`follow_up_command`. The verifier checks the fresh MCP log window without
+driving the UI. It is equivalent to:
+
+```bash
+uv run python scripts/smoke_claude_desktop_ui_prompt.py \
+  --since 2026-06-18T23:45:00Z \
+  --assume-sent \
+  --prompt-kind raw-ticket
+```
+
+Use `--prompt-kind raw-ticket` for the primary Claude Desktop MVP smoke because
+it exercises a pasted approved sanitized ticket transcript rather than a neat
+field-labeled packet. In current local workflow testing, prefer the
+`ticket_ref` path for production-like long tickets because it avoids pushing
+large transcripts through chat. Use `--prompt-kind single` for a strict labeled
+one-item smoke, `--prompt-kind split` for a split-required manual smoke window,
+or `--prompt-kind narrative` to cover approved summaries shaped as `Summary` /
+`Investigation` / `Resolution` instead of strict field labels.
 
 ### Claude/Cowork Plugin
 
@@ -368,13 +576,17 @@ tools are not loaded into the active chat.
 ## Ownership
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
-- Parent Jira item: PAUX-7083
-- Current implementation subtask: KCS-12 Claude Desktop MCP Adapter
+- Historical parent Jira item: PAUX-7083
+- Last completed implementation slice: KCS-13 Controlled Semantic Review
+  Fallback
+- Current implementation slice: KCS-14 KCS Style and Markup Parity
+- Current implementation subtask: planning / checkpoint definition
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
 
 ## Visibility
 
-Internal - WebPros confidential. Do not share repository contents, fixtures,
-packets, logs, or generated artifacts outside approved WebPros channels.
+Private local product repository. Do not commit or share raw tickets, private
+customer identifiers, credentials, logs with ticket-derived text, generated
+runtime artifacts, reviewer bundles, or other sensitive support material.

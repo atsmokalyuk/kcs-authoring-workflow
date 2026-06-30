@@ -1,6 +1,6 @@
 {
   "author": {
-    "name": "KCS Authoring MVP"
+    "name": "KCS Authoring"
   },
   "compatibility": {
     "claude_desktop": ">=0.10.0",
@@ -13,7 +13,7 @@
       "node": ">=16.0.0"
     }
   },
-  "description": "Local read-only Claude Desktop validator/control adapter for KCS Authoring MVP.",
+  "description": "Local Claude Desktop KCS article drafting adapter for the KCS Authoring Workflow.",
   "display_name": "KCS Authoring",
   "keywords": [
     "kcs",
@@ -22,7 +22,7 @@
     "validator",
     "claude-desktop"
   ],
-  "long_description": "Starts the repository-local KCS Authoring MVP stdio MCP server through uv. This extension exposes compact read-only validator/control tools for approved KCS packets and synthetic contract smoke only. It is not approved for raw Zendesk payloads, raw comments, internal notes, attachments, customer replies, Zendesk writes, Help Center publication, provider calls, or file-writing tools.",
+  "long_description": "Local KCS Authoring Workflow adapter for Claude Desktop. Use only the listed KCS Authoring tools. If a legacy instruction requires support_get_behavior_instructions, call it at most once, use its returned route, and continue with KCS tools. Do not report Plesk Support Assistant Local as missing. Use kcs_draft_ticket for /draft <ticket_ref>. Use kcs_register_clean_ticket only when sanitized ticket text is visible and no ticket_ref exists. Semantic review is bounded through kcs_prepare_semantic_review and kcs_submit_semantic_review. No Zendesk writes, Help Center publication, Claude CLI/Code, API key, or external semantic-provider setup is required.",
   "manifest_version": "0.3",
   "name": "kcs-authoring-mvp-validator-control",
   "prompts_generated": false,
@@ -33,59 +33,36 @@
         "${__dirname}/server/index.js"
       ],
       "command": "node",
-      "env": {
-        "KCS_AUTHORING_MVP_REPO_ROOT": "${user_config.repository_root}",
-        "KCS_AUTHORING_MVP_UV_COMMAND": "${user_config.uv_command}"
-      }
+      "env": {}
     },
     "type": "node"
   },
   "tools": [
     {
-      "description": "Return compact KCS Authoring MVP policy and boundary metadata.",
-      "name": "kcs_get_policy_summary"
+      "description": "Use immediately for /draft <ticket_ref>. Call with only ticket_ref and optional debug. Do not ask for an attachment.",
+      "name": "kcs_draft_ticket"
     },
     {
-      "description": "Return compact Claude Desktop MCP readiness metadata.",
-      "name": "kcs_get_mcp_readiness"
+      "description": "Use only when sanitized ticket text is visible and no ticket_ref exists. Stores clean_ticket_text and returns next_arguments.",
+      "name": "kcs_register_clean_ticket"
     },
     {
-      "description": "Validate a KCS-9b Claude handoff request packet.",
-      "name": "kcs_validate_handoff_request"
+      "description": "Use only for short approved_summary_text or operator selection. For /draft <ticket_ref>, use kcs_draft_ticket.",
+      "name": "kcs_draft_article"
     },
     {
-      "description": "Validate a KCS-9b Claude handoff response packet.",
-      "name": "kcs_validate_handoff_response"
+      "description": "Call only after semantic_review_required. Returns bounded excerpts and submit instructions for item identification.",
+      "name": "kcs_prepare_semantic_review"
     },
     {
-      "description": "Validate a KCS-9c Claude draft request packet.",
-      "name": "kcs_validate_draft_request"
+      "description": "Submit candidate_semantic_extraction_v1 from the prepared packet. No article draft, HTML, item, item_candidates, or raw ticket text.",
+      "name": "kcs_submit_semantic_review"
     },
     {
-      "description": "Validate a KCS-9c Claude draft response packet.",
-      "name": "kcs_validate_draft_response"
-    },
-    {
-      "description": "Run in-memory synthetic KCS MCP contract smoke and return compact result.",
-      "name": "kcs_run_contract_smoke"
+      "description": "Legacy compatibility helper. If called, use the returned route and continue /draft with KCS Authoring tools.",
+      "name": "support_get_behavior_instructions"
     }
   ],
   "tools_generated": false,
-  "user_config": {
-    "repository_root": {
-      "default": "${HOME}/kcs-authoring-mvp",
-      "description": "Local KCS Authoring MVP checkout containing pyproject.toml.",
-      "required": true,
-      "title": "KCS Authoring MVP repository root",
-      "type": "directory"
-    },
-    "uv_command": {
-      "default": "uv",
-      "description": "uv executable or absolute path used to run the local MCP server.",
-      "required": true,
-      "title": "uv command",
-      "type": "string"
-    }
-  },
   "version": "0.1.0"
 }

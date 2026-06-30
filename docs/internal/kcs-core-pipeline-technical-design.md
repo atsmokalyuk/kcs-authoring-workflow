@@ -79,6 +79,7 @@ CandidateSemanticExtraction {
     confirmed_facts[]
     supported_cause
     supported_resolution_or_workaround
+    resolution_steps[]
     question
     supported_answer
     open_questions[]
@@ -105,6 +106,13 @@ Rules:
   `blocked`.
 - Its free-text fields must follow the Data Handling Baseline and must be
   scanned before normalization.
+- `resolution_steps[]` must preserve executable operational detail when the
+  approved input contains it. The extractor must not collapse commands, file
+  paths, UI navigation, linked prerequisite articles, or verification actions
+  into vague instructions such as "disable the file" or "restart the service".
+  A resolution is complete only when the reviewer/customer can apply it from
+  the article without performing an additional search for the missing command,
+  path, product navigation, or prerequisite connection step.
 - EOL/supportability status must come from explicit sanitized input mention in
   this slice; KCS-9a does not perform online EOL lookup.
 
@@ -530,11 +538,20 @@ KCS-12:
 - Claude Desktop MCP validator/control adapter under `kcs_adapters`;
 - installable local Claude Desktop MCPB package source under
   `packaging/claude-desktop/`;
-- exposes read-only stdio MCP tools for KCS-9b/KCS-9c packet validation and
-  synthetic contract smoke;
-- returns compact safe summaries only, with no resources, prompts, file writes,
-  network calls, provider calls, raw Zendesk data, publication behavior, or
-  customer replies.
+- default Claude Desktop surface exposes one primary operator tool,
+  `kcs_draft_article`, with a thin workflow-owned schema:
+  `approved_summary_text`, `operator_selection_ref`,
+  `operator_selected_item_ref`, and `debug`;
+- internal/canonical server mode may still expose diagnostic validation and
+  synthetic contract-smoke tools for local engineering checks;
+- the operator draft tool is non-read-only and may write reviewer-only bundle
+  files only under
+  `local-data/reviewer-bundles/`;
+- returns compact safe summaries and local bundle refs/relative paths by
+  default; full reviewer HTML is limited to explicit debug/smoke compatibility
+  mode;
+- includes no resources, prompts, network calls, provider calls, raw Zendesk
+  data, publication behavior, or customer replies.
 
 Future remote MCP / intranet deployment:
 

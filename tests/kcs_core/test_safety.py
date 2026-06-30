@@ -11,6 +11,7 @@ from kcs_core.safety import (
     ensure_evidence_safe,
     validate_evidence_safety,
 )
+from kcs_core.sanitizer import ensure_safe_sanitized_payload
 
 
 def _safe_packet(**overrides: object) -> NormalizedTicketEvidencePacket:
@@ -111,6 +112,54 @@ def test_rejects_positive_sanitizer_finding_count() -> None:
 
 def test_accepts_sanitizer_safe_for_kcs_core_flag() -> None:
     packet = _safe_packet(sanitizer_report={"safe_for_kcs_core": True})
+
+    result = validate_evidence_safety(packet)
+
+    assert result.ok is True
+    assert result.blockers == ()
+
+
+def test_sanitizer_accepts_technical_vector_word() -> None:
+    ensure_safe_sanitized_payload(
+        "The attack vector was mitigated by a product-side configuration change."
+    )
+
+
+def test_sanitizer_accepts_local_config_file_path() -> None:
+    ensure_safe_sanitized_payload(
+        "Edit /etc/fail2ban/jail.d/plesk-panel-flood.local and reload fail2ban."
+    )
+
+
+def test_sanitizer_accepts_public_plesk_support_contact() -> None:
+    ensure_safe_sanitized_payload(
+        "Customer Success team (cs@plesk.com) handles my.plesk.com questions."
+    )
+
+
+def test_evidence_safety_accepts_local_config_file_path() -> None:
+    packet = _safe_packet(
+        supported_resolution_or_workaround=(
+            "Edit /etc/fail2ban/jail.d/plesk-panel-flood.local and reload fail2ban."
+        )
+    )
+
+    result = validate_evidence_safety(packet)
+
+    assert result.ok is True
+    assert result.blockers == ()
+
+
+def test_evidence_safety_accepts_public_plesk_support_contact() -> None:
+    packet = _safe_packet(
+        confirmed_facts=[
+            "Customer Success team handles my.plesk.com licensing questions."
+        ],
+        supported_resolution_or_workaround=(
+            "Contact Customer Success at cs@plesk.com for my.plesk.com "
+            "licensing account questions."
+        ),
+    )
 
     result = validate_evidence_safety(packet)
 
@@ -260,6 +309,74 @@ def test_allows_documentation_reserved_identifiers() -> None:
             "Use example.com and 192.0.2.10 in documentation-only reproduction.",
             "IPv6 documentation address 2001:db8::1 is safe.",
         ]
+    )
+
+    result = validate_evidence_safety(packet)
+
+    assert result.ok is True
+    assert result.blockers == ()
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "setup.php",
+        "service.log",
+        "application.ini",
+        "worker-process.pid",
+        "service.conf",
+        "02component-feature.conf",
+        "settings.yaml",
+        "metadata.json",
+        "service.bak",
+        "service.disabled",
+        "service.conf.disabled",
+        "service.conf.bak",
+        "component.orig",
+        "component.old",
+        "/var/lib/application/service.bak",
+        "/var/www/vhosts",
+    ],
+)
+def test_allows_standalone_safe_filenames_in_sanitized_summary(
+    filename: str,
+) -> None:
+    value = f"The sanitized diagnostic summary references {filename}."
+
+    ensure_safe_sanitized_payload(value)
+    result = validate_evidence_safety(_safe_packet(symptoms=[value]))
+
+    assert result.ok is True
+    assert result.blockers == ()
+
+
+def test_safe_filename_allowlist_does_not_allow_customer_domain_or_url() -> None:
+    with pytest.raises(ContractValidationError):
+        ensure_safe_sanitized_payload("Open https://customer.example.net/index.php")
+
+    result = validate_evidence_safety(
+        _safe_packet(symptoms=["Open customer.example.net/index.php"])
+    )
+
+    assert result.ok is False
+    assert result.blockers == (SafetyBlocker.UNSAFE_TEXT.value,)
+
+
+def test_sanitized_payload_allows_public_plesk_support_article_url() -> None:
+    ensure_safe_sanitized_payload(
+        "Reviewer HTML links to "
+        "https://support.plesk.com/hc/en-us/articles/"
+        "12377512781975-How-to-connect-to-a-Plesk-server-via-SSH."
+    )
+
+
+def test_evidence_safety_allows_public_plesk_support_article_url() -> None:
+    packet = _safe_packet(
+        supported_resolution_or_workaround=(
+            "Follow public KB article "
+            "https://support.plesk.com/hc/en-us/articles/115001678209 "
+            "and verify the repair succeeds."
+        ),
     )
 
     result = validate_evidence_safety(packet)

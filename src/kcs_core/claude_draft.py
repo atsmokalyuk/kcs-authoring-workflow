@@ -1309,7 +1309,7 @@ _PRIVATE_HTML_PATTERNS = (
         r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.[a-z]{2,63}\b",
         re.I,
     ),
-    re.compile(r"(?:/Users/|/home/|/var/www/vhosts/|C:\\Users\\)", re.I),
+    re.compile(r"(?:/Users/|/home/|C:\\Users\\)", re.I),
     re.compile(r"\b(?:PLSK|EXT)[-_.]?\d{4,}(?:[-_.]?\d+)*\b", re.I),
     re.compile(r"\b(?:ticket|zendesk|zd)[-_ #:]?\d{4,}\b", re.I),
     re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),

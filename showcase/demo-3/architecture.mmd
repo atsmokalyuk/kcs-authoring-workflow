@@ -1,0 +1,19 @@
+flowchart TD
+    A["Approved clean ticket"] --> B["Semantic extraction / fallback"]
+    B --> C["Python validation"]
+    C --> D["KCS decision engine"]
+    D --> E["Reviewer packet renderer"]
+    E --> F["Reviewer-only bundle"]
+    F --> G["Human review"]
+
+    L["Claude / LLM"] -. "semantic proposal only" .-> B
+
+    P["Python-owned controls"] --> C
+    P --> D
+    P --> E
+    P --> F
+
+    Z["Zendesk write"]:::blocked
+    F -. "no auto-publish / no write" .-> Z
+
+    classDef blocked fill:#2b2b2b,stroke:#cc6666,color:#fff;

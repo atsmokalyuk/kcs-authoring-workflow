@@ -6,7 +6,7 @@ Local Claude/Cowork plugin for KCS Authoring MVP validation and smoke checks.
 
 - One skill: `kcs-authoring-control`
 - One local MCP server: `kcs-authoring`
-- Seven read-only KCS tools exposed with `kcs_*` names
+- Read-only KCS tools exposed with `kcs_*` names
 
 ## Local Requirements
 

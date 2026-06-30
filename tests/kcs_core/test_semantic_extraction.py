@@ -78,6 +78,7 @@ def _contract_item_with_malformed_fields(**overrides: object) -> CandidateKcsIte
         "open_questions": (),
         "product_relation": ProductRelation.PLESK_OWNED.value,
         "question": None,
+        "resolution_steps": (),
         "source_refs": ("semantic-source-item-001",),
         "summary": "Plesk backup task fails with a synthetic safe status.",
         "supportability": Supportability.SUPPORTED.value,
@@ -150,6 +151,30 @@ def test_plesk_shipped_component_is_not_generic_third_party() -> None:
     assert candidates[0]["kcs_applicable"] is True
     assert candidates[0]["third_party_only"] is False
     assert candidates[0]["third_party_generic"] is False
+
+
+def test_howto_answer_steps_are_accepted_as_resolution_steps() -> None:
+    payload = _payload(
+        items=[
+            _item(
+                article_type_hint=ArticleType.HOWTO_QA.value,
+                answer_steps=["Open the Plesk page and check the setting."],
+                confirmed_facts=[],
+                question="How to check a Plesk setting?",
+                resolution_steps=[],
+                supported_answer="Check the setting in Plesk.",
+                supported_cause=None,
+                supported_resolution_or_workaround=None,
+                symptoms=[],
+            )
+        ]
+    )
+
+    assert validate_candidate_semantic_extraction(payload).ok is True
+    candidates = _issue_candidates(payload)
+    assert candidates[0]["resolution_steps"] == [
+        "Open the Plesk page and check the setting."
+    ]
 
 
 def test_generic_third_party_guidance_maps_to_no_article_flags() -> None:
