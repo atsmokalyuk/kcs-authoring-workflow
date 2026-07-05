@@ -1,8 +1,8 @@
 # Agent-Operable Engineering Workflow
 
-Status: draft proposed process artifact. Documentation ownership and tracking
-status must be confirmed by `0. documentation-ownership-cleanup` before this
-becomes authoritative tracked process.
+Status: authoritative KCS-14 development-agent workflow for this repository.
+This document defines the detailed working process below the short `AGENTS.md`
+policy kernel.
 
 ## Purpose
 
@@ -42,8 +42,8 @@ code and executable tests
   -> runtime contracts and data-handling docs under docs/internal/
   -> AGENTS.md policy kernel
   -> tracked engineering-process docs
-  -> local workflow drafts
   -> Codex-specific local instructions
+  -> local-only notes
   -> chat history
 ```
 

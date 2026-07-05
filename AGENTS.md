@@ -124,6 +124,8 @@ Authoritative layers:
 - `docs/internal/engineering-process/kcs-14-planning-decisions.md`: active
   KCS-14/KCS-15 numbering, tracked-home decisions, reopening scope,
   inter-slice gates, review routing, and refactor freeze list.
+- `docs/internal/engineering-process/agent-operable-engineering-workflow.md`:
+  authoritative development-agent workflow below this policy kernel.
 - `docs/internal/engineering-process/git-policy.md`: branch, commit, PR, merge, remote-branch
   retention, sensitive artifact, and Git traceability rules.
 - `docs/internal/engineering-process/feature-engineering-playbook.md`: development-time procedure for

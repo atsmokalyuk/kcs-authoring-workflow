@@ -12,6 +12,10 @@ ACTIVE_DOCS = [
     *sorted((ROOT / "engineering-playbook").rglob("*.md")),
 ]
 
+REFERENCE_ONLY_DOCS = {
+    ROOT / "docs" / "internal" / "engineering-process" / "references.md",
+}
+
 PROCESS_DOCS = [
     ROOT / "AGENTS.md",
     *sorted((ROOT / "docs" / "internal" / "engineering-process").rglob("*.md")),
@@ -49,6 +53,13 @@ PLANNED_OR_OPTIONAL_CONTEXT = (
     "after kcs-15",
     "later",
     "optional",
+)
+
+UNSUPPORTED_HARNESS_CONTEXT = (
+    "not described as active",
+    "unsupported-harness",
+    "unavailable",
+    "not active",
 )
 
 
@@ -97,3 +108,33 @@ def test_tracked_policy_docs_reference_existing_repo_paths() -> None:
                 missing.append(f"{rel_path}:{index + 1}: {referenced}")
 
     assert not missing, "\n".join(missing)
+
+
+def test_active_docs_do_not_list_claude_code_as_active_harness() -> None:
+    violations: list[str] = []
+
+    for path in ACTIVE_DOCS:
+        if path in REFERENCE_ONLY_DOCS or not path.exists():
+            continue
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for index, line in enumerate(lines):
+            if "Claude Code" not in line:
+                continue
+            context = _line_context(lines, index)
+            if any(marker in context for marker in UNSUPPORTED_HARNESS_CONTEXT):
+                continue
+            rel_path = path.relative_to(ROOT)
+            violations.append(f"{rel_path}:{index + 1}: {line}")
+
+    assert not violations, "\n".join(violations)
+
+
+def test_agent_workflow_is_tracked_authoritative_process() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    workflow_path = (
+        "docs/internal/engineering-process/agent-operable-engineering-workflow.md"
+    )
+    workflow = (ROOT / workflow_path).read_text(encoding="utf-8")
+
+    assert workflow_path in agents
+    assert "Status: authoritative KCS-14 development-agent workflow" in workflow

@@ -89,3 +89,64 @@ Closeout metadata:
   freeze checks
 
 Final verdict: Slice 0 implementation checkpoint is ready for external review.
+
+## 2026-07-05 - Slice 1 Engineering Process Baseline
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `AGENTS.md`
+- `docs/internal/engineering-process/agent-operable-engineering-workflow.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `tests/policy/test_kcs14_docs_policy.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- `uv run pytest tests/policy/test_kcs14_docs_policy.py -q` passed.
+- `uv run ruff check tests/policy/test_kcs14_docs_policy.py` passed.
+- Agent workflow authoritative status is covered by
+  `test_agent_workflow_is_tracked_authoritative_process`.
+- Unsupported development harness wording is covered by
+  `test_active_docs_do_not_list_claude_code_as_active_harness`.
+
+Findings:
+
+- `agent-operable-engineering-workflow.md` is now the authoritative tracked
+  development-agent workflow below `AGENTS.md`.
+- `AGENTS.md` references the workflow as an authoritative layer without
+  duplicating the detailed procedure.
+- The authority ladder no longer treats local workflow drafts as an
+  authoritative layer.
+
+Deferred risks:
+
+- Slice 2 still needs the tracked `tool-entrypoints.md` artifact and command
+  classification.
+- Slice 4 still needs the file-based review packet format and validator.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 1
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: unsupported-harness policy check; authoritative
+  workflow check
+- findings promoted to future checks: none
+- deferred risks: tool entrypoints and review packet format
+
+Final verdict: Slice 1 implementation checkpoint is ready for external review.
