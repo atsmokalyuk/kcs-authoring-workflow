@@ -86,9 +86,15 @@ output, and local reviewer bundles. `KCS-13` added the controlled fallback for
 complex/noisy clean tickets when deterministic Python item identification is
 low-confidence.
 
-The current project goal is reached for now. Further development is frozen.
-`KCS-14` style/markup parity, managed deployment, production rollout, and any
-additional integrations are deferred future work, not active scope.
+The current local workflow goal is reached for now. Runtime feature work,
+managed deployment, production rollout, and additional integrations remain
+frozen unless a new explicitly approved slice reopens them.
+
+Development is reopened only for `KCS-14` engineering/process/codebase
+hardening. KCS-14 must preserve the implemented runtime workflow and reduce
+ambiguity for future AI-assisted engineering. `KCS-15` style/markup parity is
+deferred future runtime hardening, not part of the current engineering/process
+hardening cycle.
 
 Resolution steps must remain evidence-grounded. If the ticket gives the
 resolution outcome or a high-level resolution description but does not include
@@ -273,7 +279,7 @@ and bounded smoke layer only. KCS-12 introduces the Claude Desktop MCP
 validator/control surface and installable local MCPB package only. KCS-13
 introduces the controlled semantic-review fallback only. Real-ticket smoke,
 production transport rollout, remote MCP/internal service implementation,
-broad adapter/client integration, and KCS-14 style/markup parity are frozen
+broad adapter/client integration, and KCS-15 style/markup parity are frozen
 deferred work unless a future approved slice reopens development.
 
 ## Non-goals
@@ -577,10 +583,15 @@ tools are not loaded into the active chat.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Historical parent Jira item: PAUX-7083
+- Current hardening umbrella: PAUX-7103, pending/subject to external tracker
+  confirmation
 - Last completed implementation slice: KCS-13 Controlled Semantic Review
   Fallback
-- Current implementation slice: KCS-14 KCS Style and Markup Parity
-- Current implementation subtask: planning / checkpoint definition
+- Current implementation slice: KCS-14 Engineering and Codebase Design
+  Hardening
+- Deferred runtime hardening slice: KCS-15 KCS Style and Markup Parity
+- Current implementation subtask: Slice 0 documentation ownership cleanup /
+  planning decision reconciliation
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
