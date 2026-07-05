@@ -131,6 +131,11 @@ Authoritative layers:
 - `docs/internal/engineering-process/functional-test-from-behavior.md`:
   functional acceptance test convention, fixture tiers, provenance checks, and
   refactor-safety test expectations.
+- `docs/internal/engineering-process/review-context-protocol.md`: compact
+  review packet protocol, output budget, forbidden-content rules, and
+  promotion-candidate workflow. During review or closeout, surface repeated or
+  mechanically checkable findings as promotion candidates instead of leaving
+  them as chat-only advice.
 - `docs/internal/engineering-process/git-policy.md`: branch, commit, PR, merge, remote-branch
   retention, sensitive artifact, and Git traceability rules.
 - `docs/internal/engineering-process/feature-engineering-playbook.md`: development-time procedure for

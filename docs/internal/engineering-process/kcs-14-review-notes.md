@@ -15,6 +15,7 @@ Each entry should include:
 - unchanged contracts;
 - validation evidence;
 - findings;
+- promotion candidates or explicit "none";
 - deferred risks;
 - closeout metadata, when material;
 - final verdict.
@@ -286,3 +287,88 @@ Closeout metadata:
 - deferred risks: review packet format, code map, refactor test inventory
 
 Final verdict: Slice 3 implementation checkpoint is ready for external review.
+
+## 2026-07-05 - Slice 4 Review Context Protocol
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `AGENTS.md`
+- `docs/internal/engineering-process/agent-operable-engineering-workflow.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/promotion-candidates.md`
+- `docs/internal/engineering-process/review-context-protocol.md`
+- `docs/internal/engineering-process/review-packets/kcs-14-slice-4-doc-only-review-packet.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-1-agent-operable-workflow-feature-note.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-2-local-tool-entrypoints-feature-note.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-3-functional-test-from-behavior-feature-note.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-4-review-context-protocol-feature-note.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-4-enforcement-ladder-feature-note.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-engineering-and-codebase-design-hardening.md`
+- `tests/policy/test_review_context_policy.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- `uv run pytest tests/policy/test_kcs14_docs_policy.py tests/policy/test_tool_entrypoints.py tests/policy/test_functional_test_policy.py tests/policy/test_review_context_policy.py -q` passed.
+- `uv run ruff check tests/policy/test_kcs14_docs_policy.py tests/policy/test_tool_entrypoints.py tests/policy/test_functional_test_policy.py tests/policy/test_review_context_policy.py` passed.
+- Review packet required sections are checked by
+  `test_review_context_protocol_defines_required_packet_sections` and
+  `test_file_based_review_packets_have_required_sections`.
+- Forbidden content and output budget rules are checked by
+  `test_review_context_protocol_defines_forbidden_content_and_output_budget`
+  and `test_file_based_review_packets_do_not_include_forbidden_content`.
+- Promotion candidate fields and cadence are checked by
+  `test_promotion_candidate_registry_defines_required_fields` and
+  `test_promotion_protocol_keeps_automation_after_stability`.
+
+Findings:
+
+- `review-context-protocol.md` is now the authoritative tracked protocol for
+  compact review packets, forbidden-content boundaries, output budget, review
+  harness routing, and promotion-candidate workflow.
+- `promotion-candidates.md` now records repeated findings that may move down
+  the enforcement ladder.
+- A dry-run doc-only review packet exists under `review-packets/` and is
+  covered by packet-shape and forbidden-content checks.
+
+Promotion candidates:
+
+- none new. This slice created the registry and recorded already implemented
+  promotions from Slices 0 through 3.
+
+Deferred risks:
+
+- Slice 5 still needs the minimal code map before codebase refactor work.
+- Slice 7 still needs to automate only promoted, stable, mechanically
+  checkable rules.
+- Reusable extraction remains deferred until after a later retrospective.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 4
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: review packet required sections; file-based
+  packet required sections; review protocol forbidden-content/output-budget
+  anchors; file-based packet forbidden-content scan; promotion-candidate field
+  coverage; promotion-cadence anchors
+- findings promoted to future checks: code-map staleness in Slice 5;
+  freeze-list checks in Slice 6; stable automation candidates in Slice 7
+- deferred risks: code map, refactor freeze checks, review tooling automation
+
+Final verdict: Slice 4 implementation checkpoint is ready for external review.

@@ -292,6 +292,10 @@ Acceptance:
 - output budget policy is clear.
 - the `affected contracts` field may start manual and should be revised after
   `5. minimal-code-map` exists.
+- promotion candidates are recorded through an explicit ladder:
+  note, checklist item, candidate for test/tool/check, and reusable
+  infrastructure candidate only after the process proves stable across KCS-14
+  and KCS-15.
 
 Review checkpoint: dry-run one doc-only review packet.
 
@@ -342,6 +346,8 @@ Acceptance:
   it is meant to exclude;
 - diff-to-contract checks use the code map;
 - tooling does not become the source of truth.
+- automation targets only promoted, stable, mechanically checkable rules from
+  the promotion-candidate registry.
 - once the documented command surface proves stable, selected parts may move
   to a machine-readable registry or wrapper CLI; the readable
   `tool-entrypoints.md` remains the human/agent contract for when commands

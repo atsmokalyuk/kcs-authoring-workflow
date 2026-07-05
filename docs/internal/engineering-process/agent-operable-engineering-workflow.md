@@ -263,6 +263,8 @@ For doc/process slices, also report:
 ## Review Packet Handoff
 
 Use compact review packets for non-trivial review.
+Detailed file-based packet rules live in
+`docs/internal/engineering-process/review-context-protocol.md`.
 
 A review packet should include:
 
