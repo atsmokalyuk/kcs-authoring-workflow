@@ -165,7 +165,7 @@ KCS-14 scope.
 - Local `plesk_support` prototype (reference-only per portability policy).
   Grounds: proven workflow-first architecture, typed packets, deterministic
   gates. Use only through
-  `local-docs/portability/portability-from-plesk-support.md`.
+  `docs/internal/portability/portability-from-plesk-support.md`.
 
 ## Rule-To-Source Mapping
 

@@ -1,0 +1,99 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+
+ACTIVE_DOCS = [
+    ROOT / "README.md",
+    ROOT / "AGENTS.md",
+    *sorted((ROOT / "docs" / "internal").rglob("*.md")),
+    *sorted((ROOT / "engineering-playbook").rglob("*.md")),
+]
+
+PROCESS_DOCS = [
+    ROOT / "AGENTS.md",
+    *sorted((ROOT / "docs" / "internal" / "engineering-process").rglob("*.md")),
+    *sorted((ROOT / "engineering-playbook").rglob("*.md")),
+]
+
+KCS14_STYLE_RE = re.compile(
+    r"KCS-14[^\n]*(style|markup|parity)|"
+    r"KCS-14[^\n]*(Style|Markup|Parity)|"
+    r"KCS-14[^\n]*(KCS Style)",
+)
+
+PATH_RE = re.compile(
+    r"`("
+    r"(?:AGENTS\.md|README\.md|CONTRIBUTING\.md|pyproject\.toml)"
+    r"|(?:docs|engineering-playbook|scripts|tests|src)/[^`]+"
+    r")`"
+)
+
+ALLOWED_KCS14_STYLE_CONTEXT = (
+    "historical",
+    "pre-renumbering",
+    "older kcs-14",
+    "unmarked active",
+    "grep check",
+    "not leave",
+)
+
+PLANNED_OR_OPTIONAL_CONTEXT = (
+    "planned",
+    "future",
+    "once created",
+    "after slice",
+    "after kcs-14",
+    "after kcs-15",
+    "later",
+    "optional",
+)
+
+
+def _line_context(lines: list[str], index: int) -> str:
+    start = max(0, index - 2)
+    end = min(len(lines), index + 3)
+    return " ".join(lines[start:end]).lower()
+
+
+def test_active_docs_do_not_define_kcs14_as_style_or_markup_parity() -> None:
+    violations: list[str] = []
+
+    for path in ACTIVE_DOCS:
+        if not path.exists():
+            continue
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for index, line in enumerate(lines):
+            if not KCS14_STYLE_RE.search(line):
+                continue
+            context = _line_context(lines, index)
+            if any(marker in context for marker in ALLOWED_KCS14_STYLE_CONTEXT):
+                continue
+            rel_path = path.relative_to(ROOT)
+            violations.append(f"{rel_path}:{index + 1}: {line}")
+
+    assert not violations, "\n".join(violations)
+
+
+def test_tracked_policy_docs_reference_existing_repo_paths() -> None:
+    missing: list[str] = []
+
+    for path in PROCESS_DOCS:
+        if not path.exists():
+            continue
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for index, line in enumerate(lines):
+            for match in PATH_RE.finditer(line):
+                referenced = match.group(1).rstrip(".,;:")
+                target = ROOT / referenced
+                if target.exists():
+                    continue
+                context = _line_context(lines, index)
+                if any(marker in context for marker in PLANNED_OR_OPTIONAL_CONTEXT):
+                    continue
+                rel_path = path.relative_to(ROOT)
+                missing.append(f"{rel_path}:{index + 1}: {referenced}")
+
+    assert not missing, "\n".join(missing)
