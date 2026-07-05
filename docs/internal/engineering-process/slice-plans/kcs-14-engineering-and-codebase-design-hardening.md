@@ -342,6 +342,10 @@ Acceptance:
   it is meant to exclude;
 - diff-to-contract checks use the code map;
 - tooling does not become the source of truth.
+- once the documented command surface proves stable, selected parts may move
+  to a machine-readable registry or wrapper CLI; the readable
+  `tool-entrypoints.md` remains the human/agent contract for when commands
+  apply, what they prove, manual caveats, and output-budget rules.
 
 Review checkpoint: tooling review after dry-run packets match the documented
 protocol.

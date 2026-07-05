@@ -150,3 +150,69 @@ Closeout metadata:
 - deferred risks: tool entrypoints and review packet format
 
 Final verdict: Slice 1 implementation checkpoint is ready for external review.
+
+## 2026-07-05 - Slice 2 Local Tool Entrypoints
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `AGENTS.md`
+- `docs/internal/engineering-process/tool-entrypoints.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `tests/policy/test_tool_entrypoints.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- `uv run pytest tests/policy/test_kcs14_docs_policy.py tests/policy/test_tool_entrypoints.py -q` passed.
+- `uv run ruff check tests/policy/test_kcs14_docs_policy.py tests/policy/test_tool_entrypoints.py` passed.
+- Tool command coverage is checked by
+  `test_tool_entrypoints_doc_lists_supported_commands`.
+- Deterministic/manual command classification is checked by
+  `test_tool_entrypoints_doc_classifies_deterministic_and_manual_commands`.
+- Help-only liveness is checked by
+  `test_documented_help_entrypoints_are_alive`.
+
+Findings:
+
+- `tool-entrypoints.md` is now the authoritative tracked local command
+  surface for KCS-14 engineering work.
+- `AGENTS.md` keeps only a compact index and delegates command details to the
+  tracked tool-entrypoints document.
+- Deterministic checks, manual Desktop/UI steps, and local side-effect commands
+  are separated so agents can choose the right validation surface without
+  inventing ad hoc workflows.
+
+Deferred risks:
+
+- Slice 3 still needs functional-test-from-behavior templates and fixture
+  provenance checks.
+- Slice 4 still needs the file-based review packet format and validator.
+- Slice 5 still needs the minimal code map before codebase refactor work.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 2
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: tool-entrypoint command coverage;
+  deterministic/manual classification; help-only liveness checks
+- findings promoted to future checks: fixture provenance in Slice 3; review
+  packet shape in Slice 4; code-map staleness in Slice 5
+- deferred risks: functional test templates, review packet format, code map
+
+Final verdict: Slice 2 implementation checkpoint is ready for external review.

@@ -160,6 +160,12 @@ Ruff checks when the Python tooling is present. Keep new decision, validation,
 safety, renderer, and adapter functions small enough to satisfy the configured
 complexity threshold.
 
+## Local Tool Entrypoints
+
+Use `docs/internal/engineering-process/tool-entrypoints.md` as the compact
+index of supported local commands. Do not invent ad hoc shell workflows when a
+repo-approved entrypoint exists.
+
 ## Engineering baseline for implementation:
 Python 3.11.
 Rationale: compatible with MCP SDK, aligned with WebPros Python upgrade direction tracked under SEC-73727, and conservative for MVP dependency/runtime risk.
