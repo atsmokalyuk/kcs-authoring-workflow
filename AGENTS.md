@@ -74,7 +74,9 @@ Use the smallest mode that fits the operator request:
 - Builder / implementation mode: implement the smallest agreed safe slice.
   Preserve existing contracts unless explicitly authorized, follow existing
   style and naming, add or update tests/fixtures for behavior changes, and
-  avoid unrelated refactoring.
+  avoid unrelated refactoring. For behavior or refactor changes, do not treat a
+  file list as a behavior spec; if behavior and acceptance tests are not clear
+  from the request or tracked docs, ask for them before coding.
 - Bugfix / forensic mode: reproduce or define the failing case first, gather
   evidence before patching, fix the root cause only, and keep a regression test
   when practical.
@@ -126,6 +128,9 @@ Authoritative layers:
   inter-slice gates, review routing, and refactor freeze list.
 - `docs/internal/engineering-process/agent-operable-engineering-workflow.md`:
   authoritative development-agent workflow below this policy kernel.
+- `docs/internal/engineering-process/functional-test-from-behavior.md`:
+  functional acceptance test convention, fixture tiers, provenance checks, and
+  refactor-safety test expectations.
 - `docs/internal/engineering-process/git-policy.md`: branch, commit, PR, merge, remote-branch
   retention, sensitive artifact, and Git traceability rules.
 - `docs/internal/engineering-process/feature-engineering-playbook.md`: development-time procedure for

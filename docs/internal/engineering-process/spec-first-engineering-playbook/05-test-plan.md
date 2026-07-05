@@ -1,6 +1,8 @@
 # Spec-first Engineering Playbook: Test Plan
 
 The test plan says what proves correctness before implementation starts.
+Detailed repository rules for converting behavior into tests live in
+`docs/internal/engineering-process/functional-test-from-behavior.md`.
 
 ## Test Categories
 
@@ -43,42 +45,22 @@ def test_reviewer_packet_does_not_treat_explicit_reference_as_live_search():
 Use a dedicated BDD runner only when plain pytest no longer keeps scenarios
 readable or when non-Python reviewers need shared `.feature` files.
 
-## Slice: KCS reviewer packet generation
+## Slice Test Sections
 
-## Happy Path Tests
+Use these sections when drafting a slice-specific test plan:
 
-- Generates reviewer packet for `flag_existing`.
-- Generates reviewer packet for draft-only output.
-- Includes blocker summary for incomplete candidate.
-- Includes manual review reminder.
-- Includes safe bundle refs and hashes.
+- happy path tests;
+- forbidden path tests;
+- fail-closed tests;
+- schema or contract stability tests;
+- golden, structural, or hash checks;
+- fixture provenance and privacy checks;
+- commands to run from
+  `docs/internal/engineering-process/tool-entrypoints.md`.
 
-## Forbidden Path Tests
+## Fixture Policy
 
-- Rejects or blocks raw private input.
-- Rejects unsafe private path values.
-- Rejects publish flags set to true.
-- Rejects missing required readiness fields.
-- Rejects ambiguous reuse/search provenance.
-
-## Fail-closed Tests
-
-- Missing evidence basis blocks packet readiness.
-- Missing action blocks packet readiness.
-- Unknown or unsupported action blocks packet readiness.
-- Incomplete candidate produces blocker, not draft.
-
-## Stability Tests
-
-- Golden JSON fixture validates.
-- Golden Markdown snapshot contains required sections.
-- JSON schema or typed model rejects unexpected required-field drift.
-
-## Suggested Commands
-
-```bash
-uv run pytest tests/kcs_core/test_reviewer_bundle.py -q
-uv run pytest tests/kcs_core/test_renderer.py -q
-uv run python -m json.tool outputs/demo/multi_candidate_reviewer_packet/reviewer_packet.json
-git diff --check
-```
+Use synthetic fixtures by default. Committed clean-ticket-derived fixtures must
+be sanitized, approved, privacy-scanned, portable, and marked with explicit
+provenance. Local clean-ticket refs must be skip-if-absent and must not make the
+suite machine-dependent.
