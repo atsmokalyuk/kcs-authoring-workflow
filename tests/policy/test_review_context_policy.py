@@ -46,6 +46,12 @@ COMPLEX_FEATURE_NOTES = (
     / "engineering-process"
     / "slice-plans"
     / "kcs-14-slice-4-review-context-protocol-feature-note.md",
+    ROOT
+    / "docs"
+    / "internal"
+    / "engineering-process"
+    / "slice-plans"
+    / "kcs-14-slice-5-code-review-graph-baseline-feature-note.md",
     ENFORCEMENT_FEATURE_NOTE,
 )
 REVIEW_PACKET_DIR = (
@@ -143,17 +149,21 @@ def test_promotion_protocol_keeps_automation_after_stability() -> None:
         "Stable across KCS-14 and KCS-15 = reusable infrastructure candidate.",
         "Do not automate design judgment with blocking regex checks.",
         "Agent Promotion Responsibility",
-        "Promotion does not happen automatically.",
+        "Promotion discovery is automatic.",
+        "Promotion implementation is approval-gated.",
+        "operator should not need to remember",
         "development agent must surface a promotion candidate",
         "Promotion implementation should be its own small scoped",
         "action or commit",
         "Promotion Checkpoints",
+        "before starting a refactor target",
         "during staged-diff review",
         "during slice closeout before commit",
         "after repeated validation or review failure with the same cause",
         "Promotion candidates: none",
         "Counts must come from",
         "The agent must not rely on chat memory",
+        "report that it checked these durable sources",
         "stable value-safe finding codes",
         "Promotion Readiness Gates",
         "Implicit approval is allowed only when",

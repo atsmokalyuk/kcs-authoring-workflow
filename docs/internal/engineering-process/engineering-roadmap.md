@@ -147,7 +147,7 @@ Planned slice order:
 2. local-tool-entrypoints
 3. functional-test-from-behavior
 4. review-context-protocol
-5. minimal-code-map
+5. code-review-graph-baseline
 6. codebase-design-refactor
 7. review-and-agent-tooling
 ```
@@ -311,8 +311,8 @@ files. Tests should fail when graph nodes reference deleted files or stale file
 hashes. This keeps the graph useful for multi-agent orientation without turning
 it into a second, stale documentation system.
 
-Agent review tooling should come after the review criteria and minimal code map
-exist. Do not automate an unstable process. A minimal code map should precede
+Agent review tooling should come after the review criteria and code-review graph
+baseline exist. Do not automate an unstable process. The graph baseline should precede
 the behavior-preserving codebase design refactor so refactor review can check
 module ownership, contract edges, and known invariants before files move.
 

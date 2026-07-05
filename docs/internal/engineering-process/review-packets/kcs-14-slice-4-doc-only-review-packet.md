@@ -43,7 +43,7 @@ Run the policy test group and Ruff on touched policy tests before commit.
 
 ## Known Deferred Risks
 
-- Slice 5 still needs the minimal code map.
+- Slice 5 still needs the code-review graph baseline.
 - Slice 7 still decides which stable manual checks become tooling.
 - Reusable extraction remains deferred until after a later retrospective.
 

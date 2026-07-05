@@ -62,6 +62,25 @@ By the end of KCS-14, the project should have:
    - review checks behavior, contracts, privacy, and design drift, not only
      syntax.
 
+## KCS-14 Success Signals
+
+KCS-14 worked if a future development agent can say:
+
+> I knew which node owned the change, which contracts were frozen, and which
+> tests proved it, without rebuilding the whole repository context manually.
+
+Evidence should come from durable records, not memory:
+
+- graph nodes identify affected ownership areas without unmapped source,
+  test, script, or packaging files;
+- repeated ownership conflicts decrease or become explicit design proposals;
+- promotion candidates move recurring findings into policy tests, snapshots,
+  freeze checks, review checklist items, or documented deferrals;
+- deterministic checks stay quiet enough to be trusted, with noisy checks
+  demoted or retired;
+- refactor batches reduce cognitive load, change amplification, or information
+  leakage without changing runtime behavior.
+
 ## Non-Goals
 
 KCS-14 must not:

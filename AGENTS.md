@@ -136,6 +136,12 @@ Authoritative layers:
   promotion-candidate workflow. During review or closeout, surface repeated or
   mechanically checkable findings as promotion candidates instead of leaving
   them as chat-only advice.
+- `docs/internal/engineering-process/code-review-graph.json`,
+  `docs/internal/engineering-process/module-boundaries.md`, and
+  `docs/internal/engineering-process/review-checkpoints.md`: advisory
+  code-map orientation for module ownership, contract edges, risky files,
+  related tests, and staged-diff checkpoints before refactor or cross-module
+  review.
 - `docs/internal/engineering-process/git-policy.md`: branch, commit, PR, merge, remote-branch
   retention, sensitive artifact, and Git traceability rules.
 - `docs/internal/engineering-process/feature-engineering-playbook.md`: development-time procedure for

@@ -58,9 +58,11 @@ Each file-based review packet should include:
 - `Promotion Candidates`;
 - `Questions For Reviewer`.
 
-`Affected Contracts` may start as a manual list. After Slice 5 introduces a
-minimal code map, review packets should reference affected code-map nodes where
-practical.
+`Affected Contracts` may start as a manual list. After Slice 5, review packets
+should reference affected code-map nodes from
+`docs/internal/engineering-process/code-review-graph.json` where practical.
+The node list is an index to the relevant boundaries, not a substitute for
+changed files, tests, or unchanged-contract evidence.
 
 ## Forbidden Content
 
@@ -120,9 +122,14 @@ remain review-gated unless a narrow mechanically decidable rule emerges.
 
 ## Agent Promotion Responsibility
 
-Promotion does not happen automatically. During review or slice closeout, the
-development agent must surface a promotion candidate when a finding is repeated,
-stable, or mechanically checkable.
+Promotion discovery is automatic. During task framing, staged-diff review, and
+slice closeout, the development agent must check the promotion registry and
+material closeouts. The development agent must surface a promotion candidate
+when a finding is repeated, stable, or mechanically checkable.
+
+Promotion implementation is approval-gated. The operator should only need to
+approve or reject surfaced promotions; the operator should not need to remember
+to ask whether a candidate exists.
 
 The agent should propose:
 
@@ -142,6 +149,7 @@ accepted outcome.
 For material slices, the agent must check promotion candidates at these
 checkpoints:
 
+- before starting a refactor target or other material implementation slice;
 - during staged-diff review;
 - during slice closeout before commit;
 - after repeated validation or review failure with the same cause.
@@ -163,6 +171,8 @@ Counts must come from
 `docs/internal/engineering-process/promotion-candidates.md` and material
 closeout entries in `docs/internal/engineering-process/kcs-14-review-notes.md`.
 The agent must not rely on chat memory to decide whether a finding is repeated.
+The agent must report that it checked these durable sources even when the
+result is `Promotion candidates: none`.
 
 Use stable value-safe finding codes such as `KCS14-PROMO-NNN` when recording
 promotion candidates. Without a code or closeout entry, a finding does not

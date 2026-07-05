@@ -86,7 +86,7 @@ Closeout metadata:
   reference check
 - findings promoted to future checks: unsupported-harness check in Slice 1;
   review packet shape/forbidden-content checks in Slice 4
-- deferred risks: tool entrypoints, code map, review packet format, refactor
+- deferred risks: tool entrypoints, code-review graph baseline, review packet format, refactor
   freeze checks
 
 Final verdict: Slice 0 implementation checkpoint is ready for external review.
@@ -200,7 +200,7 @@ Deferred risks:
 - Slice 3 still needs functional-test-from-behavior templates and fixture
   provenance checks.
 - Slice 4 still needs the file-based review packet format and validator.
-- Slice 5 still needs the minimal code map before codebase refactor work.
+- Slice 5 still needs the code-review graph baseline before codebase refactor work.
 
 Closeout metadata:
 
@@ -214,7 +214,7 @@ Closeout metadata:
   deterministic/manual classification; help-only liveness checks
 - findings promoted to future checks: fixture provenance in Slice 3; review
   packet shape in Slice 4; code-map staleness in Slice 5
-- deferred risks: functional test templates, review packet format, code map
+- deferred risks: functional test templates, review packet format, code-review graph baseline
 
 Final verdict: Slice 2 implementation checkpoint is ready for external review.
 
@@ -267,7 +267,7 @@ Findings:
 Deferred risks:
 
 - Slice 4 still needs the file-based review packet format and validator.
-- Slice 5 still needs the minimal code map before codebase refactor work.
+- Slice 5 still needs the code-review graph baseline before codebase refactor work.
 - Slice 6 still needs reviewed test inventory before behavior-preserving
   refactors.
 
@@ -284,7 +284,7 @@ Closeout metadata:
   committed clean-ticket fixtures; local-ref skip-if-absent check
 - findings promoted to future checks: review packet shape in Slice 4; code-map
   staleness in Slice 5; freeze-list checks in Slice 6
-- deferred risks: review packet format, code map, refactor test inventory
+- deferred risks: review packet format, code-review graph baseline, refactor test inventory
 
 Final verdict: Slice 3 implementation checkpoint is ready for external review.
 
@@ -350,7 +350,7 @@ Promotion candidates:
 
 Deferred risks:
 
-- Slice 5 still needs the minimal code map before codebase refactor work.
+- Slice 5 still needs the code-review graph baseline before codebase refactor work.
 - Slice 7 still needs to automate only promoted, stable, mechanically
   checkable rules.
 - Reusable extraction remains deferred until after a later retrospective.
@@ -369,6 +369,100 @@ Closeout metadata:
   coverage; promotion-cadence anchors
 - findings promoted to future checks: code-map staleness in Slice 5;
   freeze-list checks in Slice 6; stable automation candidates in Slice 7
-- deferred risks: code map, refactor freeze checks, review tooling automation
+- deferred risks: code-review graph baseline, refactor freeze checks, review tooling automation
 
 Final verdict: Slice 4 implementation checkpoint is ready for external review.
+
+## 2026-07-05 - Slice 5 Code-Review Graph Baseline
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `AGENTS.md`
+- `docs/internal/engineering-process/agent-operable-engineering-workflow.md`
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/module-boundaries.md`
+- `docs/internal/engineering-process/review-checkpoints.md`
+- `docs/internal/engineering-process/review-context-protocol.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-engineering-and-codebase-design-hardening.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-5-code-review-graph-baseline-feature-note.md`
+- `tests/policy/test_code_review_graph_policy.py`
+- `tests/policy/test_review_context_policy.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- `uv run pytest tests/policy/test_kcs14_docs_policy.py tests/policy/test_tool_entrypoints.py tests/policy/test_functional_test_policy.py tests/policy/test_review_context_policy.py tests/policy/test_code_review_graph_policy.py -q` passed.
+- `uv run ruff check tests/policy/test_kcs14_docs_policy.py tests/policy/test_tool_entrypoints.py tests/policy/test_functional_test_policy.py tests/policy/test_review_context_policy.py tests/policy/test_code_review_graph_policy.py` passed.
+- `git diff --check` passed.
+- Graph shape, repo-relative path references, file existence, contract-edge
+  references, and file-hash staleness are checked by
+  `tests/policy/test_code_review_graph_policy.py`.
+
+Findings:
+
+- `code-review-graph.json` now maps all current Python source files under
+  `src/`, all Python test files under `tests/`, and refactor-relevant local
+  tooling/package files under `scripts/` and `packaging/` before
+  behavior-preserving refactor work.
+- `module-boundaries.md` records human-readable ownership, must-not-own
+  boundaries, and refactor risks for each mapped area.
+- `review-checkpoints.md` defines how to use affected graph nodes before
+  coding, during staged-diff review, and at closeout.
+- Review packets should now include affected code-map nodes where practical.
+- `kcs-14-slice-6-refactor-methodology.md` records the distilled Fable 5
+  methodology review for Slice 6 target ordering and pre-refactor gates.
+
+Promotion candidates:
+
+- none new. This slice implemented the planned code-map staleness check from
+  prior closeouts.
+
+Deferred risks:
+
+- Slice 6 still needs to select refactor targets from reviewed graph nodes and
+  keep each refactor scoped to one ownership area.
+- Slice 6 still needs freeze-list checks for public/runtime contracts before
+  touching risky boundaries.
+- Slice 7 may automate diff-to-contract review only after this manual graph
+  usage proves stable.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 5
+- affected graph nodes: `desktop_tool_surface`, `clean_ticket_storage`,
+  `desktop_protocol_transport`, `provider_handoff_boundary`,
+  `semantic_review_fallback`, `desktop_draft_workflow`,
+  `packet_validation_decision`, `cli_ingest_readiness`,
+  `renderer_style_gates`, `reviewer_bundle_output`, `smoke_log_tooling`,
+  `packaging_and_install_tooling`, `package_surface`,
+  `engineering_policy_tests`
+- graph hashes updated: initial snapshot for commit `a497d74`
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: code-review graph shape; full Python source,
+  test, script, and packaging file coverage; repo-relative path and file
+  existence; graph file-hash staleness; graph edge integrity; forbidden
+  private/raw artifact markers; code-map feature note shape
+- findings promoted to future checks: freeze-list checks in Slice 6; stable
+  diff-to-contract tooling in Slice 7
+- deferred risks: Slice 6 commit 0 freeze/snapshot checks; result-shaping
+  ownership decision before related refactor targets; behavior-preserving
+  refactor; review tooling automation
+
+Final verdict: Slice 5 implementation checkpoint is ready for external review.

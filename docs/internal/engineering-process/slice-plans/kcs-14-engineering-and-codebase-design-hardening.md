@@ -30,7 +30,7 @@ Allowed:
 - local tool entrypoints;
 - functional acceptance test conventions;
 - compact review context protocol;
-- minimal code map before refactor;
+- code-review graph baseline before refactor;
 - behavior-preserving codebase design refactor;
 - review tooling after the criteria and code map exist.
 
@@ -68,7 +68,7 @@ Use Ousterhout as the primary review lens for:
   not enough;
 - `4. review-context-protocol`: review for complexity, hidden dependencies,
   interface drift, information leakage, and contract drift;
-- `5. minimal-code-map`: dependencies, information leakage, ownership of
+- `5. code-review-graph-baseline`: dependencies, information leakage, ownership of
   knowledge, cross-module decisions, and unknown unknowns;
 - `6. codebase-design-refactor`: deep modules, shallow abstractions, classitis,
   temporal decomposition, pass-through methods and variables, pulling
@@ -291,7 +291,7 @@ Acceptance:
   paths;
 - output budget policy is clear.
 - the `affected contracts` field may start manual and should be revised after
-  `5. minimal-code-map` exists.
+  `5. code-review-graph-baseline` exists.
 - promotion candidates are recorded through an explicit ladder:
   note, checklist item, candidate for test/tool/check, and reusable
   infrastructure candidate only after the process proves stable across KCS-14
@@ -299,15 +299,24 @@ Acceptance:
 
 Review checkpoint: dry-run one doc-only review packet.
 
-### 5. minimal-code-map
+### 5. code-review-graph-baseline
 
-Objective: create a small orientation map before codebase refactor.
+Objective: create a repo-covering advisory orientation graph before codebase
+refactor.
+
+Planned artifacts:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/module-boundaries.md`
+- `docs/internal/engineering-process/review-checkpoints.md`
 
 Acceptance:
 
 - module ownership and contract edges are documented;
 - risky files and related tests are identified;
 - graph/map is advisory and git-aware;
+- current Python source files, Python test files, local scripts, and packaging
+  files are covered by graph nodes;
 - stale or deleted file references can be detected.
 
 Review checkpoint: code-map review before behavior-preserving refactor.
@@ -316,9 +325,14 @@ Review checkpoint: code-map review before behavior-preserving refactor.
 
 Objective: simplify code structure without changing behavior.
 
+Methodology artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-refactor-methodology.md`
+
 Acceptance:
 
 - public contracts stay stable;
+- freeze/snapshot checks land before the first code movement commit;
 - refactor targets are pre-declared from the reviewed code map;
 - each refactor PR covers one ownership area and remains independently
   reviewable;

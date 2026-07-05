@@ -47,7 +47,7 @@ Each PR should map to one Jira slice:
 - KCS-14: engineering and codebase design hardening. This slice owns
   documentation ownership cleanup, spec-first process baseline, local tool
   entrypoints, functional test conventions, compact review context protocol,
-  minimal code map, behavior-preserving codebase design refactor, and
+  code-review graph baseline, behavior-preserving codebase design refactor, and
   review/agent tooling after the manual protocol is stable;
 - KCS-15: KCS style and markup parity with source KCS Style Guide, Article
   Quality criteria, KCS practices, approved article examples, and portable

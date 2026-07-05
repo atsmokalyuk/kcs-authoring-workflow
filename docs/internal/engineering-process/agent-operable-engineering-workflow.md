@@ -300,6 +300,37 @@ When a code map exists, use it before refactor or review to identify:
 The code map is an orientation layer, not a replacement for reading touched
 files and direct dependencies.
 
+KCS-14 code-map artifacts:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/module-boundaries.md`
+- `docs/internal/engineering-process/review-checkpoints.md`
+
+Before behavior or refactor coding:
+
+```text
+task intent
+-> affected code-map nodes
+-> module boundaries
+-> touched files and direct dependencies
+-> related tests
+-> unchanged contracts
+```
+
+After coding:
+
+```text
+changed files
+-> affected code-map nodes
+-> boundary risks
+-> related tests
+-> review packet / closeout
+```
+
+If a refactor or cross-module behavior task cannot be mapped to a code-map
+node, stop and ask for scope clarification or propose a small code-map update
+first.
+
 ## Dirty Worktree Handling
 
 Before edits:
