@@ -83,9 +83,13 @@ Before work starts, establish a compact current state:
 
 ```text
 Current branch:
+Last relevant commit:
 Current task:
+Active slice / batch:
+Staged / untracked state:
 Relevant files:
 Relevant docs:
+Affected graph node:
 Must preserve:
 Known good behavior:
 Failure / target behavior:
@@ -96,6 +100,24 @@ Ignore prior context about:
 If the task is small and the current state is obvious from the repo, this frame
 can be brief. If context is noisy, write the frame explicitly before reading or
 editing more files.
+
+## Context Window Check
+
+Before every material batch, run a context window check. The agent must state
+or record:
+
+- current branch and last relevant commit;
+- active slice and batch;
+- staged and untracked state;
+- source-of-truth docs to use;
+- affected graph node or reason no graph node applies;
+- validation commands expected for the batch;
+- prior chat context to ignore.
+
+If the thread is long, noisy, or crossing a batch boundary, the agent should
+offer a fresh-thread handoff summary before coding. If continuing in the same
+thread, the compact current-state frame becomes the authority for the next
+batch, not the older conversation.
 
 ## Clarification Mode
 

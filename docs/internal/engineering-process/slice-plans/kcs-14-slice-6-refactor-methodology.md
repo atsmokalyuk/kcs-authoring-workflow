@@ -122,6 +122,10 @@ and review checkpoint.
 
 For each refactor target:
 
+- run the context window check from
+  `docs/internal/engineering-process/agent-operable-engineering-workflow.md`;
+- check `docs/internal/engineering-process/kcs-14-process-gap-audit.md` for
+  active process gaps that affect the target;
 - check `promotion-candidates.md` and KCS-14 closeouts before starting the
   target;
 - run the node's related tests before and after the change;
@@ -321,6 +325,24 @@ chapters: service layer, ports/dependency inversion, and test boundary gears.
 Do not introduce Repository, Unit of Work, Aggregates, message bus, or broader
 framework patterns unless the design note names the concrete project pressure
 they solve and the extra indirection is explicitly accepted.
+
+Architecture Patterns activation protocol:
+
+1. Stop node-by-node refactor for the affected boundary.
+2. Write a design note, not code.
+3. Ground only relevant options:
+   - keep the current boundary and document ownership;
+   - extract an application/service layer between core and adapters;
+   - consolidate presentation/result-shaping ownership;
+   - adjust test boundaries toward service-level behavior tests.
+4. Explicitly reject irrelevant patterns unless evidence says otherwise:
+   - Repository;
+   - Unit of Work;
+   - Aggregates;
+   - message bus;
+   - event-driven architecture.
+5. Treat any cross-package move as a separate slice with behavior drift
+   mapping, graph updates, stable external surfaces, and explicit approval.
 
 Aggregate review must also confirm the MVP safety floor from
 `docs/internal/kcs-authoring-mvp-goal-and-success-criteria.md` still holds:
