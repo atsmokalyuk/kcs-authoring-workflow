@@ -633,3 +633,97 @@ Closeout metadata:
   batch 2, result-shaping ownership gate
 
 Final verdict: Slice 6 batch 1 is ready for staged-diff review.
+
+## 2026-07-06 - Slice 6 Batch 2 Desktop Log Checker
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-process-gap-audit.md`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-batch-2-desktop-log-checker.md`
+- `scripts/check_claude_kcs_desktop_log.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- Desktop log-check CLI arguments and exit codes unchanged;
+- `check_log()` report shape, `schema_version`, `error_code`, and `checks`
+  keys unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- Direct old-vs-new equivalence check passed across five representative
+  synthetic log cases, confirming matching `check_log()` report dictionaries
+  for old parallel expected-tool data and new `_EXPECTED_TOOLS` entries.
+- `uv run pytest tests/kcs_adapters/test_mcpb_package.py::test_claude_desktop_log_check_accepts_latest_thin_tool_surface tests/kcs_adapters/test_mcpb_package.py::test_claude_desktop_log_check_rejects_stale_tool_surface tests/kcs_adapters/test_mcpb_package.py::test_claude_desktop_log_check_accepts_truncated_latest_tool_surface tests/kcs_adapters/test_mcpb_package.py::test_claude_desktop_log_check_honors_since_timestamp tests/policy/test_tool_entrypoints.py tests/policy/test_kcs14_freeze_snapshots.py -q` passed.
+- `uv run pytest tests/kcs_adapters/test_mcpb_package.py tests/policy/test_code_review_graph_policy.py tests/policy/test_kcs14_freeze_snapshots.py tests/policy/test_tool_entrypoints.py -q` passed with two existing skips.
+- `uv run pytest tests/policy/test_kcs14_docs_policy.py tests/policy/test_review_context_policy.py tests/policy/test_functional_test_policy.py -q` passed.
+- `uv run ruff check scripts/check_claude_kcs_desktop_log.py tests/kcs_adapters/test_mcpb_package.py` passed.
+- `git diff --cached --check` passed.
+
+Findings:
+
+- Desktop tool-surface expectations now have one private owner in
+  `_EXPECTED_TOOLS`.
+- The first attempted implementation used `@dataclass`, but existing tests
+  caught an import-loader incompatibility. The implementation now uses a
+  private `NamedTuple`, preserving the intended internal shape without changing
+  behavior.
+- No graph ownership definitions changed; only the touched script hash changed.
+- Freeze/snapshot checks stayed green, so no packet, Desktop, or compact result
+  contract drift was detected by the listed checks.
+
+Promotion candidates:
+
+- none new. The import-loader failure was fixed inside the batch and did not
+  recur across closeouts.
+
+Deferred risks:
+
+- `scripts/smoke_kcs_mcpb_stdio.py` and
+  `scripts/smoke_claude_desktop_ui_prompt.py` remain untouched.
+- Aggregate design review is now due before starting Slice 6 Batch 3.
+- Result-shaping ownership decision still must be written before touching
+  `desktop_draft_workflow` or `desktop_tool_surface` result-shaping files.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 2
+- affected graph nodes: `smoke_log_tooling`, `engineering_policy_tests`
+- graph hashes updated: `scripts/check_claude_kcs_desktop_log.py`
+- batches since aggregate review: 2
+- net module/file count change by node: `smoke_log_tooling` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public API;
+  `check_log()` remains the entrypoint
+- complexity distribution: not measured by a tool; expected-tool knowledge
+  moved into one private table
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: remaining smoke/log scripts, aggregate design review before
+  batch 3, result-shaping ownership gate
+
+Final verdict: Slice 6 batch 2 is ready for commit. Do not start Slice 6 batch
+3 until aggregate design review is complete.

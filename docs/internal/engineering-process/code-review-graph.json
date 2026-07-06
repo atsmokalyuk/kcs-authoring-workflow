@@ -700,7 +700,7 @@
         },
         {
           "path": "scripts/check_claude_kcs_desktop_log.py",
-          "file_hash": "6787249f66910cc316b412e74f41a3e1c916e7986a191e2ade26a53abb15e351",
+          "file_hash": "b94ed235b31934ad47fa897bdaa7d9e41e0c6015463be1694a26143b179af74b",
           "valid_until_changed": true
         },
         {
