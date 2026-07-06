@@ -76,7 +76,10 @@ Use the smallest mode that fits the operator request:
   style and naming, add or update tests/fixtures for behavior changes, and
   avoid unrelated refactoring. For behavior or refactor changes, do not treat a
   file list as a behavior spec; if behavior and acceptance tests are not clear
-  from the request or tracked docs, ask for them before coding.
+  from the request or tracked docs, ask for them before coding. For every
+  material slice, perform a behavior drift check before closeout; do not claim
+  behavior-preserving work unless changed behavior, stable contracts, tests, and
+  review-only drift risks are explicitly accounted for.
 - Bugfix / forensic mode: reproduce or define the failing case first, gather
   evidence before patching, fix the root cause only, and keep a regression test
   when practical.

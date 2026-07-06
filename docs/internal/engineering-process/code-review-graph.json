@@ -690,7 +690,7 @@
       "files": [
         {
           "path": "src/kcs_adapters/smoke_accounting.py",
-          "file_hash": "73a0174273819e900b2618d38a2e75179c522b13c6d52f6bca39b1ef0f4d8faf",
+          "file_hash": "7edb08c91db9dbb818be9e40a24335673353e0df079afeb7875e0bf1db4bbb3b",
           "valid_until_changed": true
         },
         {

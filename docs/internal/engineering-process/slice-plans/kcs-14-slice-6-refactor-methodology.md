@@ -125,6 +125,23 @@ For each refactor target:
 - check `promotion-candidates.md` and KCS-14 closeouts before starting the
   target;
 - run the node's related tests before and after the change;
+- run a behavior drift check before staged-diff review:
+  - any Slice 6 batch touching `src/` files must perform the check by default;
+    pure documentation and policy-test-only batches may state that no runtime
+    behavior surface was touched;
+  - for pure internal refactors with a stable public function/output surface,
+    compare old `HEAD` behavior with the staged behavior on representative
+    inputs where practical;
+  - otherwise use freeze/snapshot checks, characterization tests, unchanged
+    assertion review, and frozen-path evidence;
+  - map old behavior elements to their new location and map every new field,
+    branch, condition, helper, or dataclass back to old behavior or an explicit
+    intentional-change note;
+  - if direct old-vs-new comparison is not practical, state why and record the
+    substitute evidence;
+  - if a review-only drift risk appears in two closeouts, record a promotion
+    candidate for a future characterization test, snapshot, freeze check, or
+    review checklist item;
 - record affected graph nodes in the review packet or closeout;
 - keep test assertion edits out of the refactor unless explicitly justified;
 - treat `tests/kcs_adapters/test_mcp_desktop.py` as a frozen
@@ -169,6 +186,9 @@ Required evidence:
 - boundary questions answered before implementation;
 - promotion registry and prior closeouts checked before implementation;
 - pre/post characterization baseline recorded;
+- behavior drift check recorded;
+- behavior drift verdict is evidence-based, for example `no drift found by
+  listed checks; residual risks listed above`, not a standalone safety claim;
 - freeze/snapshot checks green;
 - absence of runtime, packet, Desktop, privacy, and reviewer-bundle drift is
   demonstrated by green snapshots, related tests passing, and frozen paths
@@ -179,6 +199,40 @@ Required evidence:
 - closeout includes promotion candidates or `none`;
 - reviewer verdict states whether the Slice 6 machinery was proportionate to
   the risk protected.
+
+Canonical behavior drift mapping example from Batch 1:
+
+```text
+Old behavior element:
+  local variable tool_names
+New location:
+  _SmokeMarkers.tool_names
+Evidence:
+  old-vs-new SmokeAccountingReport.to_json_dict() equivalence check
+
+Old behavior element:
+  local variable upload_ticket_ref_count
+New location:
+  _SmokeMarkers.draft_upload_ticket_ref_count ->
+  SmokeAccountingReport.kcs_draft_upload_ticket_ref_count
+Evidence:
+  old-vs-new equivalence case for uploaded ticket_ref path
+
+Old behavior element:
+  inline deterministic_draft_passed formula
+New location:
+  _SmokeMarkers.deterministic_draft_passed
+Evidence:
+  old-vs-new equivalence case for split + selected draft success
+
+New element:
+  _SmokeMarkers dataclass
+Old source:
+  old inline marker extraction local variables
+Evidence:
+  no new public interface; existing smoke-accounting tests and old-vs-new
+  equivalence checks passed
+```
 
 ## Aggregate Design Review Gate
 
@@ -195,6 +249,21 @@ Run an aggregate review:
 - when a batch cannot stay inside its declared graph node;
 - at the end of Slice 6 before Slice 7 or KCS-15 starts.
 
+Aggregate review catches these signals:
+
+- repeated ownership conflicts;
+- hidden higher-level redesign pressure;
+- graph drift across `owns` or `must_not_own`;
+- classitis, shallow splits, or interface growth without caller simplicity;
+- temporal decomposition that spreads schema, rule, or blocker knowledge;
+- noisy freeze, snapshot, or policy checks;
+- promotion candidates clustering around one node;
+- batches that cannot stay inside their declared graph node;
+- test-coupling churn, especially repeated justified exceptions to the rule
+  against changing test assertions during behavior-preserving refactor;
+- safety-floor pressure around recommend/draft/validate separation, human
+  control, no publish/write/customer-reply paths, or raw-data boundaries.
+
 Each refactor closeout should record countable substrate for the aggregate
 review:
 
@@ -209,6 +278,20 @@ review:
 - promotion candidates by node;
 - graph ownership edits by node;
 - freeze/snapshot false positives.
+- test assertion edits or justified exceptions by node.
+
+Aggregate review must triage each recurring signal before proposing design
+work:
+
+- `map_error`: the code-review graph was incomplete or stale; fix the graph.
+- `process_error`: the batch ignored scope, review, or closeout rules; fix the
+  process or batch discipline.
+- `architecture_error`: the current core/adapter/test boundary model is
+  causing repeated friction; write a design note.
+
+Only `architecture_error` activates architecture-level grounding such as
+Architecture Patterns with Python. Do not use one ownership conflict as a
+reason for broad redesign.
 
 Aggregate review outcomes:
 
@@ -219,10 +302,25 @@ Aggregate review outcomes:
 - demote or retire noisy checks;
 - defer high-risk redesign to a separate KCS slice.
 
+Threshold:
+
+- one incident is recorded in closeout;
+- the same boundary conflict in two aggregate reviews in a row requires a
+  design note;
+- a design note frames a separate slice question and is not implementation
+  authorization.
+
 A higher-level design proposal is not redesign authorization. It must become a
 separately scoped slice with boundary questions, behavior/test frame, graph
 updates, review checkpoint, and explicit classification as behavior-preserving
 or behavior-change.
+
+If Aggregate Review diagnoses `architecture_error` for core/adapters/tests, use
+Architecture Patterns with Python only as targeted grounding for the relevant
+chapters: service layer, ports/dependency inversion, and test boundary gears.
+Do not introduce Repository, Unit of Work, Aggregates, message bus, or broader
+framework patterns unless the design note names the concrete project pressure
+they solve and the extra indirection is explicitly accepted.
 
 Aggregate review must also confirm the MVP safety floor from
 `docs/internal/kcs-authoring-mvp-goal-and-success-criteria.md` still holds:

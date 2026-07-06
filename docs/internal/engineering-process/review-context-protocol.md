@@ -294,3 +294,57 @@ Every material slice closeout should answer:
 - what findings remain;
 - which findings, if any, were added to promotion candidates;
 - whether the next slice gate is satisfied.
+
+## Behavior Drift Check
+
+Every material slice must include a behavior drift check before closeout. Any
+slice touching files under `src/` must include the check by default; pure
+documentation and policy-test-only slices may state that no runtime behavior
+surface was touched.
+
+The agent must perform mechanical checks where possible and surface remaining
+review-only drift risks instead of silently marking them safe.
+
+Closeout and review packets should include:
+
+```text
+Behavior change intended:
+- yes/no
+
+Mechanical checks:
+- <test/command/check>
+- <test/command/check>
+
+Reviewed drift risks:
+- <old behavior element -> new location -> evidence>
+- <new element -> old source or intentional-change note -> evidence>
+
+Review-only drift risks:
+- <risk that cannot be mechanically proven>
+
+Verdict:
+- no drift found by listed checks; residual risks listed above
+- intentional behavior change
+- blocker found
+```
+
+For behavior-preserving slices, check:
+
+- old inputs still map to the same outputs;
+- old failure modes remain the same;
+- old blocker/status codes remain the same;
+- renamed variables or fields still map to the same report fields;
+- extracted helpers/dataclasses preserve the old formulas;
+- every removed behavior element maps to a new location;
+- every new field, branch, condition, or helper maps back to old behavior or is
+  explicitly listed as new;
+- public/runtime contracts are unchanged;
+- packet schemas are unchanged;
+- Desktop/tool surface is unchanged;
+- privacy and fail-closed behavior are unchanged;
+- reviewer-bundle, publication, and customer-reply boundaries are unchanged;
+- focused tests pass without weakening expected assertions.
+
+If a review-only drift risk appears in two closeouts, record a promotion
+candidate for a characterization test, snapshot, freeze check, or review
+checklist item.

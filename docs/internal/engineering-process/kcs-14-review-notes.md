@@ -545,3 +545,91 @@ Closeout metadata:
 
 Final verdict: Slice 6 is ready for the first behavior-preserving refactor
 batch after staged-diff review and commit of this pre-refactor safety layer.
+
+## 2026-07-05 - Slice 6 Batch 1 Smoke Log Tooling
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-batch-1-smoke-log-tooling.md`
+- `src/kcs_adapters/smoke_accounting.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- smoke-accounting JSON output contract unchanged;
+- CLI exit codes and value-safe error codes unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- Direct old-vs-new equivalence check passed across six representative
+  transcripts, confirming matching report JSON payloads for old inline local
+  variables and new `_SmokeMarkers` fields.
+- `uv run pytest tests/kcs_adapters/test_smoke_accounting.py tests/policy/test_kcs14_freeze_snapshots.py -q` passed.
+- `uv run ruff check src/kcs_adapters/smoke_accounting.py tests/kcs_adapters/test_smoke_accounting.py` passed.
+- `uv run pytest tests/kcs_adapters/test_smoke_accounting.py tests/kcs_adapters/test_mcpb_package.py tests/policy/test_code_review_graph_policy.py tests/policy/test_kcs14_freeze_snapshots.py -q` passed with two existing skips.
+- `git diff --check` passed.
+
+Findings:
+
+- `build_smoke_accounting_report` now delegates regex marker extraction to an
+  internal `_SmokeMarkers` value object.
+- The public `SmokeAccountingReport` schema and CLI behavior are covered by
+  existing characterization tests.
+- Freeze/snapshot checks stayed green, so no packet, Desktop, or compact result
+  contract drift was detected.
+- `kcs-14-refactor-log.md` records the human-readable rationale and maps the
+  change to the KCS-14 outcome contract and Ousterhout review lens.
+
+Promotion candidates:
+
+- none new. No repeated, stable, or mechanically checkable review finding was
+  introduced by this batch.
+
+Deferred risks:
+
+- Desktop log checker and MCPB/UI smoke scripts remain untouched in this batch.
+- Aggregate design review is not due until after the second refactor batch or
+  an earlier event trigger.
+- Result-shaping ownership decision still must be written before touching
+  `desktop_draft_workflow` or `desktop_tool_surface` result-shaping files.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 1
+- affected graph nodes: `smoke_log_tooling`, `engineering_policy_tests`
+- graph hashes updated: `src/kcs_adapters/smoke_accounting.py`
+- batches since aggregate review: 1
+- net module/file count change by node: `smoke_log_tooling` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public API;
+  `build_smoke_accounting_report` remains the entrypoint
+- complexity distribution: not measured by a tool; local extraction complexity
+  moved behind `_SmokeMarkers`
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: remaining smoke/log scripts, aggregate design review after
+  batch 2, result-shaping ownership gate
+
+Final verdict: Slice 6 batch 1 is ready for staged-diff review.

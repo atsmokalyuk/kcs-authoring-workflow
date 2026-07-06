@@ -47,7 +47,9 @@ Primary lens for code map, design review, and behavior-preserving refactor
 - Harry Percival, Bob Gregory, "Architecture Patterns with Python" (2020).
   Grounds: service layer, ports/adapters, core vs adapter split, test
   boundaries. Per KCS-14 plan, deferred as implementation-level reference
-  until Slice 6 needs it.
+  until Slice 6 Aggregate Design Review diagnoses an `architecture_error`
+  around core/adapters/tests boundaries. It is not activated by ordinary
+  `map_error` or `process_error` findings.
 
 ### 2. Agentic Engineering Practice
 
