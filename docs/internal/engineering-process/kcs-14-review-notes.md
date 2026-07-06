@@ -466,3 +466,82 @@ Closeout metadata:
   refactor; review tooling automation
 
 Final verdict: Slice 5 implementation checkpoint is ready for external review.
+
+## 2026-07-05 - Slice 6 Commit 0 Freeze/Snapshot Checks
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-commit-0-freeze-snapshots.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-refactor-methodology.md`
+- `docs/internal/engineering-process/tool-entrypoints.md`
+- `tests/policy/test_kcs14_freeze_snapshots.py`
+- `tests/policy/test_tool_entrypoints.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- `uv run pytest tests/policy/test_kcs14_docs_policy.py tests/policy/test_tool_entrypoints.py tests/policy/test_functional_test_policy.py tests/policy/test_review_context_policy.py tests/policy/test_code_review_graph_policy.py tests/policy/test_kcs14_freeze_snapshots.py -q` passed.
+- `uv run ruff check tests/policy/test_kcs14_freeze_snapshots.py tests/policy/test_tool_entrypoints.py` passed.
+- `git diff --check` passed.
+
+Findings:
+
+- Slice 6 now has pre-refactor freeze/snapshot checks before code movement.
+- The new checks snapshot Desktop tool names, Desktop aliases, input schema
+  properties, required input fields, read/idempotency hints, tool output success
+  keys, packet schema versions and dataclass field sets, MCP result envelope
+  keys, compact Desktop result key sets, and high-risk frozen contract paths.
+- Snapshot failures during Slice 6 must be treated as contract-drift evidence
+  until explicitly reviewed.
+- The code-review graph now covers the new freeze/snapshot policy test.
+
+Promotion candidates:
+
+- none new. This commit implemented the planned Slice 6 freeze/snapshot checks.
+
+Deferred risks:
+
+- First refactor batch still needs a behavior-preserving target frame for
+  `smoke_log_tooling`.
+- Result-shaping ownership decision still must be written before touching
+  `desktop_draft_workflow` or `desktop_tool_surface` result-shaping files.
+- Freeze/snapshot tests protect public shapes, but design judgment still
+  requires staged review with the Ousterhout and module-boundary checklists.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 commit 0
+- affected graph nodes: `engineering_policy_tests`, `desktop_tool_surface`,
+  `desktop_protocol_transport`, `desktop_draft_workflow`,
+  `packet_validation_decision`, `semantic_review_fallback`,
+  `reviewer_bundle_output`
+- graph hashes updated: `tests/policy/test_tool_entrypoints.py` and
+  `tests/policy/test_kcs14_freeze_snapshots.py`
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: Desktop tools/list snapshot; tool output key-set
+  snapshot; packet schema/version/field-set snapshot; MCP envelope key-set
+  snapshot; compact result key-set snapshot; frozen contract path diff gate
+- findings promoted to future checks: none
+- deferred risks: first refactor batch, result-shaping ownership gate,
+  behavior-preserving refactor review
+
+Final verdict: Slice 6 is ready for the first behavior-preserving refactor
+batch after staged-diff review and commit of this pre-refactor safety layer.

@@ -36,6 +36,7 @@ Use these before commits when relevant to the touched files.
 | Task | Command | Classification | Notes |
 | --- | --- | --- | --- |
 | Policy docs check | `uv run pytest tests/policy/test_kcs14_docs_policy.py -q` | deterministic | Required for KCS-14 process/doc changes. |
+| KCS-14 freeze/snapshot check | `uv run pytest tests/policy/test_kcs14_freeze_snapshots.py -q` | deterministic | Required before and after Slice 6 refactor batches. |
 | Narrow pytest | `uv run pytest <test-path> -q` | deterministic | Use the narrowest relevant test path for touched behavior. |
 | Full local pytest | `uv run pytest -q` | deterministic | Use before broad behavior or refactor changes when practical. |
 | Ruff check | `uv run ruff check <path>` | deterministic | Use for touched Python files. |

@@ -27,6 +27,11 @@ Required checks:
 - graph coverage check for `src/`, `tests/`, `scripts/`, and `packaging/`;
 - green baseline for the full relevant policy suite and selected node tests.
 
+Implemented baseline:
+
+- `tests/policy/test_kcs14_freeze_snapshots.py`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-commit-0-freeze-snapshots.md`
+
 Graph hash checks prove staleness. They do not prove contract preservation.
 Freeze/snapshot checks must land before behavior-preserving refactor commits.
 Until those checks exist and pass, Slice 6 is ready for planning only, not code

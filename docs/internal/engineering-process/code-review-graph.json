@@ -1,7 +1,7 @@
 {
   "schema_version": "kcs_code_review_graph_v1",
   "status": "advisory_orientation_snapshot",
-  "generated_for_commit": "a497d74",
+  "generated_for_commit": "592d5e3",
   "path_root": "repository-relative",
   "purpose": "Orient development agents and reviewers before KCS-14 refactor work by mapping ownership areas, contract edges, risky files, and related tests. This graph is not a replacement for reading touched files and direct dependencies.",
   "rules": {
@@ -902,13 +902,18 @@
           "valid_until_changed": true
         },
         {
+          "path": "tests/policy/test_kcs14_freeze_snapshots.py",
+          "file_hash": "a4d627d2dd983069e6de1b21932e28cd02882e7bbd4e037c337032cbf118abf7",
+          "valid_until_changed": true
+        },
+        {
           "path": "tests/policy/test_review_context_policy.py",
           "file_hash": "cb1082b0d2155af4f58f5f4db71a8dac8bb54933f7180227c69dc6b560898a5f",
           "valid_until_changed": true
         },
         {
           "path": "tests/policy/test_tool_entrypoints.py",
-          "file_hash": "90934f56e73c647bce620422c27060a688560d7dc021696ca12c26ac1af73f57",
+          "file_hash": "b97939530d2b4ea9d2f43961efe62ce0954981ff662eae5fd279f99c104b450a",
           "valid_until_changed": true
         }
       ],
@@ -916,6 +921,7 @@
         "tests/policy/test_code_review_graph_policy.py",
         "tests/policy/test_functional_test_policy.py",
         "tests/policy/test_kcs14_docs_policy.py",
+        "tests/policy/test_kcs14_freeze_snapshots.py",
         "tests/policy/test_review_context_policy.py",
         "tests/policy/test_tool_entrypoints.py"
       ]

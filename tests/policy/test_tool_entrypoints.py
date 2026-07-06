@@ -9,6 +9,7 @@ TOOL_DOC = ROOT / "docs" / "internal" / "engineering-process" / "tool-entrypoint
 
 REQUIRED_COMMANDS = (
     "uv run pytest tests/policy/test_kcs14_docs_policy.py -q",
+    "uv run pytest tests/policy/test_kcs14_freeze_snapshots.py -q",
     "uv run pytest <test-path> -q",
     "uv run ruff check <path>",
     "git diff --check",
