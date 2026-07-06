@@ -727,3 +727,73 @@ Closeout metadata:
 
 Final verdict: Slice 6 batch 2 is ready for commit. Do not start Slice 6 batch
 3 until aggregate design review is complete.
+
+## 2026-07-06 - Slice 6 Aggregate Review After Batches 1-2
+
+Reviewer or review route: local Codex aggregate design checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-aggregate-review-batches-1-2.md`
+
+Scope:
+
+- Batch 1 `smoke_log_tooling`: `src/kcs_adapters/smoke_accounting.py`
+- Batch 2 `smoke_log_tooling`:
+  `scripts/check_claude_kcs_desktop_log.py`
+
+Aggregate findings:
+
+- Both batches stayed inside the declared `smoke_log_tooling` node plus graph
+  and closeout metadata.
+- Net file/module count change was 0.
+- Public interface/export count change was 0.
+- Caller-facing entrypoints stayed unchanged.
+- Graph ownership definitions did not change.
+- Freeze/snapshot false positives: none.
+- Test assertion edits or justified exceptions: none.
+- Review blockers: none.
+- `must_not_own` near-misses: none.
+- Promotion candidates: none.
+- Demotion candidates: none.
+
+Triage:
+
+- `map_error`: no.
+- `process_error`: no.
+- `architecture_error`: no.
+
+Outcome:
+
+- Continue current node-by-node refactor.
+- Architecture Patterns with Python is not activated by these batches.
+- No higher-level design note is required.
+- No promotion or demotion action is required.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- safety floor remains intact by freeze/snapshot evidence and related tests.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 aggregate review batches 1-2
+- affected graph nodes: `smoke_log_tooling`, `engineering_policy_tests`
+- aggregate review trigger: two completed refactor batches
+- aggregate review outcome: continue node-by-node refactor
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- promotion candidates by node: none
+- demotion candidates by node: none
+- recurring blocker codes: none
+- next aggregate review due: after two more refactor batches or an earlier
+  methodology trigger
+
+Final verdict: Aggregate review gate is complete. Slice 6 may continue with the
+next scoped refactor batch after the normal context window check and process
+gap audit.
