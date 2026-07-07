@@ -977,6 +977,83 @@ Closeout metadata:
 
 Final verdict: Slice 6 batch 20 is ready for staged-diff review.
 
+## 2026-07-07 - Slice 6 Aggregate Review After Batches 19-20
+
+Reviewer or review route: local Codex aggregate design checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-aggregate-review-batches-19-20.md`
+
+Scope:
+
+- Batch 19 `smoke_log_tooling`:
+  `scripts/smoke_kcs_mcpb_stdio.py` stdio tool-surface specs.
+- Batch 20 `smoke_log_tooling`:
+  `scripts/smoke_kcs_mcpb_stdio.py` registry manifest description specs.
+
+Aggregate findings:
+
+- Both batches stayed inside the declared `smoke_log_tooling` node plus graph
+  and closeout metadata.
+- Net file/module count change was 0.
+- Public interface/export count change was 0.
+- Caller-facing entrypoints, report shape, and check names stayed unchanged.
+- Graph ownership definitions did not change.
+- Freeze/snapshot false positives: none.
+- Test assertion edits or justified exceptions: none.
+- Review blockers: none.
+- `must_not_own` near-misses: none.
+- Promotion candidates: none.
+- Demotion candidates: none.
+- Complexity sensor showed the intended pair-level effect: script max CC moved
+  from 70 to 22; full-repo delta from baseline is now `max_cc: -13` and
+  `high_complexity_functions: -3`.
+
+Triage:
+
+- `map_error`: no.
+- `process_error`: no.
+- `architecture_error`: no.
+
+Outcome:
+
+- Stop same-node `smoke_log_tooling` momentum.
+- Continue Slice 6 only with a new explicit ownership question in another node
+  or a clearly higher-payoff remaining hotspot.
+- Architecture Patterns with Python is not activated by these batches.
+- No higher-level design note is required.
+- No promotion or demotion action is required.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- MCPB manifest and wrapper files unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- safety floor remains intact by freeze/snapshot evidence and related tests.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 aggregate review batches 19-20
+- affected graph nodes: `smoke_log_tooling`, `engineering_policy_tests`
+- aggregate review trigger: two completed refactor batches
+- aggregate review outcome: stop same-node momentum; continue only with new
+  explicit ownership question
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- promotion candidates by node: none
+- demotion candidates by node: none
+- recurring blocker codes: none
+- next aggregate review due: after two more refactor batches, at Slice 6
+  closeout, or an earlier methodology trigger
+
+Final verdict: Aggregate review gate is complete. Slice 6 may continue only
+with a new scoped ownership question or move to closeout/external review.
+
 ## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
 
 Reviewer or review route: local Codex implementation checkpoint.
