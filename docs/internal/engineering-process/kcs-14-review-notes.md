@@ -1138,6 +1138,90 @@ Closeout metadata:
 
 Final verdict: Slice 6 batch 21 is ready for staged-diff review.
 
+## 2026-07-07 - Slice 6 Batch 22 MCPB Node Wrapper Test Terms
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `tests/kcs_adapters/test_mcpb_package.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- no source file changed;
+- MCPB manifest and wrapper files unchanged;
+- packaging output behavior unchanged;
+- Desktop/tool schema behavior unchanged;
+- packet schemas unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- Focused MCPB node-wrapper characterization test passed.
+- Ruff passed for `tests/kcs_adapters/test_mcpb_package.py`.
+- Complexity sensor passed and reported full-repo
+  `high_complexity_functions: -4` from baseline.
+
+Findings:
+
+- Node-wrapper launch contract assertions now have explicit private test
+  constants for required terms, literal forbidden terms, and casefolded
+  forbidden terms.
+- The same test remains the characterization owner for bundled/source stdio
+  wrapper launch text.
+- No graph ownership definitions changed. `tests/kcs_adapters/test_mcpb_package.py`
+  remains a related test for `packaging_and_install_tooling`.
+
+Promotion candidates:
+
+- none. The repeated pattern across Batches 21-22 is test-local term-table
+  extraction, but it is not yet a reusable rule beyond this package test.
+
+Deferred risks:
+
+- Assertion-term preservation is review-only beyond focused test execution:
+  current wrapper satisfaction is mechanical, but term-by-term preservation is
+  verified by diff review.
+- Aggregate design review is due before another refactor batch.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 22
+- affected graph nodes: `packaging_and_install_tooling`
+- graph hashes updated: none
+- batches since aggregate review: 2
+- net module/file count change by node: `packaging_and_install_tooling` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for product behavior; test
+  contract terms now have private local owners
+- complexity distribution: full-repo `high_complexity_functions` delta from
+  baseline is now `-4`; `test_mcpb_package.py` no longer appears in the top
+  high-complexity list above `cc=22`
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: assertion mechanics
+  refactored, asserted terms preserved
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: aggregate review before next batch
+
+Final verdict: Slice 6 batch 22 is ready for staged-diff review.
+
 ## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
 
 Reviewer or review route: local Codex implementation checkpoint.

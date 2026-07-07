@@ -84,6 +84,42 @@ MCPB_DRAFT_TOOL_DESCRIPTION_EXCLUDES = (
     "structured item",
     "break-fix",
 )
+MCPB_NODE_WRAPPER_TEXT_INCLUDES = (
+    "KCS_AUTHORING_MVP_REPO_ROOT",
+    "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT",
+    "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT",
+    "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF",
+    "defaultCleanTicketStoreRoot",
+    "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT:\n"
+    "    process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT ||\n"
+    "    defaultCleanTicketStoreRoot",
+    "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT",
+    "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_HINT",
+    "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_REF",
+    "KCS_AUTHORING_MVP_UV_COMMAND",
+    "KCS_AUTHORING_MVP_PYTHON_COMMAND",
+    "KCS_AUTHORING_MVP_RUNTIME",
+    "bundledRoot",
+    '"python"',
+    '"python3.11"',
+    "PYTHONPATH",
+    "sourceRoot",
+    'name = "kcs-authoring-mvp"',
+    "src\", \"kcs_adapters\", \"mcp_desktop.py",
+    '"--project"',
+    '"kcs-desktop-mcp"',
+    '"claude_desktop_aliases"',
+    "process.stdin.pipe(child.stdin)",
+    "child.stdout",
+    "USERPROFILE",
+    "APPDATA",
+    "Application Support",
+    "Documents",
+    "KCS Authoring",
+    "TMPDIR",
+)
+MCPB_NODE_WRAPPER_TEXT_EXCLUDES = ("/Users/",)
+MCPB_NODE_WRAPPER_CASEFOLD_EXCLUDES = ("plesk",)
 
 
 def _load_build_module():
@@ -155,6 +191,15 @@ def _assert_text_excludes_all(text: str, forbidden: tuple[str, ...]) -> None:
         assert term not in text
 
 
+def _assert_casefold_text_excludes_all(
+    text: str,
+    forbidden: tuple[str, ...],
+) -> None:
+    casefolded = text.casefold()
+    for term in forbidden:
+        assert term not in casefolded
+
+
 def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     manifest = json.loads((MCPB_SOURCE / "manifest.json").read_text(encoding="utf-8"))
     expected_tool_names = {
@@ -210,42 +255,12 @@ def test_mcpb_manifest_requires_no_user_config_or_secrets() -> None:
 def test_mcpb_node_wrapper_launches_bundled_or_source_stdio_server() -> None:
     text = (MCPB_SOURCE / "server" / "index.js").read_text(encoding="utf-8")
 
-    assert "KCS_AUTHORING_MVP_REPO_ROOT" in text
-    assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT" in text
-    assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT" in text
-    assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF" in text
-    assert "defaultCleanTicketStoreRoot" in text
-    assert (
-        "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT:\n"
-        "    process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT ||\n"
-        "    defaultCleanTicketStoreRoot"
-    ) in text
-    assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT" in text
-    assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_HINT" in text
-    assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_REF" in text
-    assert "KCS_AUTHORING_MVP_UV_COMMAND" in text
-    assert "KCS_AUTHORING_MVP_PYTHON_COMMAND" in text
-    assert "KCS_AUTHORING_MVP_RUNTIME" in text
-    assert "bundledRoot" in text
-    assert '"python"' in text
-    assert '"python3.11"' in text
-    assert "PYTHONPATH" in text
-    assert "sourceRoot" in text
-    assert 'name = "kcs-authoring-mvp"' in text
-    assert "src\", \"kcs_adapters\", \"mcp_desktop.py" in text
-    assert '"--project"' in text
-    assert '"kcs-desktop-mcp"' in text
-    assert '"claude_desktop_aliases"' in text
-    assert "/Users/" not in text
-    assert "plesk" not in text.casefold()
-    assert "process.stdin.pipe(child.stdin)" in text
-    assert "child.stdout" in text
-    assert "USERPROFILE" in text
-    assert "APPDATA" in text
-    assert "Application Support" in text
-    assert "Documents" in text
-    assert "KCS Authoring" in text
-    assert "TMPDIR" in text
+    _assert_text_contains_all(text, MCPB_NODE_WRAPPER_TEXT_INCLUDES)
+    _assert_text_excludes_all(text, MCPB_NODE_WRAPPER_TEXT_EXCLUDES)
+    _assert_casefold_text_excludes_all(
+        text,
+        MCPB_NODE_WRAPPER_CASEFOLD_EXCLUDES,
+    )
 
 
 def test_stdio_smoke_checks_persisted_clean_ticket_file(

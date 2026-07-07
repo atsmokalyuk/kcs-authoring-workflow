@@ -805,6 +805,96 @@ Open follow-up:
 - Do not continue test refactor by mining large tests; the next batch needs a
   new explicit test ownership question.
 
+## 2026-07-07 - Slice 6 Batch 22 MCPB Node Wrapper Test Terms
+
+Batch: KCS-14 Slice 6 Batch 22.
+
+Affected graph node: `packaging_and_install_tooling`.
+
+Changed code:
+
+- `tests/kcs_adapters/test_mcpb_package.py`
+
+What changed:
+
+- Moved repeated MCPB node-wrapper launch contract string assertions into
+  private test constants.
+- Reused `_assert_text_contains_all()` and `_assert_text_excludes_all()`, and
+  added `_assert_casefold_text_excludes_all()` for the existing casefolded
+  forbidden-term check.
+- Kept `test_mcpb_node_wrapper_launches_bundled_or_source_stdio_server()` as
+  the characterization test for wrapper launch contract text.
+
+Why under KCS-14 outcome contract:
+
+- Reduces complexity in the next packaging test hotspot without changing
+  runtime code, package source, or wrapper behavior.
+- Makes wrapper launch contract terms easier to inspect as one test-local list.
+- Keeps the characterization suite focused on the same behavior while reducing
+  assertion-sequence noise.
+
+Ousterhout lens:
+
+- Information hiding: wrapper launch contract terms are grouped as one
+  test-local contract list.
+- Change amplification: future intentional wrapper text changes should update
+  the term list instead of editing a long test body.
+- Deep module: no production interface changed; the test scenario remains the
+  same.
+- Avoid classitis: one small helper handles the existing casefolded exclusion
+  mechanic; no new framework or cross-file abstraction was introduced.
+
+Contracts preserved:
+
+- runtime behavior;
+- MCPB manifest and wrapper files;
+- packaging output behavior;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- No runtime source file was touched.
+- Assertion-preservation review mapped every removed wrapper-text assertion to
+  a new expected-term constant used by the same test.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| wrapper env/repo/storage/runtime required terms | `MCPB_NODE_WRAPPER_TEXT_INCLUDES` | Diff review and focused test pass. |
+| bundled/source Python launch required terms | `MCPB_NODE_WRAPPER_TEXT_INCLUDES` | Diff review and focused test pass. |
+| Desktop alias command required terms | `MCPB_NODE_WRAPPER_TEXT_INCLUDES` | Diff review and focused test pass. |
+| stdio piping required terms | `MCPB_NODE_WRAPPER_TEXT_INCLUDES` | Diff review and focused test pass. |
+| macOS/Windows path support required terms | `MCPB_NODE_WRAPPER_TEXT_INCLUDES` | Diff review and focused test pass. |
+| literal `/Users/` exclusion | `MCPB_NODE_WRAPPER_TEXT_EXCLUDES` | Diff review and focused test pass. |
+| casefolded `plesk` exclusion | `MCPB_NODE_WRAPPER_CASEFOLD_EXCLUDES` and `_assert_casefold_text_excludes_all()` | Diff review and focused test pass. |
+
+Review-only drift risks:
+
+- The refactor relies on diff review to confirm that no wrapper contract term
+  was dropped; focused test execution proves the current wrapper still
+  satisfies the preserved assertions.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Focused MCPB node-wrapper characterization test passed.
+- Ruff passed for `tests/kcs_adapters/test_mcpb_package.py`.
+- Complexity sensor showed full-repo `high_complexity_functions` delta from
+  baseline improving to `-4`.
+
+Open follow-up:
+
+- Aggregate review is now due before another refactor batch.
+- Do not continue test refactor by mining `test_mcpb_package.py`; use aggregate
+  review to decide whether remaining test cleanup is worth the overhead.
+
 ## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
 
 Batch: KCS-14 Slice 6 Batch 17.
