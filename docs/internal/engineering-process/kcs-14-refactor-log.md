@@ -863,6 +863,77 @@ Open follow-up:
   remains inside a declared ownership node and avoids result/status/output
   consolidation.
 
+## 2026-07-07 - Slice 6 Batch 14 Draft Tool Alias Completion
+
+Batch: KCS-14 Slice 6 Batch 14.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_draft_tool.py`
+
+What changed:
+
+- Replaced the remaining local `claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE)`
+  call in the operator-selection invalid path with the existing private
+  `_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS` constant.
+
+Why under KCS-14 outcome contract:
+
+- Completes local ownership of the Desktop draft tool alias inside
+  `desktop_draft_tool.py`.
+- Reduces future agent ambiguity about which alias value should be used in
+  operator-choice payloads.
+- Preserves behavior while avoiding new helper/class/file churn.
+
+Ousterhout lens:
+
+- Information hiding: the canonical Desktop draft alias remains one private
+  module constant.
+- Change amplification: future alias changes touch one constant.
+- Avoid classitis: no new abstraction was introduced.
+
+Contracts preserved:
+
+- runtime behavior;
+- Desktop draft alias value;
+- operator-selection invalid result shape;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Focused Desktop draft/operator-selection/freeze tests passed.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| selection-error submit tool alias lookup | `_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS` | Focused Desktop draft/operator-selection/freeze tests passed. |
+
+Review-only drift risks:
+
+- none identified beyond staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- `tests/kcs_adapters/test_mcp_desktop.py`,
+  `tests/kcs_adapters/test_desktop_operator_selection.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Aggregate review is due before starting another refactor batch unless an
+  earlier methodology trigger has already stopped the sequence.
+
 ## 2026-07-07 - Slice 6 Batch 8 Existing Article Text Fields
 
 Batch: KCS-14 Slice 6 Batch 8.

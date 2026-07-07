@@ -433,7 +433,7 @@ class DesktopDraftArticleTool:
                 arguments,
                 pending_selection,
                 schema_version=self._schema_version,
-                submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+                submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
             )
         result = self._draft_article_primary_author_result(
             _desktop_draft_arguments.draft_article_authoring_args_from_candidate(
