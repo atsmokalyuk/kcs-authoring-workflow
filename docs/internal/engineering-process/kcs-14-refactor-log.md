@@ -934,6 +934,87 @@ Open follow-up:
 - Aggregate review is due before starting another refactor batch unless an
   earlier methodology trigger has already stopped the sequence.
 
+## 2026-07-07 - Slice 6 Batch 15 Stdio Transport Protocol Constants
+
+Batch: KCS-14 Slice 6 Batch 15.
+
+Affected graph node: `desktop_protocol_transport`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_stdio_transport.py`
+
+What changed:
+
+- Moved supported tool-name styles, pre-initialize ready methods, and tool-call
+  parameter keys into private module constants.
+- Kept the JSON-RPC transport request flow, tool dispatch, error messages, and
+  MCP response envelopes unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Switches from `desktop_draft_workflow` to the declared
+  `desktop_protocol_transport` node after the aggregate gate stopped same-node
+  draft workflow momentum.
+- Reduces protocol-surface ambiguity by naming small transport rule sets that
+  were previously inline literals.
+- Preserves runtime behavior while keeping protocol transport separate from KCS
+  workflow decisions and tool schema business rules.
+
+Ousterhout lens:
+
+- Information hiding: transport method/key rule sets are named once near the
+  transport sentinel.
+- Change amplification: future protocol key changes should touch one constant.
+- Avoid classitis: no class/file/public helper was introduced.
+- Deep module: public transport behavior stayed stable while internal rule
+  names became explicit.
+
+Contracts preserved:
+
+- runtime behavior;
+- JSON-RPC error behavior and messages;
+- initialize/ping readiness behavior;
+- tool-call parameter validation;
+- Desktop tool schema behavior;
+- MCP response envelope shape;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Focused stdio transport, MCP Desktop, and freeze snapshot tests passed.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| supported tool-name style inline set | `_SUPPORTED_TOOL_NAME_STYLES` | Focused stdio/MCP/freeze tests passed. |
+| pre-initialize allowed methods `initialize` and `ping` | `_READY_BEFORE_INITIALIZED_METHODS` | Focused stdio/MCP/freeze tests passed. |
+| tool-call allowed parameter keys `arguments` and `name` | `_TOOL_CALL_PARAM_KEYS` | Focused stdio/MCP/freeze tests passed. |
+
+Review-only drift risks:
+
+- none identified beyond staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- `tests/kcs_adapters/test_desktop_stdio_transport.py`,
+  `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- One more `desktop_protocol_transport` batch may proceed before aggregate
+  review if it remains inside protocol ownership and avoids Desktop schema or
+  result-shaping changes.
+
 ## 2026-07-07 - Slice 6 Batch 8 Existing Article Text Fields
 
 Batch: KCS-14 Slice 6 Batch 8.
