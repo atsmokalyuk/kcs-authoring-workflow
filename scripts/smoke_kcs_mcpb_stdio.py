@@ -78,6 +78,12 @@ class _ExpectedToolSurface(NamedTuple):
     debug_description_includes: tuple[str, ...] = ()
 
 
+class _ExpectedManifestToolDescription(NamedTuple):
+    name: str
+    includes: tuple[str, ...] = ()
+    excludes: tuple[str, ...] = ()
+
+
 _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
     _ExpectedToolSurface(
         name=REGISTER_TOOL_NAME,
@@ -154,6 +160,59 @@ _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
         description_includes=("Legacy compatibility helper", "continue /draft"),
     ),
 )
+
+_EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS: tuple[
+    _ExpectedManifestToolDescription,
+    ...,
+] = (
+    _ExpectedManifestToolDescription(
+        name=REGISTER_TOOL_NAME,
+        includes=("clean_ticket_text", "next_arguments"),
+    ),
+    _ExpectedManifestToolDescription(
+        name=TICKET_REF_TOOL_NAME,
+        includes=(
+            "/draft <ticket_ref>",
+            "only ticket_ref",
+            "Do not ask for an attachment",
+        ),
+    ),
+    _ExpectedManifestToolDescription(
+        name=TOOL_NAME,
+        includes=(
+            "short approved_summary_text",
+            "/draft <ticket_ref>",
+            "use kcs_draft_ticket",
+        ),
+        excludes=(
+            "structured item",
+            "raw comments",
+            "internal notes",
+            "show the returned candidates in a native Claude Desktop choice popup",
+        ),
+    ),
+    _ExpectedManifestToolDescription(
+        name=PREPARE_SEMANTIC_REVIEW_TOOL_NAME,
+        includes=("semantic_review_required", "bounded excerpts"),
+    ),
+    _ExpectedManifestToolDescription(
+        name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
+        includes=("candidate_semantic_extraction_v1", "No article draft"),
+    ),
+    _ExpectedManifestToolDescription(
+        name=BEHAVIOR_TOOL_NAME,
+        includes=("Legacy compatibility helper", "continue /draft"),
+    ),
+)
+
+_EXPECTED_REGISTRY_LONG_DESCRIPTION_INCLUDES = (
+    "Use only the listed KCS Authoring tools",
+    "legacy instruction requires",
+    "support_get_behavior_instructions",
+    "Plesk Support Assistant Local",
+    "Do not report Plesk Support Assistant Local as missing",
+)
+_EXPECTED_REGISTRY_LONG_DESCRIPTION_EXCLUDES = ("one primary read-only tool",)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1082,99 +1141,13 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
     tools = value.get("tools")
     if not isinstance(tools, list) or len(tools) != 6:
         return False
-    register_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict) and item.get("name") == REGISTER_TOOL_NAME
-        ),
-        None,
-    )
-    tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict) and item.get("name") == TOOL_NAME
-        ),
-        None,
-    )
-    ticket_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict) and item.get("name") == TICKET_REF_TOOL_NAME
-        ),
-        None,
-    )
-    prepare_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict)
-            and item.get("name") == PREPARE_SEMANTIC_REVIEW_TOOL_NAME
-        ),
-        None,
-    )
-    submit_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict)
-            and item.get("name") == SUBMIT_SEMANTIC_REVIEW_TOOL_NAME
-        ),
-        None,
-    )
-    behavior_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict) and item.get("name") == BEHAVIOR_TOOL_NAME
-        ),
-        None,
-    )
-    if (
-        register_tool is None
-        or tool is None
-        or ticket_tool is None
-        or prepare_tool is None
-        or submit_tool is None
-        or behavior_tool is None
-    ):
-        return False
-    register_description = str(register_tool.get("description", ""))
-    ticket_description = str(ticket_tool.get("description", ""))
-    description = str(tool.get("description", ""))
-    prepare_description = str(prepare_tool.get("description", ""))
-    submit_description = str(submit_tool.get("description", ""))
-    behavior_description = str(behavior_tool.get("description", ""))
     long_description = str(value.get("long_description", ""))
-    return (
-        "clean_ticket_text" in register_description
-        and "next_arguments" in register_description
-        and "/draft <ticket_ref>" in ticket_description
-        and "only ticket_ref" in ticket_description
-        and "Do not ask for an attachment" in ticket_description
-        and "short approved_summary_text" in description
-        and "structured item" not in description
-        and "/draft <ticket_ref>" in description
-        and "use kcs_draft_ticket" in description
-        and "raw comments" not in description
-        and "internal notes" not in description
-        and "show the returned candidates in a native Claude Desktop choice popup"
-        not in description
-        and "semantic_review_required" in prepare_description
-        and "bounded excerpts" in prepare_description
-        and "candidate_semantic_extraction_v1" in submit_description
-        and "No article draft" in submit_description
-        and "Legacy compatibility helper" in behavior_description
-        and "continue /draft" in behavior_description
-        and "Use only the listed KCS Authoring tools" in long_description
-        and "legacy instruction requires" in long_description
-        and "support_get_behavior_instructions" in long_description
-        and "Plesk Support Assistant Local" in long_description
-        and "Do not report Plesk Support Assistant Local as missing"
-        in long_description
-        and "one primary read-only tool" not in long_description
+    return _registry_manifest_tools_have_expected_descriptions(
+        tools
+    ) and _text_has_expected_terms(
+        long_description,
+        includes=_EXPECTED_REGISTRY_LONG_DESCRIPTION_INCLUDES,
+        excludes=_EXPECTED_REGISTRY_LONG_DESCRIPTION_EXCLUDES,
     )
 
 
@@ -1189,8 +1162,48 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
     return True
 
 
+def _registry_manifest_tools_have_expected_descriptions(tools: list[object]) -> bool:
+    for spec in _EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS:
+        tool = _registry_manifest_tool_by_name(tools, spec.name)
+        if tool is None:
+            return False
+        description = str(tool.get("description", ""))
+        if not _text_has_expected_terms(
+            description,
+            includes=spec.includes,
+            excludes=spec.excludes,
+        ):
+            return False
+    return True
+
+
+def _registry_manifest_tool_by_name(
+    tools: list[object],
+    name: str,
+) -> dict[str, Any] | None:
+    return next(
+        (
+            item
+            for item in tools
+            if isinstance(item, dict) and item.get("name") == name
+        ),
+        None,
+    )
+
+
 def _tool_by_name(tools: list[dict[str, Any]], name: str) -> dict[str, Any] | None:
     return next((item for item in tools if item.get("name") == name), None)
+
+
+def _text_has_expected_terms(
+    text: str,
+    *,
+    includes: tuple[str, ...],
+    excludes: tuple[str, ...],
+) -> bool:
+    return all(term in text for term in includes) and not any(
+        term in text for term in excludes
+    )
 
 
 def _tool_matches_surface_spec(
@@ -1212,9 +1225,11 @@ def _tool_matches_surface_spec(
         or annotations.get("readOnlyHint") is not spec.read_only
     ):
         return False
-    if not all(text in description for text in spec.description_includes):
-        return False
-    if any(text in description for text in spec.description_excludes):
+    if not _text_has_expected_terms(
+        description,
+        includes=spec.description_includes,
+        excludes=spec.description_excludes,
+    ):
         return False
     if spec.debug_description_includes:
         debug_description = str(properties.get("debug", {}).get("description", ""))

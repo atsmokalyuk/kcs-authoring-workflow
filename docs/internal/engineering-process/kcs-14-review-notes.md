@@ -887,6 +887,96 @@ Closeout metadata:
 
 Final verdict: Slice 6 batch 19 is ready for staged-diff review.
 
+## 2026-07-07 - Slice 6 Batch 20 Stdio Registry Manifest Descriptions
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `scripts/smoke_kcs_mcpb_stdio.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- stdio smoke CLI arguments and exit codes unchanged;
+- registry cache check return behavior unchanged;
+- `run_smoke()` report shape and check names unchanged;
+- JSON-RPC request order and smoke scenarios unchanged;
+- Desktop/tool schema behavior unchanged;
+- MCPB manifest and wrapper files unchanged;
+- packet schemas unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- Direct old-vs-new `_registry_manifest_has_thin_contract()` equivalence passed
+  for valid manifest, missing prepare tool, stale draft description, old popup
+  phrase, missing long-description phrase, forbidden old read-only phrase,
+  non-dict input, and wrong tools type.
+- Focused MCPB registry-cache smoke tests passed.
+- Ruff passed for `scripts/smoke_kcs_mcpb_stdio.py` and related MCPB package
+  tests.
+- Complexity sensor passed and reported full-repo
+  `high_complexity_functions: -3` from baseline.
+
+Findings:
+
+- Registry manifest description requirements now have one private spec table
+  and one long-description include/exclude owner inside the smoke script.
+- `_registry_manifest_has_thin_contract()` remains the private registry smoke
+  predicate and returns the same booleans for representative cases.
+- No graph ownership definitions changed; only the touched script hash changed.
+
+Promotion candidates:
+
+- none. The refactor introduced no repeated review-only drift risk and no
+  recurring manual check beyond the existing behavior-drift protocol.
+
+Deferred risks:
+
+- Aggregate design review is due before another refactor batch.
+- Remaining high complexity in the stdio smoke script now belongs to scenario
+  result checks (`_split_choice_ok`, `_register_then_draft_ok`,
+  `_semantic_review_submit_ok`) and should not be refactored without a new
+  explicit ownership question.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 20
+- affected graph nodes: `smoke_log_tooling`, `engineering_policy_tests`
+- graph hashes updated: `scripts/smoke_kcs_mcpb_stdio.py`
+- batches since aggregate review: 2
+- net module/file count change by node: `smoke_log_tooling` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public API;
+  `_registry_manifest_has_thin_contract()` remains the private registry smoke
+  predicate
+- complexity distribution: script max CC is now 22; full-repo
+  `high_complexity_functions` delta from baseline is now `-3`
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: aggregate review before next batch
+
+Final verdict: Slice 6 batch 20 is ready for staged-diff review.
+
 ## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
 
 Reviewer or review route: local Codex implementation checkpoint.

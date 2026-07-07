@@ -612,6 +612,106 @@ Open follow-up:
 - Aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-07 - Slice 6 Batch 20 Stdio Registry Manifest Descriptions
+
+Batch: KCS-14 Slice 6 Batch 20.
+
+Affected graph node: `smoke_log_tooling`.
+
+Changed code:
+
+- `scripts/smoke_kcs_mcpb_stdio.py`
+
+What changed:
+
+- Moved the registry-manifest tool-description contract out of the long
+  `_registry_manifest_has_thin_contract()` boolean expression into private
+  `_EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS` and
+  `_registry_manifest_tools_have_expected_descriptions()`.
+- Moved long-description include/exclude checks into private constants and
+  reused `_text_has_expected_terms()`.
+- Kept `_registry_manifest_has_thin_contract()` as the same private registry
+  smoke predicate.
+
+Why under KCS-14 outcome contract:
+
+- Finishes the high-payoff stdio smoke contract cleanup identified by the
+  complexity sensor after Batch 19.
+- Reduces ambiguity around what the installed registry manifest must preserve:
+  per-tool description terms and long-description terms now have explicit
+  local owners.
+- Keeps the change behavior-preserving and inside smoke tooling, without
+  editing package manifests, Desktop schemas, or runtime adapter code.
+
+Ousterhout lens:
+
+- Information hiding: registry manifest description requirements are grouped
+  as one local contract table.
+- Change amplification: future manifest wording contract updates should touch
+  one description spec entry instead of a long expression.
+- Deep module: no public script entrypoint or report shape changed; internal
+  contract knowledge moved downward.
+- Avoid classitis: the new tuple-shaped spec is private data, not a new
+  caller-facing abstraction.
+
+Contracts preserved:
+
+- runtime behavior;
+- stdio smoke CLI arguments and exit codes;
+- registry cache check return behavior;
+- `run_smoke()` report shape and check names;
+- Desktop/tool schema behavior;
+- MCPB manifest and wrapper files;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed matching
+  `_registry_manifest_has_thin_contract()` booleans across representative valid
+  and invalid registry manifest cases.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| manifest object type and six-tool list guard | unchanged `_registry_manifest_has_thin_contract()` guard | Old-vs-new manifest equivalence. |
+| register tool description includes `clean_ticket_text` and `next_arguments` | `_EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS` register entry | Old-vs-new valid manifest case. |
+| ticket-ref tool description includes `/draft <ticket_ref>`, `only ticket_ref`, and attachment prohibition | `_EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS` ticket entry | Old-vs-new valid manifest case. |
+| draft tool description includes approved-summary and draft-ticket routing terms | `_EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS` draft entry | Old-vs-new valid manifest case. |
+| draft tool description excludes stale structured-item/raw-comments/internal-notes/popup wording | `_EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS` draft entry | Old-vs-new stale-description and old-popup cases. |
+| semantic review prepare/submit description checks | `_EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS` prepare/submit entries | Old-vs-new missing-tool and valid cases. |
+| behavior helper description checks | `_EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS` behavior entry | Old-vs-new valid manifest case. |
+| long-description include/exclude checks | `_EXPECTED_REGISTRY_LONG_DESCRIPTION_*` constants | Old-vs-new missing-long-description and forbidden-read-only cases. |
+| repeated substring check mechanics | `_text_has_expected_terms()` | Existing tests and old-vs-new equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation returned matching
+  `_registry_manifest_has_thin_contract()` booleans for valid manifest, missing
+  prepare tool, stale draft description, old popup phrase, missing
+  long-description phrase, forbidden old read-only phrase, non-dict input, and
+  wrong tools type.
+- Focused MCPB registry-cache smoke tests passed.
+- Ruff passed for the touched script and related MCPB package tests.
+- Complexity sensor showed script max CC dropping from 51 to 22; full-repo
+  `high_complexity_functions` delta from baseline is now `-3`.
+
+Open follow-up:
+
+- Batch 20 completes the explicit stdio smoke tool-surface/registry-manifest
+  cleanup pair.
+- Aggregate review is now due before another refactor batch.
+
 ## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
 
 Batch: KCS-14 Slice 6 Batch 17.
