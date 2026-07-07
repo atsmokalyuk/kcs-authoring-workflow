@@ -51,6 +51,7 @@ _LIKELY_KCS_MATERIAL_RE = re.compile(
     r")\b",
     re.I,
 )
+_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS = claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE)
 
 
 @dataclass(frozen=True)
@@ -201,7 +202,7 @@ class DesktopDraftArticleTool:
             attach_pending_selection(
                 result,
                 pending_selection,
-                submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+                submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
             )
             result["approved_summary_source"] = "semantic_review"
             result["reviewer_bundle_written"] = False
@@ -319,7 +320,7 @@ class DesktopDraftArticleTool:
             attach_pending_selection(
                 result,
                 pending_selection,
-                submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+                submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
             )
             return result
         return self._draft_article_primary_author_result(
@@ -489,9 +490,7 @@ class DesktopDraftArticleTool:
                 result.update(
                     remaining_operator_choice_status(
                         remaining_selection,
-                        submit_tool=claude_desktop_tool_alias(
-                            TOOL_DRAFT_ARTICLE,
-                        ),
+                        submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
                     )
                 )
         return result

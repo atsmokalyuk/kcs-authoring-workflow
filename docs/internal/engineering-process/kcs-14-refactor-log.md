@@ -514,6 +514,86 @@ Open follow-up:
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-07 - Slice 6 Batch 10 Draft Tool Alias
+
+Batch: KCS-14 Slice 6 Batch 10.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_draft_tool.py`
+
+What changed:
+
+- Moved repeated `claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE)` calls into
+  private `_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS`.
+- Kept operator-choice payload values, public tool surface, result contracts,
+  and `__all__` unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Keeps repeated Desktop alias knowledge in one local owner inside the draft
+  tool orchestration module.
+- Reduces future agent ambiguity around the submit tool used for operator
+  choice follow-up payloads.
+- Preserves runtime behavior while making alias usage easier to inspect.
+
+Ousterhout lens:
+
+- Information hiding: the draft tool alias is named once as internal module
+  knowledge.
+- Change amplification: future local alias-use changes should touch one private
+  constant instead of three call sites.
+- Avoid classitis: no class/file/public helper was introduced.
+- Deep module: public tool behavior stayed stable while internal repeated
+  knowledge moved downward.
+
+Contracts preserved:
+
+- runtime behavior;
+- public helper names and `__all__`;
+- operator-choice `submit_tool` and `next_tool` values;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed the private alias constant
+  matches the old call-site value.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| first `attach_pending_selection(... submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE))` | `_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS` | Old-vs-new alias value equivalence. |
+| second `attach_pending_selection(... submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE))` | `_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS` | Old-vs-new alias value equivalence. |
+| `remaining_operator_choice_status(... submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE))` | `_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS` | Old-vs-new alias value equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` call-site alias and current private alias constant matched.
+- `tests/kcs_adapters/test_desktop_draft_tool.py`,
+  `tests/kcs_adapters/test_desktop_workflow.py`,
+  `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Aggregate review is due before starting another refactor batch unless an
+  earlier methodology trigger has already stopped the sequence.
+
 ## 2026-07-07 - Slice 6 Batch 8 Existing Article Text Fields
 
 Batch: KCS-14 Slice 6 Batch 8.
