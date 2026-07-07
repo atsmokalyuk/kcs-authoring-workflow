@@ -513,3 +513,92 @@ Open follow-up:
 - Remaining `desktop_draft_workflow` files are not refactored in this batch.
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
+
+## 2026-07-07 - Slice 6 Batch 6 Operator Selection Remaining Cards
+
+Batch: KCS-14 Slice 6 Batch 6.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_operator_selection.py`
+
+What changed:
+
+- Moved the repeated remaining-candidate-card filter into private
+  `_remaining_candidate_cards()`.
+- Kept all public helper names, `__all__`, request/status payload keys, and
+  selection failure behavior unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Continues the `desktop_draft_workflow` refactor with an operator-selection
+  batch that stays inside one ownership module.
+- Reduces future agent ambiguity by giving the "which candidate cards remain"
+  rule one private owner.
+- Preserves runtime behavior while reducing duplicated selection-state
+  filtering knowledge.
+
+Ousterhout lens:
+
+- Information hiding: remaining-candidate-card filtering is named as one
+  internal rule.
+- Change amplification: future changes to selected-candidate filtering should
+  touch one private helper instead of two payload builders.
+- Avoid classitis: no new class/file/public helper was introduced.
+- Deep module: the public operator-selection interface stayed stable while
+  implementation knowledge moved downward.
+
+Contracts preserved:
+
+- runtime behavior;
+- public helper names and `__all__`;
+- operator choice request, submit options, review summary, and remaining status
+  payload shapes;
+- `ContractValidationError` behavior for already-used and invalid selections;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed matching helper outputs
+  and exception strings for representative pending-selection state.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| inline selected-candidate filter in `operator_choice_submit_options()` | `_remaining_candidate_cards()` | Old-vs-new submit-options equivalence. |
+| inline selected-candidate filter in `remaining_operator_choice_status()` | `_remaining_candidate_cards()` | Old-vs-new remaining-status equivalence. |
+| option payload construction | same public helper using private remaining-card helper | Old-vs-new choice-request and submit-options equivalence. |
+| remaining `next_arguments` condition for one candidate | same public helper using private remaining-card helper | Old-vs-new remaining-status equivalence. |
+| already-used and invalid selection failures | unchanged `selected_pending_candidate()` branches | Old-vs-new exception string equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation produced matching
+  outputs/exceptions for submit options, choice request, review summary,
+  remaining status, selected-candidate lookup, and pending-selection update.
+- `tests/kcs_adapters/test_desktop_operator_selection.py`,
+  `tests/kcs_adapters/test_desktop_draft_tool.py`,
+  `tests/kcs_adapters/test_desktop_workflow.py`,
+  `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Remaining `desktop_draft_workflow` files are not refactored in this batch.
+- Aggregate review is due before starting another refactor batch unless an
+  earlier methodology trigger has already stopped the sequence.
