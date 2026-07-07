@@ -1980,6 +1980,81 @@ Closeout metadata:
 
 Final verdict: Slice 6 batch 14 is ready for staged-diff review.
 
+## 2026-07-07 - Slice 6 Aggregate Review After Batches 13-14
+
+Reviewer or review route: local Codex aggregate design checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-aggregate-review-batches-13-14.md`
+
+Scope:
+
+- Batch 13 `desktop_draft_workflow`:
+  `src/kcs_adapters/desktop_draft_tool.py`
+- Batch 14 `desktop_draft_workflow`:
+  `src/kcs_adapters/desktop_draft_tool.py`
+
+Aggregate findings:
+
+- Both batches stayed inside the declared `desktop_draft_workflow` node plus
+  graph and closeout metadata.
+- Net file/module count change was 0.
+- Public interface/export count change was 0.
+- Caller-facing entrypoints stayed unchanged.
+- Graph ownership definitions did not change.
+- Freeze/snapshot false positives: none.
+- Test assertion edits or justified exceptions: none.
+- Review blockers: none.
+- `must_not_own` near-misses: none.
+- Promotion candidates: none.
+- Demotion candidates: none.
+
+Triage:
+
+- `map_error`: no.
+- `process_error`: no.
+- `architecture_error`: no.
+
+Outcome:
+
+- Do not continue `desktop_draft_workflow` cleanup merely to find more small
+  edits.
+- Pick a new declared graph node, stop for external review, or separately
+  scope result/status/output consolidation before touching that boundary.
+- Architecture Patterns with Python is not activated by these batches.
+- No higher-level design note is required.
+- No promotion or demotion action is required.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- safety floor remains intact by freeze/snapshot evidence and related tests.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 aggregate review batches 13-14
+- affected graph nodes: `desktop_draft_workflow`
+- aggregate review trigger: two completed refactor batches
+- aggregate review outcome: stop same-node momentum unless a new explicit
+  ownership question is scoped
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- promotion candidates by node: none
+- demotion candidates by node: none
+- recurring blocker codes: none
+- next aggregate review due: after two more refactor batches or an earlier
+  methodology trigger
+
+Final verdict: Aggregate review gate is complete. Slice 6 may continue only
+with a new declared ownership node, external review, or a separately scoped
+result/status/output design decision.
+
 ## 2026-07-06 - Slice 6 Batch 3 Desktop UI Smoke Observations
 
 Reviewer or review route: local Codex implementation checkpoint.
