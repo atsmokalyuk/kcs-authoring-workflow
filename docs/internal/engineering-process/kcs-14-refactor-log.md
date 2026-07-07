@@ -712,6 +712,99 @@ Open follow-up:
   cleanup pair.
 - Aggregate review is now due before another refactor batch.
 
+## 2026-07-07 - Slice 6 Batch 21 MCPB Manifest Test Terms
+
+Batch: KCS-14 Slice 6 Batch 21.
+
+Affected graph node: `packaging_and_install_tooling`.
+
+Changed code:
+
+- `tests/kcs_adapters/test_mcpb_package.py`
+
+What changed:
+
+- Moved repeated MCPB manifest long-description and per-tool description
+  assertions into private test constants and small assertion helpers.
+- Kept `test_mcpb_manifest_exposes_desktop_alias_tools_only()` as the
+  behavior-facing characterization test.
+- Preserved every existing manifest term assertion and forbidden draft-tool
+  phrase assertion.
+
+Why under KCS-14 outcome contract:
+
+- Reduces ambiguity in the top remaining test complexity hotspot without
+  changing runtime code, packaging files, or manifest contents.
+- Makes the packaging manifest contract easier to review: expected
+  long-description terms, per-tool description terms, and forbidden draft-tool
+  terms now have explicit test owners.
+- Extends Slice 6 refactor discipline to test code while preserving the
+  characterization surface.
+
+Ousterhout lens:
+
+- Information hiding: manifest wording contract knowledge is grouped as test
+  data instead of being spread across a long assertion sequence.
+- Change amplification: a future intentional manifest wording change should
+  update one expected-term table entry rather than a long test body.
+- Deep module: the test still exposes one scenario; helper details are private
+  to the test file.
+- Avoid classitis: helpers only express repeated assertion mechanics and do not
+  introduce a new test framework.
+
+Contracts preserved:
+
+- runtime behavior;
+- MCPB manifest and wrapper files;
+- packaging output behavior;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- No runtime source file was touched.
+- Assertion-preservation review mapped every removed manifest term assertion to
+  a new expected-term constant used by the same test.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| long-description required terms | `MCPB_MANIFEST_LONG_DESCRIPTION_INCLUDES` | Diff review and focused test pass. |
+| register tool required description terms | `MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES["kcs_register_clean_ticket"]` | Diff review and focused test pass. |
+| draft-ticket tool required description terms | `MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES["kcs_draft_ticket"]` | Diff review and focused test pass. |
+| draft article required description terms | `MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES["kcs_draft_article"]` | Diff review and focused test pass. |
+| semantic review prepare/submit required terms | matching entries in `MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES` | Diff review and focused test pass. |
+| behavior helper required terms | `MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES["support_get_behavior_instructions"]` | Diff review and focused test pass. |
+| draft article forbidden wording terms | `MCPB_DRAFT_TOOL_DESCRIPTION_EXCLUDES` | Diff review and focused test pass. |
+| repeated `term in text` assertion mechanics | `_assert_text_contains_all()` and `_assert_text_excludes_all()` | Focused test pass. |
+
+Review-only drift risks:
+
+- The refactor relies on diff review to confirm that no assertion term was
+  dropped; focused test execution proves the current manifest still satisfies
+  the preserved assertions.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Focused MCPB manifest characterization test passed.
+- Ruff passed for `tests/kcs_adapters/test_mcpb_package.py`.
+- Complexity sensor showed full-repo `max_cc` delta from baseline improving to
+  `-14`; the previous top test function is no longer the max-complexity
+  function.
+
+Open follow-up:
+
+- This batch starts a new aggregate window after batches 19-20.
+- Do not continue test refactor by mining large tests; the next batch needs a
+  new explicit test ownership question.
+
 ## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
 
 Batch: KCS-14 Slice 6 Batch 17.

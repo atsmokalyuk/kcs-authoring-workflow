@@ -1054,6 +1054,90 @@ Closeout metadata:
 Final verdict: Aggregate review gate is complete. Slice 6 may continue only
 with a new scoped ownership question or move to closeout/external review.
 
+## 2026-07-07 - Slice 6 Batch 21 MCPB Manifest Test Terms
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `tests/kcs_adapters/test_mcpb_package.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- no source file changed;
+- MCPB manifest and wrapper files unchanged;
+- packaging output behavior unchanged;
+- Desktop/tool schema behavior unchanged;
+- packet schemas unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- Focused MCPB manifest characterization test passed.
+- Ruff passed for `tests/kcs_adapters/test_mcpb_package.py`.
+- Complexity sensor passed and reported full-repo `max_cc: -14` from baseline.
+
+Findings:
+
+- Manifest wording assertions now have explicit private test constants for
+  long-description terms, per-tool description terms, and forbidden draft-tool
+  terms.
+- The same test remains the characterization owner for the MCPB manifest
+  exposed Desktop alias tools.
+- No graph ownership definitions changed. `tests/kcs_adapters/test_mcpb_package.py`
+  is a related test for `packaging_and_install_tooling`, not a hashed graph
+  source file.
+
+Promotion candidates:
+
+- none. This is a local test-code refactor; no repeated review-only drift risk
+  or recurring manual check appeared.
+
+Deferred risks:
+
+- Assertion-term preservation is review-only beyond focused test execution:
+  current manifest satisfaction is mechanical, but term-by-term preservation is
+  verified by diff review.
+- Another test refactor needs a new explicit test ownership question.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 21
+- affected graph nodes: `packaging_and_install_tooling`
+- graph hashes updated: none
+- batches since aggregate review: 1
+- net module/file count change by node: `packaging_and_install_tooling` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for product behavior; test
+  contract terms now have private local owners
+- complexity distribution: full-repo `max_cc` delta from baseline is now `-14`;
+  previous top MCPB manifest test function is no longer the max-complexity
+  function
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: assertion mechanics
+  refactored, asserted terms preserved
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: one more batch before aggregate review
+
+Final verdict: Slice 6 batch 21 is ready for staged-diff review.
+
 ## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
 
 Reviewer or review route: local Codex implementation checkpoint.
