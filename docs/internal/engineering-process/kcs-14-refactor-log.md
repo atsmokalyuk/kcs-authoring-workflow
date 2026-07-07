@@ -606,6 +606,90 @@ Open follow-up:
 - Aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-07 - Slice 6 Batch 18 Renderer Report Blocker Extraction
+
+Batch: KCS-14 Slice 6 Batch 18.
+
+Affected graph node: `cli_ingest_readiness`.
+
+Changed code:
+
+- `src/kcs_core/readiness.py`
+
+What changed:
+
+- Moved renderer validation-report list invalidity checks out of
+  `_renderer_blockers()` into private `_renderer_report_blockers()`.
+- Kept `_renderer_blockers()` responsible for decision-specific blocker
+  filtering and no-article reason handling.
+
+Why under KCS-14 outcome contract:
+
+- Reduces ambiguity in a readiness boundary that protects reviewer handoff
+  safety.
+- Keeps failure codes and report outcomes stable while separating generic
+  renderer-report shape validation from decision-specific blocker handling.
+- Uses the complexity sensor on the exact hotspot left by Batch 17.
+
+Ousterhout lens:
+
+- Information hiding: validation-report shape invalidity is now one named
+  internal decision.
+- Deep module: no public readiness API changed.
+- Avoid classitis: one private helper owns a real local rule and returns the
+  same data the caller already used.
+- Change amplification: future changes to renderer report list validation
+  should touch `_renderer_report_blockers()` instead of decision-specific
+  blocker filtering.
+
+Contracts preserved:
+
+- `build_validation_report()` behavior;
+- `ensure_ready_for_reviewer()` behavior;
+- readiness blocker codes, including `renderer_validation_report_invalid`;
+- packet schemas;
+- CLI, Desktop/tool schema, privacy, fail-closed, reviewer-bundle,
+  publication, and customer-reply boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD:src/kcs_core/readiness.py`
+  produced identical `_renderer_blockers()` outputs for five representative
+  renderer-report cases.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| read `blockers` list and invalid flag | `_renderer_report_blockers()` | Old-vs-new blocker equivalence. |
+| read `checks` invalid flag | `_renderer_report_blockers()` | Old-vs-new invalid-checks equivalence. |
+| read `warnings` invalid flag | `_renderer_report_blockers()` | Old-vs-new invalid-report equivalence. |
+| append `renderer_validation_report_invalid` on any invalid renderer list | unchanged `_renderer_blockers()` branch using new report-invalid boolean | Old-vs-new invalid-report equivalence. |
+| no-article safe-blocker filtering | unchanged `_renderer_blockers()` decision-specific branch | Old-vs-new no-article equivalence. |
+| new `_renderer_report_blockers()` helper | old first three `_renderer_report_codes()` calls and invalidity expression | Private helper only; no public interface change. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old-vs-new renderer blocker equivalence passed for five representative
+  cases.
+- Touched subset complexity measurement reports source
+  `high_complexity_functions: 0`, source `max_cc: 6`; before the batch,
+  `readiness.py::_renderer_blockers` was `cc=8`.
+- Focused readiness, graph policy, and freeze snapshot tests passed after the
+  graph hash update.
+
+Open follow-up:
+
+- Aggregate review is now due before another refactor batch.
+
 ## 2026-07-07 - Slice 6 Batch 10 Draft Tool Alias
 
 Batch: KCS-14 Slice 6 Batch 10.

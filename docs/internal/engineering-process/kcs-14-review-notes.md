@@ -880,6 +880,83 @@ Closeout metadata:
 
 Final verdict: Slice 6 batch 17 is ready for staged-diff review.
 
+## 2026-07-07 - Slice 6 Batch 18 Renderer Report Blocker Extraction
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `src/kcs_core/readiness.py`
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+
+Declared graph node:
+
+- `cli_ingest_readiness`.
+
+Unchanged contracts:
+
+- `build_validation_report()` behavior unchanged;
+- readiness blocker/status codes unchanged;
+- packet schemas unchanged;
+- CLI behavior unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy and fail-closed behavior unchanged;
+- reviewer-bundle, publication, and customer-reply boundaries unchanged.
+
+Validation evidence:
+
+- Old-vs-new `_renderer_blockers()` equivalence passed for five representative
+  renderer-report cases.
+- `uv run pytest tests/kcs_core/test_readiness.py
+  tests/policy/test_code_review_graph_policy.py
+  tests/policy/test_kcs14_freeze_snapshots.py -q` passed after graph hash
+  update.
+- `uv run ruff check src/kcs_core/readiness.py
+  tests/kcs_core/test_readiness.py` passed.
+- Complexity sensor for touched files reported source
+  `high_complexity_functions: 0` and source `max_cc: 6`.
+
+Findings:
+
+- `_renderer_blockers()` no longer owns both renderer report list invalidity
+  and decision-specific no-article blocker filtering.
+- `_renderer_report_blockers()` is private and does not add a caller-facing
+  interface.
+- No tests or assertions were edited.
+
+Behavior drift check:
+
+- Behavior change intended: no.
+- Mechanical checks: old-vs-new equivalence, focused readiness tests, freeze
+  snapshots, graph policy tests.
+- Reviewed drift risks: invalid renderer report list handling moved to a
+  private helper; the same caller still appends
+  `renderer_validation_report_invalid`.
+- Review-only drift risks: none identified beyond staged-diff review.
+- Verdict: no drift found by listed checks; residual risks listed above.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 Batch 18
+- review route: local Codex checkpoint
+- validation result: passed
+- affected graph node: `cli_ingest_readiness`
+- net module/file count change by node: 0
+- public interface/export count change: 0
+- files a caller must read to use the node: unchanged
+- complexity distribution: touched source `high_complexity_functions: 0`;
+  source `max_cc: 6`
+- test assertion edits: none
+- graph ownership edits: none; hash update only
+- freeze/snapshot false positives: none
+- promotion candidates: none
+- demotion candidates: none
+- next aggregate review due: now, before another refactor batch
+
+Final verdict: Slice 6 batch 18 is ready for staged-diff review.
+
 ## 2026-07-07 - Slice 6 Result-Shaping Ownership Decision
 
 Reviewer or review route: local Codex design checkpoint.
