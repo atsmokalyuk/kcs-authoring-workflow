@@ -514,6 +514,92 @@ Open follow-up:
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-07 - Slice 6 Batch 8 Existing Article Text Fields
+
+Batch: KCS-14 Slice 6 Batch 8.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_authoring_pipeline.py`
+
+What changed:
+
+- Moved explicit existing-article text field groups into private
+  `_EXPLICIT_EXISTING_ARTICLE_TEXT_FIELDS` and
+  `_EXPLICIT_EXISTING_ARTICLE_LIST_FIELDS`.
+- Kept `_explicit_existing_article_text()`,
+  `_explicit_existing_article_match()`, `_approved_summary_reuse_results()`,
+  public helper names, and `__all__` unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Keeps the approved-summary refactor inside one ownership module.
+- Reduces future agent ambiguity by naming which item fields are part of
+  existing-article detection.
+- Preserves runtime behavior while making the field ownership easier to review
+  and less likely to drift through inline tuple edits.
+
+Ousterhout lens:
+
+- Information hiding: explicit article detection field groups are named as
+  private module knowledge.
+- Change amplification: future changes to detection fields should touch one
+  field group instead of inline loop literals.
+- Avoid classitis: no class/file/public helper was introduced.
+- Deep module: public authoring pipeline helpers stayed stable while internal
+  field knowledge became easier to inspect.
+
+Contracts preserved:
+
+- runtime behavior;
+- public helper names and `__all__`;
+- explicit existing-article text, match, and reuse-results outputs;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed matching text, match, and
+  reuse-results outputs for string-field, list-field, and mixed non-string
+  item cases.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| inline string fields in `_explicit_existing_article_text()` | `_EXPLICIT_EXISTING_ARTICLE_TEXT_FIELDS` | Old-vs-new text/match/reuse-results equivalence. |
+| inline list fields in `_explicit_existing_article_text()` | `_EXPLICIT_EXISTING_ARTICLE_LIST_FIELDS` | Old-vs-new text/match/reuse-results equivalence. |
+| ignore non-string scalar values | unchanged loop using named field group | Old-vs-new mixed non-string equivalence. |
+| include only string list items | unchanged loop using named field group | Old-vs-new mixed non-string equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation produced matching
+  explicit existing-article text, match, and reuse-results outputs.
+- `tests/kcs_adapters/test_desktop_workflow.py`,
+  `tests/kcs_adapters/test_desktop_draft_tool.py`,
+  `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Remaining `desktop_draft_workflow` files are not refactored in this batch.
+- Aggregate review is due before starting another refactor batch unless an
+  earlier methodology trigger has already stopped the sequence.
+
 ## 2026-07-07 - Slice 6 Batch 6 Operator Selection Remaining Cards
 
 Batch: KCS-14 Slice 6 Batch 6.
