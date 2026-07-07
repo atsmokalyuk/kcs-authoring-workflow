@@ -602,3 +602,89 @@ Open follow-up:
 - Remaining `desktop_draft_workflow` files are not refactored in this batch.
 - Aggregate review is due before starting another refactor batch unless an
   earlier methodology trigger has already stopped the sequence.
+
+## 2026-07-07 - Slice 6 Batch 7 Approved Summary Reuse Source
+
+Batch: KCS-14 Slice 6 Batch 7.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_authoring_pipeline.py`
+
+What changed:
+
+- Moved the nested `ReuseSearchResultsPacket.search_source` selection rule into
+  private `_approved_summary_reuse_search_source()`.
+- Kept `_approved_summary_reuse_results()` output, public helper names, and
+  `__all__` unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Continues the `desktop_draft_workflow` refactor with a small internal
+  cognitive-load reduction.
+- Reduces future agent ambiguity by naming the reuse-source decision instead of
+  embedding it in a nested conditional expression.
+- Preserves runtime behavior while making the existing decision easier to
+  review against reuse-search cases.
+
+Ousterhout lens:
+
+- Information hiding: the search-source mapping is now one named internal rule.
+- Cognitive load: `_approved_summary_reuse_results()` now assembles the packet
+  while the source-selection decision lives in a focused helper.
+- Avoid classitis: no new class/file/public helper was introduced.
+- Change amplification: future source-label changes should touch one helper
+  rather than packet construction shape.
+
+Contracts preserved:
+
+- runtime behavior;
+- public helper names and `__all__`;
+- `ReuseSearchResultsPacket` values for explicit article references, checked
+  reuse search, and skipped reuse search;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed matching
+  `_approved_summary_reuse_results()` outputs for explicit article reference,
+  checked reuse, and skipped reuse cases.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| explicit article reference -> `operator_explicit_existing_article_reference` | `_approved_summary_reuse_search_source()` | Old-vs-new reuse-results equivalence. |
+| reuse checked -> `operator_approved_summary` | `_approved_summary_reuse_search_source()` | Old-vs-new reuse-results equivalence. |
+| reuse skipped -> `operator_approved_summary_reuse_skipped` | `_approved_summary_reuse_search_source()` | Old-vs-new reuse-results equivalence. |
+| `matches` selection for explicit article references | unchanged `_approved_summary_reuse_results()` | Old-vs-new reuse-results equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation produced matching
+  `ReuseSearchResultsPacket` values for explicit article reference, checked
+  reuse, and skipped reuse cases.
+- `tests/kcs_adapters/test_desktop_workflow.py`,
+  `tests/kcs_adapters/test_desktop_draft_tool.py`,
+  `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Remaining `desktop_draft_workflow` files are not refactored in this batch.
+- Next aggregate review is due after one more refactor batch or an earlier
+  methodology trigger.

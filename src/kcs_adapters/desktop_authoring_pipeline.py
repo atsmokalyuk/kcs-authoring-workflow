@@ -540,18 +540,25 @@ def _approved_summary_reuse_results(
     return ReuseSearchResultsPacket(
         search_run_ref=_approved_summary_reuse_search_run_ref(arguments),
         searched=True,
-        search_source=(
-            "operator_explicit_existing_article_reference"
-            if explicit_match is not None
-            else (
-            "operator_approved_summary"
-            if reuse_checked
-            else "operator_approved_summary_reuse_skipped"
-            )
+        search_source=_approved_summary_reuse_search_source(
+            explicit_match=explicit_match,
+            reuse_checked=reuse_checked,
         ),
         matches=[explicit_match] if explicit_match is not None else [],
         blockers=[],
     )
+
+
+def _approved_summary_reuse_search_source(
+    *,
+    explicit_match: Mapping[str, Any] | None,
+    reuse_checked: bool,
+) -> str:
+    if explicit_match is not None:
+        return "operator_explicit_existing_article_reference"
+    if reuse_checked:
+        return "operator_approved_summary"
+    return "operator_approved_summary_reuse_skipped"
 
 
 def _existing_article_review_summary(
