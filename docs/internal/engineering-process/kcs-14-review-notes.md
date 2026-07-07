@@ -957,6 +957,81 @@ Closeout metadata:
 
 Final verdict: Slice 6 batch 18 is ready for staged-diff review.
 
+## 2026-07-07 - Slice 6 Aggregate Review After Batches 17-18
+
+Reviewer or review route: local Codex aggregate design checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-aggregate-review-batches-17-18.md`
+
+Scope:
+
+- Batch 17 `cli_ingest_readiness`: `src/kcs_core/json_payload.py`
+- Batch 18 `cli_ingest_readiness`: `src/kcs_core/readiness.py`
+
+Aggregate findings:
+
+- Both batches stayed inside the declared `cli_ingest_readiness` node plus
+  graph and closeout metadata.
+- Net file/module count change was 0.
+- Public interface/export count change was 0.
+- Caller-facing entrypoints stayed unchanged.
+- Graph ownership definitions did not change.
+- Freeze/snapshot false positives: none.
+- Test assertion edits or justified exceptions: none. Batch 17 added one
+  characterization test for existing strict scalar behavior.
+- Review blockers: none.
+- `must_not_own` near-misses: none.
+- Promotion candidates: none.
+- Demotion candidates: none.
+- Complexity measurement is now active: full-repo delta from the KCS-14
+  complexity baseline is `high_complexity_functions: -2`,
+  `functions_total: +3`, and `public_defs: +1`.
+
+Triage:
+
+- `map_error`: no.
+- `process_error`: no.
+- `architecture_error`: no.
+
+Outcome:
+
+- Continue node-by-node refactor only with another explicit ownership question,
+  or stop Slice 6 if marginal value is lower than review cost.
+- Architecture Patterns with Python is not activated by these batches.
+- No higher-level design note is required.
+- No promotion or demotion action is required.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- CLI behavior unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- safety floor remains intact by freeze/snapshot evidence and related tests.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 aggregate review batches 17-18
+- affected graph node: `cli_ingest_readiness`
+- aggregate review trigger: two completed refactor batches
+- aggregate review outcome: continue only with explicit ownership question, or
+  stop Slice 6
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- promotion candidates by node: none
+- demotion candidates by node: none
+- recurring blocker codes: none
+- next aggregate review due: after two more refactor batches or at Slice 6
+  closeout
+
+Final verdict: Aggregate review gate is complete. Slice 6 may continue only
+with another concrete ownership question, or proceed to Slice 6 closeout.
+
 ## 2026-07-07 - Slice 6 Result-Shaping Ownership Decision
 
 Reviewer or review route: local Codex design checkpoint.
