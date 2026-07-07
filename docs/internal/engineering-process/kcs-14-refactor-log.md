@@ -405,3 +405,91 @@ Open follow-up:
 
 - `smoke_log_tooling` has now had four low-blast-radius batches; aggregate
   design review is due before starting another refactor batch.
+
+## 2026-07-07 - Slice 6 Batch 5 Draft Argument Selection Fields
+
+Batch: KCS-14 Slice 6 Batch 5.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_draft_arguments.py`
+
+What changed:
+
+- Moved the repeated operator-selection draft argument field set into private
+  `_DRAFT_ARTICLE_OPERATOR_SELECTION_FIELDS`.
+- Kept all public helper names, `__all__`, allow-lists, exception types, and
+  argument-normalization behavior unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Starts the higher-risk `desktop_draft_workflow` refactor with an
+  arguments-only batch.
+- Reduces future agent ambiguity by giving operator-selection argument-field
+  knowledge one local owner.
+- Preserves runtime behavior while reducing repeated field-list knowledge in a
+  workflow boundary module.
+
+Ousterhout lens:
+
+- Information hiding: the operator-selection field group is now named as one
+  internal design decision.
+- Change amplification: future changes to fields stripped before authoring
+  should touch one private set instead of inline literals.
+- Avoid classitis: no new class/file/public helper was introduced.
+- Deep module: the public argument-helper interface stayed stable while
+  internal knowledge became easier to inspect.
+
+Contracts preserved:
+
+- runtime behavior;
+- Desktop draft argument allow-lists;
+- public helper names and `__all__`;
+- `DraftArticleArgumentError` and `ContractValidationError` behavior;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed matching helper outputs
+  and exception shapes for representative argument mappings.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| inline `operator_choice_confirmed` removal | `_DRAFT_ARTICLE_OPERATOR_SELECTION_FIELDS` | Old-vs-new helper output equivalence. |
+| inline `operator_selected_item_ref` removal | `_DRAFT_ARTICLE_OPERATOR_SELECTION_FIELDS` | Old-vs-new helper output equivalence. |
+| inline `operator_selection_ref` removal | `_DRAFT_ARTICLE_OPERATOR_SELECTION_FIELDS` | Old-vs-new helper output equivalence. |
+| inline `item_candidates` removal | `_DRAFT_ARTICLE_OPERATOR_SELECTION_FIELDS` | Old-vs-new helper output equivalence. |
+| `draft_article_without_operator_selection_fields()` behavior | same public helper using private field set | Old-vs-new helper output equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation produced matching
+  outputs/exceptions for operator-selection stripping, uploaded-ticket-ref
+  stripping, confirmed-selection predicate, item normalization, approved-summary
+  input predicates, and invalid item-candidate failure.
+- `tests/kcs_adapters/test_desktop_draft_tool.py`,
+  `tests/kcs_adapters/test_desktop_workflow.py`,
+  `tests/kcs_adapters/test_desktop_workflow_results.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Remaining `desktop_draft_workflow` files are not refactored in this batch.
+- Next aggregate review is due after one more refactor batch or an earlier
+  methodology trigger.

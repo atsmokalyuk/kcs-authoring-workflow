@@ -72,6 +72,14 @@ _DRAFT_ARTICLE_ITEM_CANDIDATE_FIELDS = frozenset(
     }
 )
 _DRAFT_ARTICLE_ITEM_METADATA_FIELDS = frozenset({"item_ref", "reason"})
+_DRAFT_ARTICLE_OPERATOR_SELECTION_FIELDS = frozenset(
+    {
+        "item_candidates",
+        "operator_choice_confirmed",
+        "operator_selected_item_ref",
+        "operator_selection_ref",
+    }
+)
 _APPROVED_SUMMARY_ITEM_FIELDS = _desktop_payload.APPROVED_SUMMARY_ITEM_FIELDS
 _APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS = (
     _desktop_payload.APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS
@@ -165,13 +173,7 @@ def draft_article_without_operator_selection_fields(
     return {
         key: value
         for key, value in arguments.items()
-        if key
-        not in {
-            "operator_choice_confirmed",
-            "operator_selected_item_ref",
-            "operator_selection_ref",
-            "item_candidates",
-        }
+        if key not in _DRAFT_ARTICLE_OPERATOR_SELECTION_FIELDS
     }
 
 
