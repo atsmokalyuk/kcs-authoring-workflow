@@ -514,6 +514,104 @@ Open follow-up:
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-07 - Slice 6 Batch 19 Stdio Smoke Tool Surface Specs
+
+Batch: KCS-14 Slice 6 Batch 19.
+
+Affected graph node: `smoke_log_tooling`.
+
+Changed code:
+
+- `scripts/smoke_kcs_mcpb_stdio.py`
+
+What changed:
+
+- Moved the long inline Desktop tool-surface assertion in `_tool_surface_ok()`
+  into a private `_EXPECTED_TOOL_SURFACES` table and
+  `_tool_matches_surface_spec()` helper.
+- Kept `_tool_surface_ok()` as the same private smoke check entrypoint.
+- Kept the stdio smoke CLI, JSON-RPC requests, report keys, and tool contract
+  expectations unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Reduces review ambiguity in the remaining stdio smoke script hotspot without
+  touching runtime adapter code or Desktop schema definitions.
+- Makes expected tool-surface knowledge easier to inspect as one local table
+  instead of a long boolean expression.
+- Uses the complexity sensor on a known Slice 6 hotspot while preserving the
+  existing smoke behavior.
+
+Ousterhout lens:
+
+- Information hiding: expected name/properties/annotation/description checks
+  now live as one local tool-surface spec decision.
+- Deep module: the script surface did not grow; internal validation knowledge
+  moved behind a private helper.
+- Avoid classitis: `_ExpectedToolSurface` is a private tuple-shaped value used
+  only to group existing expected-surface facts.
+- Change amplification: future expected-tool updates should touch one spec
+  entry instead of multiple branches in a long `and` chain.
+
+Contracts preserved:
+
+- runtime behavior;
+- stdio smoke CLI arguments and exit codes;
+- `run_smoke()` report shape and check names;
+- Desktop/tool schema behavior;
+- MCPB manifest and wrapper files;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed matching
+  `_tool_surface_ok()` booleans across representative accepted and rejected
+  tool-surface cases.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| expected six-tool length check | unchanged `_tool_surface_ok()` guard | Old-vs-new tool-surface equivalence. |
+| per-tool lookup by name | `_tool_by_name()` loop from `_tool_surface_ok()` | Old-vs-new tool-surface equivalence. |
+| register tool properties, required fields, and annotations | `_EXPECTED_TOOL_SURFACES` register entry | Old-vs-new accepted/current and missing-required cases. |
+| ticket-ref tool properties, required fields, annotations, and description substrings | `_EXPECTED_TOOL_SURFACES` ticket-ref entry | Old-vs-new accepted/current and wrong-annotation cases. |
+| draft article properties, annotation checks, description includes/excludes, and debug description check | `_EXPECTED_TOOL_SURFACES` draft entry | Old-vs-new upload-reference, forbidden-description, and missing-debug-description cases. |
+| semantic review prepare/submit tool checks | `_EXPECTED_TOOL_SURFACES` prepare/submit entries | Old-vs-new accepted/current and missing-tool cases. |
+| behavior helper tool checks | `_EXPECTED_TOOL_SURFACES` behavior entry | Old-vs-new accepted/current case. |
+| long inline boolean expression | `_tool_matches_surface_spec()` | Existing focused tests and old-vs-new equivalence. |
+
+Review-only drift risks:
+
+- The private spec table now carries the same order-sensitive `required` lists
+  as the old inline checks; old-vs-new cases covered the existing order.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation returned matching
+  `_tool_surface_ok()` booleans for current contract, upload-reference
+  rejection, missing prepare tool, wrong ticket annotation, missing register
+  required field, forbidden raw-comments description, and missing debug
+  description.
+- Focused MCPB stdio smoke tool-surface tests passed.
+- Ruff passed for the touched script and related MCPB package tests.
+- Complexity sensor showed script max CC dropping from 70 to 51; full-repo
+  `max_cc` delta from baseline is now `-13`.
+
+Open follow-up:
+
+- `_registry_manifest_has_thin_contract()` remains the next stdio smoke
+  hotspot (`cc=51`) if another explicit `smoke_log_tooling` batch is worth the
+  review cost.
+- Aggregate review is due after one more refactor batch or an earlier
+  methodology trigger.
+
 ## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
 
 Batch: KCS-14 Slice 6 Batch 17.

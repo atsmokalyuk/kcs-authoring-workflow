@@ -798,6 +798,95 @@ Final verdict: Aggregate review gate is complete. Slice 6 may continue with the
 next scoped refactor batch after the normal context window check and process
 gap audit.
 
+## 2026-07-07 - Slice 6 Batch 19 Stdio Smoke Tool Surface Specs
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `scripts/smoke_kcs_mcpb_stdio.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- stdio smoke CLI arguments and exit codes unchanged;
+- `run_smoke()` report shape and check names unchanged;
+- JSON-RPC request order and smoke scenarios unchanged;
+- Desktop/tool schema behavior unchanged;
+- MCPB manifest and wrapper files unchanged;
+- packet schemas unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- Direct old-vs-new `_tool_surface_ok()` equivalence passed for accepted
+  current contract, upload-reference rejection, missing prepare tool, wrong
+  ticket annotation, missing register required field, forbidden raw-comments
+  description, and missing debug description.
+- Focused MCPB stdio smoke tool-surface tests passed.
+- Ruff passed for `scripts/smoke_kcs_mcpb_stdio.py` and related MCPB package
+  tests.
+- Complexity sensor passed and reported full-repo `max_cc` delta from baseline
+  as `-13`.
+
+Findings:
+
+- Stdio smoke expected tool-surface knowledge now has one private spec table
+  inside the smoke script.
+- `_tool_surface_ok()` remains the private smoke check entrypoint and returns
+  the same booleans for representative accepted and rejected tool surfaces.
+- No graph ownership definitions changed; only the touched script hash changed.
+
+Promotion candidates:
+
+- none. The refactor introduced no repeated review-only drift risk and no
+  recurring manual check beyond the existing behavior-drift protocol.
+
+Deferred risks:
+
+- `_registry_manifest_has_thin_contract()` remains a high-complexity stdio
+  smoke hotspot (`cc=51`) if another explicit `smoke_log_tooling` ownership
+  question is worth the review cost.
+- Aggregate design review is due after one more refactor batch or an earlier
+  methodology trigger.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 19
+- affected graph nodes: `smoke_log_tooling`, `engineering_policy_tests`
+- graph hashes updated: `scripts/smoke_kcs_mcpb_stdio.py`
+- batches since aggregate review: 1
+- net module/file count change by node: `smoke_log_tooling` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public API;
+  `_tool_surface_ok()` remains the private smoke check entrypoint
+- complexity distribution: full-repo `max_cc` delta from baseline is now `-13`;
+  script max CC is now 51 because `_tool_surface_ok()` no longer dominates
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: one more batch before aggregate review, remaining stdio
+  smoke manifest-contract hotspot
+
+Final verdict: Slice 6 batch 19 is ready for staged-diff review.
+
 ## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
 
 Reviewer or review route: local Codex implementation checkpoint.

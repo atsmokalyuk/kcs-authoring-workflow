@@ -12,7 +12,7 @@ import sys
 import time
 from hashlib import sha256
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_NAME = "kcs-authoring-mvp-validator-control"
@@ -63,6 +63,97 @@ class SmokeError(RuntimeError):
     def __init__(self, code: str) -> None:
         super().__init__(code)
         self.code = code
+
+
+class _ExpectedToolSurface(NamedTuple):
+    name: str
+    properties: frozenset[str]
+    required: tuple[str, ...] | None
+    destructive: bool
+    idempotent: bool
+    open_world: bool
+    read_only: bool
+    description_includes: tuple[str, ...] = ()
+    description_excludes: tuple[str, ...] = ()
+    debug_description_includes: tuple[str, ...] = ()
+
+
+_EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
+    _ExpectedToolSurface(
+        name=REGISTER_TOOL_NAME,
+        properties=frozenset({"clean_ticket_text", "debug", "ticket_ref"}),
+        required=("clean_ticket_text",),
+        destructive=False,
+        idempotent=False,
+        open_world=False,
+        read_only=False,
+    ),
+    _ExpectedToolSurface(
+        name=TICKET_REF_TOOL_NAME,
+        properties=frozenset({"debug", "ticket_ref"}),
+        required=("ticket_ref",),
+        destructive=False,
+        idempotent=False,
+        open_world=False,
+        read_only=False,
+        description_includes=(
+            "/draft <ticket_ref>",
+            "only ticket_ref",
+            "Do not ask for an attachment",
+        ),
+    ),
+    _ExpectedToolSurface(
+        name=TOOL_NAME,
+        properties=frozenset(
+            {
+                "approved_summary_text",
+                "debug",
+                "operator_selected_item_ref",
+                "operator_selection_ref",
+            }
+        ),
+        required=None,
+        destructive=False,
+        idempotent=False,
+        open_world=False,
+        read_only=False,
+        description_includes=("/draft <ticket_ref>", "use kcs_draft_ticket"),
+        description_excludes=("raw comments", "internal notes"),
+        debug_description_includes=("reviewer-only Zendesk HTML",),
+    ),
+    _ExpectedToolSurface(
+        name=PREPARE_SEMANTIC_REVIEW_TOOL_NAME,
+        properties=frozenset({"semantic_review_ref"}),
+        required=("semantic_review_ref",),
+        destructive=False,
+        idempotent=True,
+        open_world=False,
+        read_only=True,
+        description_includes=("semantic_review_required", "bounded excerpts"),
+    ),
+    _ExpectedToolSurface(
+        name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
+        properties=frozenset(
+            {"candidate_semantic_extraction", "semantic_review_ref"}
+        ),
+        required=("semantic_review_ref", "candidate_semantic_extraction"),
+        destructive=False,
+        idempotent=False,
+        open_world=False,
+        read_only=False,
+        description_includes=("candidate_semantic_extraction_v1", "No article draft"),
+    ),
+    _ExpectedToolSurface(
+        name=BEHAVIOR_TOOL_NAME,
+        properties=frozenset(),
+        required=(),
+        destructive=False,
+        idempotent=True,
+        open_world=False,
+        read_only=True,
+        description_includes=("Legacy compatibility helper", "continue /draft"),
+    ),
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1091,127 +1182,47 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
     tools = response.get("result", {}).get("tools", [])
     if len(tools) != 6:
         return False
-    register_tool = next(
-        (item for item in tools if item.get("name") == REGISTER_TOOL_NAME),
-        None,
-    )
-    tool = next((item for item in tools if item.get("name") == TOOL_NAME), None)
-    ticket_tool = next(
-        (item for item in tools if item.get("name") == TICKET_REF_TOOL_NAME),
-        None,
-    )
-    prepare_tool = next(
-        (
-            item
-            for item in tools
-            if item.get("name") == PREPARE_SEMANTIC_REVIEW_TOOL_NAME
-        ),
-        None,
-    )
-    submit_tool = next(
-        (
-            item
-            for item in tools
-            if item.get("name") == SUBMIT_SEMANTIC_REVIEW_TOOL_NAME
-        ),
-        None,
-    )
-    behavior_tool = next(
-        (item for item in tools if item.get("name") == BEHAVIOR_TOOL_NAME),
-        None,
-    )
+    for spec in _EXPECTED_TOOL_SURFACES:
+        tool = _tool_by_name(tools, spec.name)
+        if tool is None or not _tool_matches_surface_spec(tool, spec):
+            return False
+    return True
+
+
+def _tool_by_name(tools: list[dict[str, Any]], name: str) -> dict[str, Any] | None:
+    return next((item for item in tools if item.get("name") == name), None)
+
+
+def _tool_matches_surface_spec(
+    tool: dict[str, Any],
+    spec: _ExpectedToolSurface,
+) -> bool:
+    schema = tool.get("inputSchema", {})
+    properties = schema.get("properties", {})
+    annotations = tool.get("annotations", {})
+    description = str(tool.get("description", ""))
+    if set(properties) != set(spec.properties):
+        return False
+    if spec.required is not None and schema.get("required") != list(spec.required):
+        return False
     if (
-        register_tool is None
-        or tool is None
-        or ticket_tool is None
-        or prepare_tool is None
-        or submit_tool is None
-        or behavior_tool is None
+        annotations.get("destructiveHint") is not spec.destructive
+        or annotations.get("idempotentHint") is not spec.idempotent
+        or annotations.get("openWorldHint") is not spec.open_world
+        or annotations.get("readOnlyHint") is not spec.read_only
     ):
         return False
-    register_properties = register_tool.get("inputSchema", {}).get("properties", {})
-    register_annotations = register_tool.get("annotations", {})
-    ticket_properties = ticket_tool.get("inputSchema", {}).get("properties", {})
-    ticket_annotations = ticket_tool.get("annotations", {})
-    ticket_description = str(ticket_tool.get("description", ""))
-    properties = tool.get("inputSchema", {}).get("properties", {})
-    annotations = tool.get("annotations", {})
-    prepare_properties = prepare_tool.get("inputSchema", {}).get("properties", {})
-    prepare_annotations = prepare_tool.get("annotations", {})
-    prepare_description = str(prepare_tool.get("description", ""))
-    submit_properties = submit_tool.get("inputSchema", {}).get("properties", {})
-    submit_annotations = submit_tool.get("annotations", {})
-    submit_description = str(submit_tool.get("description", ""))
-    behavior_properties = behavior_tool.get("inputSchema", {}).get("properties", {})
-    behavior_annotations = behavior_tool.get("annotations", {})
-    behavior_description = str(behavior_tool.get("description", ""))
-    description = str(tool.get("description", ""))
-    debug_description = str(properties.get("debug", {}).get("description", ""))
-    return (
-        set(register_properties) == {"clean_ticket_text", "debug", "ticket_ref"}
-        and register_tool.get("inputSchema", {}).get("required") == [
-            "clean_ticket_text"
-        ]
-        and register_annotations.get("destructiveHint") is False
-        and register_annotations.get("idempotentHint") is False
-        and register_annotations.get("openWorldHint") is False
-        and register_annotations.get("readOnlyHint") is False
-        and set(ticket_properties) == {"debug", "ticket_ref"}
-        and ticket_tool.get("inputSchema", {}).get("required") == ["ticket_ref"]
-        and ticket_annotations.get("destructiveHint") is False
-        and ticket_annotations.get("idempotentHint") is False
-        and ticket_annotations.get("openWorldHint") is False
-        and ticket_annotations.get("readOnlyHint") is False
-        and "/draft <ticket_ref>" in ticket_description
-        and "only ticket_ref" in ticket_description
-        and "Do not ask for an attachment" in ticket_description
-        and set(properties)
-        == {
-            "approved_summary_text",
-            "debug",
-            "operator_selected_item_ref",
-            "operator_selection_ref",
-        }
-        and "item" not in properties
-        and "item_candidates" not in properties
-        and annotations.get("destructiveHint") is False
-        and annotations.get("idempotentHint") is False
-        and annotations.get("openWorldHint") is False
-        and annotations.get("readOnlyHint") is False
-        and "/draft <ticket_ref>" in description
-        and "use kcs_draft_ticket" in description
-        and "raw comments" not in description
-        and "internal notes" not in description
-        and "reviewer-only Zendesk HTML" in debug_description
-        and set(prepare_properties) == {"semantic_review_ref"}
-        and prepare_tool.get("inputSchema", {}).get("required") == [
-            "semantic_review_ref"
-        ]
-        and prepare_annotations.get("destructiveHint") is False
-        and prepare_annotations.get("idempotentHint") is True
-        and prepare_annotations.get("openWorldHint") is False
-        and prepare_annotations.get("readOnlyHint") is True
-        and "semantic_review_required" in prepare_description
-        and "bounded excerpts" in prepare_description
-        and set(submit_properties)
-        == {"candidate_semantic_extraction", "semantic_review_ref"}
-        and submit_tool.get("inputSchema", {}).get("required")
-        == ["semantic_review_ref", "candidate_semantic_extraction"]
-        and submit_annotations.get("destructiveHint") is False
-        and submit_annotations.get("idempotentHint") is False
-        and submit_annotations.get("openWorldHint") is False
-        and submit_annotations.get("readOnlyHint") is False
-        and "candidate_semantic_extraction_v1" in submit_description
-        and "No article draft" in submit_description
-        and set(behavior_properties) == set()
-        and behavior_tool.get("inputSchema", {}).get("required") == []
-        and behavior_annotations.get("destructiveHint") is False
-        and behavior_annotations.get("idempotentHint") is True
-        and behavior_annotations.get("openWorldHint") is False
-        and behavior_annotations.get("readOnlyHint") is True
-        and "Legacy compatibility helper" in behavior_description
-        and "continue /draft" in behavior_description
-    )
+    if not all(text in description for text in spec.description_includes):
+        return False
+    if any(text in description for text in spec.description_excludes):
+        return False
+    if spec.debug_description_includes:
+        debug_description = str(properties.get("debug", {}).get("description", ""))
+        return all(
+            text in debug_description
+            for text in spec.debug_description_includes
+        )
+    return True
 
 
 def _no_candidates_ok(response: dict[str, Any]) -> bool:
