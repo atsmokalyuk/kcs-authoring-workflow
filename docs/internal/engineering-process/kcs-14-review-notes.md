@@ -2135,6 +2135,87 @@ Closeout metadata:
 
 Final verdict: Slice 6 batch 15 is ready for staged-diff review.
 
+## 2026-07-07 - Slice 6 Batch 16 Approved Summary Alias Table
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-batch-16-approved-summary-alias-table.md`
+- `src/kcs_adapters/desktop_payload.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- approved-summary payload alias priority unchanged;
+- approved-summary payload field behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- MCP/JSON-RPC transport behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- `uv run pytest tests/kcs_adapters/test_desktop_payload.py tests/kcs_adapters/test_mcp_desktop.py tests/policy/test_kcs14_freeze_snapshots.py -q` passed.
+- `uv run ruff check src/kcs_adapters/desktop_payload.py tests/kcs_adapters/test_desktop_payload.py tests/kcs_adapters/test_mcp_desktop.py tests/policy/test_kcs14_freeze_snapshots.py` passed.
+
+Findings:
+
+- Approved-summary item alias mapping now has one ordered private table.
+- `normalize_approved_summary_item()` still delegates to unchanged
+  `move_item_alias()`.
+- No public helper, payload schema, Desktop schema, MCP envelope, or workflow
+  behavior changed.
+- No graph ownership definitions changed; only the touched source hash changed.
+
+Promotion candidates:
+
+- none new. No repeated, stable, or mechanically checkable review finding was
+  introduced by this batch.
+
+Deferred risks:
+
+- Aggregate design review is now due before starting another refactor batch.
+- Alias priority remains review-sensitive; the staged diff preserves old order
+  exactly.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 16
+- affected graph nodes: `desktop_protocol_transport`
+- graph hashes updated: `src/kcs_adapters/desktop_payload.py`
+- batches since aggregate review: 2
+- net module/file count change by node: `desktop_protocol_transport` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public API;
+  `approved_summary_pipeline_payload()` remains the payload normalization
+  entrypoint
+- complexity distribution: not measured by a tool; repeated alias calls moved
+  into one private ordered table
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: aggregate review before next refactor batch
+
+Final verdict: Slice 6 batch 16 is ready for staged-diff review.
+
 ## 2026-07-06 - Slice 6 Batch 3 Desktop UI Smoke Observations
 
 Reviewer or review route: local Codex implementation checkpoint.

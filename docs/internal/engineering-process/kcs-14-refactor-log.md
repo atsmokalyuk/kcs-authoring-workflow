@@ -1015,6 +1015,85 @@ Open follow-up:
   review if it remains inside protocol ownership and avoids Desktop schema or
   result-shaping changes.
 
+## 2026-07-07 - Slice 6 Batch 16 Approved Summary Alias Table
+
+Batch: KCS-14 Slice 6 Batch 16.
+
+Affected graph node: `desktop_protocol_transport`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_payload.py`
+
+What changed:
+
+- Moved the ordered approved-summary item alias mapping into private
+  `_APPROVED_SUMMARY_ITEM_ALIASES`.
+- Replaced the repeated `move_item_alias()` call chain with a loop over the
+  ordered alias table.
+
+Why under KCS-14 outcome contract:
+
+- Keeps approved-summary payload normalization behavior stable while making
+  alias ownership explicit and reviewable.
+- Reduces change amplification for future alias updates.
+- Preserves alias priority by keeping the table order identical to the previous
+  call order.
+
+Ousterhout lens:
+
+- Information hiding: alias-to-canonical field knowledge has one named private
+  owner.
+- Change amplification: alias changes now touch data, not a long procedural
+  call chain.
+- Avoid temporal decomposition: the module still owns payload normalization;
+  only the alias decision table moved.
+- Avoid classitis: no new class/file/public helper was introduced.
+
+Contracts preserved:
+
+- runtime behavior;
+- approved-summary payload alias priority;
+- approved-summary payload fields;
+- Desktop/tool schema behavior;
+- MCP/JSON-RPC transport behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Focused payload, MCP Desktop, and freeze snapshot tests passed.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| sequential alias priority in `normalize_approved_summary_item()` | `_APPROVED_SUMMARY_ITEM_ALIASES` order | Focused payload/MCP/freeze tests passed. |
+| alias movement behavior | unchanged `move_item_alias()` | Focused payload/MCP/freeze tests passed. |
+
+Review-only drift risks:
+
+- Alias priority remains review-sensitive because order matters when multiple
+  aliases target the same canonical field. The staged diff preserves the old
+  order exactly.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- `tests/kcs_adapters/test_desktop_payload.py`,
+  `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Aggregate review is due before starting another refactor batch unless an
+  earlier methodology trigger has already stopped the sequence.
+
 ## 2026-07-07 - Slice 6 Batch 8 Existing Article Text Fields
 
 Batch: KCS-14 Slice 6 Batch 8.

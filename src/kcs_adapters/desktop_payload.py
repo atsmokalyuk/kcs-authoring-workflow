@@ -203,6 +203,32 @@ APPROVED_SUMMARY_TOP_LEVEL_ITEM_FIELDS = frozenset(
         "reference_article_text",
     }
 )
+_APPROVED_SUMMARY_ITEM_ALIASES = (
+    ("article_title", "title"),
+    ("symptom", "symptoms"),
+    ("problem", "symptoms"),
+    ("problem_statement", "symptoms"),
+    ("evidence", "confirmed_facts"),
+    ("facts", "confirmed_facts"),
+    ("log_evidence", "confirmed_facts"),
+    ("logs", "confirmed_facts"),
+    ("notes", "confirmed_facts"),
+    ("secondary_finding", "confirmed_facts"),
+    ("secondary_findings", "confirmed_facts"),
+    ("secondary_issue", "confirmed_facts"),
+    ("secondary_issues", "confirmed_facts"),
+    ("root_cause", "supported_cause"),
+    ("root_cause_analysis", "supported_cause"),
+    ("cause", "supported_cause"),
+    ("diagnosis", "supported_cause"),
+    ("resolution_summary", "supported_resolution_or_workaround"),
+    ("resolution", "supported_resolution_or_workaround"),
+    ("resolution_procedure", "supported_resolution_or_workaround"),
+    ("solution", "supported_resolution_or_workaround"),
+    ("fix", "supported_resolution_or_workaround"),
+    ("steps", "resolution_steps"),
+    ("commands", "resolution_steps"),
+)
 
 
 class ApprovedSummaryInputError(ContractValidationError):
@@ -496,30 +522,8 @@ def promote_resolution_steps_to_supported_resolution(item: JsonDict) -> None:
 
 
 def normalize_approved_summary_item(item: JsonDict) -> JsonDict:
-    move_item_alias(item, "article_title", "title")
-    move_item_alias(item, "symptom", "symptoms")
-    move_item_alias(item, "problem", "symptoms")
-    move_item_alias(item, "problem_statement", "symptoms")
-    move_item_alias(item, "evidence", "confirmed_facts")
-    move_item_alias(item, "facts", "confirmed_facts")
-    move_item_alias(item, "log_evidence", "confirmed_facts")
-    move_item_alias(item, "logs", "confirmed_facts")
-    move_item_alias(item, "notes", "confirmed_facts")
-    move_item_alias(item, "secondary_finding", "confirmed_facts")
-    move_item_alias(item, "secondary_findings", "confirmed_facts")
-    move_item_alias(item, "secondary_issue", "confirmed_facts")
-    move_item_alias(item, "secondary_issues", "confirmed_facts")
-    move_item_alias(item, "root_cause", "supported_cause")
-    move_item_alias(item, "root_cause_analysis", "supported_cause")
-    move_item_alias(item, "cause", "supported_cause")
-    move_item_alias(item, "diagnosis", "supported_cause")
-    move_item_alias(item, "resolution_summary", "supported_resolution_or_workaround")
-    move_item_alias(item, "resolution", "supported_resolution_or_workaround")
-    move_item_alias(item, "resolution_procedure", "supported_resolution_or_workaround")
-    move_item_alias(item, "solution", "supported_resolution_or_workaround")
-    move_item_alias(item, "fix", "supported_resolution_or_workaround")
-    move_item_alias(item, "steps", "resolution_steps")
-    move_item_alias(item, "commands", "resolution_steps")
+    for alias, canonical in _APPROVED_SUMMARY_ITEM_ALIASES:
+        move_item_alias(item, alias, canonical)
     return item
 
 
