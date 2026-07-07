@@ -2216,6 +2216,77 @@ Closeout metadata:
 
 Final verdict: Slice 6 batch 16 is ready for staged-diff review.
 
+## 2026-07-07 - Slice 6 Aggregate Review After Batches 15-16
+
+Reviewer or review route: local Codex aggregate design checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-aggregate-review-batches-15-16.md`
+
+Scope:
+
+- Batch 15 `desktop_protocol_transport`:
+  `src/kcs_adapters/desktop_stdio_transport.py`
+- Batch 16 `desktop_protocol_transport`:
+  `src/kcs_adapters/desktop_payload.py`
+
+Aggregate findings:
+
+- Both batches stayed inside the declared `desktop_protocol_transport` node
+  plus graph and closeout metadata.
+- Net file/module count change was 0.
+- Public interface/export count change was 0.
+- Caller-facing entrypoints stayed unchanged.
+- Graph ownership definitions did not change.
+- Freeze/snapshot false positives: none.
+- Test assertion edits or justified exceptions: none.
+- Review blockers: none.
+- `must_not_own` near-misses: none.
+- Promotion candidates: none.
+- Demotion candidates: none.
+
+Triage:
+
+- `map_error`: no.
+- `process_error`: no.
+- `architecture_error`: no.
+
+Outcome:
+
+- Continue node-by-node refactor only with another explicit ownership question.
+- Architecture Patterns with Python is not activated by these batches.
+- No higher-level design note is required.
+- No promotion or demotion action is required.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- MCP/JSON-RPC transport behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- safety floor remains intact by freeze/snapshot evidence and related tests.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 aggregate review batches 15-16
+- affected graph nodes: `desktop_protocol_transport`
+- aggregate review trigger: two completed refactor batches
+- aggregate review outcome: continue only with explicit ownership question
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- promotion candidates by node: none
+- demotion candidates by node: none
+- recurring blocker codes: none
+- next aggregate review due: after two more refactor batches or an earlier
+  methodology trigger
+
+Final verdict: Aggregate review gate is complete. Slice 6 may continue only
+with another concrete ownership question or external review.
+
 ## 2026-07-06 - Slice 6 Batch 3 Desktop UI Smoke Observations
 
 Reviewer or review route: local Codex implementation checkpoint.
