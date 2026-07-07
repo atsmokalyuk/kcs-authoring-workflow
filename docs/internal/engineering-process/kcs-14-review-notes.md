@@ -798,6 +798,80 @@ Final verdict: Aggregate review gate is complete. Slice 6 may continue with the
 next scoped refactor batch after the normal context window check and process
 gap audit.
 
+## 2026-07-07 - Slice 6 Result-Shaping Ownership Decision
+
+Reviewer or review route: local Codex design checkpoint.
+
+Decision artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-result-shaping-ownership-decision.md`
+
+Scope:
+
+- `src/kcs_adapters/desktop_tool_results.py`
+- `src/kcs_adapters/desktop_mcp_results.py`
+- `src/kcs_adapters/desktop_draft_output.py`
+- `src/kcs_adapters/desktop_workflow_results.py`
+- `src/kcs_adapters/desktop_workflow_status.py`
+
+Decision summary:
+
+- `desktop_mcp_results.py` owns MCP envelope shape:
+  `content`, `isError`, `structuredContent`, `McpToolResult`, and envelope
+  validation against descriptor output schemas.
+- `desktop_tool_results.py` owns Desktop-visible tool-result text,
+  `structuredContent` filtering, output-size limits, forbidden payload gates,
+  and reviewer-only HTML presentation boundaries.
+- `desktop_workflow_results.py`, `desktop_workflow_status.py`, and
+  `desktop_draft_output.py` own workflow status semantics, compact draft result
+  semantics, blockers, `debug_code`, `failure_stage`, `recommended_action`,
+  split/operator-selection results, semantic-review breakpoint results, and
+  quality-blocked draft output.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- no Architecture Patterns activation.
+
+Validation evidence:
+
+- Docs-only ownership decision; no runtime code changed.
+- `uv run pytest tests/policy/test_kcs14_docs_policy.py tests/policy/test_review_context_policy.py tests/policy/test_code_review_graph_policy.py -q` passed.
+- `git diff --check` passed.
+
+Promotion candidates:
+
+- none new. This implements the planned Slice 6 result-shaping ownership gate.
+
+Deferred risks:
+
+- Future result-shaping refactor batches must state which owner they simplify
+  before editing code.
+- Moving logic across these ownership groups must be the declared scope of a
+  future batch, not an incidental side effect.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 result-shaping ownership decision
+- affected graph nodes: `desktop_tool_surface`, `desktop_protocol_transport`,
+  `desktop_draft_workflow`
+- graph hashes updated: none; docs-only decision
+- aggregate review trigger: none
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- promotion candidates by node: none
+- demotion candidates by node: none
+- recurring blocker codes: none
+
+Final verdict: Result-shaping ownership gate is complete. Slice 6 may start a
+scoped `desktop_draft_workflow` or `desktop_tool_surface` refactor batch after
+the normal context window check and process-gap audit.
+
 ## 2026-07-06 - Slice 6 Batch 3 Desktop UI Smoke Observations
 
 Reviewer or review route: local Codex implementation checkpoint.

@@ -109,6 +109,11 @@ This is the Slice 6 `design it twice` checkpoint. It must be written before
 target 2 starts, because target 2 and target 3 touch files on this disputed
 boundary. Do not let a refactor commit make this decision implicitly.
 
+Status: completed in
+`docs/internal/engineering-process/slice-plans/kcs-14-slice-6-result-shaping-ownership-decision.md`.
+Use that file as the active ownership gate for later result-shaping refactor
+batches.
+
 ## Cross-Package Movement Rule
 
 Do not move files across `kcs_core` and `kcs_adapters` during ordinary Slice 6
