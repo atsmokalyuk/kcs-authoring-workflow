@@ -797,3 +797,92 @@ Closeout metadata:
 Final verdict: Aggregate review gate is complete. Slice 6 may continue with the
 next scoped refactor batch after the normal context window check and process
 gap audit.
+
+## 2026-07-06 - Slice 6 Batch 3 Desktop UI Smoke Observations
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-batch-3-desktop-ui-smoke-observations.md`
+- `scripts/smoke_claude_desktop_ui_prompt.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- UI smoke CLI arguments and exit codes unchanged;
+- `_report_from_log()` report shape, check names, failure stages, attention,
+  next steps, debug-code fields, and value-safe log-file metadata unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- Direct old-vs-new equivalence check passed across seven representative
+  synthetic log cases, confirming matching `_report_from_log()` dictionaries
+  for old inline observation variables and new `_UiLogObservations` fields.
+- Focused Claude Desktop UI prompt smoke tests passed.
+- `uv run pytest tests/kcs_adapters/test_mcpb_package.py tests/policy/test_code_review_graph_policy.py tests/policy/test_kcs14_freeze_snapshots.py tests/policy/test_tool_entrypoints.py -q` passed with two existing skips.
+- `uv run pytest tests/policy/test_kcs14_docs_policy.py tests/policy/test_review_context_policy.py tests/policy/test_functional_test_policy.py -q` passed.
+- Ruff passed for `scripts/smoke_claude_desktop_ui_prompt.py` and related MCPB
+  package tests.
+- `git diff --check` passed.
+
+Findings:
+
+- UI smoke log-derived observations now have one private owner in
+  `_UiLogObservations` and `_ui_log_observations()`.
+- No report keys, check names, failure stages, CLI arguments, or exit codes
+  changed.
+- No graph ownership definitions changed; only the touched script hash changed.
+
+Promotion candidates:
+
+- none new. No repeated, stable, or mechanically checkable review finding was
+  introduced by this batch.
+
+Deferred risks:
+
+- `scripts/smoke_kcs_mcpb_stdio.py` remains untouched.
+- Next aggregate design review is due after one more refactor batch or an
+  earlier methodology trigger.
+- Result-shaping ownership decision still must be written before touching
+  `desktop_draft_workflow` or `desktop_tool_surface` result-shaping files.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 3
+- affected graph nodes: `smoke_log_tooling`, `engineering_policy_tests`
+- graph hashes updated: `scripts/smoke_claude_desktop_ui_prompt.py`
+- batches since aggregate review: 1
+- net module/file count change by node: `smoke_log_tooling` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public API;
+  `_report_from_log()` remains the report-shaping entrypoint
+- complexity distribution: not measured by a tool; log-derived observations
+  moved into one private value object and builder function
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: remaining stdio smoke script, aggregate review after one
+  more batch, result-shaping ownership gate
+
+Final verdict: Slice 6 batch 3 is ready for staged-diff review.

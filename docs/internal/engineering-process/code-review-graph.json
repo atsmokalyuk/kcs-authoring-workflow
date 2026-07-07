@@ -710,7 +710,7 @@
         },
         {
           "path": "scripts/smoke_claude_desktop_ui_prompt.py",
-          "file_hash": "7b8502433598704fd92ae9e5b05035aaadcb9ed13d8619f9ec3ef268759ba284",
+          "file_hash": "c9e9a264f4fc2ff8d8d4e3613875bed682aff660124f4fedd387bb36544f8d7b",
           "valid_until_changed": true
         }
       ],

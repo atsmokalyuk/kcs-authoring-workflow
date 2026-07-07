@@ -222,3 +222,99 @@ Open follow-up:
 - `scripts/smoke_kcs_mcpb_stdio.py` and
   `scripts/smoke_claude_desktop_ui_prompt.py` remain untouched.
 - Aggregate design review is now due before starting Slice 6 Batch 3.
+
+## 2026-07-06 - Slice 6 Batch 3 Desktop UI Smoke Observations
+
+Batch: KCS-14 Slice 6 Batch 3.
+
+Affected graph node: `smoke_log_tooling`.
+
+Changed code:
+
+- `scripts/smoke_claude_desktop_ui_prompt.py`
+
+What changed:
+
+- Moved repeated derived UI smoke log observations out of
+  `_report_from_log()` into a private `_UiLogObservations` value object.
+- Kept `_report_from_log()` as the report-shaping entrypoint.
+- Kept CLI arguments, exit codes, report keys, check names, failure-stage
+  behavior, debug-code lists, and value-safe file-name metadata unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Supports "more reviewable codebase" by making log-derived observations a
+  named internal owner before report/check assembly.
+- Reduces future agent ambiguity: future UI smoke changes can inspect one
+  observation-building function before changing report shaping.
+- Preserves proven smoke behavior while reducing local cognitive load inside a
+  high-branch report function.
+
+Ousterhout lens:
+
+- Information hiding: regex-derived observations are grouped behind a private
+  value object instead of being spread through `_report_from_log()`.
+- Change amplification: future observation changes should touch
+  `_ui_log_observations()` and the report field mapping, not a long sequence of
+  local variables.
+- Avoid classitis: `_UiLogObservations` is private, owns a real derived data
+  shape, and adds no public interface.
+- Deep module: the external script/report contract did not grow; internal
+  complexity moved downward.
+
+Contracts preserved:
+
+- runtime behavior;
+- UI smoke CLI arguments and exit codes;
+- `_report_from_log()` output shape, check names, failure stages, attention,
+  next steps, debug-code fields, and value-safe log-file metadata;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed identical
+  `_report_from_log()` report dictionaries across representative synthetic log
+  cases.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| `client_call_text` local variable | `_UiLogObservations.client_call_text` | Old-vs-new report equivalence. |
+| `tool_result_summary` local variable | `_UiLogObservations.tool_result_summary` | Old-vs-new report equivalence for debug-code and no-candidate cases. |
+| `web_diagnostics` local variable | `_UiLogObservations.web_diagnostics` | Old-vs-new report equivalence for report and failure-stage paths. |
+| `timeout_or_disconnect_observed` local variable | `_UiLogObservations.timeout_or_disconnect_observed` | Old-vs-new disconnect cases. |
+| `draft_result_observed` local variable | `_UiLogObservations.draft_result_observed` | Old-vs-new single draft and split continuation cases. |
+| `provider_unavailable_result_observed` local variable | `_UiLogObservations.provider_unavailable_result_observed` | Old-vs-new provider-unavailable case. |
+| inline `terminal_result_observed` formula | `_UiLogObservations.terminal_result_observed` | Old-vs-new single and provider-unavailable cases. |
+| `post_success_disconnect_observed` local variable | `_UiLogObservations.post_success_disconnect_observed` | Existing UI smoke tests and old-vs-new disconnect cases. |
+| `manual_fallback_text` local variable plus regex | `_UiLogObservations.manual_fallback_observed` | Old-vs-new manual fallback case. |
+| inline `_TOOL_RESULT_RE.search(text)` check | `_UiLogObservations.tool_result_observed` | Old-vs-new success and failure cases. |
+| new `_UiLogObservations` tuple | old inline observation local variables | Private implementation detail; no new public interface; old-vs-new equivalence passed. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation produced identical
+  `_report_from_log()` dictionaries across seven representative cases:
+  single draft success, provider unavailable, manual fallback after blocker,
+  disconnect after call, split selected continuation, old-argument rejection,
+  and dry-run not-success.
+- Focused Claude Desktop UI prompt smoke tests passed.
+- Ruff passed for the touched script and related MCPB package tests.
+
+Open follow-up:
+
+- `scripts/smoke_kcs_mcpb_stdio.py` remains untouched.
+- Next aggregate review is due after one more refactor batch or an earlier
+  methodology trigger.
