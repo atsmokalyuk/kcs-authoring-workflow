@@ -183,26 +183,12 @@ class DesktopDraftArticleTool:
             result["review_summary"]["semantic_item_outcomes"] = semantic_item_outcomes
             return result
         if len(candidates) > 1:
-            result = _desktop_draft_arguments.draft_article_split_required_result(
-                {"item_candidates": candidates},
-                schema_version=self._schema_version,
-            )
-            if result is None:  # pragma: no cover - defensive invariant
-                return _author_failure_result(
-                    failure_stage="semantic_extraction",
-                    debug_code="semantic_review_submission_invalid",
-                    schema_version=self._schema_version,
-                )
-            pending_selection = self._new_pending_draft_selection(
+            result = self._split_required_selection_result(
                 candidates,
                 approved_summary_text=approved_summary_text,
                 approved_summary_source_kind=approved_summary_source_kind,
                 semantic_item_outcomes=semantic_item_outcomes,
-            )
-            attach_pending_selection(
-                result,
-                pending_selection,
-                submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
+                invalid_debug_code="semantic_review_submission_invalid",
             )
             result["approved_summary_source"] = "semantic_review"
             result["reviewer_bundle_written"] = False
@@ -302,27 +288,12 @@ class DesktopDraftArticleTool:
                 ticket_ref=ticket_ref_for_semantic_review,
             )
         if len(candidates) > 1:
-            result = _desktop_draft_arguments.draft_article_split_required_result(
-                {"item_candidates": candidates},
-                schema_version=self._schema_version,
-            )
-            if result is None:  # pragma: no cover - defensive invariant
-                return _author_failure_result(
-                    failure_stage="semantic_extraction",
-                    debug_code="semantic_extraction_output_invalid",
-                    schema_version=self._schema_version,
-                )
-            pending_selection = self._new_pending_draft_selection(
+            return self._split_required_selection_result(
                 candidates,
                 approved_summary_text=approved_summary_text,
                 approved_summary_source_kind=semantic_source_kind,
+                invalid_debug_code="semantic_extraction_output_invalid",
             )
-            attach_pending_selection(
-                result,
-                pending_selection,
-                submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
-            )
-            return result
         return self._draft_article_primary_author_result(
             _desktop_draft_arguments.draft_article_authoring_args_from_candidate(
                 approved_summary_text=approved_summary_text,
@@ -506,6 +477,38 @@ class DesktopDraftArticleTool:
             include_reviewer_only_html=arguments.get("debug") is True,
             schema_version=self._schema_version,
         )
+
+    def _split_required_selection_result(
+        self,
+        candidates: list[JsonDict],
+        *,
+        approved_summary_text: str,
+        approved_summary_source_kind: str | None,
+        invalid_debug_code: str,
+        semantic_item_outcomes: list[JsonDict] | None = None,
+    ) -> JsonDict:
+        result = _desktop_draft_arguments.draft_article_split_required_result(
+            {"item_candidates": candidates},
+            schema_version=self._schema_version,
+        )
+        if result is None:  # pragma: no cover - defensive invariant
+            return _author_failure_result(
+                failure_stage="semantic_extraction",
+                debug_code=invalid_debug_code,
+                schema_version=self._schema_version,
+            )
+        pending_selection = self._new_pending_draft_selection(
+            candidates,
+            approved_summary_text=approved_summary_text,
+            approved_summary_source_kind=approved_summary_source_kind,
+            semantic_item_outcomes=semantic_item_outcomes,
+        )
+        attach_pending_selection(
+            result,
+            pending_selection,
+            submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
+        )
+        return result
 
 
 def _author_failure_result(

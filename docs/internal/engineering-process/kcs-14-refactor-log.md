@@ -768,6 +768,101 @@ Open follow-up:
 - Aggregate review is due before starting another refactor batch unless an
   earlier methodology trigger has already stopped the sequence.
 
+## 2026-07-07 - Slice 6 Batch 13 Split Required Selection Result
+
+Batch: KCS-14 Slice 6 Batch 13.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_draft_tool.py`
+
+What changed:
+
+- Moved repeated split-required result creation, pending-selection creation,
+  and operator-choice submit-tool attachment into private
+  `_split_required_selection_result()`.
+- Kept primary-summary and semantic-review-submit path-specific fields at
+  their original call sites.
+
+Why under KCS-14 outcome contract:
+
+- Reduces duplicated orchestration knowledge inside the Desktop draft workflow
+  without changing Desktop result contracts.
+- Makes the split-required operator-selection handoff easier to inspect before
+  future multi-item workflow changes.
+- Preserves runtime behavior while keeping result/status consolidation out of
+  scope.
+
+Ousterhout lens:
+
+- Information hiding: split-required selection attachment has one private
+  owner inside the draft tool.
+- Change amplification: future changes to pending-selection attachment should
+  touch one helper rather than the primary-summary and semantic-review-submit
+  branches separately.
+- Avoid classitis: no new class/file/public helper was introduced.
+- Ownership over temporal order: the helper owns one decision boundary
+  (split-required selection handoff), not a new workflow phase.
+
+Contracts preserved:
+
+- runtime behavior;
+- public helper names and `__all__`;
+- Desktop `split_required` result shape;
+- operator-selection ref/request attachment;
+- semantic-review-submit extra fields:
+  `approved_summary_source`, `reviewer_bundle_written`,
+  `semantic_item_outcomes`, review-summary semantic outcomes, and
+  `ticket_ref`;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Focused split-required tests passed for primary-summary multi-candidate,
+  semantic-review submit multi-candidate, operator-selection payloads, and
+  freeze snapshots.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| primary-summary branch builds `split_required` result | `_split_required_selection_result()` | Focused Desktop draft tests and freeze snapshots passed. |
+| primary-summary branch starts pending selection | `_split_required_selection_result()` | Operator-selection and MCP Desktop split tests passed. |
+| primary-summary branch attaches `kcs_draft_article` submit tool | `_split_required_selection_result()` | Operator-selection and MCP Desktop split tests passed. |
+| semantic-review submit branch builds `split_required` result | `_split_required_selection_result()` | MCP Desktop and freeze snapshot tests passed. |
+| semantic-review submit branch starts pending selection with outcomes | `_split_required_selection_result()` | MCP Desktop semantic-review tests passed. |
+| semantic-review-specific result fields | unchanged semantic-review submit call site | MCP Desktop and freeze snapshot tests passed. |
+| defensive invalid-result failure debug code | `_split_required_selection_result()` parameter | Code review mapping; branch remains defensive-only. |
+
+Review-only drift risks:
+
+- The defensive `result is None` branch remains review-only because normal
+  helper output is expected to be stable and existing tests cover public result
+  shapes, not forced monkeypatching of the defensive path.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- `tests/kcs_adapters/test_mcp_desktop.py`,
+  `tests/kcs_adapters/test_desktop_workflow_results.py`,
+  `tests/kcs_adapters/test_desktop_operator_selection.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- One more refactor batch may proceed before the next aggregate review if it
+  remains inside a declared ownership node and avoids result/status/output
+  consolidation.
+
 ## 2026-07-07 - Slice 6 Batch 8 Existing Article Text Fields
 
 Batch: KCS-14 Slice 6 Batch 8.

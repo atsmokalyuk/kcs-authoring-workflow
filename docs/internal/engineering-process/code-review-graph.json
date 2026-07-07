@@ -359,7 +359,7 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_draft_tool.py",
-          "file_hash": "6f57bbe828f8bc19f9a87931108be872eda28db19d0a4b08665489ea5e389228",
+          "file_hash": "df36f16c998592ad7b1b9c625908adac89c9fd7792c1f6266462a2f1ff045dc8",
           "valid_until_changed": true
         },
         {
