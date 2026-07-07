@@ -685,6 +685,89 @@ Open follow-up:
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-07 - Slice 6 Batch 12 Platform Match Flags
+
+Batch: KCS-14 Slice 6 Batch 12.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_workflow.py`
+
+What changed:
+
+- Moved Windows/Linux regex match tuple construction into private
+  `_platform_match_flags()`.
+- Kept `_platform_type_from_text()` and `_minimal_environment_from_text()`
+  behavior unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Makes semantic-review fallback environment inference easier to inspect
+  without changing semantic-review packet or candidate validation behavior.
+- Gives platform match tuple knowledge one private owner.
+- Preserves runtime behavior while removing an inline boolean tuple from the
+  platform lookup expression.
+
+Ousterhout lens:
+
+- Information hiding: platform match flags are named as one internal rule.
+- Cognitive load: platform type lookup now reads as mapping lookup from named
+  flags.
+- Avoid classitis: no class/file/public helper was introduced.
+- Change amplification: future platform flag changes should touch one helper.
+
+Contracts preserved:
+
+- runtime behavior;
+- minimal fallback environment output;
+- semantic-review packet schema;
+- candidate semantic extraction schema;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed matching platform and
+  minimal-environment outputs for Linux, Windows, both-platform, and
+  no-platform text.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| inline Windows regex bool in `_platform_type_from_text()` | `_platform_match_flags()` | Old-vs-new platform/env equivalence. |
+| inline Linux regex bool in `_platform_type_from_text()` | `_platform_match_flags()` | Old-vs-new platform/env equivalence. |
+| platform lookup tuple | `_platform_match_flags()` return value | Old-vs-new platform/env equivalence. |
+| no fallback for ambiguous both-platform text | unchanged mapping behavior | Old-vs-new both-platform equivalence. |
+| no fallback for missing platform text | unchanged mapping behavior | Old-vs-new no-platform equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation produced matching
+  platform and minimal-environment outputs.
+- `tests/kcs_adapters/test_desktop_draft_tool.py`,
+  `tests/kcs_adapters/test_desktop_workflow.py`,
+  `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Aggregate review is due before starting another refactor batch unless an
+  earlier methodology trigger has already stopped the sequence.
+
 ## 2026-07-07 - Slice 6 Batch 8 Existing Article Text Fields
 
 Batch: KCS-14 Slice 6 Batch 8.

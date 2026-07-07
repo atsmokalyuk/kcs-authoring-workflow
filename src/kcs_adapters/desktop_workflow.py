@@ -500,13 +500,14 @@ def _minimal_environment_from_text(text: str) -> JsonDict:
     }
 
 
-def _platform_type_from_text(text: str) -> str:  # noqa: C901
-    return _PLATFORM_TYPE_BY_MATCH_FLAGS.get(
-        (
-            bool(_WINDOWS_ENVIRONMENT_RE.search(text)),
-            bool(_LINUX_ENVIRONMENT_RE.search(text)),
-        ),
-        "",
+def _platform_type_from_text(text: str) -> str:
+    return _PLATFORM_TYPE_BY_MATCH_FLAGS.get(_platform_match_flags(text), "")
+
+
+def _platform_match_flags(text: str) -> tuple[bool, bool]:
+    return (
+        bool(_WINDOWS_ENVIRONMENT_RE.search(text)),
+        bool(_LINUX_ENVIRONMENT_RE.search(text)),
     )
 
 
