@@ -323,6 +323,35 @@ Radon cyclomatic complexity, import coupling, and public interface surface; it
 does not replace Ousterhout review questions about information hiding,
 classitis, temporal decomposition, or whether callers need to know less.
 
+When a refactor closeout or aggregate review cites the complexity sensor, record
+the full summary/delta block instead of only selected headline fields:
+
+- `functions_total`;
+- `cc_average`;
+- `max_cc`;
+- `high_complexity_functions`;
+- `mi_average`;
+- `import_edges`;
+- `public_defs`;
+- `all_exports`.
+
+This keeps helper growth, interface growth, coupling stability, and complexity
+movement visible. `max_cc` or `high_complexity_functions` alone are not enough
+to claim codebase improvement.
+
+Contract-term/spec-table extraction is a review checklist item after Slice 6
+batches 19-22. It is acceptable when all of these are true:
+
+- the old inline checks were already contract-term or expected-property checks;
+- every old term/property maps to a new local table or spec entry;
+- checks remain all-quantified;
+- focused characterization tests still pass;
+- the table is local to the owning module or test file;
+- the change does not create a public interface or broad reusable framework.
+
+It is not a blanket instruction to convert every assertion or smoke scenario
+into table-driven code.
+
 Aggregate review must triage each recurring signal before proposing design
 work:
 

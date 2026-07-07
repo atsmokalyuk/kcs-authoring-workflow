@@ -187,6 +187,43 @@ def test_promotion_registry_uses_unique_finding_codes() -> None:
     assert len(codes) == len(set(codes))
 
 
+def test_review_protocol_requires_full_complexity_delta_block() -> None:
+    text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
+
+    required = (
+        "If a refactor closeout cites the complexity sensor",
+        "full summary/delta block",
+        "functions_total",
+        "cc_average",
+        "max_cc",
+        "high_complexity_functions",
+        "mi_average",
+        "import_edges",
+        "public_defs",
+        "all_exports",
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_promotion_registry_records_contract_term_table_guidance() -> None:
+    text = PROMOTION_CANDIDATES.read_text(encoding="utf-8")
+
+    required = (
+        "Contract-term/spec-table extraction",
+        "all-quantified checks",
+        "not a blanket instruction",
+        "checklist-item",
+        "Full Complexity Delta Closeout",
+        "KCS14-PROMO-006",
+        "KCS14-PROMO-007",
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
 def test_enforcement_ladder_feature_note_connects_grounding_and_scope() -> None:
     text = ENFORCEMENT_FEATURE_NOTE.read_text(encoding="utf-8")
 

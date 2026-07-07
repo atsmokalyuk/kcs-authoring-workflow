@@ -1054,6 +1054,85 @@ Closeout metadata:
 Final verdict: Aggregate review gate is complete. Slice 6 may continue only
 with a new scoped ownership question or move to closeout/external review.
 
+## 2026-07-07 - Slice 6 Final External Review And Closeout
+
+Reviewer or review route: Fable 5 external checkpoint summarized into tracked
+closeout.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-final-closeout.md`
+
+Reviewed external packet:
+
+- `/Users/alex.tsmokalyuk/Downloads/kcs-14-slice-6-fable-review-batches-19-22`
+
+External review blockers:
+
+- none.
+
+External review warnings accepted:
+
+- complexity closeouts should record the full sensor summary/delta block,
+  not only selected headline fields;
+- contract-term/spec-table extraction repeated in unrelated areas and should
+  become review checklist guidance;
+- batch 19 node metadata wording was slightly inconsistent with aggregate
+  wording, but no graph ownership drift occurred;
+- failing-spec names in table-driven checks are future-only if the tables grow.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- MCP envelope behavior unchanged;
+- MCPB manifest and wrapper behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- privacy and fail-closed behavior unchanged;
+- `ticket_ref` primary path unchanged;
+- freehand/manual drafting remains blocked.
+
+Promotion candidates accepted:
+
+- `KCS14-PROMO-006`: contract-term/spec-table extraction guidance at
+  checklist-item level.
+- `KCS14-PROMO-007`: full complexity delta block in refactor closeouts that
+  cite the complexity sensor.
+
+Demotion candidates:
+
+- none.
+
+Architecture decision:
+
+- no `architecture_error`;
+- Architecture Patterns with Python is not activated;
+- no service-layer, repository, unit-of-work, aggregate, message-bus, or
+  event-driven design note is justified by Slice 6 evidence.
+
+Final Slice 6 decision:
+
+- close Slice 6;
+- do not start another Slice 6 refactor batch unless the operator explicitly
+  reopens Slice 6 with a new ownership question.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 final closeout
+- affected graph nodes: multiple Slice 6 nodes; see aggregate review artifacts
+- external review blockers: none
+- external review warnings: accepted and recorded
+- promotions accepted: `KCS14-PROMO-006`, `KCS14-PROMO-007`
+- demotions accepted: none
+- final complexity summary/delta: recorded in final closeout artifact
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- next action: Slice 7 review/agent tooling, or a separate operator-approved
+  follow-up slice
+
+Final verdict: Slice 6 is closed.
+
 ## 2026-07-07 - Slice 6 Batch 21 MCPB Manifest Test Terms
 
 Reviewer or review route: local Codex implementation checkpoint.

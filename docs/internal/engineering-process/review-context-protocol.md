@@ -301,6 +301,24 @@ evidence-oriented: outcome-contract reason, applied design lens, behavior
 mapping, validation evidence, and follow-up risks. It must not store raw/private
 artifacts or full command output.
 
+If a refactor closeout cites the complexity sensor, include the full metric
+set, not only selected headline values.
+
+Required phrase: full summary/delta block.
+
+- `functions_total`;
+- `cc_average`;
+- `max_cc`;
+- `high_complexity_functions`;
+- `mi_average`;
+- `import_edges`;
+- `public_defs`;
+- `all_exports`.
+
+These fields are advisory evidence for aggregate review. They do not replace
+design review for information hiding, shallow abstractions, temporal
+decomposition, or caller cognitive load.
+
 ## Behavior Drift Check
 
 Every material slice must include a behavior drift check before closeout. Any

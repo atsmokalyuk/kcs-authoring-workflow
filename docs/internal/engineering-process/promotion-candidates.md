@@ -85,7 +85,11 @@ require fresh evidence before promotion.
 
 ## Active Candidates
 
-No active promotion candidates after the complexity-measurement promotion.
+| Finding code | Rule / finding | Seen in | Promotion target | Owner slice | Status |
+| --- | --- | --- | --- | --- | --- |
+| KCS14-PROMO-006 | Contract-term/spec-table extraction should preserve all old terms with all-quantified checks and avoid broad table-driven rewrites | Slice 6 batches 19-22 external review | review checklist item | Slice 6 closeout / future refactor slices | checklist-item |
+| KCS14-PROMO-007 | Refactor closeouts that cite complexity measurement should record the full sensor summary/delta block, not only selected headline fields | Slice 6 batches 19-22 external review | measurement-only closeout field | Slice 6 closeout / future refactor slices | accepted |
+
 Future promotion decisions for complexity measurement should use the probation
 signal from Slice 6/Slice 7 closeouts, not chat memory.
 
@@ -185,3 +189,173 @@ Approval:
 Status:
 
 - probation-advisory.
+
+## Contract-Term / Spec-Table Extraction Detail
+
+Finding code:
+
+- see the active candidates row above.
+
+Rule / finding:
+
+- Contract-heavy checks may be clearer as local spec tables or term lists, but
+  only when every old term or expected property is preserved with
+  all-quantified checks.
+- A table-driven rewrite must not weaken semantics from "all terms required"
+  to "any term accepted" and must not hide design judgment behind generic data.
+- The aggregate review must still ask whether the table hides real contract
+  knowledge or creates shallow helper/table sprawl.
+
+Seen in:
+
+- Slice 6 batches 19-20: stdio smoke tool-surface and registry manifest
+  contract specs.
+- Slice 6 batches 21-22: MCPB package manifest and wrapper test term tables.
+- External review for batches 19-22 classified this as checklist-level:
+  repeated twice in unrelated areas, but not mechanically enforceable yet.
+
+Evidence:
+
+- Batches 19-22 preserved exact expected terms/properties and used all-term
+  checks.
+- External review found no test weakening and no dropped terms.
+- Aggregates warned that this is not a blanket instruction to convert every
+  smoke or test assertion into a table.
+
+Trigger:
+
+- Same implementation pattern repeated in two unrelated areas.
+
+Manual correction needed:
+
+- yes. Reviewers must inspect term preservation and table-sprawl risk.
+
+Can be checked mechanically:
+
+- partly. Tests can prove the current fixture satisfies the table; diff review
+  is still needed to prove no old term was dropped.
+
+False-positive risk:
+
+- medium if automated broadly; low as a review checklist item.
+
+KCS-specific or generic:
+
+- generic refactor-review guidance with project-local examples.
+
+Promotion target:
+
+- review checklist item.
+
+Target layer:
+
+- review gate.
+
+Decision:
+
+- record as checklist-level guidance, not policy automation.
+
+Owner slice:
+
+- KCS-14 Slice 6 closeout and future refactor slices.
+
+Scope:
+
+- contract-heavy code/test checks where expected terms, properties, schemas, or
+  annotations are already being checked explicitly.
+
+Validation:
+
+- focused characterization tests still pass;
+- diff review maps old terms/properties to new table entries;
+- no public/runtime surface expands.
+
+Approval:
+
+- external review recommended checklist-level promotion.
+
+Status:
+
+- checklist-item.
+
+## Full Complexity Delta Closeout Detail
+
+Finding code:
+
+- see the active candidates row above.
+
+Rule / finding:
+
+- When a refactor closeout cites complexity measurement, it should record the
+  full sensor summary/delta block: `functions_total`, `cc_average`, `max_cc`,
+  `high_complexity_functions`, `mi_average`, `import_edges`, `public_defs`, and
+  `all_exports`.
+- Citing only `max_cc` or `high_complexity_functions` can hide helper growth or
+  movement of complexity between files.
+
+Seen in:
+
+- Slice 6 batches 19-22 external review.
+
+Evidence:
+
+- External review noted that the sensor emitted anti-gaming fields but
+  aggregate closeouts cited only selected headline fields.
+
+Trigger:
+
+- Stable, low-risk measurement formatting rule discovered during external
+  review.
+
+Manual correction needed:
+
+- yes, until the closeout shape validator enforces it.
+
+Can be checked mechanically:
+
+- yes, once closeout shape validation covers refactor closeouts.
+
+False-positive risk:
+
+- low for refactor closeouts that cite the complexity sensor.
+
+KCS-specific or generic:
+
+- generic process with project-local metric names.
+
+Promotion target:
+
+- measurement-only closeout field;
+- future closeout shape validator extension.
+
+Target layer:
+
+- measurement now;
+- deterministic closeout-shape check later.
+
+Decision:
+
+- accepted for future refactor closeouts; automation deferred to Slice 7 or a
+  dedicated closeout-shape validator change.
+
+Owner slice:
+
+- KCS-14 Slice 6 closeout and Slice 7 review tooling.
+
+Scope:
+
+- material refactor closeouts and aggregate reviews that cite
+  `scripts/measure_complexity.py`.
+
+Validation:
+
+- future closeouts include the full summary/delta block when complexity
+  measurement is cited.
+
+Approval:
+
+- external review recommended the measurement-format promotion.
+
+Status:
+
+- accepted.
