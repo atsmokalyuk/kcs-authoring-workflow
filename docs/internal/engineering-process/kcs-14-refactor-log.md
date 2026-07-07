@@ -318,3 +318,90 @@ Open follow-up:
 - `scripts/smoke_kcs_mcpb_stdio.py` remains untouched.
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
+
+## 2026-07-06 - Slice 6 Batch 4 Stdio Smoke Environment
+
+Batch: KCS-14 Slice 6 Batch 4.
+
+Affected graph node: `smoke_log_tooling`.
+
+Changed code:
+
+- `scripts/smoke_kcs_mcpb_stdio.py`
+
+What changed:
+
+- Moved repeated wrapper process environment construction into private
+  `_wrapper_env()`.
+- Kept `run_smoke()` as the public smoke entrypoint.
+- Kept JSON-RPC message order, CLI arguments, exit codes, report keys, check
+  names, and `SmokeError` codes unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Supports "more reviewable codebase" by giving the wrapper execution
+  environment one local owner.
+- Reduces future agent ambiguity: future changes to fixture-provider or
+  repo-root override behavior have one private function to inspect.
+- Preserves proven stdio smoke behavior while reducing repeated setup logic
+  across multiple smoke sessions.
+
+Ousterhout lens:
+
+- Information hiding: the smoke wrapper environment policy is grouped behind
+  `_wrapper_env()` instead of being repeated in each session runner.
+- Change amplification: changing the uv command or semantic provider handling
+  should touch one helper instead of four environment blocks.
+- Avoid classitis: `_wrapper_env()` is a private helper with real policy value;
+  it does not add a public layer or pass-through abstraction.
+- Deep module: the external CLI/report contract did not grow; internal setup
+  knowledge moved downward.
+
+Contracts preserved:
+
+- runtime behavior;
+- stdio smoke CLI arguments and exit codes;
+- `run_smoke()` report shape, check names, debug-code fields, wrapper kind,
+  registry-cache metadata, and value-safe error codes;
+- JSON-RPC request order and smoke scenarios;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct comparison showed `_wrapper_env()` matches the old inline formulas for
+  fixture-provider and inherited-provider paths under a controlled environment.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| `_run_jsonrpc_session()` inline fixture env | `_wrapper_env(semantic_provider="fixture")` | Old formula vs new helper equivalence. |
+| `_run_split_choice_smoke()` inline fixture env | `_wrapper_env(semantic_provider="fixture")` | Old formula vs new helper equivalence; focused stdio tests passed. |
+| `_run_register_then_draft_smoke()` inline fixture env | `_wrapper_env(semantic_provider="fixture")` | Old formula vs new helper equivalence; focused stdio tests passed. |
+| `_run_semantic_review_smoke()` inline inherited-provider env | `_wrapper_env(semantic_provider=None)` | Old formula vs new helper equivalence; focused stdio tests passed. |
+| removal of `KCS_AUTHORING_MVP_REPO_ROOT` | `_wrapper_env()` | Old formula vs new helper equivalence. |
+| removal of `KCS_AUTHORING_SEMANTIC_PROVIDER` for semantic-review smoke | `_wrapper_env(semantic_provider=None)` | Old formula vs new helper equivalence. |
+| setting `KCS_AUTHORING_MVP_UV_COMMAND` | `_wrapper_env()` | Old formula vs new helper equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- `_wrapper_env()` matched old inline env formulas for fixture and
+  inherited-provider paths under controlled `os.environ` values.
+- Focused MCPB stdio smoke tests passed.
+- Ruff passed for the touched script and related MCPB package tests.
+
+Open follow-up:
+
+- `smoke_log_tooling` has now had four low-blast-radius batches; aggregate
+  design review is due before starting another refactor batch.

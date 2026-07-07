@@ -256,12 +256,6 @@ def _run_jsonrpc_session(
     uv_command: str,
     messages: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    env = {
-        **os.environ,
-        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
-        "KCS_AUTHORING_SEMANTIC_PROVIDER": "fixture",
-    }
-    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     payload = "".join(
         json.dumps(message, separators=(",", ":")) + "\n"
         for message in messages
@@ -272,7 +266,10 @@ def _run_jsonrpc_session(
             input=payload,
             capture_output=True,
             check=False,
-            env=env,
+            env=_wrapper_env(
+                uv_command=uv_command,
+                semantic_provider="fixture",
+            ),
             text=True,
             timeout=15,
         )
@@ -293,19 +290,16 @@ def _run_split_choice_smoke(
     wrapper: Path,
     uv_command: str,
 ) -> dict[str, dict[str, Any]]:
-    env = {
-        **os.environ,
-        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
-        "KCS_AUTHORING_SEMANTIC_PROVIDER": "fixture",
-    }
-    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     try:
         process = subprocess.Popen(
             [node, str(wrapper)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=env,
+            env=_wrapper_env(
+                uv_command=uv_command,
+                semantic_provider="fixture",
+            ),
             text=True,
         )
     except OSError as exc:
@@ -362,19 +356,16 @@ def _run_register_then_draft_smoke(
     wrapper: Path,
     uv_command: str,
 ) -> dict[str, dict[str, Any]]:
-    env = {
-        **os.environ,
-        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
-        "KCS_AUTHORING_SEMANTIC_PROVIDER": "fixture",
-    }
-    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     try:
         process = subprocess.Popen(
             [node, str(wrapper)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=env,
+            env=_wrapper_env(
+                uv_command=uv_command,
+                semantic_provider="fixture",
+            ),
             text=True,
         )
     except OSError as exc:
@@ -460,12 +451,6 @@ def _run_semantic_review_smoke(
     uv_command: str,
     invalid_submit: bool,
 ) -> dict[str, dict[str, Any]]:
-    env = {
-        **os.environ,
-        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
-    }
-    env.pop("KCS_AUTHORING_SEMANTIC_PROVIDER", None)
-    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     ticket_ref = f"smoke-semantic-review-{int(time.time() * 1000)}"
     try:
         process = subprocess.Popen(
@@ -473,7 +458,10 @@ def _run_semantic_review_smoke(
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=env,
+            env=_wrapper_env(
+                uv_command=uv_command,
+                semantic_provider=None,
+            ),
             text=True,
         )
     except OSError as exc:
@@ -554,6 +542,23 @@ def _run_semantic_review_smoke(
         }
     finally:
         _close_process(process)
+
+
+def _wrapper_env(
+    *,
+    uv_command: str,
+    semantic_provider: str | None,
+) -> dict[str, str]:
+    env = {
+        **os.environ,
+        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
+    }
+    if semantic_provider is None:
+        env.pop("KCS_AUTHORING_SEMANTIC_PROVIDER", None)
+    else:
+        env["KCS_AUTHORING_SEMANTIC_PROVIDER"] = semantic_provider
+    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
+    return env
 
 
 def _send_jsonrpc(

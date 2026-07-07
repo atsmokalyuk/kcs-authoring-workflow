@@ -886,3 +886,90 @@ Closeout metadata:
   more batch, result-shaping ownership gate
 
 Final verdict: Slice 6 batch 3 is ready for staged-diff review.
+
+## 2026-07-06 - Slice 6 Batch 4 Stdio Smoke Environment
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-batch-4-stdio-smoke-environment.md`
+- `scripts/smoke_kcs_mcpb_stdio.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- stdio smoke CLI arguments and exit codes unchanged;
+- `run_smoke()` report shape, check names, debug-code fields, wrapper kind,
+  registry-cache metadata, and value-safe error codes unchanged;
+- JSON-RPC request order and smoke scenarios unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- Direct env-construction equivalence check passed for fixture-provider and
+  inherited-provider paths under controlled `os.environ` values.
+- Focused MCPB stdio smoke tests passed.
+- `uv run pytest tests/kcs_adapters/test_mcpb_package.py tests/policy/test_code_review_graph_policy.py tests/policy/test_kcs14_freeze_snapshots.py tests/policy/test_tool_entrypoints.py -q` passed with two existing skips.
+- `uv run pytest tests/policy/test_kcs14_docs_policy.py tests/policy/test_review_context_policy.py tests/policy/test_functional_test_policy.py -q` passed.
+- Ruff passed for `scripts/smoke_kcs_mcpb_stdio.py` and related MCPB package
+  tests.
+- `git diff --check` passed.
+
+Findings:
+
+- Wrapper process environment construction now has one private owner in
+  `_wrapper_env()`.
+- No JSON-RPC requests, report keys, check names, CLI arguments, or error codes
+  changed.
+- No graph ownership definitions changed; only the touched script hash changed.
+
+Promotion candidates:
+
+- none new. No repeated, stable, or mechanically checkable review finding was
+  introduced by this batch.
+
+Deferred risks:
+
+- Aggregate design review is now due before starting another refactor batch.
+- Result-shaping ownership decision still must be written before touching
+  `desktop_draft_workflow` or `desktop_tool_surface` result-shaping files.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 4
+- affected graph nodes: `smoke_log_tooling`, `engineering_policy_tests`
+- graph hashes updated: `scripts/smoke_kcs_mcpb_stdio.py`
+- batches since aggregate review: 2
+- net module/file count change by node: `smoke_log_tooling` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public API;
+  `run_smoke()` remains the report entrypoint
+- complexity distribution: not measured by a tool; repeated wrapper env setup
+  moved into one private helper
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: aggregate review before next batch, result-shaping ownership
+  gate
+
+Final verdict: Slice 6 batch 4 is ready for staged-diff review.
