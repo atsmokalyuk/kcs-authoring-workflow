@@ -81,7 +81,8 @@ Use the smallest mode that fits the operator request:
   behavior-preserving work unless changed behavior, stable contracts, tests, and
   review-only drift risks are explicitly accounted for. Before each material
   batch, start from a compact current-state frame rather than relying on long
-  chat history.
+  chat history. After each commit or aggregate review, emit a
+  visible compact checkpoint before starting the next material batch.
 - Bugfix / forensic mode: reproduce or define the failing case first, gather
   evidence before patching, fix the root cause only, and keep a regression test
   when practical.

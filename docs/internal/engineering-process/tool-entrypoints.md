@@ -43,6 +43,7 @@ Use these before commits when relevant to the touched files.
 | Diff whitespace check | `git diff --check` | deterministic | Use for unstaged working-tree diff. |
 | Staged whitespace check | `git diff --cached --check` | deterministic | Use before commit. |
 | Staged file review | `git diff --cached --name-status` | deterministic | Confirms the commit contains only intended files. |
+| Complexity measurement | `uv run --extra dev python scripts/measure_complexity.py --paths src tests scripts --baseline docs/internal/engineering-process/kcs-14-complexity-baseline.json` | deterministic | Advisory sensor for refactor closeouts. It fails only if the measurement command crashes; values do not block commits. |
 
 ## Deterministic Tool Help / Liveness
 
@@ -58,6 +59,7 @@ They do not prove full workflow behavior.
 | MCPB stdio smoke script | `uv run python scripts/smoke_kcs_mcpb_stdio.py --help` | deterministic | Help-only check; actual smoke is a separate validation step. |
 | Desktop log checker | `uv run python scripts/check_claude_kcs_desktop_log.py --help` | deterministic | Help-only check; actual log check needs local Desktop logs. |
 | Desktop UI smoke script | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --help` | deterministic | Help-only check; GUI send is manual/UI. |
+| Complexity measurement | `uv run --extra dev python scripts/measure_complexity.py --help` | deterministic | Help-only check; actual measurement is advisory and listed above. |
 
 ## Desktop / MCPB Validation
 

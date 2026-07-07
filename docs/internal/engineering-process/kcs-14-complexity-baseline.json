@@ -1,0 +1,1836 @@
+{
+  "graph_path": "docs/internal/engineering-process/code-review-graph.json",
+  "groups": {
+    "scripts": {
+      "all_exports": 0,
+      "cc_average": 4.42,
+      "files_scanned": 7,
+      "functions_total": 185,
+      "high_complexity_functions": 21,
+      "import_edges": 0,
+      "max_cc": 70,
+      "mi_average": 20.83,
+      "public_defs": 73
+    },
+    "src": {
+      "all_exports": 372,
+      "cc_average": 3.13,
+      "files_scanned": 53,
+      "functions_total": 1286,
+      "high_complexity_functions": 61,
+      "import_edges": 249,
+      "max_cc": 25,
+      "mi_average": 35.9,
+      "public_defs": 547
+    },
+    "tests": {
+      "all_exports": 0,
+      "cc_average": 4.59,
+      "files_scanned": 46,
+      "functions_total": 949,
+      "high_complexity_functions": 148,
+      "import_edges": 180,
+      "max_cc": 57,
+      "mi_average": 34.82,
+      "public_defs": 876
+    }
+  },
+  "high_complexity_functions": [
+    {
+      "above_threshold": true,
+      "cc": 70,
+      "lineno": 1090,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_tool_surface_ok"
+    },
+    {
+      "above_threshold": true,
+      "cc": 57,
+      "lineno": 93,
+      "path": "tests/kcs_adapters/test_mcpb_package.py",
+      "qualname": "test_mcpb_manifest_exposes_desktop_alias_tools_only"
+    },
+    {
+      "above_threshold": true,
+      "cc": 56,
+      "lineno": 794,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations"
+    },
+    {
+      "above_threshold": true,
+      "cc": 51,
+      "lineno": 988,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_registry_manifest_has_thin_contract"
+    },
+    {
+      "above_threshold": true,
+      "cc": 46,
+      "lineno": 1173,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_author_approved_summary_returns_reviewer_only_draft"
+    },
+    {
+      "above_threshold": true,
+      "cc": 41,
+      "lineno": 1740,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_prepare_semantic_review_returns_bounded_selected_excerpts"
+    },
+    {
+      "above_threshold": true,
+      "cc": 33,
+      "lineno": 198,
+      "path": "tests/kcs_adapters/test_mcpb_package.py",
+      "qualname": "test_mcpb_node_wrapper_launches_bundled_or_source_stdio_server"
+    },
+    {
+      "above_threshold": true,
+      "cc": 32,
+      "lineno": 588,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_initialize_lifecycle_and_capabilities_are_narrow"
+    },
+    {
+      "above_threshold": true,
+      "cc": 32,
+      "lineno": 4919,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_selection_uses_pending_provider_candidate"
+    },
+    {
+      "above_threshold": true,
+      "cc": 25,
+      "lineno": 385,
+      "path": "src/kcs_adapters/approved_summary_semantic.py",
+      "qualname": "_config_file_resolution_steps"
+    },
+    {
+      "above_threshold": true,
+      "cc": 23,
+      "lineno": 4763,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_fixture_provider_splits_items"
+    },
+    {
+      "above_threshold": true,
+      "cc": 22,
+      "lineno": 1349,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_split_choice_ok"
+    },
+    {
+      "above_threshold": true,
+      "cc": 22,
+      "lineno": 1394,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_register_then_draft_ok"
+    },
+    {
+      "above_threshold": true,
+      "cc": 22,
+      "lineno": 1431,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_semantic_review_submit_ok"
+    },
+    {
+      "above_threshold": true,
+      "cc": 21,
+      "lineno": 4367,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_fixture_provider_writes_bundle"
+    },
+    {
+      "above_threshold": true,
+      "cc": 21,
+      "lineno": 4488,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_fixture_provider_supports_raw_ticket_summary"
+    },
+    {
+      "above_threshold": true,
+      "cc": 20,
+      "lineno": 1129,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_returns_compact_ready_status"
+    },
+    {
+      "above_threshold": true,
+      "cc": 20,
+      "lineno": 1676,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_registered_ambiguous_ticket_requires_semantic_review"
+    },
+    {
+      "above_threshold": true,
+      "cc": 19,
+      "lineno": 292,
+      "path": "src/kcs_adapters/claude_provider.py",
+      "qualname": "DirectHttpRuntimeConfig.__post_init__"
+    },
+    {
+      "above_threshold": true,
+      "cc": 19,
+      "lineno": 4839,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_summary_uses_provider_for_split_required"
+    },
+    {
+      "above_threshold": true,
+      "cc": 16,
+      "lineno": 103,
+      "path": "tests/kcs_adapters/test_desktop_workflow.py",
+      "qualname": "test_execute_approved_summary_pipeline_owns_stage_order"
+    },
+    {
+      "above_threshold": true,
+      "cc": 16,
+      "lineno": 4411,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_fixture_provider_supports_narrative_summary"
+    },
+    {
+      "above_threshold": true,
+      "cc": 16,
+      "lineno": 126,
+      "path": "tests/kcs_core/test_claude_handoff.py",
+      "qualname": "test_build_request_from_decision_and_readiness_without_artifact_paths"
+    },
+    {
+      "above_threshold": true,
+      "cc": 15,
+      "lineno": 1572,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_uses_clean_ticket_ref_file"
+    },
+    {
+      "above_threshold": true,
+      "cc": 15,
+      "lineno": 3450,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_treats_explicit_support_article_as_reuse_match"
+    },
+    {
+      "above_threshold": true,
+      "cc": 15,
+      "lineno": 5028,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_summary_continues_for_single_candidate"
+    },
+    {
+      "above_threshold": true,
+      "cc": 14,
+      "lineno": 141,
+      "path": "src/kcs_adapters/approved_summary_semantic.py",
+      "qualname": "_semantic_item_from_approved_summary_section"
+    },
+    {
+      "above_threshold": true,
+      "cc": 14,
+      "lineno": 757,
+      "path": "src/kcs_adapters/desktop_tool_results.py",
+      "qualname": "_matches_schema"
+    },
+    {
+      "above_threshold": true,
+      "cc": 14,
+      "lineno": 1422,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_author_ticket_loads_local_approved_summary"
+    },
+    {
+      "above_threshold": true,
+      "cc": 14,
+      "lineno": 4268,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_summary_blocks_when_provider_missing"
+    },
+    {
+      "above_threshold": true,
+      "cc": 14,
+      "lineno": 5620,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_blocks_summary_only_without_evidence"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 288,
+      "path": "scripts/measure_complexity.py",
+      "qualname": "_summarize"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 1615,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_blocks_ambiguous_long_clean_ticket_ref"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 2803,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_multiple_candidates_returns_split_required"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 3304,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_allows_corrected_retry_after_environment_error"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 3815,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_register_clean_ticket_then_draft_article_from_ref"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 4551,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_local_provider_uses_final_fix_not_diagnostics"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 4618,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_fixture_provider_supports_live_raw_ticket_shape"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 5080,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_quality_blocker_does_not_write_bundle"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 5709,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_rejects_non_executable_resolution_steps"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 116,
+      "path": "tests/kcs_core/test_reviewer_bundle.py",
+      "qualname": "test_build_and_write_reviewer_bundle"
+    },
+    {
+      "above_threshold": true,
+      "cc": 13,
+      "lineno": 88,
+      "path": "tests/kcs_core/test_zendesk_ingest.py",
+      "qualname": "test_allowlisted_ticket_ref_returns_safe_cleanup_manifest"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 1288,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_labeled_draft_ok"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 1308,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_non_debug_labeled_draft_text_ok"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 338,
+      "path": "src/kcs_adapters/approved_summary_semantic.py",
+      "qualname": "_monitoring_symptoms_from_text"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 71,
+      "path": "src/kcs_adapters/desktop_tool_results.py",
+      "qualname": "tool_result_text"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 462,
+      "path": "src/kcs_core/semantic_extraction.py",
+      "qualname": "_validate_eol_rules"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 684,
+      "path": "tests/kcs_adapters/test_desktop_workflow.py",
+      "qualname": "test_finalize_author_result_writes_bundle_and_keeps_html_out_by_default"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 11,
+      "path": "tests/kcs_adapters/test_kcs_article_style_refs.py",
+      "qualname": "test_style_refs_are_metadata_only_safe_public_refs"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 11,
+      "path": "tests/kcs_adapters/test_kcs_markup_patterns.py",
+      "qualname": "test_markup_patterns_are_safe_bounded_source_of_truth_snippets"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 931,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "_assert_submit_semantic_review_tool"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 1351,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_author_approved_summary_skips_missing_reuse_search_for_mvp_draft"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 2323,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_howto_qa_with_blank_optional_resolution_drafts"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 4077,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_skips_missing_reuse_search_for_mvp_draft"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 4304,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_summary_without_labels_has_no_candidates"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 5594,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_skips_missing_reuse_search_for_mvp"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 5659,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_rejects_missing_environment_without_placeholder_html"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 6097,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_reports_evidence_validation_stage"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 233,
+      "path": "tests/kcs_core/test_renderer.py",
+      "qualname": "test_technical_scr_html_uses_kcs_section_shape"
+    },
+    {
+      "above_threshold": true,
+      "cc": 12,
+      "lineno": 66,
+      "path": "tests/policy/test_code_review_graph_policy.py",
+      "qualname": "test_code_review_graph_defines_required_shape"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 133,
+      "path": "scripts/install_kcs_mcpb.py",
+      "qualname": "_validate_package"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 284,
+      "path": "src/kcs_adapters/claude_provider.py",
+      "qualname": "DirectHttpRuntimeConfig"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 973,
+      "path": "src/kcs_adapters/zendesk_markup_quality.py",
+      "qualname": "_interactive_markup_findings"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 1033,
+      "path": "src/kcs_core/claude_draft.py",
+      "qualname": "_validate_accepted_response_shape"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 1497,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_uses_ticket_ref_path"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 4734,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_fixture_provider_supports_howto_qa"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 5795,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_accepts_top_level_chat_item_fields"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 5900,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_accepts_common_chat_alias_fields"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 5961,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_accepts_chat_secondary_finding"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 182,
+      "path": "tests/kcs_adapters/test_mcpb_package.py",
+      "qualname": "test_mcpb_manifest_requires_no_user_config_or_secrets"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 369,
+      "path": "tests/kcs_adapters/test_mcpb_package.py",
+      "qualname": "test_build_script_creates_mcpb_archive"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 1725,
+      "path": "tests/kcs_adapters/test_mcpb_package.py",
+      "qualname": "test_install_script_installs_built_mcpb"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 1767,
+      "path": "tests/kcs_adapters/test_mcpb_package.py",
+      "qualname": "test_install_script_replaces_stale_claude_registry_manifest"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 18,
+      "path": "tests/kcs_adapters/test_smoke_accounting.py",
+      "qualname": "test_smoke_accounting_report_counts_tools_failures_and_cost_proxy"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 545,
+      "path": "tests/kcs_core/test_cli.py",
+      "qualname": "_assert_run_behavior"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 805,
+      "path": "tests/kcs_core/test_decision.py",
+      "qualname": "test_split_item_can_update_existing"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 112,
+      "path": "tests/kcs_core/test_readiness.py",
+      "qualname": "test_ready_create_candidate_report_is_ready_for_reviewer"
+    },
+    {
+      "above_threshold": true,
+      "cc": 11,
+      "lineno": 131,
+      "path": "tests/kcs_core/test_renderer.py",
+      "qualname": "test_create_candidate_renders_reviewer_packet_and_zendesk_html"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 113,
+      "path": "scripts/smoke_claude_desktop_ui_prompt.py",
+      "qualname": "main"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 899,
+      "path": "scripts/smoke_claude_desktop_ui_prompt.py",
+      "qualname": "_post_success_disconnect_observed"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 1482,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_split_choice_text_ok"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 649,
+      "path": "src/kcs_adapters/desktop_authoring_pipeline.py",
+      "qualname": "_explicit_existing_article_match"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 727,
+      "path": "src/kcs_adapters/desktop_payload.py",
+      "qualname": "approved_summary_canonical_applicable_to"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 712,
+      "path": "src/kcs_adapters/desktop_tool_results.py",
+      "qualname": "_semantic_item_outcome_text"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 474,
+      "path": "src/kcs_adapters/desktop_tool_schemas.py",
+      "qualname": "_copy_safe_schema_metadata"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 321,
+      "path": "src/kcs_core/reviewer_bundle.py",
+      "qualname": "_prepare_output_dir"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 151,
+      "path": "tests/kcs_adapters/test_approved_summary_semantic.py",
+      "qualname": "test_approved_summary_semantic_extracts_final_fix_from_ticket_transcript"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 916,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "_assert_draft_ticket_tool"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 2395,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_howto_qa_allows_public_support_contact"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 2475,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_lists_non_draftable_route_item_in_outcomes"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 2842,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_selected_split_candidate_continues_to_draft"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 2885,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_first_of_three_keeps_valid_remaining_choice"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 4457,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_fixture_provider_supports_compact_summary"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 5130,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_selection_expires_pending_choice"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 5771,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_rejects_destructive_resolution_step"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 5851,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_accepts_chat_item_alias_fields"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 186,
+      "path": "tests/kcs_core/test_claude_draft.py",
+      "qualname": "test_build_draft_request_from_valid_handoff"
+    },
+    {
+      "above_threshold": true,
+      "cc": 10,
+      "lineno": 201,
+      "path": "tests/kcs_core/test_renderer.py",
+      "qualname": "test_flag_existing_article_candidate_is_labeled_as_flag_existing"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 110,
+      "path": "scripts/build_kcs_mcpb.py",
+      "qualname": "_bundle_files"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 243,
+      "path": "src/kcs_adapters/approved_summary_semantic.py",
+      "qualname": "_symptoms_from_text"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 172,
+      "path": "src/kcs_adapters/desktop_clean_ticket_metadata.py",
+      "qualname": "_checked_normalized_metadata_payload"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 622,
+      "path": "src/kcs_adapters/desktop_payload.py",
+      "qualname": "normalized_approved_summary_environment"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 926,
+      "path": "src/kcs_adapters/desktop_payload.py",
+      "qualname": "string_or_json_string_list"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 322,
+      "path": "src/kcs_adapters/desktop_semantic_candidates.py",
+      "qualname": "_applicable_to_from_environment"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 124,
+      "path": "src/kcs_adapters/desktop_semantic_providers.py",
+      "qualname": "FixtureSemanticExtractionProvider"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 765,
+      "path": "src/kcs_adapters/desktop_semantic_review.py",
+      "qualname": "_ensure_plain_string_submit_arrays"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 832,
+      "path": "src/kcs_adapters/desktop_semantic_review.py",
+      "qualname": "_ensure_submit_environment_values"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 184,
+      "path": "src/kcs_adapters/desktop_stdio_transport.py",
+      "qualname": "McpStdioTransport._call_tool"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 651,
+      "path": "src/kcs_adapters/desktop_tool_results.py",
+      "qualname": "_split_required_tool_result_text"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 727,
+      "path": "src/kcs_adapters/desktop_tool_results.py",
+      "qualname": "_tool_result_payload_for_generic_safety"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 649,
+      "path": "src/kcs_adapters/zendesk_markup_quality.py",
+      "qualname": "_completeness_findings"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 898,
+      "path": "src/kcs_adapters/zendesk_markup_quality.py",
+      "qualname": "_path_and_trigger_findings"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 678,
+      "path": "src/kcs_core/models.py",
+      "qualname": "_validate_validation_report_codes"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 493,
+      "path": "src/kcs_core/renderer.py",
+      "qualname": "_resolution_support_block_step"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 148,
+      "path": "src/kcs_core/reviewer_bundle.py",
+      "qualname": "write_reviewer_bundle"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 155,
+      "path": "src/kcs_core/sanitizer.py",
+      "qualname": "normalize_string_list"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 571,
+      "path": "src/kcs_core/semantic_extraction.py",
+      "qualname": "_overall_visibility"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 332,
+      "path": "tests/kcs_adapters/test_claude_provider.py",
+      "qualname": "test_attempt_packets_derive_handoff_and_draft_schema_without_raw_payload"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 352,
+      "path": "tests/kcs_adapters/test_claude_provider.py",
+      "qualname": "test_fake_provider_smoke_validates_handoff_response"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 120,
+      "path": "tests/kcs_adapters/test_desktop_operator_selection.py",
+      "qualname": "test_desktop_workflow_reexports_operator_selection_helpers"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 42,
+      "path": "tests/kcs_adapters/test_desktop_payload.py",
+      "qualname": "test_desktop_payload_normalizes_aliases_and_applicable_to"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 400,
+      "path": "tests/kcs_adapters/test_desktop_workflow.py",
+      "qualname": "test_desktop_workflow_keeps_pending_selection_for_remaining_candidates"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 615,
+      "path": "tests/kcs_adapters/test_desktop_workflow.py",
+      "qualname": "test_compact_draft_result_keeps_html_out_by_default"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 758,
+      "path": "tests/kcs_adapters/test_desktop_workflow.py",
+      "qualname": "test_finalize_author_result_manifest_marks_missing_reuse_as_draft_only"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 816,
+      "path": "tests/kcs_adapters/test_desktop_workflow.py",
+      "qualname": "test_compact_draft_result_marks_missing_reuse_as_draft_only"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 87,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "_FakeSemanticExtractionProvider._semantic_item"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 341,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "_assert_draft_article_call_shape_invalid"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 1379,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_author_approved_summary_accepts_fixed_false_policy_flags"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 2294,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_single_candidate_continues_to_draft"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 3083,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_rejects_structured_resolution_step_objects"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 3268,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_rejects_claude_extra_environment_path"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 3859,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_register_clean_ticket_rejects_truncated_visible_text"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 3893,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_register_clean_ticket_rejects_invalid_visible_text_without_retry_drafting"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 3928,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_register_clean_ticket_rejects_embedded_tool_argument_markup"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 4020,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_rejects_top_level_structured_alias_fields"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 4100,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_promotes_explicit_resolution_steps"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 4121,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_accepts_common_admin_resolution_commands"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 4336,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_summary_rejects_embedded_tool_argument_markup"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 4670,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_debug_includes_reviewer_only_html"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 5172,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_provider_output_invalid_is_controlled"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 5206,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_selection_without_state_is_controlled"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 5385,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_accepts_environment_applicable_to_alias"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 5689,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_rejects_scr_without_resolution_steps"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 5752,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_rejects_speculative_supported_cause"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 6135,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_reports_renderer_stage"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 6165,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_run_approved_summary_pipeline_classifies_renderer_safety_stage"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 1620,
+      "path": "tests/kcs_adapters/test_mcpb_package.py",
+      "qualname": "test_claude_desktop_ui_prompt_smoke_prints_manual_prompt_report"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 51,
+      "path": "tests/kcs_adapters/test_smoke_accounting.py",
+      "qualname": "test_smoke_accounting_summarizes_deterministic_kcs_draft_smoke"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 262,
+      "path": "tests/kcs_core/test_cli.py",
+      "qualname": "test_unsafe_evidence_returns_safe_boundary_output"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 117,
+      "path": "tests/kcs_core/test_decision.py",
+      "qualname": "test_exact_match_reuses_existing_article"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 116,
+      "path": "tests/kcs_core/test_models.py",
+      "qualname": "test_decision_packet_accepts_known_article_type"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 343,
+      "path": "tests/kcs_core/test_zendesk_ingest.py",
+      "qualname": "test_local_raw_handoff_writes_snapshot_and_safe_manifest"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 137,
+      "path": "tests/policy/test_code_review_graph_policy.py",
+      "qualname": "test_code_review_graph_maps_every_test_file"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 161,
+      "path": "tests/policy/test_code_review_graph_policy.py",
+      "qualname": "test_code_review_graph_maps_every_script_and_packaging_file"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 11,
+      "path": "tests/policy/test_complexity_measurement.py",
+      "qualname": "test_complexity_measurement_outputs_advisory_snapshot"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 91,
+      "path": "tests/policy/test_kcs14_docs_policy.py",
+      "qualname": "test_tracked_policy_docs_reference_existing_repo_paths"
+    },
+    {
+      "above_threshold": true,
+      "cc": 9,
+      "lineno": 113,
+      "path": "tests/policy/test_kcs14_docs_policy.py",
+      "qualname": "test_active_docs_do_not_list_claude_code_as_active_harness"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 133,
+      "path": "scripts/build_kcs_mcpb.py",
+      "qualname": "_bundled_project_files"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 165,
+      "path": "scripts/build_kcs_mcpb.py",
+      "qualname": "package_member_allowed"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 216,
+      "path": "scripts/measure_complexity.py",
+      "qualname": "_imported_modules"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 262,
+      "path": "scripts/measure_complexity.py",
+      "qualname": "_all_exports"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 285,
+      "path": "scripts/smoke_claude_desktop_ui_prompt.py",
+      "qualname": "_send_prompt_to_claude"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 758,
+      "path": "scripts/smoke_claude_desktop_ui_prompt.py",
+      "qualname": "_failure_stage"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 936,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_registry_cache_ok"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1464,
+      "path": "scripts/smoke_kcs_mcpb_stdio.py",
+      "qualname": "_semantic_review_invalid_submit_ok"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 195,
+      "path": "src/kcs_adapters/approved_summary_semantic.py",
+      "qualname": "_summary_title"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 223,
+      "path": "src/kcs_adapters/approved_summary_semantic.py",
+      "qualname": "_section_lines"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 93,
+      "path": "src/kcs_adapters/desktop_draft_arguments.py",
+      "qualname": "draft_article_arguments"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 12,
+      "path": "src/kcs_adapters/desktop_draft_output.py",
+      "qualname": "compact_draft_result"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 407,
+      "path": "src/kcs_adapters/desktop_draft_tool.py",
+      "qualname": "DesktopDraftArticleTool._draft_article_from_primary_selection"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 160,
+      "path": "src/kcs_adapters/desktop_jsonrpc.py",
+      "qualname": "parse_jsonrpc_message"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 574,
+      "path": "src/kcs_adapters/desktop_payload.py",
+      "qualname": "approved_summary_text_fragments"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 691,
+      "path": "src/kcs_adapters/desktop_payload.py",
+      "qualname": "require_executable_resolution_steps"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 786,
+      "path": "src/kcs_adapters/desktop_payload.py",
+      "qualname": "approved_summary_environment_values"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 107,
+      "path": "src/kcs_adapters/desktop_reviewer_preview.py",
+      "qualname": "approved_summary_quality_gaps"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 223,
+      "path": "src/kcs_adapters/desktop_semantic_candidates.py",
+      "qualname": "_attach_semantic_lists"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 127,
+      "path": "src/kcs_adapters/desktop_semantic_providers.py",
+      "qualname": "FixtureSemanticExtractionProvider.propose_candidates"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 80,
+      "path": "src/kcs_adapters/desktop_stdio_transport.py",
+      "qualname": "McpStdioTransport.handle_message"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 782,
+      "path": "src/kcs_adapters/desktop_tool_results.py",
+      "qualname": "_value_matches_type"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 457,
+      "path": "src/kcs_adapters/zendesk_markup_quality.py",
+      "qualname": "_body_section_shape_findings"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1048,
+      "path": "src/kcs_adapters/zendesk_markup_quality.py",
+      "qualname": "_privacy_findings"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 912,
+      "path": "src/kcs_core/claude_handoff.py",
+      "qualname": "_safe_code"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1070,
+      "path": "src/kcs_core/claude_handoff.py",
+      "qualname": "_ensure_no_provider_owned_action"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 694,
+      "path": "src/kcs_core/decision.py",
+      "qualname": "_candidate_string_list"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 65,
+      "path": "src/kcs_core/json_payload.py",
+      "qualname": "_ensure_strict_json_value"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 357,
+      "path": "src/kcs_core/readiness.py",
+      "qualname": "_renderer_blockers"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1219,
+      "path": "src/kcs_core/renderer.py",
+      "qualname": "_resolution_steps_with_required_entry_point"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 272,
+      "path": "src/kcs_core/reviewer_bundle.py",
+      "qualname": "_validate_draft_artifact_consistency"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 266,
+      "path": "src/kcs_core/safety.py",
+      "qualname": "_strings_from"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 278,
+      "path": "src/kcs_core/safety.py",
+      "qualname": "_contains_unsafe_identifier"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 231,
+      "path": "src/kcs_core/semantic_extraction.py",
+      "qualname": "CandidateSemanticExtraction.__post_init__"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 493,
+      "path": "src/kcs_core/semantic_extraction.py",
+      "qualname": "_validate_product_relation_rules"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 386,
+      "path": "src/kcs_core/zendesk_ingest.py",
+      "qualname": "_has_attachment_metadata"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 190,
+      "path": "tests/kcs_adapters/test_claude_provider.py",
+      "qualname": "test_config_is_safe_serializable_and_preflight_keeps_runtime_secret_out"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 442,
+      "path": "tests/kcs_adapters/test_claude_provider.py",
+      "qualname": "test_direct_http_transport_payload_is_bounded_wrapper_plus_request"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 47,
+      "path": "tests/kcs_adapters/test_cowork_plugin_package.py",
+      "qualname": "test_cowork_plugin_mcp_config_launches_kcs_desktop_server"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 68,
+      "path": "tests/kcs_adapters/test_cowork_plugin_package.py",
+      "qualname": "test_cowork_plugin_skill_names_expected_tools_and_boundaries"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 7,
+      "path": "tests/kcs_adapters/test_desktop_control_tools.py",
+      "qualname": "test_policy_summary_result_shape"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 25,
+      "path": "tests/kcs_adapters/test_desktop_control_tools.py",
+      "qualname": "test_readiness_result_uses_desktop_alias_names"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 117,
+      "path": "tests/kcs_adapters/test_desktop_draft_tool.py",
+      "qualname": "test_draft_tool_selection_keeps_pending_candidate_after_blocker"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 27,
+      "path": "tests/kcs_adapters/test_desktop_operator_selection.py",
+      "qualname": "test_pending_selection_builds_choice_request"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 112,
+      "path": "tests/kcs_adapters/test_desktop_ticket_ref.py",
+      "qualname": "test_desktop_ticket_ref_loads_and_merges_local_approved_summary"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 471,
+      "path": "tests/kcs_adapters/test_desktop_workflow.py",
+      "qualname": "test_desktop_workflow_builds_split_required_result"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 850,
+      "path": "tests/kcs_adapters/test_desktop_workflow.py",
+      "qualname": "test_quality_blocked_result_uses_blocker_gaps_without_bundle"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 320,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "_tool_html_resource_text"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1317,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_author_approved_summary_accepts_json_string_applicable_to"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1454,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_author_ticket_missing_summary_file_is_controlled_failure"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1477,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_author_ticket_rejects_unsafe_ref_without_echo"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1529,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_ticket_uses_same_ticket_ref_path"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1913,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_prepare_semantic_review_omits_numeric_ticket_ref_from_packet"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1960,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_prepare_semantic_review_is_one_shot"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 2927,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_rejects_unknown_source_ref"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 2957,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_rejects_omitted_selected_excerpt"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 3123,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_submit_semantic_review_reports_missing_extraction_source_ref"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 4003,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_uses_chat_summary_path"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 4157,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_accepts_mixed_concrete_resolution_procedure"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 4190,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_accepts_final_informational_resolution_note"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 4226,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_accepts_angle_bracket_config_block_text"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 4704,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_debug_links_windows_rdp_step"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 5228,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_rejects_mixed_call_shape"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 5256,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_draft_article_primary_rejects_partial_selection_shape"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 6209,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_contract_smoke_uses_in_memory_safe_packets"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 6368,
+      "path": "tests/kcs_adapters/test_mcp_desktop.py",
+      "qualname": "test_root_exports_include_mcp_desktop_api"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1055,
+      "path": "tests/kcs_adapters/test_mcpb_package.py",
+      "qualname": "test_claude_desktop_ui_prompt_smoke_accepts_single_draft_log"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 202,
+      "path": "tests/kcs_adapters/test_smoke_accounting.py",
+      "qualname": "test_smoke_accounting_cli_returns_value_safe_json"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 140,
+      "path": "tests/kcs_core/test_cli.py",
+      "qualname": "test_run_cli_returns_combined_safe_payload"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 582,
+      "path": "tests/kcs_core/test_cli.py",
+      "qualname": "_contains_private_value"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 1549,
+      "path": "tests/kcs_core/test_renderer.py",
+      "qualname": "test_non_article_actions_do_not_render_public_html"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 143,
+      "path": "tests/policy/test_functional_test_policy.py",
+      "qualname": "test_committed_clean_ticket_fixtures_do_not_contain_private_values"
+    },
+    {
+      "above_threshold": true,
+      "cc": 8,
+      "lineno": 72,
+      "path": "tests/policy/test_kcs14_docs_policy.py",
+      "qualname": "test_active_docs_do_not_define_kcs14_as_style_or_markup_parity"
+    }
+  ],
+  "nodes": {
+    "clean_ticket_storage": {
+      "all_exports": 11,
+      "cc_average": 3.3,
+      "files_scanned": 3,
+      "functions_total": 67,
+      "high_complexity_functions": 2,
+      "import_edges": 12,
+      "max_cc": 9,
+      "mi_average": 22.77,
+      "public_defs": 57
+    },
+    "cli_ingest_readiness": {
+      "all_exports": 0,
+      "cc_average": 2.87,
+      "files_scanned": 8,
+      "functions_total": 211,
+      "high_complexity_functions": 6,
+      "import_edges": 29,
+      "max_cc": 13,
+      "mi_average": 38.54,
+      "public_defs": 100
+    },
+    "desktop_draft_workflow": {
+      "all_exports": 53,
+      "cc_average": 3.32,
+      "files_scanned": 14,
+      "functions_total": 189,
+      "high_complexity_functions": 15,
+      "import_edges": 96,
+      "max_cc": 16,
+      "mi_average": 36.59,
+      "public_defs": 163
+    },
+    "desktop_protocol_transport": {
+      "all_exports": 33,
+      "cc_average": 3.57,
+      "files_scanned": 7,
+      "functions_total": 103,
+      "high_complexity_functions": 10,
+      "import_edges": 33,
+      "max_cc": 10,
+      "mi_average": 40.05,
+      "public_defs": 107
+    },
+    "desktop_tool_surface": {
+      "all_exports": 90,
+      "cc_average": 6.03,
+      "files_scanned": 13,
+      "functions_total": 317,
+      "high_complexity_functions": 97,
+      "import_edges": 71,
+      "max_cc": 56,
+      "mi_average": 53.34,
+      "public_defs": 249
+    },
+    "engineering_policy_tests": {
+      "all_exports": 0,
+      "cc_average": 4.85,
+      "files_scanned": 6,
+      "functions_total": 47,
+      "high_complexity_functions": 7,
+      "import_edges": 10,
+      "max_cc": 12,
+      "mi_average": 37.38,
+      "public_defs": 86
+    },
+    "package_surface": {
+      "all_exports": 131,
+      "cc_average": 2.0,
+      "files_scanned": 2,
+      "functions_total": 1,
+      "high_complexity_functions": 0,
+      "import_edges": 15,
+      "max_cc": 2,
+      "mi_average": 87.06,
+      "public_defs": 0
+    },
+    "packaging_and_install_tooling": {
+      "all_exports": 0,
+      "cc_average": 4.35,
+      "files_scanned": 4,
+      "functions_total": 31,
+      "high_complexity_functions": 6,
+      "import_edges": 1,
+      "max_cc": 11,
+      "mi_average": 34.85,
+      "public_defs": 44
+    },
+    "packet_validation_decision": {
+      "all_exports": 0,
+      "cc_average": 3.26,
+      "files_scanned": 12,
+      "functions_total": 353,
+      "high_complexity_functions": 12,
+      "import_edges": 38,
+      "max_cc": 11,
+      "mi_average": 24.85,
+      "public_defs": 194
+    },
+    "provider_handoff_boundary": {
+      "all_exports": 0,
+      "cc_average": 3.11,
+      "files_scanned": 10,
+      "functions_total": 395,
+      "high_complexity_functions": 18,
+      "import_edges": 49,
+      "max_cc": 25,
+      "mi_average": 18.63,
+      "public_defs": 179
+    },
+    "renderer_style_gates": {
+      "all_exports": 0,
+      "cc_average": 3.64,
+      "files_scanned": 8,
+      "functions_total": 245,
+      "high_complexity_functions": 13,
+      "import_edges": 13,
+      "max_cc": 12,
+      "mi_average": 28.35,
+      "public_defs": 92
+    },
+    "reviewer_bundle_output": {
+      "all_exports": 17,
+      "cc_average": 3.1,
+      "files_scanned": 5,
+      "functions_total": 67,
+      "high_complexity_functions": 5,
+      "import_edges": 28,
+      "max_cc": 13,
+      "mi_average": 33.6,
+      "public_defs": 46
+    },
+    "semantic_review_fallback": {
+      "all_exports": 28,
+      "cc_average": 3.37,
+      "files_scanned": 5,
+      "functions_total": 132,
+      "high_complexity_functions": 10,
+      "import_edges": 27,
+      "max_cc": 12,
+      "mi_average": 22.9,
+      "public_defs": 53
+    },
+    "smoke_log_tooling": {
+      "all_exports": 9,
+      "cc_average": 4.52,
+      "files_scanned": 7,
+      "functions_total": 232,
+      "high_complexity_functions": 25,
+      "import_edges": 7,
+      "max_cc": 70,
+      "mi_average": 26.67,
+      "public_defs": 113
+    },
+    "unmapped": {
+      "all_exports": 0,
+      "cc_average": 4.2,
+      "files_scanned": 2,
+      "functions_total": 30,
+      "high_complexity_functions": 4,
+      "import_edges": 0,
+      "max_cc": 13,
+      "mi_average": 34.6,
+      "public_defs": 13
+    }
+  },
+  "path_root": "repository-relative",
+  "paths": [
+    "src",
+    "tests",
+    "scripts"
+  ],
+  "schema_version": "kcs_complexity_snapshot_v1",
+  "summary": {
+    "all_exports": 372,
+    "cc_average": 3.8,
+    "files_scanned": 106,
+    "functions_total": 2420,
+    "high_complexity_functions": 230,
+    "import_edges": 429,
+    "max_cc": 70,
+    "mi_average": 34.43,
+    "public_defs": 1496
+  },
+  "threshold": 7
+}

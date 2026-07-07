@@ -22,6 +22,12 @@ REQUIRED_COMMANDS = (
     "uv run python scripts/smoke_kcs_mcpb_stdio.py --help",
     "uv run python scripts/check_claude_kcs_desktop_log.py --help",
     "uv run python scripts/smoke_claude_desktop_ui_prompt.py --help",
+    "uv run --extra dev python scripts/measure_complexity.py --help",
+    (
+        "uv run --extra dev python scripts/measure_complexity.py "
+        "--paths src tests scripts --baseline "
+        "docs/internal/engineering-process/kcs-14-complexity-baseline.json"
+    ),
 )
 
 REQUIRED_CLASSIFICATIONS = (
@@ -39,6 +45,15 @@ HELP_COMMANDS = (
     [sys.executable, "scripts/smoke_kcs_mcpb_stdio.py", "--help"],
     [sys.executable, "scripts/check_claude_kcs_desktop_log.py", "--help"],
     [sys.executable, "scripts/smoke_claude_desktop_ui_prompt.py", "--help"],
+    [
+        "uv",
+        "run",
+        "--extra",
+        "dev",
+        "python",
+        "scripts/measure_complexity.py",
+        "--help",
+    ],
 )
 
 

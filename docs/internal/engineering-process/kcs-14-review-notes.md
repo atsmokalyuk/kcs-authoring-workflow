@@ -2287,6 +2287,82 @@ Closeout metadata:
 Final verdict: Aggregate review gate is complete. Slice 6 may continue only
 with another concrete ownership question or external review.
 
+## 2026-07-07 - Slice 6 External Review Checkpoint After Batches 5-16
+
+Reviewer or review route: Fable 5 external review packet.
+
+Review packet:
+
+- `/Users/alex.tsmokalyuk/Downloads/kcs-14-slice-6-fable-review-packet-20260707`
+
+Scope:
+
+- Slice 6 refactor batches 5-16.
+- Aggregate reviews through batches 15-16.
+- Code-review graph, refactor log, review notes, methodology, result-shaping
+  ownership decision, touched source files, and key freeze/Desktop tests.
+
+External verdict:
+
+- blockers: none.
+- final verdict: batches 5-16 approved as behavior-preserving.
+- Slice 6 is ready for closeout only after recording the external verdict and
+  promoting the missed measurement candidates.
+
+Warnings recorded:
+
+- Aggregate review was same-day self-review by one agent and needs periodic
+  external checkpoint; this checkpoint addresses that warning.
+- `complexity distribution: not measured by a tool` was a dead sensor across
+  closeouts.
+- Marginal refactor value declined near the end of the pass; future refactor
+  should use a minimum-batch-value heuristic.
+- Pre-existing smells remain intentionally untouched:
+  `draft_article_selection_error_result` pass-through,
+  `attach_pending_selection` duplicate result keys, and the
+  `_canonical_tool_name()` invalid-name sentinel.
+- Approved-summary alias-table order is now explicit semantics and should stay
+  protected by focused tests/review.
+
+Promotion candidates from external review:
+
+- KCS14-PROMO-005 accepted and implemented as advisory complexity/coupling/
+  interface-surface measurement.
+- Future candidate: old-vs-new equivalence harness for repeated refactor drift
+  checks, to seed Slice 7.
+- Future candidate: closeout metadata shape validator extension.
+- Future candidate: alias-precedence test if focused coverage proves absent.
+
+Unchanged contracts:
+
+- Desktop tools/list shape and tool schemas unchanged;
+- packet schema versions and field sets unchanged;
+- MCP envelope keys and JSON-RPC error behavior unchanged;
+- compact-result key sets unchanged;
+- operator-choice payloads unchanged;
+- draft argument allow-lists and fail-closed primary shape unchanged;
+- `__all__` on touched modules unchanged;
+- privacy/fail-closed, reviewer-bundle, publication/customer-reply boundaries
+  unchanged;
+- `ticket_ref` primary path unchanged;
+- freehand drafting remains blocked.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 external review checkpoint batches 5-16
+- affected graph nodes: `desktop_draft_workflow`,
+  `desktop_protocol_transport`, `engineering_policy_tests`
+- external review blockers: none
+- external review warnings: recorded above
+- promotion candidates accepted: `KCS14-PROMO-005`
+- demotion candidates: none
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- next action: implement accepted measurement promotion, then reassess Slice 6
+  closeout vs next node triage
+
+Final verdict: external review approved batches 5-16 as behavior-preserving.
+
 ## 2026-07-06 - Slice 6 Batch 3 Desktop UI Smoke Observations
 
 Reviewer or review route: local Codex implementation checkpoint.

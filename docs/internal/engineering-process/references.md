@@ -110,9 +110,10 @@ Slice 7 tooling limits.
   references).
   Grounds: policy as data plus deterministic check; local gates before
   commit; freeze-list style path checks.
-- Ruff, McCabe complexity, pytest (project toolchain references).
-  Grounds: complexity threshold 7 for AI-assisted code; lint as enforcement;
-  BDD-shaped pytest as the default test convention.
+- Ruff, Radon, McCabe complexity, pytest (project toolchain references).
+  Grounds: complexity threshold 7 for AI-assisted code; Radon as advisory
+  complexity/maintainability sensor; lint as enforcement; BDD-shaped pytest as
+  the default test convention.
 
 ### 5. Spec-First And Behavior-Driven Development
 

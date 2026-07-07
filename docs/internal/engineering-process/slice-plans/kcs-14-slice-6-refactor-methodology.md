@@ -129,6 +129,11 @@ For each refactor target:
 
 - run the context window check from
   `docs/internal/engineering-process/agent-operable-engineering-workflow.md`;
+- after each commit, aggregate review, or external-review checkpoint, emit a
+  visible compact current-state checkpoint before starting the next material
+  batch; include current branch/commit, active slice and next batch, declared
+  graph node, staged/untracked state, authoritative docs, stale context to
+  ignore, next intended action, and expected validation;
 - check `docs/internal/engineering-process/kcs-14-process-gap-audit.md` for
   active process gaps that affect the target;
 - check `promotion-candidates.md` and KCS-14 closeouts before starting the
@@ -303,13 +308,20 @@ review:
 - net module/file count change by node;
 - public interface or export count change;
 - number of files a caller must read to use the node;
-- McCabe or complexity distribution when available;
+- complexity measurement snapshot or delta from
+  `scripts/measure_complexity.py`, when the touched slice is code-heavy;
 - review blockers by stable code;
 - `must_not_own` near-misses caught in review;
 - promotion candidates by node;
 - graph ownership edits by node;
 - freeze/snapshot false positives.
 - test assertion edits or justified exceptions by node.
+
+Complexity measurement is advisory during KCS-14. Use it to surface trends for
+aggregate review, not to declare that a design improved. The command measures
+Radon cyclomatic complexity, import coupling, and public interface surface; it
+does not replace Ousterhout review questions about information hiding,
+classitis, temporal decomposition, or whether callers need to know less.
 
 Aggregate review must triage each recurring signal before proposing design
 work:

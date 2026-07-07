@@ -887,8 +887,18 @@
       ],
       "files": [
         {
+          "path": "scripts/measure_complexity.py",
+          "file_hash": "ee5c080119444ab0ef9ed6c3a3ebabd7e6e141957cb4f0ec7f29494900f15770",
+          "valid_until_changed": true
+        },
+        {
           "path": "tests/policy/test_code_review_graph_policy.py",
           "file_hash": "12f5dc8e1a481531427018e5cced808ce0ea75105004b8e943cf9fd92a28f36a",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_complexity_measurement.py",
+          "file_hash": "8f0f6eb199e4153e4c6c40759c74b2a2582c5e442d47297f65eebf66440944f1",
           "valid_until_changed": true
         },
         {
@@ -898,7 +908,7 @@
         },
         {
           "path": "tests/policy/test_kcs14_docs_policy.py",
-          "file_hash": "a7e8122687c6f882652f1ee2f25e4ee23df6f9a5a723b55146b35e321c3b5ad4",
+          "file_hash": "3e0c795fe61ca660604bbe260d5ae143ffb3e3e750251c12db7406d4fafcd31e",
           "valid_until_changed": true
         },
         {
@@ -913,12 +923,13 @@
         },
         {
           "path": "tests/policy/test_tool_entrypoints.py",
-          "file_hash": "b97939530d2b4ea9d2f43961efe62ce0954981ff662eae5fd279f99c104b450a",
+          "file_hash": "7d60922673bbca3b4b31897c3dfd28dec0757e98ad7a520f6cf94325c2af4271",
           "valid_until_changed": true
         }
       ],
       "related_tests": [
         "tests/policy/test_code_review_graph_policy.py",
+        "tests/policy/test_complexity_measurement.py",
         "tests/policy/test_functional_test_policy.py",
         "tests/policy/test_kcs14_docs_policy.py",
         "tests/policy/test_kcs14_freeze_snapshots.py",

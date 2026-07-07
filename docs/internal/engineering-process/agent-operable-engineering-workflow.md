@@ -103,8 +103,13 @@ editing more files.
 
 ## Context Window Check
 
-Before every material batch, run a context window check. The agent must state
-or record:
+Before every material batch, run a context window check. After each commit,
+aggregate review, or external-review checkpoint, the agent must emit a visible
+compact checkpoint before starting the next material batch. "Visible" means the
+operator can see it in chat, or the batch closeout/review note explicitly
+records it as the starting frame for the next batch.
+
+The checkpoint must state:
 
 - current branch and last relevant commit;
 - active slice and batch;
@@ -118,6 +123,19 @@ If the thread is long, noisy, or crossing a batch boundary, the agent should
 offer a fresh-thread handoff summary before coding. If continuing in the same
 thread, the compact current-state frame becomes the authority for the next
 batch, not the older conversation.
+
+Minimum visible checkpoint:
+
+```text
+Current branch / commit:
+Current slice / next batch:
+Declared graph node:
+Staged / untracked state:
+Authoritative docs:
+Stale context to ignore:
+Next intended action:
+Validation expected:
+```
 
 ## Clarification Mode
 

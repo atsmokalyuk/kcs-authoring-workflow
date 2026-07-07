@@ -138,3 +138,6 @@ def test_agent_workflow_is_tracked_authoritative_process() -> None:
 
     assert workflow_path in agents
     assert "Status: authoritative KCS-14 development-agent workflow" in workflow
+    assert "visible compact checkpoint" in agents
+    assert "Minimum visible checkpoint" in workflow
+    assert "Stale context to ignore" in workflow
