@@ -1580,6 +1580,92 @@ Final verdict: Aggregate review gate is complete. Slice 6 may continue with the
 next scoped refactor batch after the normal context window check and process
 gap audit.
 
+## 2026-07-07 - Slice 6 Batch 11 Semantic Review Pending Ref
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-batch-11-semantic-review-pending-ref.md`
+- `src/kcs_adapters/desktop_workflow.py`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- public helper names and `__all__` unchanged;
+- semantic-review packet schema unchanged;
+- candidate semantic extraction schema unchanged;
+- prepare/submit controlled error behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- local reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope.
+
+Validation evidence:
+
+- Direct old-vs-new equivalence check passed across valid prepare, invalid ref,
+  invalid type, double prepare, submit before prepare, and expired prepare.
+- `uv run pytest tests/kcs_adapters/test_desktop_draft_tool.py tests/kcs_adapters/test_desktop_workflow.py tests/kcs_adapters/test_mcp_desktop.py tests/policy/test_kcs14_freeze_snapshots.py -q` passed.
+- `uv run ruff check src/kcs_adapters/desktop_workflow.py tests/kcs_adapters/test_desktop_workflow.py tests/kcs_adapters/test_desktop_draft_tool.py` passed.
+- `git diff --check` passed.
+
+Findings:
+
+- Pending semantic-review ref/type/expiry validation now has one private owner
+  in `_pending_semantic_review_for_ref()`.
+- Prepare one-shot and submit-ready rules remained at their original call
+  sites.
+- No public helper, payload schema, workflow status, result-shaping, or Desktop
+  protocol behavior changed.
+- No graph ownership definitions changed; only the touched source hash changed.
+
+Promotion candidates:
+
+- none new. No repeated, stable, or mechanically checkable review finding was
+  introduced by this batch.
+
+Deferred risks:
+
+- Remaining `desktop_draft_workflow` files are untouched.
+- Next aggregate design review is due after one more refactor batch or an
+  earlier methodology trigger.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 batch 11
+- affected graph nodes: `desktop_draft_workflow`, `engineering_policy_tests`
+- graph hashes updated: `src/kcs_adapters/desktop_workflow.py`
+- batches since aggregate review: 1
+- net module/file count change by node: `desktop_draft_workflow` 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public API;
+  `DesktopDraftWorkflow` remains the workflow-state owner
+- complexity distribution: not measured by a tool; repeated semantic-review
+  ref validation moved into one private helper
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: one more batch before aggregate review, remaining
+  `desktop_draft_workflow` files
+
+Final verdict: Slice 6 batch 11 is ready for staged-diff review.
+
 ## 2026-07-06 - Slice 6 Batch 3 Desktop UI Smoke Observations
 
 Reviewer or review route: local Codex implementation checkpoint.

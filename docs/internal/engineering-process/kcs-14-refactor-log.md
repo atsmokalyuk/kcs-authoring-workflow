@@ -594,6 +594,97 @@ Open follow-up:
 - Aggregate review is due before starting another refactor batch unless an
   earlier methodology trigger has already stopped the sequence.
 
+## 2026-07-07 - Slice 6 Batch 11 Semantic Review Pending Ref
+
+Batch: KCS-14 Slice 6 Batch 11.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_workflow.py`
+
+What changed:
+
+- Moved shared pending semantic-review ref/type/expiry validation into private
+  `_pending_semantic_review_for_ref()`.
+- Kept prepare-specific `packet_prepared` and submit-specific
+  `not packet_prepared` rules at their original call sites.
+
+Why under KCS-14 outcome contract:
+
+- Reduces duplication in a sensitive workflow-state boundary without changing
+  semantic-review packet or candidate validation contracts.
+- Makes the pending-ref invariant easier to inspect before future
+  semantic-review changes.
+- Preserves runtime behavior while keeping Python ownership of workflow state
+  explicit.
+
+Ousterhout lens:
+
+- Information hiding: ref/type/expiry validation for pending semantic review
+  has one private owner.
+- Change amplification: future ref/expiry behavior changes should touch one
+  helper instead of prepare and submit paths separately.
+- Avoid classitis: no new class/file/public helper was introduced.
+- Deep module: public workflow behavior stayed stable while common state
+  validation moved downward.
+
+Contracts preserved:
+
+- runtime behavior;
+- public helper names and `__all__`;
+- semantic-review packet schema;
+- candidate semantic extraction schema;
+- prepare/submit controlled error behavior;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed matching prepare/submit
+  outcomes for valid prepare, invalid ref, invalid type, double prepare, submit
+  before prepare, and expired prepare.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| prepare path pending missing check | `_pending_semantic_review_for_ref()` | Old-vs-new exception equivalence. |
+| prepare path ref type check | `_pending_semantic_review_for_ref()` | Old-vs-new exception equivalence. |
+| prepare path ref mismatch check | `_pending_semantic_review_for_ref()` | Old-vs-new exception equivalence. |
+| prepare path expiry check and state clear | `_pending_semantic_review_for_ref()` | Old-vs-new exception/state equivalence. |
+| submit path pending missing check | `_pending_semantic_review_for_ref()` | Old-vs-new exception equivalence. |
+| submit path ref type/mismatch checks | `_pending_semantic_review_for_ref()` | Old-vs-new exception equivalence. |
+| submit path expiry check and state clear | `_pending_semantic_review_for_ref()` | Old-vs-new exception/state equivalence. |
+| prepare one-shot `packet_prepared` guard | unchanged prepare call site | Old-vs-new double-prepare equivalence. |
+| submit requires prepared packet | unchanged submit call site | Old-vs-new submit-before-prepare equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation produced matching
+  prepare/submit outcomes and pending-state clearing behavior.
+- `tests/kcs_adapters/test_desktop_draft_tool.py`,
+  `tests/kcs_adapters/test_desktop_workflow.py`,
+  `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Next aggregate review is due after one more refactor batch or an earlier
+  methodology trigger.
+
 ## 2026-07-07 - Slice 6 Batch 8 Existing Article Text Fields
 
 Batch: KCS-14 Slice 6 Batch 8.
