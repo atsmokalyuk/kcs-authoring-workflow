@@ -798,6 +798,88 @@ Final verdict: Aggregate review gate is complete. Slice 6 may continue with the
 next scoped refactor batch after the normal context window check and process
 gap audit.
 
+## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `src/kcs_core/json_payload.py`
+- `tests/kcs_core/test_json_payload.py`
+- `docs/internal/engineering-process/code-review-graph.json`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+
+Declared graph node:
+
+- `cli_ingest_readiness`.
+
+Unchanged contracts:
+
+- strict JSON serialization behavior unchanged;
+- public `kcs_core.json_payload` helper names unchanged;
+- packet schemas unchanged;
+- CLI behavior unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy and fail-closed behavior unchanged;
+- reviewer-bundle, publication, and customer-reply boundaries unchanged.
+
+Validation evidence:
+
+- Old-vs-new `json_payload` equivalence passed for six representative valid
+  and invalid payload cases.
+- `uv run pytest tests/kcs_core/test_json_payload.py
+  tests/policy/test_code_review_graph_policy.py
+  tests/policy/test_kcs14_freeze_snapshots.py -q` passed after graph hash
+  update.
+- `uv run ruff check src/kcs_core/json_payload.py
+  tests/kcs_core/test_json_payload.py` passed.
+- Complexity sensor for touched files reported `high_complexity_functions: 0`
+  and `max_cc: 5`.
+- Full complexity sensor against baseline reported
+  `high_complexity_functions: -1`.
+
+Findings:
+
+- `_ensure_strict_json_value()` no longer owns both recursive dispatch and
+  scalar acceptance.
+- `_is_strict_json_scalar()` is private and does not add a caller-facing
+  interface.
+- The new test characterizes existing scalar acceptance rather than changing
+  expected behavior.
+
+Behavior drift check:
+
+- Behavior change intended: no.
+- Mechanical checks: old-vs-new equivalence, focused JSON payload tests,
+  freeze snapshots, graph policy tests.
+- Reviewed drift risks: scalar acceptance moved to a private helper; non-scalar
+  rejection still raises `ContractValidationError` through the same caller
+  path.
+- Review-only drift risks: none identified beyond staged-diff review.
+- Verdict: no drift found by listed checks; residual risks listed above.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 6 Batch 17
+- review route: local Codex checkpoint
+- validation result: passed
+- affected graph node: `cli_ingest_readiness`
+- net module/file count change by node: 0
+- public interface/export count change: 0
+- files a caller must read to use the node: unchanged
+- complexity distribution: touched files `high_complexity_functions: 0`,
+  full-repo delta from baseline `high_complexity_functions: -1`
+- test assertion edits: none; one characterization test added
+- graph ownership edits: none; hash update only
+- freeze/snapshot false positives: none
+- promotion candidates: none
+- demotion candidates: none
+- next aggregate review due: after one more refactor batch or an earlier
+  methodology trigger
+
+Final verdict: Slice 6 batch 17 is ready for staged-diff review.
+
 ## 2026-07-07 - Slice 6 Result-Shaping Ownership Decision
 
 Reviewer or review route: local Codex design checkpoint.

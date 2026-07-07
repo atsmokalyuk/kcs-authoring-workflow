@@ -514,6 +514,98 @@ Open follow-up:
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-07 - Slice 6 Batch 17 Strict JSON Scalar Boundary
+
+Batch: KCS-14 Slice 6 Batch 17.
+
+Affected graph node: `cli_ingest_readiness`.
+
+Changed code:
+
+- `src/kcs_core/json_payload.py`
+- `tests/kcs_core/test_json_payload.py`
+
+What changed:
+
+- Moved strict JSON scalar acceptance out of `_ensure_strict_json_value()` into
+  a private `_is_strict_json_scalar()` helper.
+- Added focused characterization for already accepted strict scalar values:
+  `None`, strings, booleans, integers, finite floats, and lists containing
+  those values.
+
+Why under KCS-14 outcome contract:
+
+- Reduces ambiguity inside a shared JSON payload boundary without changing the
+  public serialization helpers.
+- Keeps strict JSON rejection behavior stable while making scalar acceptance a
+  named local decision.
+- Exercises the new complexity sensor on a small mid-risk node before any
+  larger `cli_ingest_readiness` work.
+
+Ousterhout lens:
+
+- Information hiding: scalar acceptance is now a named predicate instead of
+  being embedded in the recursive dispatcher.
+- Deep module: public functions `dump_json_dict()`, `dumps_payload()`, and
+  `require_json_object()` did not grow.
+- Avoid classitis: the split is one private predicate with a clear decision,
+  not a new public class or shallow wrapper chain.
+- Change amplification: a future change to scalar acceptance has one local
+  predicate to inspect.
+
+Contracts preserved:
+
+- strict JSON serialization behavior;
+- public `kcs_core.json_payload` function names and return shapes;
+- `ContractValidationError` failure mode;
+- packet schemas;
+- CLI, Desktop/tool schema, privacy, fail-closed, reviewer-bundle,
+  publication, and customer-reply boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD:src/kcs_core/json_payload.py`
+  produced identical outcomes for six representative valid and invalid payload
+  cases.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| `None`, string, bool, and int acceptance inside `_ensure_strict_json_value()` | `_is_strict_json_scalar()` | Old-vs-new equivalence and new scalar characterization test. |
+| finite float acceptance inside `_ensure_strict_json_value()` | `_is_strict_json_scalar()` | Old-vs-new equivalence and new scalar characterization test. |
+| non-finite float rejection | `_is_strict_json_scalar()` returns false, caller raises same `ContractValidationError` | Old-vs-new equivalence for NaN and infinity cases. |
+| arbitrary object rejection | unchanged caller error path after scalar predicate returns false | Old-vs-new equivalence for object value. |
+| non-string mapping key rejection | unchanged `_ensure_strict_json_object()` path | Old-vs-new equivalence for non-string key. |
+| new `_is_strict_json_scalar()` helper | old scalar branches in `_ensure_strict_json_value()` | Private helper only; no public interface change. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old-vs-new JSON payload equivalence passed for six representative cases.
+- Touched subset complexity measurement reports `high_complexity_functions: 0`
+  and `max_cc: 5`.
+- Full repository complexity delta from baseline reports
+  `high_complexity_functions: -1` and `functions_total: +2`; the private
+  scalar helper and new characterization test account for the function-count
+  increase.
+- Focused JSON payload, graph policy, and freeze snapshot tests passed after
+  the graph hash update.
+
+Open follow-up:
+
+- `src/kcs_core/readiness.py` still contains `_renderer_blockers()`, the other
+  `cli_ingest_readiness` function above the advisory complexity threshold.
+- Aggregate review is due after one more refactor batch or an earlier
+  methodology trigger.
+
 ## 2026-07-07 - Slice 6 Batch 10 Draft Tool Alias
 
 Batch: KCS-14 Slice 6 Batch 10.
