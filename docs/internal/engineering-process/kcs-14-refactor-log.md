@@ -9,6 +9,26 @@ what evidence shows runtime behavior stayed stable.
 This file is not a replacement for closeouts, tests, or code review. Use it as
 a compact human-readable rationale index.
 
+## Analysis Use
+
+This log is intentionally more detailed during Slice 6 because refactor-heavy
+work needs practical evidence for later aggregate review, Fable review, and
+future feature-slice planning.
+
+Useful entries should let a reviewer compare theory to practice:
+
+- declared outcome-contract reason vs actual diff;
+- Ousterhout lens used vs concrete code movement;
+- old behavior element -> new location -> evidence;
+- preserved contracts vs validation evidence;
+- recurring ownership or drift risks that may become promotion candidates;
+- reusable implementation patterns that should influence later feature work.
+
+Keep entries evidence-oriented. Do not paste full command output, raw/private
+artifacts, long logs, repeated boilerplate, or general quality commentary. If a
+future slice does not need detailed refactor analysis, use a shorter entry with
+the same essential fields.
+
 ## Entry Template
 
 ```text

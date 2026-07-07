@@ -295,6 +295,12 @@ Every material slice closeout should answer:
 - which findings, if any, were added to promotion candidates;
 - whether the next slice gate is satisfied.
 
+For refactor-heavy slices, the closeout may link to a refactor-log entry
+instead of repeating the full design rationale. The log entry should remain
+evidence-oriented: outcome-contract reason, applied design lens, behavior
+mapping, validation evidence, and follow-up risks. It must not store raw/private
+artifacts or full command output.
+
 ## Behavior Drift Check
 
 Every material slice must include a behavior drift check before closeout. Any

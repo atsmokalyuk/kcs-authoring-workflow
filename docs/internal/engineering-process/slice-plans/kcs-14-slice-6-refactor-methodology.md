@@ -163,6 +163,28 @@ For each refactor target:
   the declared scope of the batch;
 - keep move-only commits separate from behavior-shape commits when practical.
 
+## Refactor Log Usability
+
+Slice 6 refactor batches should update
+`docs/internal/engineering-process/kcs-14-refactor-log.md` when the change is
+useful for later aggregate review, Fable review, or future feature-slice
+planning.
+
+The log entry should explain the practical design move, not restate the whole
+closeout. Include:
+
+- what changed and which graph node it belongs to;
+- why the change serves the KCS-14 outcome contract;
+- which Ousterhout lens applies in practice;
+- old behavior element -> new location -> evidence;
+- preserved contracts and focused validation evidence;
+- promotion candidates or follow-up risks, when present.
+
+Do not use the refactor log for full command outputs, raw/private artifacts,
+long logs, or repeated unchanged-contract boilerplate. If the batch is tiny,
+the entry may be short, but it must still be specific enough for later analysis
+to decide whether the refactor reduced ambiguity or merely moved code.
+
 ## Ousterhout Review Lens
 
 Use the Ousterhout checklist as a targeted design lens, not a linear
