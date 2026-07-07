@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,53 @@ _LIKELY_KCS_MATERIAL_RE = re.compile(
     r")\b",
     re.I,
 )
+
+
+@dataclass(frozen=True)
+class _DraftArticlePrimaryCallShape:
+    has_summary: bool
+    has_selection_ref: bool
+    has_selected_item_ref: bool
+    has_ticket_ref: bool
+
+    @classmethod
+    def from_arguments(
+        cls,
+        arguments: Mapping[str, Any],
+    ) -> _DraftArticlePrimaryCallShape:
+        return cls(
+            has_summary=bool(arguments.get("approved_summary_text")),
+            has_selection_ref=bool(arguments.get("operator_selection_ref")),
+            has_selected_item_ref=bool(arguments.get("operator_selected_item_ref")),
+            has_ticket_ref=bool(arguments.get("ticket_ref")),
+        )
+
+    @property
+    def is_summary_authoring(self) -> bool:
+        return (
+            self.has_summary
+            and not self.has_selection_ref
+            and not self.has_selected_item_ref
+            and not self.has_ticket_ref
+        )
+
+    @property
+    def is_ticket_ref_authoring(self) -> bool:
+        return (
+            self.has_ticket_ref
+            and not self.has_summary
+            and not self.has_selection_ref
+            and not self.has_selected_item_ref
+        )
+
+    @property
+    def is_operator_selection_authoring(self) -> bool:
+        return (
+            self.has_selection_ref
+            and self.has_selected_item_ref
+            and not self.has_summary
+            and not self.has_ticket_ref
+        )
 
 
 class DesktopDraftArticleTool:
@@ -198,32 +246,14 @@ class DesktopDraftArticleTool:
             _desktop_draft_arguments.DRAFT_ARTICLE_DESKTOP_PRIMARY_ARGS
         ):
             return None
-        has_summary = bool(arguments.get("approved_summary_text"))
-        has_selection_ref = bool(arguments.get("operator_selection_ref"))
-        has_selected_item_ref = bool(arguments.get("operator_selected_item_ref"))
-        has_ticket_ref = bool(arguments.get("ticket_ref"))
-        if (
-            has_summary
-            and not has_selection_ref
-            and not has_selected_item_ref
-            and not has_ticket_ref
-        ):
+        call_shape = _DraftArticlePrimaryCallShape.from_arguments(arguments)
+        if call_shape.is_summary_authoring:
             self._draft_workflow.clear_pending_semantic_review()
             return self._draft_article_from_primary_summary(arguments)
-        if (
-            has_ticket_ref
-            and not has_summary
-            and not has_selection_ref
-            and not has_selected_item_ref
-        ):
+        if call_shape.is_ticket_ref_authoring:
             self._draft_workflow.clear_pending_semantic_review()
             return self._draft_article_from_primary_ticket_ref(arguments)
-        if (
-            has_selection_ref
-            and has_selected_item_ref
-            and not has_summary
-            and not has_ticket_ref
-        ):
+        if call_shape.is_operator_selection_authoring:
             self._draft_workflow.clear_pending_semantic_review()
             return self._draft_article_from_primary_selection(arguments)
         return _author_failure_result(

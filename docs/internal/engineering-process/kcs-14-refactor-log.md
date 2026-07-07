@@ -600,6 +600,99 @@ Open follow-up:
 - Aggregate review is due before starting another refactor batch unless an
   earlier methodology trigger has already stopped the sequence.
 
+## 2026-07-07 - Slice 6 Batch 9 Draft Call Shape
+
+Batch: KCS-14 Slice 6 Batch 9.
+
+Affected graph node: `desktop_draft_workflow`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_draft_tool.py`
+
+What changed:
+
+- Moved primary draft-call booleans into private
+  `_DraftArticlePrimaryCallShape`.
+- Kept `_draft_article_primary_surface_result()` routing behavior, public tool
+  surface, result contracts, and `__all__` unchanged.
+
+Why under KCS-14 outcome contract:
+
+- Makes the Desktop draft call-shape decision explicit before any broader
+  workflow refactor.
+- Reduces future agent ambiguity around which combinations are accepted by the
+  primary tool surface.
+- Preserves runtime behavior while grouping route-classification knowledge
+  behind one private value object.
+
+Ousterhout lens:
+
+- Information hiding: the derived call-shape booleans are grouped behind one
+  internal value object.
+- Cognitive load: routing reads as named cases instead of repeated negative
+  boolean conjunctions.
+- Avoid classitis: the dataclass is private and owns a real derived decision
+  shape; it does not add a public interface.
+- Change amplification: future primary-surface route changes should touch the
+  call-shape owner and route dispatch together.
+
+Contracts preserved:
+
+- runtime behavior;
+- public helper names and `__all__`;
+- primary draft-call route behavior;
+- invalid call-shape failure behavior;
+- Desktop/tool schema behavior;
+- packet schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Direct old-vs-new comparison against `HEAD` showed matching
+  `_draft_article_primary_surface_result()` routes and semantic-review clear
+  counts for summary, ticket-ref, operator-selection, invalid mixed, empty, and
+  unknown-argument cases.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| `has_summary` local bool | `_DraftArticlePrimaryCallShape.has_summary` | Old-vs-new route equivalence. |
+| `has_selection_ref` local bool | `_DraftArticlePrimaryCallShape.has_selection_ref` | Old-vs-new route equivalence. |
+| `has_selected_item_ref` local bool | `_DraftArticlePrimaryCallShape.has_selected_item_ref` | Old-vs-new route equivalence. |
+| `has_ticket_ref` local bool | `_DraftArticlePrimaryCallShape.has_ticket_ref` | Old-vs-new route equivalence. |
+| summary-only route condition | `_DraftArticlePrimaryCallShape.is_summary_authoring` | Old-vs-new route and clear-count equivalence. |
+| ticket-ref-only route condition | `_DraftArticlePrimaryCallShape.is_ticket_ref_authoring` | Old-vs-new route and clear-count equivalence. |
+| operator-selection route condition | `_DraftArticlePrimaryCallShape.is_operator_selection_authoring` | Old-vs-new route and clear-count equivalence. |
+| invalid mixed/empty route behavior | unchanged fallback after call-shape checks | Old-vs-new failure result equivalence. |
+| unknown primary-surface argument behavior | unchanged primary-arg subset guard | Old-vs-new `None` route equivalence. |
+
+Review-only drift risks:
+
+- none identified beyond mechanical equivalence and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- Old `HEAD` implementation and current implementation produced matching
+  primary-surface routes and semantic-review clear counts.
+- `tests/kcs_adapters/test_desktop_draft_tool.py`,
+  `tests/kcs_adapters/test_desktop_workflow.py`,
+  `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `tests/policy/test_kcs14_freeze_snapshots.py` passed.
+- Ruff passed for the touched source/test paths.
+
+Open follow-up:
+
+- Remaining `desktop_draft_workflow` files are not refactored in this batch.
+- Next aggregate review is due after one more refactor batch or an earlier
+  methodology trigger.
+
 ## 2026-07-07 - Slice 6 Batch 6 Operator Selection Remaining Cards
 
 Batch: KCS-14 Slice 6 Batch 6.
