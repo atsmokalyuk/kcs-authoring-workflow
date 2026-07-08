@@ -1211,6 +1211,119 @@ Final verdict: Slice 9 Target 4 is intentionally audit-only. Continue only with
 the next explicit runtime target; do not change renderer/style gates in KCS-14
 without a separate behavior-preserving implementation question.
 
+## 2026-07-08 - Slice 9 Target 5 Provider Approved Summary Resolution Triggers
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Review artifacts:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-target-5-provider-handoff-boundary-approved-summary.md`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+
+Scope:
+
+- `provider_handoff_boundary`
+- `src/kcs_adapters/approved_summary_semantic.py`
+- `docs/internal/engineering-process/code-review-graph.json`
+
+Finding:
+
+- `_config_file_resolution_steps()` was the top measured runtime hotspot for
+  the provider target at `cc=25`.
+- The function mixed resolution-step assembly with trigger-detection details
+  for package checks, config review, backup/disable evidence, graph recovery,
+  and historical-data caveats.
+
+Decision:
+
+- Extract trigger-detection details into private predicates.
+- Keep resolution-step order and wording in `_config_file_resolution_steps()`.
+- Do not change approved-summary semantic extraction behavior.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- semantic extraction candidate shape unchanged;
+- provider output remains untrusted;
+- Python validators still own packet acceptance;
+- provider runtime endpoints and credentials remain out of serializable
+  packets;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged.
+
+Validation evidence:
+
+- `uv run pytest tests/kcs_adapters/test_approved_summary_semantic.py -q`
+  passed.
+- `uv run ruff check src/kcs_adapters/approved_summary_semantic.py` passed.
+- Complexity sensor recorded provider target before/after shape.
+
+Behavior drift check:
+
+- Behavior change intended: no.
+- Old trigger conditions map to private predicate helpers.
+- Existing exact `resolution_steps` fixture for the final monitoring fix passed.
+- Public function names and public surface unchanged.
+- Review-only risk: existing tests cover the known approved-summary cases;
+  staged-diff review still needs to inspect condition equivalence.
+
+Complexity evidence:
+
+- provider target before: `functions_total=239`, `max_cc=25`,
+  `high_complexity_functions=11`, `import_edges=3`, `public_defs=50`
+- provider target after: `functions_total=244`, `max_cc=19`,
+  `high_complexity_functions=11`, `import_edges=3`, `public_defs=50`
+- touched file after: `functions_total=34`, `max_cc=14`,
+  `high_complexity_functions=6`, `import_edges=0`, `public_defs=1`
+
+Promotion candidates:
+
+- none new.
+
+Demotion candidates:
+
+- none.
+
+Deferred risks:
+
+- `DirectHttpRuntimeConfig.__post_init__()` is now the provider target max
+  complexity point at `cc=19`.
+- `_semantic_item_from_approved_summary_section()` remains domain behavior and
+  should only be split with an explicit behavior-preserving ownership question.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 9 Target 5
+- affected graph nodes: `provider_handoff_boundary`
+- graph hashes updated: `src/kcs_adapters/approved_summary_semantic.py`
+- batches since aggregate review: 2
+- net module/file count change by node: 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public callers;
+  maintainers can inspect trigger families separately inside the same file
+- complexity distribution: provider target max CC reduced from 25 to 19;
+  high-complexity function count stayed 11; public surface and imports stable
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: file hash update only
+- freeze/snapshot false positives: none observed
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint; staged-diff review still required
+- validation result: focused checks passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: provider runtime config hotspot; domain extraction split risk
+
+Final verdict: Slice 9 Target 5 source batch is ready for staged-diff review
+after full provider-boundary focused validation.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.

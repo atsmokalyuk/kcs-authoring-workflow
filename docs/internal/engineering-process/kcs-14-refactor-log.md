@@ -514,6 +514,91 @@ Open follow-up:
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-08 - Slice 9 Target 5 Provider Approved Summary Resolution Triggers
+
+Batch: KCS-14 Slice 9 Target 5.
+
+Affected graph node: `provider_handoff_boundary`.
+
+Changed code:
+
+- `src/kcs_adapters/approved_summary_semantic.py`
+
+What changed:
+
+- Moved condition details inside `_config_file_resolution_steps()` into
+  private predicate helpers.
+- Kept `_config_file_resolution_steps()` as the owner of resolution-step order
+  and wording.
+- Updated the code-review graph hash for the touched file.
+
+Why under KCS-14 outcome contract:
+
+- Reduces a high-complexity runtime hotspot without changing provider trust or
+  semantic-extraction contracts.
+- Makes future edits to approved-summary trigger families more local and easier
+  to review.
+- Preserves behavior with focused exact-output tests.
+
+Ousterhout lens:
+
+- Information hiding: trigger detection details are hidden behind named
+  predicates.
+- Deep module: the extraction adapter remains a single internal module with no
+  new public surface.
+- Change amplification: future changes to a trigger family should touch one
+  predicate instead of the full resolution-step assembly flow.
+- Avoid classitis: no new class or module was introduced.
+
+Contracts preserved:
+
+- runtime behavior;
+- semantic extraction candidate shape;
+- provider output remains untrusted;
+- Python validators own packet acceptance;
+- provider runtime endpoints and credentials remain out of serializable
+  packets;
+- packet schemas;
+- Desktop/tool schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Existing exact `resolution_steps` fixture for the monitoring approved-summary
+  case passed.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| unowned package / `rpm -qf` trigger | `_mentions_unowned_package_check()` | Exact `resolution_steps` fixture passed. |
+| config review trigger | `_mentions_config_content_review()` | Exact `resolution_steps` fixture passed. |
+| backup/disable trigger family | `_mentions_config_backup_or_disable()` | Exact `resolution_steps` fixture passed. |
+| graph recovery trigger | `_mentions_graphs_displaying_data()` | Exact `resolution_steps` fixture passed. |
+| historical/repopulate caveat trigger | `_mentions_repopulate_context()` and existing `or steps` behavior | Exact `resolution_steps` fixture passed. |
+
+Review-only drift risks:
+
+- Other approved-summary variants rely on existing semantic extraction tests
+  and staged-diff review.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- `tests/kcs_adapters/test_approved_summary_semantic.py` passed.
+- Complexity target max dropped from `cc=25` to `cc=19`; public surface and
+  import edges stayed stable.
+- Ruff passed for the touched file.
+
+Open follow-up:
+
+- `DirectHttpRuntimeConfig.__post_init__()` is now the provider target max
+  complexity point.
+
 ## 2026-07-08 - Slice 9 Target 3 Desktop Reviewer Bundle Manifest Owner
 
 Batch: KCS-14 Slice 9 Target 3.
