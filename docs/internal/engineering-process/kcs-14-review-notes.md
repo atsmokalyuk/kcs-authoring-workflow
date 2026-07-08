@@ -798,6 +798,105 @@ Final verdict: Aggregate review gate is complete. Slice 6 may continue with the
 next scoped refactor batch after the normal context window check and process
 gap audit.
 
+## 2026-07-07 - Slice 7 Promotion Backlog Start
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/kcs-14-planning-decisions.md`
+- `docs/internal/engineering-process/promotion-candidates.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-final-closeout.md`
+- `tests/kcs_adapters/test_desktop_payload.py`
+- `tests/policy/test_review_context_policy.py`
+- `docs/internal/engineering-process/tool-entrypoints.md`
+- `tests/policy/test_tool_entrypoints.py`
+
+Unchanged contracts:
+
+- runtime source behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- MCP envelope behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- privacy and fail-closed behavior unchanged;
+- `ticket_ref` primary path unchanged;
+- freehand/manual drafting remains blocked;
+- frozen `tests/kcs_adapters/test_mcp_desktop.py` characterization suite was
+  not touched.
+
+Validation evidence:
+
+- `uv run pytest tests/kcs_adapters/test_desktop_payload.py tests/policy/test_review_context_policy.py -q` passed.
+- `uv run ruff check tests/kcs_adapters/test_desktop_payload.py tests/policy/test_review_context_policy.py` passed.
+- `git diff --check` passed.
+
+Findings:
+
+- Slice 7 should start from promoted Slice 6 evidence rather than another
+  refactor batch. The default next step after Slice 6 is now recorded in
+  planning decisions and final closeout.
+- `KCS14-PROMO-006` moved from active backlog to implemented checklist/policy
+  anchor status. Contract-term/spec-table extraction remains a review-gated
+  pattern, not a broad automation rule.
+- `KCS14-PROMO-007` moved from active backlog to implemented closeout-shape
+  anchor status. The final Slice 6 closeout now has a policy test requiring
+  the full complexity summary/delta field set.
+- `KCS14-PROMO-008` records old-vs-new behavior drift mapping as a protocol
+  and policy anchor. It does not create a generic equivalence runner because
+  Slice 6 equivalence checks were intentionally case-specific.
+- The alias-precedence external-review finding is now protected by a targeted
+  `desktop_payload` characterization test without touching the frozen Desktop
+  MCP characterization suite.
+- Review/promotion protocol checks and code-review graph checks are now listed
+  as official deterministic tool entrypoints so future agents do not need to
+  infer the validation command from prior closeouts.
+
+Behavior drift check:
+
+- behavior change intended: no.
+- mechanical checks: focused payload test and review-context policy tests
+  passed.
+- reviewed drift risks: alias precedence is now explicitly characterized via
+  the public approved-summary payload path.
+- review-only drift risks: none identified for this docs/test-only
+  promotion checkpoint.
+- verdict: no drift found by listed checks; residual risks listed above.
+
+Promotion candidates:
+
+- none new. This checkpoint implements previously accepted candidates
+  `KCS14-PROMO-006`, `KCS14-PROMO-007`, and `KCS14-PROMO-008`.
+
+Deferred risks:
+
+- `KCS14-PROMO-005` remains probation-advisory; the complexity sensor should
+  not become a blocking quality gate from Slice 6 evidence alone.
+- Generic old-vs-new equivalence runner remains deferred; current promotion is
+  limited to the behavior-drift mapping protocol and shape anchor.
+- `src/kcs_core/errors.py`, `tests/kcs_adapters/test_mcp_desktop.py`, and
+  `src/kcs_adapters/approved_summary_semantic.py` remain parked follow-ups
+  requiring separate operator-approved scope.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 7 promotion backlog start
+- review route: local Codex checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: Slice 6 final complexity block policy anchor;
+  behavior-drift mapping policy anchor; approved-summary alias-precedence
+  characterization test; official review-context and code-review graph
+  tool-entrypoint anchors
+- findings promoted to future checks: none new
+- deferred risks: generic equivalence runner, complexity sensor probation,
+  parked refactor follow-ups
+
+Final verdict: Slice 7 promotion-backlog start is ready for staged-diff review.
+
 ## 2026-07-07 - Slice 6 Batch 19 Stdio Smoke Tool Surface Specs
 
 Reviewer or review route: local Codex implementation checkpoint.

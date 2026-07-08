@@ -13,6 +13,14 @@ PROMOTION_CANDIDATES = (
 REVIEW_NOTES = (
     ROOT / "docs" / "internal" / "engineering-process" / "kcs-14-review-notes.md"
 )
+SLICE_6_FINAL_CLOSEOUT = (
+    ROOT
+    / "docs"
+    / "internal"
+    / "engineering-process"
+    / "slice-plans"
+    / "kcs-14-slice-6-final-closeout.md"
+)
 ENFORCEMENT_FEATURE_NOTE = (
     ROOT
     / "docs"
@@ -91,6 +99,16 @@ REQUIRED_PROMOTION_FIELDS = (
     "Validation",
     "Approval",
     "Status",
+)
+REQUIRED_COMPLEXITY_FIELDS = (
+    "functions_total",
+    "cc_average",
+    "max_cc",
+    "high_complexity_functions",
+    "mi_average",
+    "import_edges",
+    "public_defs",
+    "all_exports",
 )
 
 FORBIDDEN_REVIEW_PACKET_PATTERNS = (
@@ -193,14 +211,37 @@ def test_review_protocol_requires_full_complexity_delta_block() -> None:
     required = (
         "If a refactor closeout cites the complexity sensor",
         "full summary/delta block",
-        "functions_total",
-        "cc_average",
-        "max_cc",
-        "high_complexity_functions",
-        "mi_average",
-        "import_edges",
-        "public_defs",
-        "all_exports",
+        *REQUIRED_COMPLEXITY_FIELDS,
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_review_protocol_requires_behavior_drift_mapping_evidence() -> None:
+    text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
+
+    required = (
+        "Behavior Drift Check",
+        "Reviewed drift risks",
+        "<old behavior element -> new location -> evidence>",
+        "<new element -> old source or intentional-change note -> evidence>",
+        "every removed behavior element maps to a new location",
+        "every new field, branch, condition, or helper maps back to old behavior",
+        "no drift found by listed checks; residual risks listed above",
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_slice6_final_closeout_records_full_complexity_summary_and_delta() -> None:
+    text = SLICE_6_FINAL_CLOSEOUT.read_text(encoding="utf-8")
+
+    required = (
+        "Complexity sensor summary after Batch 22",
+        "Complexity sensor delta from baseline after Batch 22",
+        *REQUIRED_COMPLEXITY_FIELDS,
     )
     missing = [phrase for phrase in required if phrase not in text]
 
@@ -215,9 +256,11 @@ def test_promotion_registry_records_contract_term_table_guidance() -> None:
         "all-quantified checks",
         "not a blanket instruction",
         "checklist-item",
+        "Behavior Drift Mapping Support",
         "Full Complexity Delta Closeout",
         "KCS14-PROMO-006",
         "KCS14-PROMO-007",
+        "KCS14-PROMO-008",
     )
     missing = [phrase for phrase in required if phrase not in text]
 

@@ -235,6 +235,38 @@ privacy boundaries, fail-closed behavior, local reviewer-bundle behavior, or
 - Slice 7: automate only checks that survived manual use; keep advisory
   design tripwires non-blocking unless promoted by explicit review.
 
+## Post-Slice 6 Sequence
+
+After Slice 6 closeout, do not continue refactor batches by mining remaining
+large files or measured hotspots. The next default KCS-14 step is Slice 7
+review/agent tooling because Slice 6 produced a promotion backlog that should
+be converted into stable review support before opening more refactor work.
+
+Slice 7 scope should start from promoted evidence, including:
+
+- old-vs-new behavior equivalence support for behavior-preserving refactors;
+- closeout shape validation where the manual closeout format has stabilized;
+- full complexity/coupling/interface delta reporting when a closeout cites the
+  complexity sensor;
+- checklist-level contract-term/spec-table extraction guidance;
+- any small targeted tests accepted from external review, such as alias
+  precedence, when they protect existing behavior.
+
+Parked refactor follow-ups are separate operator-approved slices, not normal
+Batch 23 work:
+
+- `src/kcs_core/errors.py`: first handle as a small ownership/map question.
+  It may end as a module-boundary or graph update without code movement.
+- `tests/kcs_adapters/test_mcp_desktop.py`: may be reopened only as an
+  explicit characterization-suite maintainability slice. While this safety net
+  is being refactored, do not change related source files in the same commit.
+- `src/kcs_adapters/approved_summary_semantic.py`: remains deferred under the
+  provider-handoff boundary. Do not open it for complexity cleanup unless a
+  later approved design question changes that boundary.
+
+This sequence preserves the KCS-14 outcome contract: convert proven manual
+findings into durable checks before taking on additional refactor risk.
+
 ## Slice Closeout Measurement
 
 KCS-14 may use value-safe closeout metadata to see whether the process is

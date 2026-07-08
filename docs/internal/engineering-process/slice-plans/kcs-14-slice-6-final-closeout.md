@@ -130,5 +130,17 @@ Slice 6 is closed.
 Do not start another Slice 6 refactor batch unless the operator explicitly
 reopens Slice 6 with a new ownership question.
 
-Next planned work should move to Slice 7 review/agent tooling, or to a separate
-operator-approved slice for one of the parked follow-ups.
+Next planned work should move to Slice 7 review/agent tooling. This is the
+default continuation because Slice 6 produced accepted promotion candidates
+that should become stable review support before more refactor work is opened.
+
+Parked follow-ups are not normal Batch 23 work:
+
+- `src/kcs_core/errors.py`: separate ownership/map question, possibly docs or
+  graph only.
+- `tests/kcs_adapters/test_mcp_desktop.py`: separate operator-approved
+  characterization-suite maintainability slice. Do not touch related source
+  files in the same commits while this frozen safety net is being refactored.
+- `src/kcs_adapters/approved_summary_semantic.py`: remains deferred under the
+  provider-handoff boundary; do not open it for complexity cleanup without a
+  later approved design question.

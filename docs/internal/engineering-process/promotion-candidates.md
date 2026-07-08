@@ -87,8 +87,7 @@ require fresh evidence before promotion.
 
 | Finding code | Rule / finding | Seen in | Promotion target | Owner slice | Status |
 | --- | --- | --- | --- | --- | --- |
-| KCS14-PROMO-006 | Contract-term/spec-table extraction should preserve all old terms with all-quantified checks and avoid broad table-driven rewrites | Slice 6 batches 19-22 external review | review checklist item | Slice 6 closeout / future refactor slices | checklist-item |
-| KCS14-PROMO-007 | Refactor closeouts that cite complexity measurement should record the full sensor summary/delta block, not only selected headline fields | Slice 6 batches 19-22 external review | measurement-only closeout field | Slice 6 closeout / future refactor slices | accepted |
+| none | none | none | none | none | none |
 
 Future promotion decisions for complexity measurement should use the probation
 signal from Slice 6/Slice 7 closeouts, not chat memory.
@@ -102,6 +101,9 @@ signal from Slice 6/Slice 7 closeouts, not chat memory.
 | KCS14-PROMO-003 | Tool entrypoint list and manual/deterministic classification should not drift | Slice 2 planning/review | policy test and help liveness check | Slice 2 | implemented |
 | KCS14-PROMO-004 | Clean-ticket-derived fixtures need provenance and privacy-scan markers | Slice 3 planning/review | policy test | Slice 3 | implemented |
 | KCS14-PROMO-005 | Refactor closeouts repeatedly recorded complexity distribution as not measured by a tool | Slice 6 batches 5-16 external review | advisory complexity/coupling/interface measurement entrypoint and baseline snapshot | Slice 6 | probation-advisory |
+| KCS14-PROMO-006 | Contract-term/spec-table extraction should preserve all old terms with all-quantified checks and avoid broad table-driven rewrites | Slice 6 batches 19-22 external review | review checklist item and policy anchor | Slice 7 | implemented |
+| KCS14-PROMO-007 | Refactor closeouts that cite complexity measurement should record the full sensor summary/delta block, not only selected headline fields | Slice 6 batches 19-22 external review | closeout shape policy anchor | Slice 7 | implemented |
+| KCS14-PROMO-008 | Behavior-preserving refactors need explicit old-to-new and new-to-old drift mapping evidence | Slice 6 batches 1-22 closeouts and external review | behavior drift checklist and policy anchor | Slice 7 | implemented |
 
 ## Complexity Measurement Promotion Detail
 
@@ -194,7 +196,7 @@ Status:
 
 Finding code:
 
-- see the active candidates row above.
+- see the implemented promotions row above.
 
 Rule / finding:
 
@@ -257,7 +259,7 @@ Decision:
 
 Owner slice:
 
-- KCS-14 Slice 6 closeout and future refactor slices.
+- KCS-14 Slice 7 review/agent tooling.
 
 Scope:
 
@@ -269,6 +271,7 @@ Validation:
 - focused characterization tests still pass;
 - diff review maps old terms/properties to new table entries;
 - no public/runtime surface expands.
+- `tests/policy/test_review_context_policy.py` anchors the checklist guidance.
 
 Approval:
 
@@ -276,13 +279,103 @@ Approval:
 
 Status:
 
-- checklist-item.
+- implemented.
+
+## Behavior Drift Mapping Support Detail
+
+Finding code:
+
+- see the implemented promotions row above.
+
+Rule / finding:
+
+- Behavior-preserving refactors repeatedly needed direct old-vs-new comparison
+  and a mapping from old behavior elements to their new locations.
+- A generic equivalence runner would be too broad because Slice 6 compared
+  report JSON, helper outputs, payload normalization, renderer blockers,
+  environment construction, and private alias values.
+- The durable rule is therefore a review/closeout protocol: record
+  old behavior element -> new location -> evidence, and new element -> old
+  source or intentional-change note -> evidence.
+
+Seen in:
+
+- Slice 6 refactor log and closeouts across batches 1-22.
+- External Slice 6 review identified old-vs-new equivalence support as a
+  natural Slice 7 seed.
+
+Evidence:
+
+- Multiple batches used direct old-vs-new checks against `HEAD` or focused
+  characterization cases.
+- Review-only drift mapping was necessary to prove that helper extraction,
+  field grouping, and table extraction did not change behavior.
+
+Trigger:
+
+- The same manual behavior-drift evidence pattern appeared across more than
+  three behavior-preserving refactor batches.
+
+Manual correction needed:
+
+- yes. Reviewers need the mapping table to inspect behavior-preserving claims.
+
+Can be checked mechanically:
+
+- partly. A policy test can anchor the required mapping fields, but judgment is
+  still required to verify semantic equivalence.
+
+False-positive risk:
+
+- low as a required closeout/review section; high as a fully automated
+  equivalence claim.
+
+KCS-specific or generic:
+
+- generic refactor-review protocol with project-local examples.
+
+Promotion target:
+
+- review checklist item;
+- behavior drift closeout protocol;
+- future review packet/closeout shape check.
+
+Target layer:
+
+- review gate now;
+- deterministic shape check later only for section presence, not equivalence.
+
+Decision:
+
+- implemented as protocol and policy anchor, not as a generic equivalence
+  runner.
+
+Owner slice:
+
+- KCS-14 Slice 7 review/agent tooling.
+
+Scope:
+
+- behavior-preserving refactors and material slices touching `src/`.
+
+Validation:
+
+- `tests/policy/test_review_context_policy.py` anchors the required mapping
+  language.
+
+Approval:
+
+- operator approved continuing Slice 7 promotion backlog implementation.
+
+Status:
+
+- implemented.
 
 ## Full Complexity Delta Closeout Detail
 
 Finding code:
 
-- see the active candidates row above.
+- see the implemented promotions row above.
 
 Rule / finding:
 
@@ -335,12 +428,12 @@ Target layer:
 
 Decision:
 
-- accepted for future refactor closeouts; automation deferred to Slice 7 or a
-  dedicated closeout-shape validator change.
+- accepted for future refactor closeouts and anchored by a Slice 7 policy
+  test over the final Slice 6 closeout.
 
 Owner slice:
 
-- KCS-14 Slice 6 closeout and Slice 7 review tooling.
+- KCS-14 Slice 7 review/agent tooling.
 
 Scope:
 
@@ -351,6 +444,8 @@ Validation:
 
 - future closeouts include the full summary/delta block when complexity
   measurement is cited.
+- `tests/policy/test_review_context_policy.py` checks the final Slice 6
+  closeout for the full summary/delta block.
 
 Approval:
 
@@ -358,4 +453,4 @@ Approval:
 
 Status:
 
-- accepted.
+- implemented.

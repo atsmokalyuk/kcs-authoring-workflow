@@ -918,12 +918,12 @@
         },
         {
           "path": "tests/policy/test_review_context_policy.py",
-          "file_hash": "cb1082b0d2155af4f58f5f4db71a8dac8bb54933f7180227c69dc6b560898a5f",
+          "file_hash": "97909074d331fcee2179839bf6a3a4214f23e4ce398adb3b5e3da60086038065",
           "valid_until_changed": true
         },
         {
           "path": "tests/policy/test_tool_entrypoints.py",
-          "file_hash": "7d60922673bbca3b4b31897c3dfd28dec0757e98ad7a520f6cf94325c2af4271",
+          "file_hash": "ab82d967697618c936781d2d16a4e9ea3fa6c88d3171d266e5ddb22061609d0c",
           "valid_until_changed": true
         }
       ],
