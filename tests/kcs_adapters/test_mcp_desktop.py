@@ -4,7 +4,7 @@ import io
 import json
 import subprocess
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from hashlib import sha256
 from typing import Any
 
@@ -819,98 +819,154 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
     ]
     assert len(tools) == 6
     for tool in tools:
-        if tool["name"] == "kcs_register_clean_ticket":
-            assert "sanitized ticket text is visible" in tool["description"]
-            assert "no ticket_ref exists" in tool["description"]
-            assert "clean_ticket_text" in tool["description"]
-            assert "next_arguments" in tool["description"]
-            schema = tool["inputSchema"]
-            assert set(schema["properties"]) == {
-                "clean_ticket_text",
-                "debug",
-                "ticket_ref",
-            }
-            assert schema["required"] == ["clean_ticket_text"]
-            assert tool["annotations"]["readOnlyHint"] is False
-            assert tool["annotations"]["idempotentHint"] is False
-        elif tool["name"] == "kcs_draft_article":
-            assert "short approved_summary_text" in tool["description"]
-            assert "For `/draft <ticket_ref>`, use kcs_draft_ticket" in (
-                tool["description"]
-            )
-            assert "item object" not in tool["description"]
-            assert "item_candidates only" not in tool["description"]
-            assert "break-fix" not in tool["description"]
-            schema = tool["inputSchema"]
-            assert set(schema["properties"]) == {
-                "approved_summary_text",
-                "debug",
-                "operator_selected_item_ref",
-                "operator_selection_ref",
-            }
-            assert "Short inline sanitized text" in schema["properties"][
-                "approved_summary_text"
-            ]["description"]
-            assert "kcs_register_clean_ticket" in schema["properties"][
-                "approved_summary_text"
-            ]["description"]
-            assert "raw comments" not in schema["properties"][
-                "approved_summary_text"
-            ]["description"]
-            assert "internal notes" not in schema["properties"][
-                "approved_summary_text"
-            ]["description"]
-            assert "attachments" in schema["properties"]["approved_summary_text"][
-                "description"
-            ]
-            assert "explicit debug or smoke compatibility" in schema["properties"][
-                "debug"
-            ]["description"]
-            assert "reviewer-only Zendesk HTML" in schema["properties"]["debug"][
-                "description"
-            ]
-            for hidden_alias in (
-                "auto_publish_allowed",
-                "case_ref",
-                "item",
-                "item_candidates",
-                "operator_choice_confirmed",
-                "article_title",
-                "commands",
-                "diagnosis",
-                "problem",
-                "provider_calls",
-                "reference_article_html",
-                "reuse_search_checked",
-                "solution",
-                "steps",
-                "ticket_ref",
-            ):
-                assert hidden_alias not in schema["properties"]
-            assert tool["annotations"]["readOnlyHint"] is False
-            assert tool["annotations"]["idempotentHint"] is False
-        elif tool["name"] == "kcs_prepare_semantic_review":
-            assert "semantic_review_required" in tool["description"]
-            assert "bounded excerpts" in tool["description"]
-            schema = tool["inputSchema"]
-            assert set(schema["properties"]) == {"semantic_review_ref"}
-            assert schema["required"] == ["semantic_review_ref"]
-            assert "Opaque semantic-review ref" in schema["properties"][
-                "semantic_review_ref"
-            ]["description"]
-            assert tool["annotations"]["readOnlyHint"] is True
-            assert tool["annotations"]["idempotentHint"] is True
-        assert tool["annotations"]["destructiveHint"] is False
-        assert tool["annotations"]["openWorldHint"] is False
-        assert "inputSchema" in tool
-        assert "outputSchema" not in tool
-        assert tool["inputSchema"]["additionalProperties"] is False
+        _assert_desktop_tool_contract(tool)
+
+    tools_by_name = _tools_by_name(tools)
+    _assert_register_clean_ticket_tool(tools_by_name["kcs_register_clean_ticket"])
+    _assert_draft_article_tool(tools_by_name["kcs_draft_article"])
+    _assert_prepare_semantic_review_tool(
+        tools_by_name["kcs_prepare_semantic_review"]
+    )
     _assert_submit_semantic_review_tool(
-        next(tool for tool in tools if tool["name"] == "kcs_submit_semantic_review")
+        tools_by_name["kcs_submit_semantic_review"]
     )
-    _assert_draft_ticket_tool(
-        next(tool for tool in tools if tool["name"] == "kcs_draft_ticket")
+    _assert_draft_ticket_tool(tools_by_name["kcs_draft_ticket"])
+
+
+def _tools_by_name(tools: Sequence[Mapping[str, Any]]) -> dict[str, Mapping[str, Any]]:
+    return {tool["name"]: tool for tool in tools}
+
+
+def _assert_desktop_tool_contract(tool: Mapping[str, Any]) -> None:
+    assert tool["annotations"]["destructiveHint"] is False
+    assert tool["annotations"]["openWorldHint"] is False
+    assert "inputSchema" in tool
+    assert "outputSchema" not in tool
+    assert tool["inputSchema"]["additionalProperties"] is False
+
+
+def _assert_schema_shape(
+    schema: Mapping[str, Any],
+    *,
+    properties: set[str],
+    required: list[str] | None = None,
+) -> None:
+    assert set(schema["properties"]) == properties
+    if required is not None:
+        assert schema["required"] == required
+
+
+def _assert_tool_annotations(
+    tool: Mapping[str, Any],
+    *,
+    read_only: bool,
+    idempotent: bool,
+) -> None:
+    assert tool["annotations"]["readOnlyHint"] is read_only
+    assert tool["annotations"]["idempotentHint"] is idempotent
+
+
+def _assert_text_includes(value: str, terms: Sequence[str]) -> None:
+    for term in terms:
+        assert term in value
+
+
+def _assert_text_excludes(value: str, terms: Sequence[str]) -> None:
+    for term in terms:
+        assert term not in value
+
+
+def _assert_register_clean_ticket_tool(tool: Mapping[str, Any]) -> None:
+    _assert_text_includes(
+        tool["description"],
+        (
+            "sanitized ticket text is visible",
+            "no ticket_ref exists",
+            "clean_ticket_text",
+            "next_arguments",
+        ),
     )
+    _assert_schema_shape(
+        tool["inputSchema"],
+        properties={"clean_ticket_text", "debug", "ticket_ref"},
+        required=["clean_ticket_text"],
+    )
+    _assert_tool_annotations(tool, read_only=False, idempotent=False)
+
+
+def _assert_draft_article_tool(tool: Mapping[str, Any]) -> None:
+    _assert_text_includes(
+        tool["description"],
+        (
+            "short approved_summary_text",
+            "For `/draft <ticket_ref>`, use kcs_draft_ticket",
+        ),
+    )
+    _assert_text_excludes(
+        tool["description"],
+        ("item object", "item_candidates only", "break-fix"),
+    )
+    schema = tool["inputSchema"]
+    _assert_schema_shape(
+        schema,
+        properties={
+            "approved_summary_text",
+            "debug",
+            "operator_selected_item_ref",
+            "operator_selection_ref",
+        },
+    )
+    summary_description = schema["properties"]["approved_summary_text"]["description"]
+    _assert_text_includes(
+        summary_description,
+        (
+            "Short inline sanitized text",
+            "kcs_register_clean_ticket",
+            "attachments",
+        ),
+    )
+    _assert_text_excludes(summary_description, ("raw comments", "internal notes"))
+    debug_description = schema["properties"]["debug"]["description"]
+    _assert_text_includes(
+        debug_description,
+        ("explicit debug or smoke compatibility", "reviewer-only Zendesk HTML"),
+    )
+    for hidden_alias in (
+        "auto_publish_allowed",
+        "case_ref",
+        "item",
+        "item_candidates",
+        "operator_choice_confirmed",
+        "article_title",
+        "commands",
+        "diagnosis",
+        "problem",
+        "provider_calls",
+        "reference_article_html",
+        "reuse_search_checked",
+        "solution",
+        "steps",
+        "ticket_ref",
+    ):
+        assert hidden_alias not in schema["properties"]
+    _assert_tool_annotations(tool, read_only=False, idempotent=False)
+
+
+def _assert_prepare_semantic_review_tool(tool: Mapping[str, Any]) -> None:
+    _assert_text_includes(
+        tool["description"],
+        ("semantic_review_required", "bounded excerpts"),
+    )
+    schema = tool["inputSchema"]
+    _assert_schema_shape(
+        schema,
+        properties={"semantic_review_ref"},
+        required=["semantic_review_ref"],
+    )
+    assert "Opaque semantic-review ref" in schema["properties"][
+        "semantic_review_ref"
+    ]["description"]
+    _assert_tool_annotations(tool, read_only=True, idempotent=True)
 
 
 def _assert_draft_ticket_tool(tool: Mapping[str, Any]) -> None:
