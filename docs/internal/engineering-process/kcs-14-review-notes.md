@@ -1099,6 +1099,118 @@ Final verdict: Aggregate review gate is complete. Slice 9 may continue with
 `renderer_style_gates` audit only if scoped as behavior-preserving KCS-15
 readiness work.
 
+## 2026-07-08 - Slice 9 Target 4 Renderer Style Gates Audit
+
+Reviewer or review route: local Codex audit checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-target-4-renderer-style-gates-audit.md`
+
+Scope:
+
+- `renderer_style_gates`
+- `src/kcs_core/renderer.py`
+- `src/kcs_adapters/zendesk_markup_quality.py`
+- `src/kcs_adapters/kcs_markup_patterns.py`
+- `src/kcs_adapters/kcs_article_style_refs.py`
+
+Finding:
+
+- The node is critical, but it is also the main KCS-15 style/markup feature
+  surface.
+- The largest functions encode current renderer output, entry-point insertion,
+  and markup-quality finding behavior.
+- No narrow private ownership split was identified that would reduce caller
+  knowledge without risking renderer or style-gate behavior drift.
+
+Decision:
+
+- Do not refactor this node in KCS-14.
+- Treat future renderer/style-gate movement as KCS-15 behavior work unless a
+  narrower behavior-preserving ownership question is explicitly approved.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- renderer output unchanged;
+- current markup-quality gate behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schemas unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- KCS-15 style/markup parity remains deferred.
+
+Validation evidence:
+
+- source files unchanged in this target;
+- complexity sensor recorded the target shape;
+- related renderer/style tests remain the required evidence before any future
+  implementation touch.
+
+Behavior drift check:
+
+- Behavior change intended: no.
+- No source files changed.
+- `src/kcs_core/renderer.py` is a frozen-contract path.
+- Current renderer output and markup-quality behavior remain untouched.
+- Residual review-only risk: future formatting cleanup must not be mixed with
+  KCS-15 style/markup parity unless the behavior change is explicit.
+
+Complexity evidence:
+
+- target files: `functions_total=168`, `max_cc=11`,
+  `high_complexity_functions=7`, `import_edges=0`, `public_defs=22`
+- top complexity points are current renderer/style-gate rule owners, not
+  incidental wrappers.
+
+Promotion candidates:
+
+- none new.
+
+Demotion candidates:
+
+- none.
+
+Deferred risks:
+
+- KCS-15 should define behavior examples and golden/structural acceptance cases
+  before changing renderer output or markup-quality gates.
+- If KCS-15 repeatedly changes entry-point insertion or finding-group rules,
+  revisit focused ownership extraction after the behavior surface is stable.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 9 Target 4
+- affected graph nodes: `renderer_style_gates`
+- graph hashes updated: none
+- batches since aggregate review: 1
+- net module/file count change by node: 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged
+- complexity distribution: measured; target max CC 11, high-complexity
+  functions 7
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: KCS-15 style/markup parity risk
+  identified and deferred
+- promotion candidates by node: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex audit checkpoint
+- validation result: audit-only; source unchanged
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: KCS-15 renderer/style behavior specs and acceptance cases
+
+Final verdict: Slice 9 Target 4 is intentionally audit-only. Continue only with
+the next explicit runtime target; do not change renderer/style gates in KCS-14
+without a separate behavior-preserving implementation question.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.
