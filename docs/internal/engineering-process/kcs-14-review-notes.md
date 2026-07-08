@@ -1594,6 +1594,86 @@ Final verdict: Targeted provider-boundary refactor should stop here. Remaining
 hotspots are domain extraction or safety validation behavior and need explicit
 behavior examples before further movement.
 
+## 2026-07-08 - Slice 9 Final Closeout
+
+Reviewer or review route: local Codex closeout checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-final-closeout.md`
+
+Scope:
+
+- Targeted runtime design debt across:
+  `packet_validation_decision`, `semantic_review_fallback`,
+  `reviewer_bundle_output`, `renderer_style_gates`, and
+  `provider_handoff_boundary`.
+
+Outcome:
+
+- Target 1 packet validation decision: audit-only; no source refactor.
+- Target 2 semantic review fallback: submit validation extracted to a private
+  owner.
+- Target 3 reviewer bundle output: Desktop manifest construction extracted to a
+  private helper.
+- Target 4 renderer style gates: audit-only; deferred to KCS-15 behavior specs.
+- Target 5 provider approved summary: trigger checks extracted into private
+  predicates.
+- Target 6 provider runtime config: endpoint/API-key/byte-limit validation
+  extracted into private predicates.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schemas unchanged;
+- compact output behavior unchanged;
+- renderer output unchanged;
+- markup-quality gate behavior unchanged;
+- provider output remains untrusted;
+- Python validators still own packet acceptance;
+- provider runtime endpoints and credentials remain out of serializable packets;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle locality unchanged;
+- publication/customer-reply behavior remains absent;
+- `auto_publish_allowed=false`;
+- `ticket_ref` primary path remains stable;
+- freehand drafting remains blocked.
+
+Validation evidence:
+
+- `uv run pytest tests/kcs_adapters/test_mcp_desktop.py tests/kcs_adapters/test_desktop_semantic_candidates.py tests/kcs_core/test_semantic_extraction.py tests/kcs_adapters/test_approved_summary_semantic.py tests/kcs_adapters/test_claude_provider.py tests/kcs_core/test_claude_draft.py tests/kcs_core/test_claude_handoff.py tests/kcs_core/test_renderer.py tests/kcs_adapters/test_zendesk_markup_quality.py tests/kcs_core/test_reviewer_bundle.py tests/kcs_adapters/test_desktop_reviewer_preview.py tests/kcs_adapters/test_desktop_draft_output.py -q`
+  passed.
+- `uv run pytest tests/policy/test_code_review_graph_policy.py tests/policy/test_kcs14_freeze_snapshots.py tests/policy/test_review_context_policy.py -q`
+  passed.
+
+Final complexity signal:
+
+- provider + renderer/style target files:
+  `functions_total=415`, `max_cc=14`, `high_complexity_functions=17`,
+  `import_edges=3`, `public_defs=72`
+
+Promotion candidates:
+
+- `KCS14-PROMO-010` remains the only new Slice 9 promotion candidate.
+
+Demotion candidates:
+
+- none.
+
+Deferred risks:
+
+- KCS-15 owns renderer/style/markup behavior changes.
+- Remaining approved-summary extraction complexity needs behavior examples
+  before further movement.
+- Remaining draft/handoff safety-validator complexity needs explicit behavior
+  questions before movement.
+
+Final verdict: Slice 9 achieved the targeted runtime design-debt objective.
+The next action should be an external review checkpoint or final KCS-14
+closeout decision, not more file mining.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.
