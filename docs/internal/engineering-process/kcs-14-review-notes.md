@@ -1324,6 +1324,85 @@ Closeout metadata:
 Final verdict: Slice 9 Target 5 source batch is ready for staged-diff review
 after full provider-boundary focused validation.
 
+## 2026-07-08 - Slice 9 Aggregate Review Targets 4-5
+
+Reviewer or review route: local Codex aggregate design checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-aggregate-review-targets-4-5.md`
+
+Scope:
+
+- Target 4 `renderer_style_gates`
+- Target 5 `provider_handoff_boundary`
+
+Aggregate findings:
+
+- Target 4 was intentionally audit-only because renderer/style gates are the
+  KCS-15 behavior surface.
+- Target 5 reduced the provider target max complexity from `cc=25` to `cc=19`
+  without changing imports, public surface, or provider trust boundaries.
+- No packet schemas, Desktop/tool schemas, renderer output, markup-quality
+  findings, publication behavior, reviewer-bundle behavior, or customer-reply
+  behavior changed.
+- No test assertions were edited.
+- Graph ownership text did not change; Target 5 updated one file hash.
+
+Triage:
+
+- `map_error`: no.
+- `process_error`: no.
+- `architecture_error`: no.
+
+Outcome:
+
+- Continue only with an explicit high-value runtime question.
+- Architecture Patterns with Python is not activated.
+- The next valid question is whether `DirectHttpRuntimeConfig.__post_init__()`
+  can be split into private validation predicates while preserving
+  runtime-only endpoint/credential boundaries.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schemas unchanged;
+- renderer output unchanged;
+- markup-quality gate behavior unchanged;
+- provider output remains untrusted;
+- provider runtime endpoints and credentials remain out of serializable
+  packets;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged.
+
+Validation evidence:
+
+- Target 4 source files unchanged.
+- Target 5 provider-boundary focused tests passed.
+- `uv run pytest tests/policy/test_code_review_graph_policy.py tests/policy/test_kcs14_freeze_snapshots.py -q` passed after commits.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 9 aggregate review targets 4-5
+- affected graph nodes: `renderer_style_gates`, `provider_handoff_boundary`
+- aggregate review trigger: two completed runtime targets since the previous
+  aggregate review
+- aggregate review outcome: continue only with explicit runtime config
+  validation question
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- promotion candidates by node: none new
+- demotion candidates by node: none
+- recurring blocker codes: none
+- next aggregate review due: after the next material runtime target or earlier
+  if provider config work raises a process or architecture signal
+
+Final verdict: Aggregate review gate is complete. Slice 9 may continue with
+`DirectHttpRuntimeConfig` validation cleanup only if scoped as
+behavior-preserving runtime-boundary work.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.
