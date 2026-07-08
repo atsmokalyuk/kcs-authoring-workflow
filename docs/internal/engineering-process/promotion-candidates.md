@@ -93,10 +93,98 @@ require fresh evidence before promotion.
 | Finding code | Rule / finding | Seen in | Promotion target | Owner slice | Status |
 | --- | --- | --- | --- | --- | --- |
 | KCS14-PROMO-009 | Packaged guidance and tracked engineering docs can drift around supported tool names, manual/freehand drafting boundaries, publication/customer-reply boundaries, and command-surface wording | Slice 8 packaging aggregate, desktop protocol aggregate, Slice 8 closeout, external Slice 8 review | review checklist item now; possible policy/package test later | KCS-14 Slice 9 / future package-edit slice | checklist-item |
+| KCS14-PROMO-010 | Behavior-preserving implementation touches to frozen-path files need an explicit review protocol: contract unchanged, focused characterization tests passed, graph hash updated, and broad freeze diff gate re-run after commit | Slice 9 Target 2, Slice 9 Target 3 | review checklist item now; possible closeout-shape check later | KCS-14 Slice 9 / Slice 10 policy hardening if repeated | checklist-item |
 | KCS14-PROMO-NOTE-001 | `desktop_workflow.py` compatibility reexports are a parked import-contract question, not a cleanup target | Slice 8 desktop draft workflow review | code-map/review note only | future import-contract slice if reopened | note |
 
 Future promotion decisions for complexity measurement should use the probation
 signal from Slice 6/Slice 7 closeouts, not chat memory.
+
+## Frozen-Path Implementation Touch Protocol Detail
+
+Finding code:
+
+- see the active candidates row above.
+
+Rule / finding:
+
+- A frozen-path diff gate is useful, but Slice 9 showed a legitimate
+  behavior-preserving refactor can touch a frozen implementation file while
+  preserving the frozen contract.
+- Such touches need an explicit protocol so agents do not either bypass the
+  gate silently or treat every frozen-path implementation touch as a behavior
+  change.
+
+Seen in:
+
+- Slice 9 Target 2 touched `src/kcs_adapters/desktop_semantic_review.py`.
+- Slice 9 Target 3 touched `src/kcs_adapters/desktop_reviewer_bundle.py`.
+
+Evidence:
+
+- Both touched frozen-path files.
+- Both preserved public/runtime behavior through focused characterization
+  tests.
+- Both required graph hash updates.
+- Broad freeze diff checks were expected to pass after commit, not before.
+
+Trigger:
+
+- Same review concern appeared in two Slice 9 runtime targets.
+
+Manual correction needed:
+
+- yes, until the protocol is added to review checklist and closeout templates.
+
+Can be checked mechanically:
+
+- partly. A future closeout-shape check can require fields for frozen-path
+  implementation touches, but equivalence remains review-gated.
+
+False-positive risk:
+
+- medium if implemented as a blocker; low as a review checklist item.
+
+KCS-specific or generic:
+
+- generic process, project-local frozen-path names.
+
+Promotion target:
+
+- review checklist item;
+- future closeout-shape check for required evidence fields.
+
+Target layer:
+
+- review gate now;
+- deterministic shape check later only for evidence presence.
+
+Decision:
+
+- record as checklist-item. Do not automate as a blocker until more evidence
+  appears.
+
+Owner slice:
+
+- KCS-14 Slice 9 / Slice 10 policy hardening if repeated.
+
+Scope:
+
+- behavior-preserving refactors touching paths protected by
+  `FROZEN_CONTRACT_PATHS`.
+
+Validation:
+
+- closeout must state the frozen path touched, unchanged contract, focused
+  characterization tests, graph hash update, post-commit freeze check, and
+  residual review-only drift risks.
+
+Approval:
+
+- generated from Slice 9 aggregate review evidence.
+
+Status:
+
+- checklist-item.
 
 ## Packaged Guidance / Tracked Docs Drift Detail
 

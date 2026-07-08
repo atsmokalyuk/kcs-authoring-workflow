@@ -1025,6 +1025,80 @@ Closeout metadata:
 Final verdict: Slice 9 Target 3 source batch is ready for staged-diff review
 after MCP Desktop bundle validation.
 
+## 2026-07-08 - Slice 9 Aggregate Review Targets 2-3
+
+Reviewer or review route: local Codex aggregate design checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-aggregate-review-targets-2-3.md`
+
+Scope:
+
+- Target 2 `semantic_review_fallback`
+- Target 3 `reviewer_bundle_output`
+
+Aggregate findings:
+
+- Both targets stayed inside declared high-risk runtime nodes.
+- Both source changes were private ownership splits with unchanged public API.
+- No packet schema, Desktop tool schema, compact output contract, publication
+  behavior, reviewer-bundle boundary, or customer-reply boundary changed.
+- No test assertions were edited.
+- Graph ownership text did not change; file/hash coverage was updated.
+- Both touched frozen-path implementation files, producing a repeated process
+  signal now recorded as `KCS14-PROMO-010`.
+
+Triage:
+
+- `map_error`: no.
+- `process_error`: no blocker; checklist improvement recorded as
+  `KCS14-PROMO-010`.
+- `architecture_error`: no.
+
+Outcome:
+
+- Continue Slice 9 only with explicit high-value runtime questions.
+- Architecture Patterns with Python is not activated.
+- Next target may be `renderer_style_gates` as a KCS-15 pre-feature readiness
+  audit only; no renderer output/style behavior change is authorized.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schemas unchanged;
+- compact output behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged;
+- safety floor remains intact by focused characterization and post-commit
+  freeze/snapshot checks.
+
+Validation evidence:
+
+- Target 2 focused semantic-review and MCP Desktop tests passed.
+- Target 3 focused reviewer-bundle and MCP Desktop tests passed.
+- `uv run pytest tests/policy/test_code_review_graph_policy.py tests/policy/test_kcs14_freeze_snapshots.py -q` passed after commits.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 9 aggregate review targets 2-3
+- affected graph nodes: `semantic_review_fallback`, `reviewer_bundle_output`
+- aggregate review trigger: two completed runtime targets
+- aggregate review outcome: continue with explicit high-value runtime question
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- promotion candidates by node: `KCS14-PROMO-010`
+- demotion candidates by node: none
+- recurring blocker codes: none
+- next aggregate review due: after the next material runtime target or earlier
+  if renderer/provider review raises a map/process/architecture signal
+
+Final verdict: Aggregate review gate is complete. Slice 9 may continue with
+`renderer_style_gates` audit only if scoped as behavior-preserving KCS-15
+readiness work.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.
