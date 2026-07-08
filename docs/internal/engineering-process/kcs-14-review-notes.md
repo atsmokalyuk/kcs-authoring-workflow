@@ -1519,6 +1519,81 @@ Closeout metadata:
 Final verdict: Slice 9 Target 6 source batch is ready for staged-diff review
 after full provider-boundary focused validation.
 
+## 2026-07-08 - Slice 9 Aggregate Review Target 6
+
+Reviewer or review route: local Codex aggregate design checkpoint.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-aggregate-review-target-6.md`
+
+Scope:
+
+- Target 6 `provider_handoff_boundary`
+
+Aggregate findings:
+
+- Target 6 reduced provider target max complexity from `cc=19` to `cc=14`.
+- High-complexity function count dropped from 11 to 10.
+- Import coupling stayed flat at 3.
+- Public definitions stayed flat at 50.
+- Runtime endpoint and credential material remain runtime-only.
+- No provider config/preflight, packet, Desktop/tool schema, publication,
+  reviewer-bundle, or customer-reply contract changed.
+- No test assertions were edited.
+
+Triage:
+
+- `map_error`: no.
+- `process_error`: no.
+- `architecture_error`: no.
+
+Outcome:
+
+- Stop provider-boundary source refactor for now.
+- Architecture Patterns with Python is not activated.
+- Remaining hotspots are domain extraction or safety validation behavior and
+  require explicit behavior examples before further movement.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schemas unchanged;
+- provider output remains untrusted;
+- provider runtime endpoints and credentials remain out of serializable
+  packets;
+- Python validators still own packet acceptance;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged.
+
+Validation evidence:
+
+- Target 6 provider-focused tests passed.
+- `uv run pytest tests/policy/test_code_review_graph_policy.py tests/policy/test_kcs14_freeze_snapshots.py -q` passed after commit.
+- Complexity sensor recorded provider target state after Target 6.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 9 aggregate review target 6
+- affected graph nodes: `provider_handoff_boundary`
+- aggregate review trigger: completed runtime target after previous aggregate
+  gate
+- aggregate review outcome: stop provider-boundary source refactor unless a new
+  explicit behavior-preserving question is approved
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- promotion candidates by node: none new
+- demotion candidates by node: none
+- recurring blocker codes: none
+- next aggregate review due: only if a new operator-approved runtime target is
+  opened
+
+Final verdict: Targeted provider-boundary refactor should stop here. Remaining
+hotspots are domain extraction or safety validation behavior and need explicit
+behavior examples before further movement.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.
