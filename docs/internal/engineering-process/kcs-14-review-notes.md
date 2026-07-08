@@ -798,6 +798,116 @@ Final verdict: Aggregate review gate is complete. Slice 6 may continue with the
 next scoped refactor batch after the normal context window check and process
 gap audit.
 
+## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
+
+Reviewer or review route: local Codex review-only graph coverage checkpoint.
+
+Changed files:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-review-node-cli-ingest-readiness.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-review-node-packaging-and-install-tooling.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-aggregate-review-nodes-cli-ingest-readiness-and-packaging-install-tooling.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-review-node-desktop-protocol-transport.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-review-node-desktop-draft-workflow.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-aggregate-review-nodes-desktop-protocol-transport-and-desktop-draft-workflow.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-review-node-package-surface.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-review-node-renderer-style-gates.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-review-node-provider-handoff-boundary.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-aggregate-review-nodes-package-surface-renderer-style-gates-and-provider-handoff-boundary.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle behavior unchanged;
+- Zendesk writes, Help Center publication, customer replies, and auto-publish
+  remain out of scope;
+- graph ownership definitions unchanged by this closeout;
+- KCS-15 style/markup parity remains deferred and was not mixed into Slice 8.
+
+Validation evidence:
+
+- Focused related node tests passed:
+  `uv run pytest tests/kcs_adapters/test_desktop_mcp_adapter.py tests/kcs_adapters/test_cowork_plugin_package.py tests/kcs_core/test_cli.py tests/kcs_core/test_renderer.py tests/kcs_adapters/test_zendesk_markup_quality.py tests/kcs_adapters/test_kcs_markup_patterns.py tests/kcs_adapters/test_kcs_article_style_refs.py tests/kcs_adapters/test_approved_summary_semantic.py tests/kcs_adapters/test_claude_provider.py tests/kcs_core/test_claude_draft.py tests/kcs_core/test_claude_handoff.py tests/kcs_core/test_semantic_extraction.py tests/kcs_core/test_validation.py -q`
+  passed with 399 tests.
+- Policy tests passed:
+  `uv run pytest tests/policy -q` passed with 45 tests.
+- `git diff --cached --check` passed before commit.
+
+Findings:
+
+- Slice 8 completed review-only coverage for the remaining code-review graph
+  nodes instead of continuing file-by-file refactor mining.
+- Low-payoff compatibility surfaces, such as `package_surface`, should not be
+  changed without an explicit import-contract question.
+- High-invariant nodes, such as `renderer_style_gates` and
+  `provider_handoff_boundary`, should stay deferred unless an explicit
+  behavior slice or architecture gate opens them.
+- `desktop_draft_workflow` and `desktop_protocol_transport` remain acceptable
+  after Slice 6 targeted refactors; further movement needs a concrete
+  ownership question.
+- `cli_ingest_readiness` and `packaging_and_install_tooling` are documented as
+  stable command/package surfaces, with packaging guidance drift kept visible
+  for future review.
+
+Aggregate review result:
+
+- reviewed graph nodes: `cli_ingest_readiness`,
+  `packaging_and_install_tooling`, `desktop_protocol_transport`,
+  `desktop_draft_workflow`, `package_surface`, `renderer_style_gates`,
+  `provider_handoff_boundary`;
+- `map_error`: no;
+- `process_error`: no;
+- `architecture_error`: no;
+- Architecture Patterns with Python protocol: not activated;
+- result: stop node mining unless the operator opens a new scoped ownership
+  question.
+
+Promotion candidates:
+
+- none new from Slice 8 closeout. No repeated, stable, or mechanically
+  checkable finding crossed the promotion threshold during the review-only
+  graph coverage pass.
+
+Demotion candidates:
+
+- none.
+
+Deferred risks:
+
+- KCS-15 remains the correct home for style/markup parity behavior.
+- KCS-16 remains the correct home for reusable process extraction.
+- KCS-17 remains the correct home for platform-specific agent/skill packaging.
+- A separate operator-approved test-maintainability slice may reopen frozen
+  `tests/kcs_adapters/test_mcp_desktop.py`.
+- A future import-contract slice may revisit package-surface compatibility
+  exports.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 8 complete graph review coverage
+- review route: local Codex review-only checkpoint
+- validation result: passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- graph ownership edits by node: none
+- freeze/snapshot false positives: none
+- test assertion edits or justified exceptions by node: none
+- architecture decision: no `architecture_error`; no Architecture Patterns
+  activation
+- next action: external Fable 5 checkpoint packet for Slice 8 / KCS-14
+  hardening state, then final KCS-14 decision.
+
+Final verdict: Slice 8 graph review coverage is closed locally and ready for
+external review checkpoint.
+
 ## 2026-07-07 - Slice 7 Promotion Backlog Start
 
 Reviewer or review route: local Codex implementation checkpoint.
