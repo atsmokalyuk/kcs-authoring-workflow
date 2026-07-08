@@ -5119,19 +5119,33 @@ def test_draft_article_primary_summary_uses_provider_for_split_required() -> Non
 
     assert response is not None
     structured = response["result"]["structuredContent"]
+    assert response["result"]["isError"] is False
+    _assert_provider_called_once_for_split_required(provider)
+    _assert_primary_provider_split_required(structured)
+
+
+def _assert_provider_called_once_for_split_required(
+    provider: _FakeSemanticExtractionProvider,
+) -> None:
     assert provider.calls == [
         (
             "Approved sanitized summary: one issue affects monitoring graphs "
             "and another independent issue affects extension installation."
         )
     ]
-    assert response["result"]["isError"] is False
-    assert structured["result_kind"] == "draft_article_authoring"
-    assert structured["pipeline_ok"] is False
-    assert structured["failure_stage"] == "item_identification"
-    assert structured["debug_code"] == "multiple_kcs_items_detected"
-    assert structured["recommended_action"] == "split_required"
-    assert structured["operator_prompt_style"] == "native_choice_popup"
+
+
+def _assert_primary_provider_split_required(structured: Mapping[str, Any]) -> None:
+    expected_fields = {
+        "result_kind": "draft_article_authoring",
+        "pipeline_ok": False,
+        "failure_stage": "item_identification",
+        "debug_code": "multiple_kcs_items_detected",
+        "recommended_action": "split_required",
+        "operator_prompt_style": "native_choice_popup",
+    }
+    for field, expected_value in expected_fields.items():
+        assert structured[field] == expected_value
     assert structured["operator_selection_ref"].startswith("operator-selection-")
     assert structured["operator_choice_options"] == structured[
         "operator_choice_request"
