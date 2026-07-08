@@ -1841,12 +1841,27 @@ def test_draft_article_registered_ambiguous_ticket_requires_semantic_review(
     response_text = json.dumps(response, sort_keys=True)
     structured = response["result"]["structuredContent"]
     assert response["result"]["isError"] is False
-    assert structured["pipeline_ok"] is False
-    assert structured["recommended_action"] == "blocked"
-    assert structured["workflow_state"] == "semantic_review_required"
-    assert structured["debug_code"] == "semantic_identification_low_confidence"
-    assert structured["failure_stage"] == "semantic_extraction"
-    assert structured["next_tool"] == "kcs_prepare_semantic_review"
+    _assert_ambiguous_ticket_semantic_review_required(structured, response_text)
+
+
+def _assert_ambiguous_ticket_semantic_review_required(
+    structured: Mapping[str, Any],
+    response_text: str,
+) -> None:
+    expected_fields = {
+        "pipeline_ok": False,
+        "recommended_action": "blocked",
+        "workflow_state": "semantic_review_required",
+        "debug_code": "semantic_identification_low_confidence",
+        "failure_stage": "semantic_extraction",
+        "next_tool": "kcs_prepare_semantic_review",
+        "draft_generated": False,
+        "reviewer_bundle_written": False,
+        "manual_draft_allowed": False,
+        "ticket_ref": "ticket-ambiguous",
+    }
+    for field, expected_value in expected_fields.items():
+        assert structured[field] == expected_value
     assert structured["next_arguments"] == {
         "semantic_review_ref": structured["semantic_review_ref"]
     }
@@ -1857,10 +1872,6 @@ def test_draft_article_registered_ambiguous_ticket_requires_semantic_review(
 
     assert structured["excerpt_total_bytes"] <= SEMANTIC_REVIEW_MAX_TOTAL_BYTES
     assert isinstance(structured["semantic_review_packet_sha256"], str)
-    assert structured["draft_generated"] is False
-    assert structured["reviewer_bundle_written"] is False
-    assert structured["manual_draft_allowed"] is False
-    assert structured["ticket_ref"] == "ticket-ambiguous"
     assert "reviewer_only_html" not in structured
     assert "Do not draft manually" in response_text
 
