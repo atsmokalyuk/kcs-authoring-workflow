@@ -5254,16 +5254,20 @@ def _assert_first_selected_provider_candidate_draft(
     structured: Mapping[str, Any],
     split: Mapping[str, Any],
 ) -> None:
-    assert structured["result_kind"] == "draft_article_authoring"
-    assert structured["draft_generated"] is True
-    assert structured["pipeline_ok"] is False
-    assert structured["debug_code"] == "draft_only_reuse_search_missing"
-    assert structured["item_ref"] == "candidate-001"
-    assert structured["kcs_ready"] is False
-    assert structured["ready_for_reviewer"] is False
-    assert structured["recommended_action"] == "draft_only"
-    assert structured["reuse_search_status"] == "skipped"
-    assert structured["reviewer_bundle_written"] is True
+    expected_fields = {
+        "result_kind": "draft_article_authoring",
+        "draft_generated": True,
+        "pipeline_ok": False,
+        "debug_code": "draft_only_reuse_search_missing",
+        "item_ref": "candidate-001",
+        "kcs_ready": False,
+        "ready_for_reviewer": False,
+        "recommended_action": "draft_only",
+        "reuse_search_status": "skipped",
+        "reviewer_bundle_written": True,
+    }
+    for field, expected_value in expected_fields.items():
+        assert structured[field] == expected_value
     assert structured["html_path"].startswith("local-data/reviewer-bundles/")
     assert structured["manifest_path"].startswith("local-data/reviewer-bundles/")
     assert structured["remaining_selection_ref"] == split["operator_selection_ref"]
