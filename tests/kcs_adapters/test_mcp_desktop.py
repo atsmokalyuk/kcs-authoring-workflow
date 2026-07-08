@@ -5086,20 +5086,7 @@ def test_draft_article_primary_selection_uses_pending_provider_candidate(
     tmp_path,
 ) -> None:
     bundle_root = tmp_path / "local-data" / "reviewer-bundles"
-    provider = _FakeSemanticExtractionProvider(
-        [
-            _semantic_candidate(
-                item_ref="candidate-001",
-                reason="Monitoring graphs have no datapoints.",
-                title="Monitoring graphs show no data",
-            ),
-            _semantic_candidate(
-                item_ref="candidate-002",
-                reason="Extension post-install fails with permissions.",
-                title="Monitoring extension post-install fails",
-            ),
-        ]
-    )
+    provider = _two_item_monitoring_provider()
     transport = _initialized_transport(
         adapter=KcsDesktopMcpAdapter(
             reviewer_bundle_root=bundle_root,
@@ -5132,6 +5119,46 @@ def test_draft_article_primary_selection_uses_pending_provider_candidate(
     assert response is not None
     structured = response["result"]["structuredContent"]
     assert response["result"]["isError"] is False
+    _assert_first_selected_provider_candidate_draft(structured, split)
+    assert "reviewer_only_html" not in structured
+    _assert_first_selected_provider_candidate_bundle(bundle_root, structured)
+
+    second_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {
+            "operator_selected_item_ref": "candidate-002",
+            "operator_selection_ref": split["operator_selection_ref"],
+        },
+    )
+
+    assert second_response is not None
+    second = second_response["result"]["structuredContent"]
+    assert second_response["result"]["isError"] is False
+    _assert_second_selected_provider_candidate_bundle(bundle_root, second)
+
+
+def _two_item_monitoring_provider() -> _FakeSemanticExtractionProvider:
+    return _FakeSemanticExtractionProvider(
+        [
+            _semantic_candidate(
+                item_ref="candidate-001",
+                reason="Monitoring graphs have no datapoints.",
+                title="Monitoring graphs show no data",
+            ),
+            _semantic_candidate(
+                item_ref="candidate-002",
+                reason="Extension post-install fails with permissions.",
+                title="Monitoring extension post-install fails",
+            ),
+        ]
+    )
+
+
+def _assert_first_selected_provider_candidate_draft(
+    structured: Mapping[str, Any],
+    split: Mapping[str, Any],
+) -> None:
     assert structured["result_kind"] == "draft_article_authoring"
     assert structured["draft_generated"] is True
     assert structured["pipeline_ok"] is False
@@ -5157,7 +5184,12 @@ def test_draft_article_primary_selection_uses_pending_provider_candidate(
         "operator_selected_item_ref": "candidate-002",
         "operator_selection_ref": split["operator_selection_ref"],
     }
-    assert "reviewer_only_html" not in structured
+
+
+def _assert_first_selected_provider_candidate_bundle(
+    bundle_root: Path,
+    structured: Mapping[str, Any],
+) -> None:
     html_path = bundle_root / structured["bundle_ref"] / "candidate-001" / (
         "reviewer_only.html"
     )
@@ -5167,18 +5199,11 @@ def test_draft_article_primary_selection_uses_pending_provider_candidate(
     assert manifest_path.is_file()
     assert sha256(html_path.read_bytes()).hexdigest() == structured["html_sha256"]
 
-    second_response = _call_tool(
-        transport,
-        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
-        {
-            "operator_selected_item_ref": "candidate-002",
-            "operator_selection_ref": split["operator_selection_ref"],
-        },
-    )
 
-    assert second_response is not None
-    second = second_response["result"]["structuredContent"]
-    assert second_response["result"]["isError"] is False
+def _assert_second_selected_provider_candidate_bundle(
+    bundle_root: Path,
+    second: Mapping[str, Any],
+) -> None:
     assert second["draft_generated"] is True
     assert second["item_ref"] == "candidate-002"
     assert "remaining_selection_ref" not in second
