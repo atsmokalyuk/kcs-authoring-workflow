@@ -4549,16 +4549,34 @@ def test_draft_article_primary_fixture_provider_writes_bundle(tmp_path) -> None:
     assert response is not None
     structured = response["result"]["structuredContent"]
     assert response["result"]["isError"] is False
-    assert structured["result_kind"] == "draft_article_authoring"
-    assert structured["draft_generated"] is True
-    assert structured["debug_code"] == "draft_only_reuse_search_missing"
-    assert structured["article_type"] == ArticleType.TECHNICAL_SCR.value
+    _assert_fixture_provider_bundle_draft_result(structured)
+    _assert_fixture_provider_bundle_artifacts(response, bundle_root, structured)
+
+
+def _assert_fixture_provider_bundle_draft_result(
+    structured: Mapping[str, Any],
+) -> None:
+    expected_fields = {
+        "result_kind": "draft_article_authoring",
+        "draft_generated": True,
+        "debug_code": "draft_only_reuse_search_missing",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "kcs_ready": False,
+        "recommended_action": "draft_only",
+        "reuse_search_status": "skipped",
+        "writes_files": True,
+    }
+    for field, expected_value in expected_fields.items():
+        assert structured[field] == expected_value
     assert structured["html_path"].startswith("local-data/reviewer-bundles/")
-    assert structured["kcs_ready"] is False
-    assert structured["recommended_action"] == "draft_only"
-    assert structured["reuse_search_status"] == "skipped"
-    assert structured["writes_files"] is True
     assert "reviewer_only_html" not in structured
+
+
+def _assert_fixture_provider_bundle_artifacts(
+    response: Mapping[str, Any],
+    bundle_root: Path,
+    structured: Mapping[str, Any],
+) -> None:
     html_path = bundle_root / structured["bundle_ref"] / "candidate-001" / (
         "reviewer_only.html"
     )
@@ -4566,12 +4584,22 @@ def test_draft_article_primary_fixture_provider_writes_bundle(tmp_path) -> None:
     result_output = _tool_text(response)
     assert "<h2>Resolution</h2>" in html
     assert not result_output.startswith("```html\n")
-    assert "Reviewer-only KCS draft generated" in result_output
-    assert "Do not rewrite it into a Markdown article" not in result_output
-    assert "COPY THE FINAL RESPONSE BELOW VERBATIM" not in result_output
-    assert "do not claim the file is unavailable from this chat" in result_output
-    assert "do not offer a separate chat-authored article" in result_output
-    assert "html_path" in result_output
+    _assert_text_includes(
+        result_output,
+        (
+            "Reviewer-only KCS draft generated",
+            "do not claim the file is unavailable from this chat",
+            "do not offer a separate chat-authored article",
+            "html_path",
+        ),
+    )
+    _assert_text_excludes(
+        result_output,
+        (
+            "Do not rewrite it into a Markdown article",
+            "COPY THE FINAL RESPONSE BELOW VERBATIM",
+        ),
+    )
 
 
 def test_draft_article_primary_fixture_provider_supports_narrative_summary(
