@@ -234,7 +234,7 @@
       "files": [
         {
           "path": "src/kcs_adapters/claude_provider.py",
-          "file_hash": "55d5884feabaf32d81bd55979d23208dc0d8a5da15c22b1f23fe720fd44604fd",
+          "file_hash": "1465e1911bd13b9b9e7a1da1ba7f489e237fed9f5cc2f39d75f8749d24f9983a",
           "valid_until_changed": true
         },
         {

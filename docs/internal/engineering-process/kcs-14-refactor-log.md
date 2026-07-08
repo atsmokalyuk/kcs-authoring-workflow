@@ -599,6 +599,90 @@ Open follow-up:
 - `DirectHttpRuntimeConfig.__post_init__()` is now the provider target max
   complexity point.
 
+## 2026-07-08 - Slice 9 Target 6 Provider Runtime Config Validation
+
+Batch: KCS-14 Slice 9 Target 6.
+
+Affected graph node: `provider_handoff_boundary`.
+
+Changed code:
+
+- `src/kcs_adapters/claude_provider.py`
+
+What changed:
+
+- Moved `DirectHttpRuntimeConfig.__post_init__()` endpoint, API-key, and
+  response-size checks into private validators.
+- Kept model normalization in `__post_init__()` through the existing
+  `_safe_config_ref()` call.
+- Updated the code-review graph hash for the touched file.
+
+Why under KCS-14 outcome contract:
+
+- Reduces provider-boundary complexity without changing runtime-only
+  credential/endpoint handling.
+- Names runtime-config validation families so future endpoint or credential
+  changes are easier to review.
+- Preserves serializable packet boundaries and provider trust boundaries.
+
+Ousterhout lens:
+
+- Information hiding: runtime endpoint, API-key, and byte-limit checks now have
+  named private owners.
+- Deep module: validation stayed inside `claude_provider.py`; no new adapter
+  layer or public surface was added.
+- Change amplification: future validation edits should touch the relevant
+  private predicate instead of the full dataclass hook.
+- Avoid classitis: no new class or module was introduced.
+
+Contracts preserved:
+
+- runtime behavior;
+- `DirectHttpRuntimeConfig` public fields and `repr`;
+- provider config and preflight serializable shapes;
+- provider output remains untrusted;
+- Python validators own packet acceptance;
+- runtime endpoint and credential material stay out of serializable packets;
+- packet schemas;
+- Desktop/tool schemas;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Provider runtime config tests passed without assertion edits.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| endpoint URL validation | `_ensure_safe_runtime_endpoint_url()` | unsafe endpoint tests passed. |
+| API-key validation | `_ensure_safe_runtime_api_key()` | header-injection test passed. |
+| model ref validation | unchanged `_safe_config_ref()` call in `__post_init__()` | unsafe model tests passed. |
+| max response byte validation | `_ensure_safe_runtime_max_response_bytes()` | provider tests passed. |
+| value-safe runtime repr | unchanged `__repr__()` | redaction/preflight test passed. |
+
+Review-only drift risks:
+
+- none identified beyond staged-diff review of direct condition equivalence.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- `tests/kcs_adapters/test_claude_provider.py` passed.
+- Provider target max complexity dropped from `cc=19` to `cc=14`; public
+  surface and import edges stayed stable.
+- Ruff passed for the touched file and related tests.
+
+Open follow-up:
+
+- Remaining provider target max complexity is domain extraction behavior in
+  `approved_summary_semantic.py`; do not split further without explicit
+  behavior examples.
+
 ## 2026-07-08 - Slice 9 Target 3 Desktop Reviewer Bundle Manifest Owner
 
 Batch: KCS-14 Slice 9 Target 3.

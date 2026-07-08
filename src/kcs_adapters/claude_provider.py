@@ -290,45 +290,54 @@ class DirectHttpRuntimeConfig:
     max_response_bytes: int = _MAX_RESPONSE_BYTES
 
     def __post_init__(self) -> None:
-        if not isinstance(self.endpoint_url, str):
-            raise ContractValidationError("claude provider runtime config invalid")
-        if any(
-            ord(character) < 32 or ord(character) == 127
-            for character in self.endpoint_url
-        ):
-            raise ContractValidationError("claude provider runtime config invalid")
-        parsed = urlparse(self.endpoint_url)
-        if (
-            parsed.scheme != "https"
-            or not parsed.netloc
-            or parsed.username
-            or parsed.password
-            or parsed.query
-            or parsed.fragment
-        ):
-            raise ContractValidationError("claude provider runtime config invalid")
-        if (
-            not isinstance(self.api_key, str)
-            or not self.api_key.strip()
-            or "\r" in self.api_key
-            or "\n" in self.api_key
-        ):
-            raise ContractValidationError("claude provider runtime config invalid")
+        _ensure_safe_runtime_endpoint_url(self.endpoint_url)
+        _ensure_safe_runtime_api_key(self.api_key)
         object.__setattr__(
             self,
             "model",
             _safe_config_ref(self.model, "model", required=True),
         )
-        if (
-            not isinstance(self.max_response_bytes, int)
-            or isinstance(self.max_response_bytes, bool)
-            or self.max_response_bytes < 1
-            or self.max_response_bytes > _MAX_RESPONSE_BYTES
-        ):
-            raise ContractValidationError("claude provider runtime config invalid")
+        _ensure_safe_runtime_max_response_bytes(self.max_response_bytes)
 
     def __repr__(self) -> str:
         return "DirectHttpRuntimeConfig(endpoint_url=<redacted>, api_key=<redacted>)"
+
+
+def _ensure_safe_runtime_endpoint_url(value: str) -> None:
+    if not isinstance(value, str):
+        raise ContractValidationError("claude provider runtime config invalid")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ContractValidationError("claude provider runtime config invalid")
+    parsed = urlparse(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ContractValidationError("claude provider runtime config invalid")
+
+
+def _ensure_safe_runtime_api_key(value: str) -> None:
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or "\r" in value
+        or "\n" in value
+    ):
+        raise ContractValidationError("claude provider runtime config invalid")
+
+
+def _ensure_safe_runtime_max_response_bytes(value: int) -> None:
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < 1
+        or value > _MAX_RESPONSE_BYTES
+    ):
+        raise ContractValidationError("claude provider runtime config invalid")
 
 
 @dataclass(frozen=True)

@@ -1403,6 +1403,122 @@ Final verdict: Aggregate review gate is complete. Slice 9 may continue with
 `DirectHttpRuntimeConfig` validation cleanup only if scoped as
 behavior-preserving runtime-boundary work.
 
+## 2026-07-08 - Slice 9 Target 6 Provider Runtime Config Validation
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Review artifacts:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-target-6-provider-runtime-config.md`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+
+Scope:
+
+- `provider_handoff_boundary`
+- `src/kcs_adapters/claude_provider.py`
+- `docs/internal/engineering-process/code-review-graph.json`
+
+Finding:
+
+- `DirectHttpRuntimeConfig.__post_init__()` was the provider target max
+  complexity point after Target 5 at `cc=19`.
+- It mixed endpoint URL validation, runtime API-key validation, model
+  normalization, and max-response-byte validation in one dataclass hook.
+
+Decision:
+
+- Extract endpoint, API-key, and response-size checks into private validators.
+- Keep `DirectHttpRuntimeConfig.__post_init__()` as the validation
+  orchestration point.
+- Keep model normalization through existing `_safe_config_ref()` behavior.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- `DirectHttpRuntimeConfig` fields and `repr` behavior unchanged;
+- provider config/preflight serializable shapes unchanged;
+- provider output remains untrusted;
+- provider runtime endpoints and credentials remain out of serializable
+  packets;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle/publication/customer-reply boundaries unchanged.
+
+Validation evidence:
+
+- `uv run pytest tests/kcs_adapters/test_claude_provider.py -q` passed.
+- `uv run ruff check src/kcs_adapters/claude_provider.py tests/kcs_adapters/test_claude_provider.py` passed.
+- Complexity sensor recorded provider target before/after shape.
+
+Behavior drift check:
+
+- Behavior change intended: no.
+- Endpoint validation maps to `_ensure_safe_runtime_endpoint_url()`.
+- API-key validation maps to `_ensure_safe_runtime_api_key()`.
+- Response-size validation maps to `_ensure_safe_runtime_max_response_bytes()`.
+- Model validation remains the existing `_safe_config_ref()` call.
+- Provider runtime config rejection/redaction tests passed without assertion
+  edits.
+
+Complexity evidence:
+
+- provider target before: `functions_total=244`, `max_cc=19`,
+  `high_complexity_functions=11`, `import_edges=3`, `public_defs=50`
+- provider target after: `functions_total=247`, `max_cc=14`,
+  `high_complexity_functions=10`, `import_edges=3`, `public_defs=50`
+- touched file after: `functions_total=85`, `max_cc=11`,
+  `high_complexity_functions=1`, `import_edges=0`, `public_defs=22`
+
+Promotion candidates:
+
+- none new.
+
+Demotion candidates:
+
+- none.
+
+Deferred risks:
+
+- Remaining provider target max complexity is approved-summary domain
+  extraction behavior and should not be split further without explicit
+  behavior examples.
+- Endpoint validation remains one private high-complexity predicate at `cc=11`,
+  but it owns one validation family.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 9 Target 6
+- affected graph nodes: `provider_handoff_boundary`
+- graph hashes updated: `src/kcs_adapters/claude_provider.py`
+- batches since aggregate review: 1
+- net module/file count change by node: 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public callers;
+  maintainers can inspect runtime-config validation families separately inside
+  the same file
+- complexity distribution: provider target max CC reduced from 19 to 14;
+  high-complexity function count reduced from 11 to 10; public surface and
+  imports stable
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: file hash update only
+- freeze/snapshot false positives: none observed
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint; staged-diff review still required
+- validation result: focused checks passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: approved-summary domain extraction split risk
+
+Final verdict: Slice 9 Target 6 source batch is ready for staged-diff review
+after full provider-boundary focused validation.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.
