@@ -4700,46 +4700,65 @@ def test_draft_article_primary_fixture_provider_supports_raw_ticket_summary(
     assert response is not None
     structured = response["result"]["structuredContent"]
     assert response["result"]["isError"] is False
-    assert structured["result_kind"] == "draft_article_authoring"
-    assert structured["draft_generated"] is True
-    assert structured["debug_code"] == "draft_only_reuse_search_missing"
-    assert structured["article_type"] == ArticleType.TECHNICAL_SCR.value
-    assert structured["reuse_search_status"] == "skipped"
-    assert structured["kcs_ready"] is False
+    _assert_raw_ticket_fixture_provider_draft_result(structured)
+    html = _tool_html_resource_text(response)
+    _assert_raw_ticket_fixture_provider_html(html)
+
+
+def _assert_raw_ticket_fixture_provider_draft_result(
+    structured: Mapping[str, Any],
+) -> None:
+    expected_fields = {
+        "result_kind": "draft_article_authoring",
+        "draft_generated": True,
+        "debug_code": "draft_only_reuse_search_missing",
+        "article_type": ArticleType.TECHNICAL_SCR.value,
+        "reuse_search_status": "skipped",
+        "kcs_ready": False,
+    }
+    for field, expected_value in expected_fields.items():
+        assert structured[field] == expected_value
     blocker_gap_kinds = {
         gap["kind"]
         for gap in structured["quality_gaps"]
         if gap.get("severity") == "blocker"
     }
     assert blocker_gap_kinds == set()
-    html = _tool_html_resource_text(response)
-    assert "<li>Plesk for Linux</li>" in html
-    assert "<h2>Cause</h2>" in html
-    assert (
-        "The collectd configuration file "
-        "<code>/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf</code> "
-        "pointed Monitoring metric data to a location that the Plesk Monitoring "
-        "backend does not query."
-    ) in html
-    assert "PERSON_NAME" not in html
-    assert "SHELL_USERHOST" not in html
-    assert (
-        '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
-        "Connect to the Plesk server via SSH.</a></li>"
-    ) in html
-    assert (
-        "<p>Back up the custom collectd configuration file:</p>\n"
-        "      <p><code># cp -a "
-        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
-        "/root/monitoring-case-backup/</code></p>"
-    ) in html
-    assert (
-        "<p>Disable the custom collectd configuration file:</p>\n"
-        "      <p><code># mv "
-        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
-        "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.disabled</code></p>"
-    ) in html
-    assert "systemctl restart sw-collectd" in html
+
+
+def _assert_raw_ticket_fixture_provider_html(html: str) -> None:
+    _assert_text_includes(
+        html,
+        (
+            "<li>Plesk for Linux</li>",
+            "<h2>Cause</h2>",
+            (
+                "The collectd configuration file "
+                "<code>/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf</code> "
+                "pointed Monitoring metric data to a location that the Plesk "
+                "Monitoring backend does not query."
+            ),
+            (
+                '12377512781975-How-to-connect-to-a-Plesk-server-via-SSH">'
+                "Connect to the Plesk server via SSH.</a></li>"
+            ),
+            (
+                "<p>Back up the custom collectd configuration file:</p>\n"
+                "      <p><code># cp -a "
+                "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                "/root/monitoring-case-backup/</code></p>"
+            ),
+            (
+                "<p>Disable the custom collectd configuration file:</p>\n"
+                "      <p><code># mv "
+                "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf "
+                "/etc/sw-collectd/conf.d/02rrdtool-monitoring.conf.disabled"
+                "</code></p>"
+            ),
+            "systemctl restart sw-collectd",
+        ),
+    )
+    _assert_text_excludes(html, ("PERSON_NAME", "SHELL_USERHOST"))
 
 
 def test_draft_article_primary_local_provider_uses_final_fix_not_diagnostics(
