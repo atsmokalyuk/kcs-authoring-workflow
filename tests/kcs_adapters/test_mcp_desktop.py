@@ -4945,6 +4945,25 @@ def test_draft_article_primary_fixture_provider_splits_items(tmp_path) -> None:
     assert split_response is not None
     split = split_response["result"]["structuredContent"]
     assert split_response["result"]["isError"] is False
+    _assert_fixture_provider_split_required(split)
+
+    selected_response = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        {
+            "debug": True,
+            "operator_selected_item_ref": "candidate-002",
+            "operator_selection_ref": split["operator_selection_ref"],
+        },
+    )
+
+    assert selected_response is not None
+    structured = selected_response["result"]["structuredContent"]
+    assert selected_response["result"]["isError"] is False
+    _assert_fixture_provider_selected_candidate_draft(selected_response, structured)
+
+
+def _assert_fixture_provider_split_required(split: Mapping[str, Any]) -> None:
     assert split["debug_code"] == "multiple_kcs_items_detected"
     assert split["recommended_action"] == "split_required"
     assert split["operator_prompt_style"] == "native_choice_popup"
@@ -4965,14 +4984,14 @@ def test_draft_article_primary_fixture_provider_splits_items(tmp_path) -> None:
         "operator_choice_request"
     ]["all_submit_arguments"]
     assert split["item_candidates"] == [
-            {
-                "article_type": ArticleType.TECHNICAL_SCR.value,
-                "item_ref": "candidate-001",
-                "title": (
-                    "Monitoring graphs show no data in Plesk due to custom "
-                    "collectd RRD data directory"
-                ),
-            },
+        {
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "item_ref": "candidate-001",
+            "title": (
+                "Monitoring graphs show no data in Plesk due to custom "
+                "collectd RRD data directory"
+            ),
+        },
         {
             "article_type": ArticleType.TECHNICAL_SCR.value,
             "item_ref": "candidate-002",
@@ -4981,19 +5000,11 @@ def test_draft_article_primary_fixture_provider_splits_items(tmp_path) -> None:
     ]
     assert "reviewer_only_html" not in split
 
-    selected_response = _call_tool(
-        transport,
-        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
-        {
-            "debug": True,
-            "operator_selected_item_ref": "candidate-002",
-            "operator_selection_ref": split["operator_selection_ref"],
-        },
-    )
 
-    assert selected_response is not None
-    structured = selected_response["result"]["structuredContent"]
-    assert selected_response["result"]["isError"] is False
+def _assert_fixture_provider_selected_candidate_draft(
+    selected_response: Mapping[str, Any],
+    structured: Mapping[str, Any],
+) -> None:
     assert structured["draft_generated"] is True
     assert structured["item_ref"] == "candidate-002"
     assert "reviewer_only_html" not in structured
