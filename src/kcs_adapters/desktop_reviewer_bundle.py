@@ -44,6 +44,32 @@ def write_desktop_reviewer_bundle(
     relative_bundle_dir = reviewer_bundle_relative_path(bundle_ref)
     relative_html_path = f"{relative_bundle_dir}/{item_dir_name}/reviewer_only.html"
     relative_manifest_path = f"{relative_bundle_dir}/manifest.json"
+    manifest = _desktop_reviewer_bundle_manifest(
+        bundle_ref=bundle_ref,
+        html_sha256=html_sha256,
+        item_ref=item_ref,
+        relative_html_path=relative_html_path,
+        relative_manifest_path=relative_manifest_path,
+        result=result,
+    )
+    (bundle_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return manifest
+
+
+def _desktop_reviewer_bundle_manifest(
+    *,
+    bundle_ref: str,
+    html_sha256: str,
+    item_ref: str,
+    relative_html_path: str,
+    relative_manifest_path: str,
+    result: Mapping[str, Any],
+) -> JsonDict:
+    """Return the compact Desktop reviewer-bundle manifest."""
+
     reuse_search_status = result.get("reuse_search_status")
     draft_only = reuse_search_status == "skipped"
     ready_for_reviewer = result.get("ready_for_reviewer") is True and not draft_only
@@ -75,10 +101,6 @@ def write_desktop_reviewer_bundle(
         manifest["bundle_storage_hint"] = storage_hint
     if storage_ref:
         manifest["bundle_storage_ref"] = storage_ref
-    (bundle_dir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
     return manifest
 
 

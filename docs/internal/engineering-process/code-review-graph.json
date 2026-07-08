@@ -644,7 +644,7 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_reviewer_bundle.py",
-          "file_hash": "ca4270ad4e5aaae62452edcf820ba1e23994a40931a3d5a2461614691dcb197b",
+          "file_hash": "22b32f600ca4808d06ebe170a53c1e5a4114d4a751cfe475d1774dee76515b25",
           "valid_until_changed": true
         },
         {

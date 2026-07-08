@@ -919,6 +919,112 @@ Closeout metadata:
 
 Final verdict: Slice 9 Target 2 source batch is ready for staged-diff review.
 
+## 2026-07-08 - Slice 9 Target 3 Reviewer Bundle Output
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Review artifacts:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-target-3-reviewer-bundle-output-audit.md`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+
+Scope:
+
+- `reviewer_bundle_output`
+- `src/kcs_adapters/desktop_reviewer_bundle.py`
+- `docs/internal/engineering-process/code-review-graph.json`
+
+Finding:
+
+- Core `reviewer_bundle.py` is a deep contract owner for validated packet
+  bundle writing and should not be moved in this pass.
+- Desktop `write_desktop_reviewer_bundle()` mixed file writing with compact
+  manifest construction.
+
+Decision:
+
+- Extract Desktop manifest construction into private
+  `_desktop_reviewer_bundle_manifest()`.
+- Keep public Desktop writer API and compact output behavior unchanged.
+- Leave core packet-bundle writer unchanged.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- compact Desktop reviewer-bundle manifest keys unchanged;
+- relative bundle/html/manifest path strings unchanged;
+- `html_sha256` behavior unchanged;
+- `reviewer_only_html` remains excluded from compact output;
+- `auto_publish_allowed=false`;
+- `public_output_approved=false`;
+- reviewer-bundle/publication/customer-reply boundaries unchanged.
+
+Validation evidence:
+
+- `uv run ruff check src/kcs_adapters/desktop_reviewer_bundle.py` passed.
+- `uv run pytest tests/kcs_core/test_reviewer_bundle.py tests/kcs_adapters/test_desktop_reviewer_preview.py tests/kcs_adapters/test_desktop_draft_output.py -q` passed.
+
+Behavior drift check:
+
+- Behavior change intended: no.
+- Old manifest shape maps to `_desktop_reviewer_bundle_manifest()`.
+- File writing, relative path construction, HTML SHA-256, and manifest JSON
+  writing remain in `write_desktop_reviewer_bundle()`.
+- Full/focused MCP Desktop bundle tests remain required before commit because
+  many Desktop bundle assertions live in the large characterization suite.
+
+Complexity evidence:
+
+- `desktop_reviewer_bundle.py` after split:
+  `functions_total=8`, `max_cc=6`, `high_complexity_functions=0`.
+- full reviewer-bundle target after split:
+  `functions_total=48`, `max_cc=10`, `high_complexity_functions=4`.
+
+Promotion candidates:
+
+- none new.
+
+Demotion candidates:
+
+- none.
+
+Deferred risks:
+
+- Two artifact families remain intentionally separate: core packet bundles and
+  Desktop reviewer-only HTML bundles.
+- Any future path-hardening change for Desktop reviewer bundles is behavior
+  hardening and needs explicit approval.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 9 Target 3
+- affected graph nodes: `reviewer_bundle_output`
+- graph hashes updated: `src/kcs_adapters/desktop_reviewer_bundle.py`
+- batches since aggregate review: 2
+- net module/file count change by node: 0
+- public interface/export count change: 0
+- files a caller must read to use node: unchanged for public callers; maintainers
+  can inspect Desktop manifest policy separately
+- complexity distribution: Desktop writer max CC reduced from 7 to 6; full node
+  max CC unchanged at 10
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: file hash update only
+- freeze/snapshot false positives: none observed
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint; staged-diff review still required
+- validation result: focused checks passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: aggregate review due after Target 3
+
+Final verdict: Slice 9 Target 3 source batch is ready for staged-diff review
+after MCP Desktop bundle validation.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.

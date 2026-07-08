@@ -514,6 +514,101 @@ Open follow-up:
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-08 - Slice 9 Target 3 Desktop Reviewer Bundle Manifest Owner
+
+Batch: KCS-14 Slice 9 Target 3.
+
+Affected graph node: `reviewer_bundle_output`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_reviewer_bundle.py`
+- `docs/internal/engineering-process/code-review-graph.json`
+
+What changed:
+
+- Extracted Desktop reviewer-bundle manifest assembly into private
+  `_desktop_reviewer_bundle_manifest()`.
+- Kept `write_desktop_reviewer_bundle()` as the only public writer entrypoint.
+- Left `src/kcs_core/reviewer_bundle.py` unchanged because it is a deep
+  contract owner for validated packet bundle writing.
+
+Why under KCS-14 outcome contract:
+
+- Reduces ambiguity in local artifact output before KCS-15.
+- Keeps reviewer bundles local and reviewer-only.
+- Separates manifest contract knowledge from filesystem write sequencing
+  without changing public behavior.
+
+Ousterhout lens:
+
+- Information hiding: compact manifest shape and draft-only readiness mapping
+  now live in one private helper.
+- Ownership of knowledge: Desktop HTML-bundle manifest policy is separate from
+  core packet-bundle manifest policy.
+- Avoid temporal decomposition: the split separates manifest contract shape
+  from IO details, not workflow phases.
+- Avoid classitis: no new class, public helper, or module was introduced.
+
+Contracts preserved:
+
+- runtime behavior;
+- compact Desktop reviewer bundle manifest keys;
+- relative `local-data/reviewer-bundles/...` path strings;
+- `html_sha256` calculation;
+- `reviewer_only_html` exclusion from compact output;
+- `auto_publish_allowed=false`;
+- `public_output_approved=false`;
+- draft-only reuse-skipped readiness/debug-code behavior;
+- reviewer-bundle/publication/customer-reply boundaries.
+
+Behavior drift check:
+
+- Behavior change intended: no.
+- Focused reviewer-bundle, preview, and draft-output tests passed.
+- Code-review graph policy passed after updating the touched file hash.
+- Full Desktop characterization suite should remain the final staged review
+  gate because many bundle assertions live in `tests/kcs_adapters/test_mcp_desktop.py`.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| bundle directory, item directory, and HTML file creation | unchanged `write_desktop_reviewer_bundle()` | Focused draft-output tests passed. |
+| relative bundle/html/manifest path strings | unchanged writer variables passed to `_desktop_reviewer_bundle_manifest()` | Focused draft-output tests passed. |
+| HTML SHA-256 calculation | unchanged `write_desktop_reviewer_bundle()` | Focused draft-output tests passed. |
+| draft-only reuse-skipped debug/readiness mapping | `_desktop_reviewer_bundle_manifest()` | Focused draft-output tests passed. |
+| `auto_publish_allowed=false` and `public_output_approved=false` | `_desktop_reviewer_bundle_manifest()` | Focused draft-output tests passed. |
+| optional storage hint/ref fields | `_desktop_reviewer_bundle_manifest()` | Existing value source unchanged. |
+| sorted manifest JSON write with trailing newline | unchanged `write_desktop_reviewer_bundle()` | Focused tests passed. |
+
+Review-only drift risks:
+
+- Core packet-bundle writer and Desktop HTML-bundle writer remain separate
+  artifact families; future consolidation needs a design note.
+- Desktop bundle path hardening beyond existing behavior would be behavior
+  hardening, not refactor-only work.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- `uv run ruff check src/kcs_adapters/desktop_reviewer_bundle.py` passed.
+- `uv run pytest tests/kcs_core/test_reviewer_bundle.py tests/kcs_adapters/test_desktop_reviewer_preview.py tests/kcs_adapters/test_desktop_draft_output.py -q` passed.
+- Complexity sensor for `desktop_reviewer_bundle.py` after the split:
+  `functions_total=8`, `max_cc=6`, `high_complexity_functions=0`.
+- Complexity sensor for the full reviewer-bundle target after the split:
+  `functions_total=48`, `max_cc=10`, `high_complexity_functions=4`.
+
+Open follow-up:
+
+- Run staged-diff review and full/focused MCP Desktop bundle validation before
+  committing.
+- Run Slice 9 aggregate review for Targets 2-3 before opening renderer/provider
+  targets.
+
 ## 2026-07-08 - Slice 9 Target 2 Semantic Review Submit Validation Owner
 
 Batch: KCS-14 Slice 9 Target 2.
