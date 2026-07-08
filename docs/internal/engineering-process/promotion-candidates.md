@@ -69,6 +69,11 @@ checkable. The agent should record the candidate here with a stable value-safe
 finding code such as `KCS14-PROMO-NNN`, or explicitly state that there are no
 new promotion candidates.
 
+Before writing "Promotion candidates: none" in a slice closeout, the agent must
+re-read the Findings, watch-item, warnings, and aggregate-review sections for
+the slice being closed. Repeated findings found there must be recorded here or
+explicitly rejected with a reason.
+
 Promotion implementation should be a small scoped action or commit, not hidden
 inside unrelated feature or refactor work.
 
@@ -87,10 +92,142 @@ require fresh evidence before promotion.
 
 | Finding code | Rule / finding | Seen in | Promotion target | Owner slice | Status |
 | --- | --- | --- | --- | --- | --- |
-| none | none | none | none | none | none |
+| KCS14-PROMO-009 | Packaged guidance and tracked engineering docs can drift around supported tool names, manual/freehand drafting boundaries, publication/customer-reply boundaries, and command-surface wording | Slice 8 packaging aggregate, desktop protocol aggregate, Slice 8 closeout, external Slice 8 review | review checklist item now; possible policy/package test later | KCS-14 Slice 9 / future package-edit slice | checklist-item |
+| KCS14-PROMO-NOTE-001 | `desktop_workflow.py` compatibility reexports are a parked import-contract question, not a cleanup target | Slice 8 desktop draft workflow review | code-map/review note only | future import-contract slice if reopened | note |
 
 Future promotion decisions for complexity measurement should use the probation
 signal from Slice 6/Slice 7 closeouts, not chat memory.
+
+## Packaged Guidance / Tracked Docs Drift Detail
+
+Finding code:
+
+- see the active candidates row above.
+
+Rule / finding:
+
+- Packaged skill guidance, package initialize instructions, and tool-surface
+  text can drift from tracked engineering docs and runtime tool-name constants.
+- Future package edits should compare shipped guidance against tracked
+  `tool-entrypoints.md`, runtime tool-name constants, and boundary terms such
+  as no manual/freehand drafting, no publication, and no customer reply.
+
+Seen in:
+
+- Slice 8 packaging/install aggregate: packaged guidance drift was the main
+  review finding.
+- Slice 8 desktop protocol aggregate: duplicated operator guidance was a main
+  watch item.
+- Slice 8 closeout: packaging guidance drift was kept visible for future
+  review.
+- External Slice 8 review classified the repeated finding as checklist-level.
+
+Evidence:
+
+- Existing package tests already anchor a subset of shipped tool names and
+  no-secret/no-publication boundary terms.
+- Repeated review findings show that guidance drift needs a durable checklist
+  item before it becomes a broader mechanical check.
+
+Trigger:
+
+- Same finding family appeared in two independent node reviews and the final
+  Slice 8 closeout.
+
+Manual correction needed:
+
+- yes. Reviewers must compare package guidance against tracked docs and runtime
+  constants when package files are edited.
+
+Can be checked mechanically:
+
+- partly. Tests can compare shipped tool names and required boundary terms, but
+  review judgment is still needed for explanatory guidance.
+
+False-positive risk:
+
+- low as a checklist item; medium if turned into broad wording regexes.
+
+KCS-specific or generic:
+
+- generic pattern with KCS-specific package guidance and tool names.
+
+Promotion target:
+
+- review checklist item now;
+- possible policy/package test later if repeated package edits require manual
+  comparison.
+
+Target layer:
+
+- review gate now;
+- deterministic check later for narrow shipped-term/tool-name coverage only.
+
+Decision:
+
+- record as checklist-level guidance; do not add automation during KCS-14
+  closeout.
+
+Owner slice:
+
+- KCS-14 Slice 9 / future package-edit slice.
+
+Scope:
+
+- packaged skill guidance;
+- package initialize instructions;
+- tool-surface docs;
+- tracked `tool-entrypoints.md`;
+- Desktop tool-name constants and package tests.
+
+Validation:
+
+- future package edits must list guidance-drift review evidence when touching
+  package guidance or shipped tool text.
+
+Approval:
+
+- external Slice 8 review recommended checklist-level promotion.
+
+Status:
+
+- checklist-item.
+
+## Parked Import-Contract Note
+
+Finding code:
+
+- `KCS14-PROMO-NOTE-001`
+
+Rule / finding:
+
+- `desktop_workflow.py` compatibility reexports should not be removed as
+  cleanup. They are an import-contract question.
+
+Seen in:
+
+- Slice 8 desktop draft workflow review.
+- External Slice 8 review requested a note-level registry record.
+
+Evidence:
+
+- Compatibility exports were identified as a review-only drift risk.
+
+Trigger:
+
+- Parked ownership question with potential compatibility impact.
+
+Promotion target:
+
+- code-map/review note only.
+
+Decision:
+
+- keep parked until a future explicit import-contract slice.
+
+Status:
+
+- note.
 
 ## Implemented Promotions
 

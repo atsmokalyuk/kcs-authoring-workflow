@@ -1,6 +1,6 @@
 # KCS-14 Slice 8 Code-Review Graph Coverage Strategy
 
-Status: started.
+Status: complete.
 
 ## Purpose
 
@@ -63,7 +63,7 @@ Coverage means "reviewed for ownership and risk", not necessarily "refactored".
 
 | Graph node | Risk | Current status | Why | Next action |
 | --- | --- | --- | --- | --- |
-| `smoke_log_tooling` | medium | covered-refactor / partial | Slice 6 covered many smoke/log batches and external review accepted the result, but remaining stdio scenario checks still exist. | Do not mine more smoke code without a new ownership question. |
+| `smoke_log_tooling` | medium | covered-refactor | Slice 6 covered smoke/log batches with refactor evidence, aggregate reviews, and external review acceptance. Remaining stdio scenario checks were explicitly classified as question-less. | No separate Slice 8 pass required; do not mine more smoke code without a new ownership question. |
 | `desktop_draft_workflow` | high | covered-refactor / partial | Slice 6 batches 5-14 covered many workflow internals with behavior-drift evidence and external review. | Review-only pass before any new code movement; check whether remaining files still have concrete ownership problems. |
 | `desktop_protocol_transport` | medium | covered-refactor / partial | Slice 6 batches 15-16 covered protocol constants and approved-summary alias table. | Review-only pass for remaining transport/payload boundaries; no source movement without a specific behavior-preserving question. |
 | `cli_ingest_readiness` | medium | partial | Slice 6 batches 17-18 covered strict JSON scalar/readiness blocker extraction. | Review-only pass; identify whether remaining CLI/readiness complexity is useful or accidental. |
@@ -160,7 +160,22 @@ Slice 8 must not:
   boundaries;
 - turn advisory complexity metrics into blocking gates.
 
-## Current Decision
+## Completion Decision
 
-Slice 8 starts with coverage strategy and review-only classification. The next
-material action should be the first node review packet, not code movement.
+Slice 8 is complete as a review-only graph coverage pass.
+
+Coverage disposition:
+
+- `smoke_log_tooling`: covered by Slice 6 refactor evidence, aggregate reviews,
+  and external review; no separate Slice 8 pass required.
+- `desktop_draft_workflow`, `desktop_protocol_transport`,
+  `cli_ingest_readiness`, `packaging_and_install_tooling`,
+  `engineering_policy_tests`, `desktop_tool_surface`, `clean_ticket_storage`,
+  `semantic_review_fallback`, `packet_validation_decision`,
+  `reviewer_bundle_output`, `package_surface`, `renderer_style_gates`, and
+  `provider_handoff_boundary`: covered by Slice 8 node review notes and
+  aggregate reviews.
+
+Slice 8 found no `architecture_error`. Architecture Patterns with Python is not
+activated. Do not continue node mining unless the operator opens a new scoped
+ownership question.

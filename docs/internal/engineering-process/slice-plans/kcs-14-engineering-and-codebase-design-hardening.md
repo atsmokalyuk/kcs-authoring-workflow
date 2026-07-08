@@ -370,6 +370,60 @@ Acceptance:
 Review checkpoint: tooling review after dry-run packets match the documented
 protocol.
 
+### 8. code-review-graph-coverage-closeout
+
+Objective: make the full code-review graph coverage explicit after the
+targeted refactor and promotion-tooling work, without reopening refactor by
+file mining.
+
+Artifacts:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-code-review-graph-coverage-strategy.md`
+- Slice 8 per-node review notes under
+  `docs/internal/engineering-process/slice-plans/`
+- Slice 8 aggregate review notes under
+  `docs/internal/engineering-process/slice-plans/`
+
+Acceptance:
+
+- every graph node is covered by Slice 6 refactor evidence or Slice 8
+  review-only node/aggregate notes;
+- `smoke_log_tooling` is explicitly treated as covered by Slice 6 refactor and
+  external-review evidence, not omitted;
+- no source code is changed by Slice 8;
+- deferred nodes remain deferred unless a new operator-approved ownership
+  question opens them;
+- `map_error`, `process_error`, and `architecture_error` are classified before
+  KCS-14 closeout;
+- Architecture Patterns with Python is activated only if aggregate review
+  classifies a recurring `architecture_error` around core/adapters/tests.
+
+Review checkpoint: external Fable 5 checkpoint before deciding whether to
+close KCS-14 or continue with targeted runtime design-debt reduction.
+
+### 9. targeted-runtime-design-debt
+
+Objective: reduce the highest-risk Ousterhout-style runtime/core design debt
+before KCS-15 without changing behavior.
+
+Artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-targeted-runtime-design-debt.md`
+
+Acceptance:
+
+- target selection is based on runtime criticality, graph contract edges, and
+  concrete design-debt evidence, not file count or size alone;
+- high-risk runtime/core nodes receive design-debt review before code movement;
+- any refactor is behavior-preserving and includes drift mapping plus focused
+  tests;
+- packet schemas, Desktop/tool schemas, privacy, fail-closed, reviewer-bundle,
+  publication, and customer-reply contracts remain stable;
+- remaining debt is recorded with a future trigger rather than hidden.
+
+Review checkpoint: staged review after each target and aggregate review after
+two targets or any high-risk source change.
+
 ## Fable Review Packet
 
 Before Fable 5 review, send:

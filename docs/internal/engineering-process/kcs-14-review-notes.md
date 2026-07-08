@@ -908,6 +908,76 @@ Closeout metadata:
 Final verdict: Slice 8 graph review coverage is closed locally and ready for
 external review checkpoint.
 
+## 2026-07-08 - KCS-14 Final External Review Verdict
+
+Reviewer or review route: Fable 5 external review of the flat packet in
+`/Users/alex.tsmokalyuk/Downloads/kcs-14-fable5-review-packet-20260708`.
+
+Changed files from accepted verdict response:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-engineering-and-codebase-design-hardening.md`
+- `docs/internal/engineering-process/kcs-14-planning-decisions.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-8-code-review-graph-coverage-strategy.md`
+- `docs/internal/engineering-process/promotion-candidates.md`
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-targeted-runtime-design-debt.md`
+- `docs/internal/engineering-process/kcs-14-review-notes.md`
+
+External review blockers:
+
+- closure-record only. The umbrella plan and planning decisions did not yet
+  make Slice 8 visible, the Slice 8 strategy status still said `started`, and
+  the final closeout artifact did not exist.
+- Slice 8 completeness needed an explicit `smoke_log_tooling` disposition:
+  covered by Slice 6 refactor evidence and external review, not omitted.
+
+External review warnings accepted:
+
+- promotion scan missed a repeated packaged-guidance/tracked-docs drift
+  finding. Registered as `KCS14-PROMO-009`.
+- `desktop_workflow.py` compatibility reexports should be recorded as a
+  parked import-contract question.
+- `KCS14-PROMO-005` complexity sensor needs probation disposition carried into
+  KCS-15.
+- KCS-15 should be treated as the second field test for process durability
+  outside the intensive KCS-14 window.
+
+Unchanged contracts confirmed by external review:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schemas and compact output unchanged;
+- MCP envelope unchanged;
+- MCPB/Cowork package behavior unchanged;
+- privacy and fail-closed boundaries unchanged;
+- reviewer-bundle locality unchanged;
+- Zendesk publication and customer replies remain absent;
+- `auto_publish_allowed=false`, `ticket_ref` primary path, and freehand
+  blocking remain stable;
+- frozen Desktop MCP characterization suite was not touched by Slices 7-8.
+
+Promotion candidates accepted:
+
+- `KCS14-PROMO-009`: packaged-guidance/tracked-docs drift, checklist-item now
+  and possible narrow policy/package test later.
+- `KCS14-PROMO-NOTE-001`: `desktop_workflow.py` compatibility reexports as a
+  parked import-contract question.
+
+Demotion candidates:
+
+- none.
+
+Final recommendation accepted:
+
+- external review said KCS-14 could close after one closure-record commit-set;
+- the closure-record fixes were accepted: Slice 8 visibility, strategy status,
+  smoke-log disposition, promotion records, and external verdict record;
+- operator decision after the verdict: do not close KCS-14 yet. Add Slice 9 to
+  reduce the highest-risk runtime/core design debt before KCS-15.
+
+Final verdict: external review approved closure after record fixes, but KCS-14
+closeout is deferred by operator decision until Slice 9 targeted runtime
+design-debt work is resolved.
+
 ## 2026-07-07 - Slice 7 Promotion Backlog Start
 
 Reviewer or review route: local Codex implementation checkpoint.

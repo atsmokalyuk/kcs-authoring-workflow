@@ -267,6 +267,58 @@ Batch 23 work:
 This sequence preserves the KCS-14 outcome contract: convert proven manual
 findings into durable checks before taking on additional refactor risk.
 
+## Post-Slice 7 And Slice 8 Sequence
+
+Slice 8 was added as a review-only code-review graph coverage closeout after
+Slice 7 converted the Slice 6 promotion backlog into stable review support.
+
+Slice 8 purpose:
+
+- verify that remaining graph nodes have an explicit coverage disposition;
+- avoid continuing refactor by large-file or hotspot mining;
+- record which nodes are covered by Slice 6 evidence, which are reviewed
+  without code movement, and which stay deferred;
+- classify `map_error`, `process_error`, and `architecture_error` before final
+  KCS-14 closeout.
+
+Slice 8 coverage disposition:
+
+- `smoke_log_tooling`: covered by Slice 6 refactor evidence, aggregate reviews,
+  and external review; no separate Slice 8 pass required.
+- remaining graph nodes: covered by Slice 8 review-only node notes and
+  aggregate reviews.
+
+Slice 8 found no `architecture_error`; Architecture Patterns with Python was
+not activated. External review said KCS-14 could close after closure-record
+fixes, but the operator chose to reduce the highest-risk runtime/core design
+debt before KCS-15 instead of closing immediately.
+
+## Slice 9 Targeted Runtime Design Debt Decision
+
+Slice 9 is a targeted Ousterhout-style design-debt pass over critical runtime
+KCS authoring core areas before KCS-15.
+
+Slice 9 is not a whole-repository cleanup pass. It exists because graph
+coverage and a targeted Slice 6 refactor do not prove that the most involved
+runtime/core files are clean enough for feature-heavy KCS-15 work.
+
+Planned artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-targeted-runtime-design-debt.md`
+
+Default target order:
+
+1. `packet_validation_decision`;
+2. `semantic_review_fallback`;
+3. `reviewer_bundle_output`;
+4. `renderer_style_gates`, only for behavior-preserving pre-KCS-15 readiness;
+5. `provider_handoff_boundary`, design note first and code only with explicit
+   behavior examples.
+
+Slice 9 must still preserve all frozen runtime contracts. It may end some
+targets with "no code movement" when the review finds that behavior risk is
+higher than the design-debt payoff.
+
 ## Slice Closeout Measurement
 
 KCS-14 may use value-safe closeout metadata to see whether the process is
