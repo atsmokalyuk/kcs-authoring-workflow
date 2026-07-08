@@ -1243,6 +1243,33 @@ def test_author_approved_summary_returns_reviewer_only_draft() -> None:
     result_text = json.dumps(response, sort_keys=True)
     assert response["result"]["isError"] is False
     structured = response["result"]["structuredContent"]
+    _assert_approved_summary_authoring_success(structured)
+    assert (
+        structured["atomic_item"]["title"]
+        == "Monitoring graphs show no data in Plesk"
+    )
+    draft = structured["reviewer_only_draft"]
+    assert structured["draft_sections"] == draft
+    assert structured["reviewer_only_preview"] == draft
+    preview_text = structured["reviewer_only_preview_text"]
+    _assert_monitoring_reviewer_only_preview_text(preview_text)
+    _assert_monitoring_reviewer_only_draft(draft)
+    assert {"kind": "reference_section_coverage_ok", "severity": "info"} in (
+        structured["quality_gaps"]
+    )
+    result_output = response["result"]["content"][0]["text"]
+    html = structured["reviewer_only_html"]
+    _assert_reviewer_only_result_output(result_output, html, preview_text)
+    _assert_monitoring_reviewer_only_html(html)
+    _assert_text_excludes(
+        result_text,
+        ("zendesk_source_html", "evidence_basis", "reviewer_packet"),
+    )
+
+
+def _assert_approved_summary_authoring_success(
+    structured: Mapping[str, Any],
+) -> None:
     assert structured["result_kind"] == "approved_summary_authoring"
     assert structured["pipeline_ok"] is True
     assert structured["should_be_kcs_article"] is True
@@ -1254,18 +1281,21 @@ def test_author_approved_summary_returns_reviewer_only_draft() -> None:
     assert structured["public_output_approved"] is False
     assert structured["provider_calls"] is False
     assert structured["writes_files"] is False
-    assert (
-        structured["atomic_item"]["title"]
-        == "Monitoring graphs show no data in Plesk"
-    )
-    draft = structured["reviewer_only_draft"]
-    assert structured["draft_sections"] == draft
-    assert structured["reviewer_only_preview"] == draft
-    preview_text = structured["reviewer_only_preview_text"]
+
+
+def _assert_monitoring_reviewer_only_preview_text(preview_text: str) -> None:
     assert preview_text.startswith("Title: Monitoring graphs show no data in Plesk")
-    assert "Applicable to:\n- Plesk for Linux" in preview_text
-    assert "Symptoms:\n1. Product monitoring graphs show no data." in preview_text
-    assert "Cause:\nA required product-side package is missing." in preview_text
+    _assert_text_includes(
+        preview_text,
+        (
+            "Applicable to:\n- Plesk for Linux",
+            "Symptoms:\n1. Product monitoring graphs show no data.",
+            "Cause:\nA required product-side package is missing.",
+        ),
+    )
+
+
+def _assert_monitoring_reviewer_only_draft(draft: Mapping[str, Any]) -> None:
     assert draft["status"] == "reviewer_only"
     assert draft["title"] == "Monitoring graphs show no data in Plesk"
     assert draft["symptoms"] == ["Product monitoring graphs show no data."]
@@ -1274,30 +1304,42 @@ def test_author_approved_summary_returns_reviewer_only_draft() -> None:
         draft["resolution"]
         == "Install the missing package and restart the related service."
     )
-    assert {"kind": "reference_section_coverage_ok", "severity": "info"} in (
-        structured["quality_gaps"]
-    )
-    result_output = response["result"]["content"][0]["text"]
+
+
+def _assert_reviewer_only_result_output(
+    result_output: str,
+    html: str,
+    preview_text: str,
+) -> None:
     assert result_output.startswith("```html\n")
     assert "```html\n" in result_output
-    assert "COPY THE FINAL RESPONSE BELOW VERBATIM" not in result_output
-    assert "Do not rewrite it into a Markdown article" not in result_output
-    assert "do not add follow-up wording" not in result_output
-    assert "Reviewer-only Zendesk HTML draft generated" not in result_output
-    assert "COPY THE FENCED HTML BLOCK" not in result_output
+    _assert_text_excludes(
+        result_output,
+        (
+            "COPY THE FINAL RESPONSE BELOW VERBATIM",
+            "Do not rewrite it into a Markdown article",
+            "do not add follow-up wording",
+            "Reviewer-only Zendesk HTML draft generated",
+            "COPY THE FENCED HTML BLOCK",
+            "Reviewer preview:",
+            preview_text,
+        ),
+    )
     assert "\n```\n\n```json\n" in result_output
-    assert "Reviewer preview:" not in result_output
-    assert preview_text not in result_output
-    html = structured["reviewer_only_html"]
-    assert "<h1>Monitoring graphs show no data in Plesk</h1>" in html
     assert html in result_output
-    assert "<h2>Applicable to</h2>" in html
-    assert "<h2>Symptoms</h2>" in html
-    assert "<h2>Cause</h2>" in html
-    assert "<h2>Resolution</h2>" in html
-    assert "zendesk_source_html" not in result_text
-    assert "evidence_basis" not in result_text
-    assert "reviewer_packet" not in result_text
+
+
+def _assert_monitoring_reviewer_only_html(html: str) -> None:
+    _assert_text_includes(
+        html,
+        (
+            "<h1>Monitoring graphs show no data in Plesk</h1>",
+            "<h2>Applicable to</h2>",
+            "<h2>Symptoms</h2>",
+            "<h2>Cause</h2>",
+            "<h2>Resolution</h2>",
+        ),
+    )
 
 
 def test_author_approved_summary_returns_cli_entry_point_in_html() -> None:
