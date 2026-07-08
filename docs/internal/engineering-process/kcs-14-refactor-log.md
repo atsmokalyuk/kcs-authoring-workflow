@@ -514,6 +514,123 @@ Open follow-up:
 - Next aggregate review is due after one more refactor batch or an earlier
   methodology trigger.
 
+## 2026-07-08 - Slice 9 Target 2 Semantic Review Submit Validation Owner
+
+Batch: KCS-14 Slice 9 Target 2.
+
+Affected graph node: `semantic_review_fallback`.
+
+Changed code:
+
+- `src/kcs_adapters/desktop_semantic_review.py`
+- `src/kcs_adapters/desktop_semantic_review_submission.py`
+- `docs/internal/engineering-process/code-review-graph.json`
+
+What changed:
+
+- Extracted semantic-review submit validation from
+  `desktop_semantic_review.py` into private adapter owner
+  `desktop_semantic_review_submission.py`.
+- Kept public semantic-review API in `desktop_semantic_review.py`.
+- Kept the old private `_ensure_no_forbidden_submit_values()` import path as a
+  compatibility shim for frozen characterization coverage.
+- Updated the code-review graph to include the new file under
+  `semantic_review_fallback` and refresh the changed file hash.
+
+Why under KCS-14 outcome contract:
+
+- Reduces ambiguity in a critical runtime boundary before KCS-15.
+- Keeps provider/Claude output untrusted and Python-owned validation intact.
+- Preserves runtime contracts while reducing local breadth of
+  `desktop_semantic_review.py`.
+- Makes future semantic-review changes easier to review because submitted
+  payload rules have one private owner.
+
+Ousterhout lens:
+
+- Information hiding: submit payload rules, forbidden values, environment
+  allow-lists, source-ref coverage, and debug-code mapping now live together.
+- Ownership of knowledge: the split is by semantic-review submit contract, not
+  by prepare/submit/continue workflow timing.
+- Deep modules: `desktop_semantic_review.py` keeps the stable public workflow
+  surface; `desktop_semantic_review_submission.py` hides dense private
+  validation details behind one function.
+- Avoid classitis: no new classes or public workflow abstractions were added.
+- Change amplification: future submit-validation changes should not require
+  reading packet construction and excerpt-selection code.
+
+Contracts preserved:
+
+- runtime behavior;
+- `kcs_semantic_review_packet_v1`;
+- `candidate_semantic_extraction_v1`;
+- public semantic-review functions and exported submit-size constants;
+- Desktop tool schemas and compact output behavior;
+- submit debug codes;
+- source-ref subset and excerpt coverage enforcement;
+- HTML/Markdown/local-path/oversized-payload rejection;
+- plain-string array enforcement;
+- provider output remains untrusted;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries.
+
+Behavior drift check:
+
+- Behavior change intended: no.
+- Frozen `tests/kcs_adapters/test_mcp_desktop.py` passed without assertion
+  edits.
+- Focused semantic candidate/core/provider tests passed.
+- Code-review graph policy passed after adding the new owner file and hash.
+- Freeze-path policy caveat: `desktop_semantic_review.py` is a frozen contract
+  path, so the path-diff gate reports the intentional uncommitted
+  implementation touch until commit. The contract itself is preserved by the
+  frozen characterization suite.
+
+Behavior drift mapping:
+
+| Old behavior element | New location | Evidence |
+| --- | --- | --- |
+| submit payload JSON serializability and total byte cap | `validated_semantic_review_submission()` / `_ensure_bounded_submit_payload()` | Frozen Desktop semantic-review submit tests passed. |
+| plain string arrays for `source_refs`, `symptoms`, `confirmed_facts`, `resolution_steps`, `open_questions` | `validated_semantic_review_submission()` / `_ensure_plain_string_submit_arrays()` | `test_submit_semantic_review_rejects_structured_resolution_step_objects` passed. |
+| forbidden broad submit keys | `validated_semantic_review_submission()` / `_ensure_no_forbidden_submit_mapping()` | `test_submit_semantic_review_rejects_broad_item_payload` passed. |
+| HTML, Markdown, local-path submit rejection | `validated_semantic_review_submission()` / `_ensure_no_forbidden_submit_string()` | Frozen HTML/Markdown/local-path submit tests passed. |
+| safe support URL/string sanitizer helper behavior | compatibility shim in `desktop_semantic_review.py` delegating to `ensure_no_forbidden_submit_values()` | `test_semantic_review_submit_sanitizer_accepts_public_support_article_url` passed. |
+| shape preflight and core schema error-to-debug-code mapping | `validated_semantic_review_submission()` and private shape/debug-code helpers | Missing field, invalid article type, and schema tests passed. |
+| case-ref match against pending review packet | `validated_semantic_review_submission()` | Full submit flow tests passed. |
+| environment allow-list validation and retry path | `validated_semantic_review_submission()` / `_ensure_submit_environment_values()` | Environment error/retry tests passed. |
+| candidate-count limit | `validated_semantic_review_submission()` / `_ensure_submit_candidate_count()` | Too-many-candidates test passed. |
+| allowed source-ref subset and selected excerpt coverage | `validated_semantic_review_submission()` / source-ref helpers | Unknown source-ref and omitted-excerpt tests passed. |
+| per-string submit byte cap after core coercion | `validated_semantic_review_submission()` / `_ensure_bounded_submit_text()` | Oversized payload tests passed. |
+
+Review-only drift risks:
+
+- The compatibility shim preserves an old private import path; it should not
+  become a new public extension point.
+- The path-diff freeze gate is intentionally red before commit because this
+  batch touches a frozen implementation file. Review must treat this as an
+  approved behavior-preserving implementation touch, not a contract change.
+
+Verdict:
+
+- no drift found by listed checks; residual risks listed above.
+
+Evidence:
+
+- `uv run ruff check src/kcs_adapters/desktop_semantic_review.py src/kcs_adapters/desktop_semantic_review_submission.py` passed.
+- `uv run pytest tests/kcs_adapters/test_mcp_desktop.py -q` passed.
+- `uv run pytest tests/kcs_adapters/test_desktop_semantic_candidates.py tests/kcs_core/test_semantic_extraction.py tests/kcs_adapters/test_approved_summary_semantic.py -q` passed.
+- `uv run pytest tests/policy/test_code_review_graph_policy.py -q` passed.
+- Complexity sensor for `desktop_semantic_review.py` after the split:
+  `functions_total=19`, `max_cc=6`, `high_complexity_functions=0`.
+- Complexity sensor for the full semantic-review target after the split:
+  `functions_total=128`, `max_cc=12`, `high_complexity_functions=10`.
+
+Open follow-up:
+
+- Run staged-diff review before committing.
+- Proceed to `reviewer_bundle_output` after this Target 2 checkpoint if review
+  is clean.
+
 ## 2026-07-07 - Slice 6 Batch 19 Stdio Smoke Tool Surface Specs
 
 Batch: KCS-14 Slice 6 Batch 19.

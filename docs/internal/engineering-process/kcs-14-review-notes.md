@@ -798,6 +798,127 @@ Final verdict: Aggregate review gate is complete. Slice 6 may continue with the
 next scoped refactor batch after the normal context window check and process
 gap audit.
 
+## 2026-07-08 - Slice 9 Target 2 Semantic Review Submit Validation
+
+Reviewer or review route: local Codex implementation checkpoint.
+
+Review artifacts:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-target-2-semantic-review-fallback-audit.md`
+- `docs/internal/engineering-process/kcs-14-refactor-log.md`
+
+Scope:
+
+- `semantic_review_fallback`
+- `src/kcs_adapters/desktop_semantic_review.py`
+- `src/kcs_adapters/desktop_semantic_review_submission.py`
+- `docs/internal/engineering-process/code-review-graph.json`
+
+Finding:
+
+- `desktop_semantic_review.py` was a deep public module but internally mixed
+  packet construction, excerpt selection, and submit-validation rules.
+- Submit validation had a coherent private ownership boundary: forbidden
+  values, plain-string arrays, payload bounds, environment allow-lists,
+  source-ref coverage, and debug-code mapping.
+
+Decision:
+
+- Extract submit-validation implementation details into private owner
+  `desktop_semantic_review_submission.py`.
+- Keep the existing public semantic-review API in
+  `desktop_semantic_review.py`.
+- Keep a private compatibility shim for the frozen test import of
+  `_ensure_no_forbidden_submit_values()`.
+
+Unchanged contracts:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schema behavior unchanged;
+- submit debug codes unchanged;
+- source-ref and excerpt-coverage behavior unchanged;
+- provider output remains untrusted until Python validation;
+- privacy, fail-closed, reviewer-bundle, publication, and customer-reply
+  boundaries unchanged.
+
+Validation evidence:
+
+- `uv run ruff check src/kcs_adapters/desktop_semantic_review.py src/kcs_adapters/desktop_semantic_review_submission.py` passed.
+- `uv run pytest tests/kcs_adapters/test_mcp_desktop.py -q` passed.
+- `uv run pytest tests/kcs_adapters/test_desktop_semantic_candidates.py tests/kcs_core/test_semantic_extraction.py tests/kcs_adapters/test_approved_summary_semantic.py -q` passed.
+- `uv run pytest tests/policy/test_code_review_graph_policy.py -q` passed.
+
+Behavior drift check:
+
+- Behavior change intended: no.
+- Old submit-validation behavior maps to
+  `validated_semantic_review_submission()` and private helpers in
+  `desktop_semantic_review_submission.py`.
+- The frozen Desktop characterization suite passed without assertion edits.
+- The old private sanitizer helper import path remains available as a shim.
+- The broad freeze-path test is expected to report the intentional
+  uncommitted `desktop_semantic_review.py` implementation touch until commit;
+  this is not a contract change.
+
+Complexity evidence:
+
+- `desktop_semantic_review.py` after split:
+  `functions_total=19`, `max_cc=6`, `high_complexity_functions=0`.
+- full semantic-review target after split:
+  `functions_total=128`, `max_cc=12`, `high_complexity_functions=10`.
+
+Promotion candidates:
+
+- none new. This batch applies existing behavior-drift and ownership-split
+  rules; it does not introduce a repeated new rule.
+
+Demotion candidates:
+
+- none.
+
+Deferred risks:
+
+- The compatibility shim should remain private and should not become a new
+  extension point.
+- Staged-diff review should confirm the frozen-path implementation touch is
+  behavior-preserving before commit.
+
+Closeout metadata:
+
+- slice id: KCS-14 Slice 9 Target 2
+- affected graph nodes: `semantic_review_fallback`
+- graph hashes updated: `src/kcs_adapters/desktop_semantic_review.py`,
+  `src/kcs_adapters/desktop_semantic_review_submission.py`
+- batches since aggregate review: 1
+- net module/file count change by node: `semantic_review_fallback` +1 source
+  file
+- public interface/export count change: public semantic-review API unchanged;
+  new private adapter owner exports submit-validation helpers for internal use
+- files a caller must read to use node: unchanged for public callers;
+  maintainers can now inspect submit-validation rules separately
+- complexity distribution: `desktop_semantic_review.py` high-complexity
+  functions reduced to 0; node max CC unchanged because validation logic moved
+  to the new owner
+- review blockers by stable code: none
+- `must_not_own` near-misses caught in review: none
+- promotion candidates by node: none
+- graph ownership edits by node: file/hash update only; ownership text
+  unchanged
+- freeze/snapshot false positives: none; frozen-path uncommitted diff is an
+  intentional implementation touch pending commit
+- test assertion edits or justified exceptions by node: none
+- review route: local Codex checkpoint; staged-diff review still required
+- validation result: focused checks passed
+- retry count bucket: 0-1
+- recurring blocker codes: none
+- review blocker count: 0
+- deterministic checks added: none
+- findings promoted to future checks: none
+- deferred risks: compatibility shim privacy, frozen-path staged review
+
+Final verdict: Slice 9 Target 2 source batch is ready for staged-diff review.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.

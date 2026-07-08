@@ -296,7 +296,12 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_semantic_review.py",
-          "file_hash": "70e2a2c485efe952f0811d16306e81d9d614e94f3773640e6fd5d36fa06632ee",
+          "file_hash": "ce62e2001fb0f6d439f43e3b03b276cd038974a976c8b522d720db9bf001b206",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_semantic_review_submission.py",
+          "file_hash": "3767bb52d64c3ff809ed7d4dd915fea88f737f441bd066ea25c59f8bdfec9837",
           "valid_until_changed": true
         },
         {
