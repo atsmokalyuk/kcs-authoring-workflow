@@ -602,39 +602,56 @@ def test_initialize_lifecycle_and_capabilities_are_narrow() -> None:
     assert before_init is not None
     assert before_init["error"]["code"] == -32002
     assert initialize is not None
-    assert initialize["result"]["capabilities"] == {
-        "tools": {"listChanged": False},
-        "resources": {"subscribe": False, "listChanged": False},
-        "prompts": {"listChanged": False},
-    }
-    instructions = initialize["result"]["instructions"]
-    assert "kcs_draft_article" in instructions
-    assert "kcs_register_clean_ticket" in instructions
-    assert "approved_summary_text" in instructions
-    assert "ticket_ref" in instructions
-    assert "first call kcs_register_clean_ticket" in instructions
-    assert "configured approved-summaries store" in instructions
-    assert "Use only the listed KCS Authoring tools" in instructions
-    assert "legacy instruction" in instructions
-    assert "support_get_behavior_instructions" in instructions
-    assert "Plesk Support Assistant Local" in instructions
-    assert "Do not report Plesk Support Assistant Local as missing" in instructions
-    assert "Claude Desktop file card is not a filesystem path" in instructions
-    assert "do not inspect upload directories" in instructions
-    assert "item/item_candidates" in instructions
-    assert "kcs_prepare_semantic_review" in instructions
-    assert "kcs_submit_semantic_review" in instructions
-    assert "raw comments" not in instructions
-    assert "internal notes" not in instructions
-    assert "attachments" not in instructions
-    assert "draft an article" not in instructions
-    assert "validation tools only" not in instructions
+    _assert_narrow_initialize_capabilities(initialize["result"])
+    _assert_desktop_initialize_instructions(initialize["result"]["instructions"])
     assert "logging" not in initialize["result"]["capabilities"]
     assert before_initialized is not None
     assert before_initialized["error"]["code"] == -32002
     assert initialized is None
     assert after_initialized is not None
     assert "tools" in after_initialized["result"]
+
+
+def _assert_narrow_initialize_capabilities(result: Mapping[str, Any]) -> None:
+    assert result["capabilities"] == {
+        "tools": {"listChanged": False},
+        "resources": {"subscribe": False, "listChanged": False},
+        "prompts": {"listChanged": False},
+    }
+
+
+def _assert_desktop_initialize_instructions(instructions: str) -> None:
+    _assert_text_includes(
+        instructions,
+        (
+            "kcs_draft_article",
+            "kcs_register_clean_ticket",
+            "approved_summary_text",
+            "ticket_ref",
+            "first call kcs_register_clean_ticket",
+            "configured approved-summaries store",
+            "Use only the listed KCS Authoring tools",
+            "legacy instruction",
+            "support_get_behavior_instructions",
+            "Plesk Support Assistant Local",
+            "Do not report Plesk Support Assistant Local as missing",
+            "Claude Desktop file card is not a filesystem path",
+            "do not inspect upload directories",
+            "item/item_candidates",
+            "kcs_prepare_semantic_review",
+            "kcs_submit_semantic_review",
+        ),
+    )
+    _assert_text_excludes(
+        instructions,
+        (
+            "raw comments",
+            "internal notes",
+            "attachments",
+            "draft an article",
+            "validation tools only",
+        ),
+    )
 
 
 def test_initialize_accepts_claude_desktop_capability_namespace() -> None:
