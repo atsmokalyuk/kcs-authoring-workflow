@@ -1,4 +1,4 @@
-# KCS-14 Slice 9 Target 4: Renderer Style Gates Audit
+# KCS-14 Slice 9 Target 4: Renderer Output Gates Audit
 
 ## Status
 
@@ -59,15 +59,15 @@ all_exports: 0
 
 Top complexity points are current rule owners:
 
-- `src/kcs_adapters/zendesk_markup_quality.py:_interactive_markup_findings`
-  with `cc=11`
-- `src/kcs_adapters/zendesk_markup_quality.py:_completeness_findings`
-  with `cc=9`
-- `src/kcs_adapters/zendesk_markup_quality.py:_path_and_trigger_findings`
-  with `cc=9`
-- `src/kcs_core/renderer.py:_resolution_support_block_step` with `cc=9`
-- `src/kcs_core/renderer.py:_resolution_steps_with_required_entry_point`
-  with `cc=8`
+- `src/kcs_adapters/zendesk_markup_quality.py`,
+  `_interactive_markup_findings` with `cc=11`
+- `src/kcs_adapters/zendesk_markup_quality.py`,
+  `_completeness_findings` with `cc=9`
+- `src/kcs_adapters/zendesk_markup_quality.py`,
+  `_path_and_trigger_findings` with `cc=9`
+- `src/kcs_core/renderer.py`, `_resolution_support_block_step` with `cc=9`
+- `src/kcs_core/renderer.py`,
+  `_resolution_steps_with_required_entry_point` with `cc=8`
 
 These are not incidental loops or duplicated wrappers. They encode current
 renderer and style-gate behavior.

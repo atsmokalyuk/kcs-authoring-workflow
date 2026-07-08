@@ -377,6 +377,12 @@ Starting freeze list:
 Any refactor PR that changes a frozen contract must stop and become an explicit
 behavior-change proposal.
 
+Behavior-preserving implementation touches to frozen-path files must follow
+the `KCS14-PROMO-010` protocol: unchanged contract stated, focused
+characterization tests passed, graph hash updated when needed, broad freeze
+diff gate rerun after commit, and residual review-only drift risks recorded.
+Contract changes still stop and require an explicit behavior-change proposal.
+
 ## Review Routing
 
 Material documentation and process changes need review.

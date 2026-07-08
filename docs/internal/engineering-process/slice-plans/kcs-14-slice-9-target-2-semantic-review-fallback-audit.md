@@ -166,6 +166,16 @@ A single private module for submit-validation helpers could reduce local
 review cost without increasing the public surface. Multiple micro-modules would
 likely create classitis and pass-through wrappers.
 
+Compatibility shim note:
+
+- `_ensure_no_forbidden_submit_values()` remains in
+  `desktop_semantic_review.py` as a private compatibility shim for frozen
+  characterization tests.
+- Removal trigger: a future operator-approved characterization-suite
+  maintainability slice may remove the shim after those tests stop importing
+  the old private path.
+- Until then, the shim must not become a public extension point.
+
 ## Behavior Drift Check
 
 Behavior change intended:

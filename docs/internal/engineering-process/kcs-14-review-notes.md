@@ -1674,6 +1674,112 @@ Final verdict: Slice 9 achieved the targeted runtime design-debt objective.
 The next action should be an external review checkpoint or final KCS-14
 closeout decision, not more file mining.
 
+## 2026-07-08 - External Review: Slice 9 / KCS-14 Closeout
+
+Reviewer or review route: Fable 5 external review.
+
+Review packet:
+
+- `/Users/alex.tsmokalyuk/Downloads/kcs-14-slice-9-fable5-review-packet-20260708`
+
+Verdict:
+
+- blockers: none;
+- warnings accepted as closure-record fixes;
+- KCS-14 closeout readiness: ready to close without substantive conditions;
+- architecture verdict: no `architecture_error`; Architecture Patterns with
+  Python remains inactive;
+- complexity/design verdict: Slice 9 materially improved code design where it
+  was safe and correctly refused movement where remaining complexity was
+  behavior, not structure.
+
+Accepted follow-up fixes:
+
+- freeze-rule cross-reference to `KCS14-PROMO-010`;
+- code-review graph anchor update;
+- compatibility shim removal trigger;
+- umbrella final closeout with success signals, final sensor block, and
+  carry-over ledger.
+
+Unchanged contracts confirmed by external review:
+
+- packet schemas;
+- Desktop/tool schemas;
+- compact output;
+- renderer output and markup-quality behavior;
+- semantic-review submit debug codes;
+- source-ref/excerpt coverage behavior;
+- reviewer-bundle paths, manifest, and hashes;
+- provider output remains untrusted and validators own acceptance;
+- runtime endpoints and credentials remain outside serializable packets;
+- privacy and fail-closed boundaries;
+- `auto_publish_allowed=false`;
+- `public_output_approved=false`;
+- `ticket_ref` primary path;
+- freehand blocking;
+- frozen characterization suite unedited.
+
+Promotion candidates:
+
+- complete `KCS14-PROMO-010` documentation via freeze-rule cross-reference;
+- note-level future rule: pass-through shims retained for frozen tests need
+  explicit removal triggers;
+- possible future micro-check: graph anchor metadata should change when node
+  file entries change.
+
+Final recommendation accepted:
+
+- write umbrella final closeout;
+- record carry-over ledger for KCS-15 and future maintainability work;
+- do not continue KCS-14 source refactor by mining files for small edits.
+
+## 2026-07-08 - KCS-14 Final Closeout
+
+Reviewer or review route: local Codex closeout checkpoint after Fable 5
+external review.
+
+Review artifact:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-final-closeout.md`
+
+Outcome:
+
+- KCS-14 is ready to close.
+- Remaining work belongs to KCS-15 behavior planning, future approved
+  maintainability slices, or later reusable extraction gates.
+
+Final sensor:
+
+- full repo measurement over `src tests scripts packaging`:
+  `files_scanned=107`, `functions_total=2453`, `max_cc=56`,
+  `high_complexity_functions=225`, `import_edges=433`,
+  `public_defs=1513`, `all_exports=377`
+- source group: `files_scanned=54`, `functions_total=1302`, `max_cc=14`,
+  `high_complexity_functions=58`
+
+Contracts preserved:
+
+- runtime behavior unchanged;
+- packet schemas unchanged;
+- Desktop/tool schemas unchanged;
+- compact output behavior unchanged;
+- renderer output unchanged;
+- markup-quality gate behavior unchanged;
+- provider output remains untrusted;
+- Python validators still own packet acceptance;
+- provider runtime endpoints and credentials remain out of serializable packets;
+- privacy boundaries unchanged;
+- fail-closed behavior unchanged;
+- reviewer-bundle locality unchanged;
+- publication/customer-reply behavior remains absent;
+- `auto_publish_allowed=false`;
+- `public_output_approved=false`;
+- `ticket_ref` primary path remains stable;
+- manual/freehand drafting remains blocked.
+
+Final verdict: KCS-14 can close. Next action is PR/merge handling per git
+policy or KCS-15 planning from a fresh task frame.
+
 ## 2026-07-08 - Slice 8 Complete Graph Review Coverage Closeout
 
 Reviewer or review route: local Codex review-only graph coverage checkpoint.

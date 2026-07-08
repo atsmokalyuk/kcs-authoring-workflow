@@ -1,7 +1,7 @@
 {
   "schema_version": "kcs_code_review_graph_v1",
   "status": "advisory_orientation_snapshot",
-  "generated_for_commit": "592d5e3",
+  "generated_for_commit": "a263492",
   "path_root": "repository-relative",
   "purpose": "Orient development agents and reviewers before KCS-14 refactor work by mapping ownership areas, contract edges, risky files, and related tests. This graph is not a replacement for reading touched files and direct dependencies.",
   "rules": {

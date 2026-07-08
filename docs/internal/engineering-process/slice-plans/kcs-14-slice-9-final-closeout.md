@@ -224,6 +224,9 @@ Demotion candidates:
   `claude_handoff.py` should not be split without an explicit behavior question.
 - `DirectHttpRuntimeConfig` endpoint validation remains a private `cc=11`
   predicate and is acceptable because it owns one validation family.
+- The `desktop_semantic_review.py` compatibility shim may be removed only by a
+  future operator-approved characterization-suite maintainability slice after
+  frozen tests stop importing the old private path.
 
 ## Final Verdict
 
