@@ -1211,23 +1211,35 @@ def test_run_approved_summary_pipeline_returns_compact_ready_status() -> None:
     result_text = json.dumps(response, sort_keys=True)
     assert response["result"]["isError"] is False
     structured = response["result"]["structuredContent"]
-    assert structured["result_kind"] == "approved_summary_pipeline"
-    assert structured["pipeline_ok"] is True
-    assert structured["failure_stage"] == "none"
-    assert structured["debug_code"] == "none"
-    assert structured["input_safety_ok"] is True
-    assert structured["evidence_valid"] is True
-    assert structured["ready_for_reviewer"] is True
-    assert structured["draft_request_ready"] is True
-    assert structured["original_recommended_action"] == "create_candidate"
-    assert structured["original_article_type"] == "technical_scr"
-    assert structured["auto_publish_allowed"] is False
-    assert structured["public_output_approved"] is False
-    assert structured["provider_calls"] is False
-    assert structured["writes_files"] is False
-    assert "zendesk_source_html" not in result_text
-    assert "evidence_basis" not in result_text
-    assert "<h1>" not in result_text
+    _assert_approved_summary_pipeline_compact_ready(structured, result_text)
+
+
+def _assert_approved_summary_pipeline_compact_ready(
+    structured: Mapping[str, Any],
+    result_text: str,
+) -> None:
+    expected_fields = {
+        "result_kind": "approved_summary_pipeline",
+        "pipeline_ok": True,
+        "failure_stage": "none",
+        "debug_code": "none",
+        "input_safety_ok": True,
+        "evidence_valid": True,
+        "ready_for_reviewer": True,
+        "draft_request_ready": True,
+        "original_recommended_action": "create_candidate",
+        "original_article_type": "technical_scr",
+        "auto_publish_allowed": False,
+        "public_output_approved": False,
+        "provider_calls": False,
+        "writes_files": False,
+    }
+    for field, expected_value in expected_fields.items():
+        assert structured[field] == expected_value
+    _assert_text_excludes(
+        result_text,
+        ("zendesk_source_html", "evidence_basis", "<h1>"),
+    )
 
 
 def test_run_approved_summary_pipeline_rejects_break_fix_article_type_alias() -> None:
