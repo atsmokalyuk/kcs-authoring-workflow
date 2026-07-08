@@ -6,6 +6,7 @@ import subprocess
 import sys
 from collections.abc import Mapping, Sequence
 from hashlib import sha256
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -1840,11 +1841,30 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    noisy_transcript = _ambiguous_semantic_review_ticket_text()
+    draft, prepare_response = _prepared_semantic_review_response(
+        tmp_path,
+        noisy_transcript,
+    )
+
+    assert prepare_response is not None
+    packet_text = json.dumps(prepare_response, sort_keys=True)
+    packet = prepare_response["result"]["structuredContent"]
+    _assert_semantic_review_packet_header(packet, draft)
+    _assert_semantic_review_packet_bounds(packet)
+    _assert_semantic_review_required_submit_shape(packet, draft)
+    _assert_semantic_review_candidate_field_metadata(packet)
+    result_text = prepare_response["result"]["content"][0]["text"]
+    _assert_semantic_review_prompt_text(result_text)
+    _assert_semantic_review_packet_safety(packet, packet_text, result_text)
+
+
+def _ambiguous_semantic_review_ticket_text() -> str:
     filler = "\n".join(
         f"Filler diagnostic note {index} DO-NOT-RETURN-FULL-TICKET-SENTINEL"
         for index in range(80)
     )
-    noisy_transcript = "\n\n".join(
+    return "\n\n".join(
         [
             "Customer Ticket Content",
             "Customer reports that a safe product task fails with an error.",
@@ -1856,6 +1876,12 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
             ),
         ]
     )
+
+
+def _prepared_semantic_review_response(
+    tmp_path: Path,
+    clean_ticket_text: str,
+) -> tuple[Mapping[str, Any], Mapping[str, Any] | None]:
     transport = _initialized_transport(
         adapter=KcsDesktopMcpAdapter(
             reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles"
@@ -1865,7 +1891,7 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
         transport,
         claude_desktop_tool_alias(TOOL_REGISTER_CLEAN_TICKET),
         {
-            "clean_ticket_text": noisy_transcript,
+            "clean_ticket_text": clean_ticket_text,
             "ticket_ref": "ticket-semantic-review",
         },
     )
@@ -1876,16 +1902,17 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
     )
     assert draft_response is not None
     draft = draft_response["result"]["structuredContent"]
-
-    prepare_response = _call_tool(
+    return draft, _call_tool(
         transport,
         claude_desktop_tool_alias(TOOL_PREPARE_SEMANTIC_REVIEW),
         {"semantic_review_ref": draft["semantic_review_ref"]},
     )
 
-    assert prepare_response is not None
-    packet_text = json.dumps(prepare_response, sort_keys=True)
-    packet = prepare_response["result"]["structuredContent"]
+
+def _assert_semantic_review_packet_header(
+    packet: Mapping[str, Any],
+    draft: Mapping[str, Any],
+) -> None:
     assert packet["result_kind"] == "semantic_review_packet"
     assert packet["schema_version"] == "kcs_semantic_review_packet_v1"
     assert packet["semantic_review_ref"] == draft["semantic_review_ref"]
@@ -1894,6 +1921,9 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
     assert packet["submit_arguments"] == {
         "semantic_review_ref": draft["semantic_review_ref"]
     }
+
+
+def _assert_semantic_review_packet_bounds(packet: Mapping[str, Any]) -> None:
     from kcs_adapters.desktop_semantic_review import (
         SEMANTIC_REVIEW_MAX_EXCERPTS,
         SEMANTIC_REVIEW_MAX_TOTAL_BYTES,
@@ -1905,6 +1935,12 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
     assert packet["allowed_source_refs"] == [
         excerpt["source_ref"] for excerpt in packet["selected_excerpts"]
     ]
+
+
+def _assert_semantic_review_required_submit_shape(
+    packet: Mapping[str, Any],
+    draft: Mapping[str, Any],
+) -> None:
     required_shape = packet["required_submit_shape"]
     assert set(required_shape) == {
         "candidate_semantic_extraction",
@@ -1920,6 +1956,11 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
     assert isinstance(shape_item["symptoms"][0], str)
     assert isinstance(shape_item["confirmed_facts"][0], str)
     assert isinstance(shape_item["resolution_steps"][0], str)
+
+
+def _assert_semantic_review_candidate_field_metadata(
+    packet: Mapping[str, Any],
+) -> None:
     assert packet["candidate_plain_string_array_fields"] == [
         "source_refs",
         "symptoms",
@@ -1941,21 +1982,31 @@ def test_prepare_semantic_review_returns_bounded_selected_excerpts(
         "candidate_count_policy"
     ]
     assert packet["resolution_step_requirements"]
-    result_text = prepare_response["result"]["content"][0]["text"]
-    assert "Call kcs_submit_semantic_review with this exact argument shape" in (
-        result_text
+
+
+def _assert_semantic_review_prompt_text(result_text: str) -> None:
+    _assert_text_includes(
+        result_text,
+        (
+            "Call kcs_submit_semantic_review with this exact argument shape",
+            "choose a candidate yourself",
+            "submit all of those candidates together in the items array",
+            "candidate array key must be items",
+            "resolution_steps must be standalone and executable",
+            "arrays of plain strings only",
+            "{order, action}",
+            "Do not copy local workstation paths",
+            "Sanitized server configuration or log paths may be included",
+        ),
     )
-    assert "choose a candidate yourself" in result_text
-    assert "submit all of those candidates together in the items array" in (
-        result_text
-    )
-    assert "candidate array key must be items" in result_text
-    assert "resolution_steps must be standalone and executable" in result_text
-    assert "arrays of plain strings only" in result_text
-    assert "{order, action}" in result_text
+
+
+def _assert_semantic_review_packet_safety(
+    packet: Mapping[str, Any],
+    packet_text: str,
+    result_text: str,
+) -> None:
     assert "Do not draft an article" in packet_text
-    assert "Do not copy local workstation paths" in result_text
-    assert "Sanitized server configuration or log paths may be included" in result_text
     assert '"candidates"' not in json.dumps(packet["required_submit_shape"])
     assert "DO-NOT-RETURN-FULL-TICKET-SENTINEL" not in packet_text
 
