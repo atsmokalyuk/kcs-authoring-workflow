@@ -32,6 +32,13 @@ class ArticleType(StrEnum):
     NONE = "none"
 
 
+class CandidateOrigin(StrEnum):
+    """Origin of the problem represented by a KCS candidate."""
+
+    CUSTOMER_REPORTED = "customer_reported"
+    SUPPORT_DISCOVERED = "support_discovered"
+
+
 class DecisionStatus(StrEnum):
     """Allowed KCS decision status values."""
 
@@ -859,18 +866,6 @@ def _require_report_renderer_status(value: object, key: str) -> None:
 def _validate_report_metadata_or_empty(value: object, key: str) -> None:
     if not isinstance(value, str):
         raise ContractValidationError(f"{key} must be a string")
-    if (
-        value
-        and (
-            len(value) > _MAX_VALIDATION_REPORT_CODE_LENGTH
-            or not _VALIDATION_REPORT_METADATA_RE.fullmatch(value)
-            or _contains_unsafe_validation_report_metadata(value)
-        )
-    ):
-        raise ContractValidationError(f"{key} contains unsafe report value")
-
-
-def _validate_validation_report_metadata_string(value: str, key: str) -> None:
     if (
         value
         and (

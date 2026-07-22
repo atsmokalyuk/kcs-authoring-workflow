@@ -42,48 +42,54 @@ KCS action and readiness
 The LLM may propose normalized evidence fields, but those fields are untrusted
 until the Python layer validates and accepts them.
 
-## Internal Packet: CandidateSemanticExtraction
+## Active Internal Packet: SemanticIssueProposalPacket
 
-`CandidateSemanticExtraction` is the KCS-9a untrusted internal intermediate
-packet for semantic item identification.
+Status note (2026-07-14): `semantic_issue_proposal_v1` is the only Desktop
+semantic-review contract. M4 removed the Claude-visible rollback packet,
+submit shape, schema switch, and migration metadata.
+`candidate_semantic_extraction_v1` remains an internal parser only for the
+approved-summary provider and current LF-1 comparison tooling. It is not
+accepted by `kcs_submit_semantic_review`; retirement of that internal parser
+requires separate real-ticket evidence and behavior review.
 
 Purpose:
 
 ```text
-Represent what an extractor thinks the ticket means.
+Represent source-grounded semantic observations and proposed issue boundaries
+without model-owned KCS or workflow decisions.
 ```
 
-The extractor may be a human-prepared fixture, deterministic parser, or bounded
-Claude handoff. This packet is not canonical evidence and must not be consumed
-directly by the KCS action decision engine.
+The bounded Claude handoff proposes observations, issue boundaries, and closed
+non-issue coverage records. Python validates the packet against immutable
+excerpts and their neutral/deterministic-non-issue role index, then
+deterministically projects `ProjectedIssueSet`. Only projected issues can
+become operator choices.
 
 Conceptual shape:
 
 ```text
-CandidateSemanticExtraction {
+SemanticIssueProposalPacket {
   schema_version
   case_ref
   extraction_source_ref
   source_refs[]
-  items[] {
-    candidate_id
-    summary
-    product_relation
-    supportability
-    supportability_basis
-    kcs_item_status
-    article_type_hint
-    visibility_hint
-    eol_role
-    symptoms[]
-    confirmed_facts[]
-    supported_cause
-    supported_resolution_or_workaround
-    resolution_steps[]
+  issues[] {
+    issue_ref
+    summary{ text, source_refs[] }
     question
-    supported_answer
-    open_questions[]
-    environment{}
+    symptoms[]
+    error_evidence[]
+    context_evidence[]
+    cause_evidence[]
+    resolution_evidence[]
+    answer_evidence[]
+    verification_evidence[]
+  }
+  coverage_records[] {
+    coverage_ref
+    reason_code
+    source_refs[]
+    duplicate_of_source_ref
   }
 }
 ```
@@ -91,8 +97,10 @@ CandidateSemanticExtraction {
 Required flow:
 
 ```text
-CandidateSemanticExtraction
-  -> Python sanitizer / normalizer / validator
+SemanticIssueProposalPacket
+  -> Python sanitizer / schema validation
+  -> deterministic evidence-admissibility projection
+  -> operator one/all candidate selection when multiple issues exist
   -> NormalizedTicketEvidencePacket or blockers
 ```
 
@@ -101,20 +109,65 @@ Rules:
 - Do not persist it as canonical evidence.
 - Do not expose it as reviewer-ready output.
 - Do not pass it to the KCS decision engine directly.
-- Do not let it return KCS actions such as `reuse_existing`,
-  `update_existing`, `create_candidate`, `flag_existing`, `split_required`, or
-  `blocked`.
+- The model does not propose article type, visibility, origin, supportability,
+  KCS item status, KCS action, readiness, selection, reuse, or renderer state.
+- Python derives preliminary issue shape, visibility, complete coverage
+  ledgers, and every operator choice payload. The current active clean-ticket
+  route has no authenticated per-excerpt authorship, so ordinary evidence is
+  model-visible as neutral `unclassified_evidence`, remains
+  `internal_reviewer_only`, and uses conservative `support_discovered` origin.
+  Lexical ranking hints cannot establish semantic or customer provenance.
+- Native candidate selection is the only operator-owned scope checkpoint.
+  The retired model boundary-uncertainty field is not accepted by the active
+  packet schema. Unassigned evidence remains in the complete outcome ledger and
+  proceeds without a separate checkpoint. Issue-local
+  `evidence_shape_invalid` becomes `blocked_need_more_evidence` when at least
+  one complete sibling issue remains; complete siblings continue through normal
+  authoring, with native selection when multiple complete siblings remain. If
+  no complete issue remains, the packet terminates. Deterministic non-issue-role,
+  provenance, or visibility blockers always terminate as
+  `semantic_issue_boundary_ambiguous` for tool-side review. A terminal envelope
+  includes only closed blocker codes and a blocker count; it excludes
+  observations, summaries, source refs, ticket content, and retry arguments.
+- The model owns the source-grounded issue summary. Python preserves that full
+  summary and derives a bounded title for candidate display and rendering.
+  Renderer bounds remain an independent fail-closed validation layer.
+- The model owns semantic assignment to observation fields. Except for
+  `summary`, observation text is extractive: after whitespace normalization it
+  must be a contiguous fragment of at least one immutable referenced excerpt.
+  Python rejects paraphrases before projection so executable commands, public
+  support references, symptoms, and questions cannot be lost between the
+  prepared packet and downstream deterministic checks.
+- When `speaker_kind` explicitly identifies a customer or support turn,
+  symptoms and question cannot be grounded only in a support turn. Excerpts
+  with `speaker_kind=unknown` remain admissible; this consistency check does
+  not authenticate or infer authorship.
+- A recognized Client/Support transcript is prepared as a complete bounded
+  inventory of original speaker turns in source order. Speaker parsing takes
+  precedence over embedded semantic headings. Python may split a long turn
+  only at the fixed byte bound; it does not semantically rank transcript turns.
+  Internal-support turns remain local. If the complete eligible inventory
+  exceeds the source-ref or total-byte bounds, preparation blocks.
+  Non-transcript structured clean text retains the twelve-excerpt ranked
+  fallback.
 - Its free-text fields must follow the Data Handling Baseline and must be
   scanned before normalization.
-- `resolution_steps[]` must preserve executable operational detail when the
-  approved input contains it. The extractor must not collapse commands, file
-  paths, UI navigation, linked prerequisite articles, or verification actions
-  into vague instructions such as "disable the file" or "restart the service".
-  A resolution is complete only when the reviewer/customer can apply it from
-  the article without performing an additional search for the missing command,
-  path, product navigation, or prerequisite connection step.
-- EOL/supportability status must come from explicit sanitized input mention in
-  this slice; KCS-9a does not perform online EOL lookup.
+- A terminal invalid submission without a bounded correction returns the
+  validator's closed, value-safe reason code rather than collapsing every
+  privacy/shape failure into one generic code. It does not echo submitted
+  values or authorize an unbounded retry. The validation taxonomy distinguishes
+  unsafe sanitized values, opaque-ref shape, source-ref-list shape, observation
+  shape, coverage shape, and whole-proposal shape; an unregistered internal
+  code is collapsed to the generic terminal code. Observation shape,
+  non-extractive observation text, and explicit speaker incompatibility have
+  static one-retry corrections that restate the already prepared contract
+  without echoing or repairing submitted values. The same per-review correction
+  budget remains single-use.
+- Resolution and verification observations preserve executable detail present
+  in the approved excerpts; downstream Python evidence/readiness checks still
+  block incomplete procedures.
+- The one-use schema-correction retry remains bound to the same review ref and
+  applies only to bounded observation-shape correction.
 
 ## Planned End-to-End Flow
 
@@ -135,11 +188,20 @@ Approved input source
 | Evidence preparation           |
 | - fixture/manual packet        |
 | - deterministic extraction     |
-| - bounded Claude extraction    |
+| - bounded Claude observations  |
 |   when approved                |
 +-------------------------------+
         |
-        | candidate evidence fields
+        | validated semantic proposal
+        v
++-------------------------------+
+| Deterministic issue projection |
+| - evidence coverage ledger     |
+| - origin/visibility/shape      |
+| - operator selection payloads  |
++-------------------------------+
+        |
+        | operator-selected candidate evidence
         v
 +--------------------------------------+
 | Sanitizer / normalizer / validator   |
@@ -316,13 +378,10 @@ Allowed role:
 
 ```text
 approved sanitized input
-  -> Claude proposes KCS item candidates
-       problems/questions to address
-       atomic issue boundaries
-       answered vs unresolved items
-       suggested article type
-       public/internal visibility hints
-  -> Python validates/sanitizes/normalizes
+  -> Claude proposes source-grounded observations and issue boundaries
+  -> Python validates/sanitizes and projects issue shape, conservative origin,
+     fail-closed visibility, coverage ledgers, and operator choices
+  -> operator selects only from Python-projected issues
   -> accepted NormalizedTicketEvidencePacket or blockers
   -> KCS-2..6 decide/render/report
 ```

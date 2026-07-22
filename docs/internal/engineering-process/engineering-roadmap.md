@@ -62,14 +62,16 @@ For Claude-assisted review, the safe path is:
 ```text
 approved clean ticket
   -> bounded sanitized excerpts
-  -> Claude proposes candidate_semantic_extraction_v1
-  -> Python validates the proposal
-  -> Python decides split/single/block
+  -> Claude proposes semantic_issue_proposal_v1 observations
+  -> Python validates and projects the proposal
+  -> operator selects the Python-projected issue scope
+  -> Python decides reuse/action/readiness
   -> Python renders the reviewer bundle
 ```
 
-Claude helps identify candidate KCS items. Python still owns validation, KCS
-action decisions, rendering, bundle output, and failure behavior.
+Claude helps identify issue boundaries and source-grounded observations. Python
+still owns validation, projection, KCS action decisions, rendering, bundle
+output, and failure behavior; the operator owns candidate scope.
 
 If a future slice needs a chronology-preserving conversation builder, its job is
 only to prepare a safe ordered context: turn order, speaker role, visibility
@@ -234,7 +236,7 @@ implementation output. For example:
 
 ```text
 behavior:
-  "/draft ticket-94893302" with three KCS items should return all candidates;
+  "/draft ticket-example-multi" with three KCS items should return all candidates;
   if the operator answers "all", draftable candidates are drafted and blocked
   candidates report specific blockers without manual drafting.
 

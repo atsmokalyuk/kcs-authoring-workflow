@@ -138,10 +138,6 @@ _DIAGNOSTIC_TRANSCRIPT_RE = re.compile(
     r"\bmsg=|"
     r"plugin process exited|"
     r"\[.*?\]\#|"
-    r"\bls\s+-|"
-    r"\bstat\s+-c\b|"
-    r"\bgetenforce\b|"
-    r"\bps\s+aux\b|"
     r"\btest server\b|"
     r"\bclient server\b"
     r")",

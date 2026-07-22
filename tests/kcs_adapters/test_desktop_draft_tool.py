@@ -15,6 +15,7 @@ from kcs_adapters.desktop_semantic_providers import (
 from kcs_adapters.desktop_ticket_ref import APPROVED_TICKET_CLEAN_TEXT_FILE_NAME
 from kcs_adapters.desktop_workflow import DesktopDraftWorkflow
 from kcs_core.json_payload import JsonDict
+from kcs_core.semantic_extraction import SEMANTIC_ISSUE_PROPOSAL_SCHEMA_VERSION
 
 
 def _unused_authoring_callback(arguments: Mapping[str, Any]) -> JsonDict:
@@ -70,8 +71,7 @@ def _write_cleanup_clean_ticket(root, *, ticket_ref: str, text: str) -> None:
         json.dumps(
             {
                 "schema_version": (
-                    desktop_clean_ticket_metadata
-                    .CLEAN_TICKET_CLEANUP_FORM_METADATA_SCHEMA_VERSION
+                    desktop_clean_ticket_metadata.CLEAN_TICKET_CLEANUP_FORM_METADATA_SCHEMA_VERSION
                 ),
                 "clean_ticket_ref": ticket_ref,
                 "clean_ticket_path": str(clean_path),
@@ -176,7 +176,9 @@ def test_draft_tool_ticket_ref_uses_approved_clean_file_source_kind(
     assert result["ticket_ref"] == "ticket-clean-form"
 
 
-def test_draft_tool_semantic_submit_preserves_clean_file_source_kind(tmp_path) -> None:
+def test_draft_tool_semantic_submit_preserves_clean_file_source_kind(
+    tmp_path,
+) -> None:
     workflow = DesktopDraftWorkflow(provider=None, selection_ttl_seconds=900)
     approved_summary_text = (
         "Customer Ticket Content\n"
@@ -196,44 +198,38 @@ def test_draft_tool_semantic_submit_preserves_clean_file_source_kind(tmp_path) -
         {"semantic_review_ref": pending.semantic_review_ref}
     )
     source_refs = packet["allowed_source_refs"]
+    selected_excerpts = packet["selected_excerpts"]
+    assert isinstance(selected_excerpts, list)
+    exact_text = selected_excerpts[-1]["text"]
+    observation = {
+        "source_refs": source_refs,
+        "text": exact_text,
+    }
+    summary = {
+        "source_refs": source_refs,
+        "text": "A source-grounded synthetic observation.",
+    }
     result = tool.submit_semantic_review(
         {
-            "candidate_semantic_extraction": {
+            "semantic_issue_proposal": {
                 "case_ref": packet["case_ref"],
-                "extraction_source_ref": "semantic-review-submit-001",
-                "items": [
+                "coverage_records": [],
+                "extraction_source_ref": "semantic-proposal-submit-001",
+                "issues": [
                     {
-                        "article_type_hint": "technical_scr",
-                        "candidate_id": "candidate-001",
-                        "confirmed_facts": [
-                            "The ticket contains the root prompt command."
-                        ],
-                        "environment": {
-                            "applicable_to": ["Plesk for Linux"],
-                            "platform": "Plesk for Linux",
-                            "product": "Plesk",
-                        },
-                        "kcs_item_status": "candidate_allowed",
-                        "product_relation": "plesk_owned",
-                        "resolution_steps": [
-                            "Connect to the Plesk server via SSH.",
-                            "Run the command from the ticket: # plesk repair web.",
-                        ],
-                        "source_refs": source_refs,
-                        "summary": "Plesk web server configuration repair is required",
-                        "supportability": "supported",
-                        "supportability_basis": "explicit_input_mention",
-                        "supported_cause": (
-                            "The Plesk web server configuration is broken."
-                        ),
-                        "supported_resolution_or_workaround": (
-                            "Run the repair command shown in the ticket."
-                        ),
-                        "symptoms": ["Web server configuration is broken."],
-                        "visibility_hint": "public_customer_safe",
+                        "answer_evidence": [],
+                        "cause_evidence": [observation],
+                        "context_evidence": [],
+                        "error_evidence": [observation],
+                        "issue_ref": "issue-001",
+                        "question": None,
+                        "resolution_evidence": [observation],
+                        "summary": summary,
+                        "symptoms": [observation],
+                        "verification_evidence": [observation],
                     }
                 ],
-                "schema_version": "candidate_semantic_extraction_v1",
+                "schema_version": SEMANTIC_ISSUE_PROPOSAL_SCHEMA_VERSION,
                 "source_refs": source_refs,
             },
             "semantic_review_ref": pending.semantic_review_ref,

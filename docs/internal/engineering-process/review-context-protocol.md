@@ -96,7 +96,7 @@ the target layer can enforce the rule honestly.
 Use this cadence:
 
 ```text
-Once = note.
+Once = review note, not a registry entry.
 Twice = review checklist item.
 Three times = candidate for test/tool/check.
 Stable across KCS-14 and KCS-15 = reusable infrastructure candidate.
@@ -115,10 +115,14 @@ remain review-gated unless a narrow mechanically decidable rule emerges.
 
 ## Agent Promotion Responsibility
 
-Promotion discovery is automatic. During task framing, staged-diff review, and
-slice closeout, the development agent must check the promotion registry and
-material closeouts. The development agent must surface a promotion candidate
-when a finding is repeated, stable, or mechanically checkable.
+Promotion discovery is automatic at aggregate closeout and after a repeated
+validation or review failure with the same cause. The development agent must
+surface a promotion candidate when a process finding is repeated, stable, or
+mechanically checkable.
+
+Staged-diff review may attach evidence to an already identified candidate, but
+it does not require a fresh registry scan or a `none` declaration for every
+micro-batch.
 
 Promotion implementation is approval-gated. The operator should only need to
 approve or reject surfaced promotions; the operator should not need to remember
@@ -139,15 +143,12 @@ accepted outcome.
 
 ## Promotion Checkpoints
 
-For material slices, the agent must check promotion candidates at these
-checkpoints:
+The agent must check promotion candidates at these checkpoints:
 
-- before starting a refactor target or other material implementation slice;
-- during staged-diff review;
-- during slice closeout before commit;
+- during aggregate review or aggregate closeout;
 - after repeated validation or review failure with the same cause.
 
-Every material closeout must say either:
+Every aggregate closeout must say either:
 
 ```text
 Promotion candidates: none
@@ -163,7 +164,9 @@ Promotion candidates:
 Counts must come from
 `docs/internal/engineering-process/promotion-candidates.md` and merged pull
 requests or final closeout records. The agent must not rely on chat memory to
-decide whether a finding is repeated. The closeout must report that it checked these durable sources even when no new promotion candidate exists.
+decide whether a finding is repeated. Micro-batch closeouts only mention
+promotion when they add evidence to an existing candidate or surface a new
+repeated finding.
 
 Use stable value-safe finding codes such as `KCS14-PROMO-NNN` when recording
 promotion candidates. Without a code or closeout entry, a finding does not
@@ -214,18 +217,24 @@ Validation:
 
 Use the full promotion-candidate template for material promotions.
 
-## Probation And Demotion
+## Promotion Scope
 
-New deterministic checks should run in advisory mode for one slice before they
-become blocking, unless they directly lock in the current slice's accepted
-outcome.
+The registry is for repeated process findings that may move to a stronger
+enforcement layer. It is not an intermediate queue for every defect or design
+question:
 
-A blocking check that produces a false positive must be demoted to advisory and
-recorded in the promotion registry before it can become blocking again.
+- runtime and contract defects go directly to focused regression tests when
+  the expected behavior is known;
+- parked ownership or import-contract questions stay in the code map, design
+  notes, or an explicitly scoped follow-up;
+- deterministic checks may be blocking immediately when they are narrow,
+  low-noise, and directly lock in an accepted outcome;
+- advisory measurements remain advisory until a separately approved threshold
+  exists.
 
-Promotion candidates in `note`, `checklist-item`, `candidate`, or `deferred`
-status expire after three completed slices without new evidence. Expired
-candidates require a fresh finding code or evidence update before promotion.
+Candidates remain in the registry while they have an owner or durable repeated
+evidence. No probation, demotion, or time-based expiry state machine is
+maintained.
 
 ## Promotion Candidate Fields
 

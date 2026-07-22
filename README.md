@@ -2,19 +2,24 @@
 
 Local workflow for runtime-independent KCS Authoring.
 
-Status: the local reviewer-only workflow through KCS-13 is implemented, and
-KCS-14 engineering and codebase design hardening is complete. KCS-14 added a
-tracked engineering process, deterministic policy checks, a complete review
-graph, behavior-preserving refactors, and a maintainability pass over the
-Desktop characterization suite; it did not change the runtime product
-contract. Further runtime development remains frozen until a separately
-approved slice reopens it. Enterprise/PAUX rollout is postponed; this
-repository tracks the local product workflow. Some package IDs, environment
-variables, paths, and historical docs still use `kcs-authoring-mvp` for
-compatibility. The original safety boundary remains active: reviewer-only
-output, no Zendesk writes, no Help Center publication, no auto-publish,
+Status: the local reviewer-only workflow through KCS-13 and KCS-14 engineering
+hardening are implemented. KCS-14.5 semantic stabilization is closed without
+accepting the strict multi-issue stability target: the simple-ticket route is
+repeatable, but the reviewed noisy real-ticket route remained dependent on a
+fresh model proposal and did not produce stable candidate/disposition results.
+The retained route is model-proposed, Python-validated, operator-selected, and
+reviewer-only. Further semantic schema expansion is frozen pending a design
+with a new source of issue-scope authority. Enterprise/PAUX rollout remains
+postponed. Some package IDs, environment variables, paths, and historical docs
+still use `kcs-authoring-mvp` for compatibility. The original safety boundary
+remains active: no Zendesk writes, no Help Center publication, no auto-publish,
 compact default MCP output, and Python-owned validation, decision, rendering,
 and bundle writing.
+
+The atomic-relation and flat-claim schema experiments were rejected by their
+installed viability gates and are not active runtime paths. The KCS-14.5
+decision log and aggregate attempt review record the evidence and reopening
+conditions so later work does not repeat those approaches.
 
 Python baseline: 3.11. CI is deferred until the local command set is stable.
 
@@ -75,19 +80,16 @@ Claude-owned KCS decision.
 ## Current Scope
 
 The implemented local workflow and engineering baseline follow the
-KCS-0..KCS-14 roadmap tracked in
+KCS-0..KCS-14.5 roadmap tracked in
 `docs/internal/kcs-authoring-mvp-jira-tracking.md` and
 `docs/internal/kcs-desktop-authoring-refactor-plan.md`.
 
-The latest local branch work completed the KCS-13 semantic-review fallback
-path: metadata gating, bounded semantic-review packet preparation, candidate
-submission validation, Desktop smoke alignment, multi-item drafting
-stabilization, markup/safety hardening, public HOWTO rendering safety, and
-current-gate test alignment. `KCS-12` established the local Claude Desktop MCPB
-adapter with clean-ticket registration, `ticket_ref` drafting, compact status
-output, and local reviewer bundles. `KCS-13` added the controlled fallback for
-complex/noisy clean tickets when deterministic Python item identification is
-low-confidence.
+The KCS-13 semantic-review fallback has been consolidated through KCS-14.5.
+The Desktop route exposes one observation-based issue-proposal contract,
+deterministic Python validation and audit, native operator selection, and
+reviewer-only drafting. The internal legacy candidate parser remains only for
+the approved-summary provider and explicit LF-1 comparison tooling; it is not a
+second Claude-visible workflow.
 
 KCS-14 engineering/process/codebase hardening is closed. It preserved the
 implemented runtime workflow while reducing ambiguity for future AI-assisted
@@ -95,9 +97,13 @@ engineering. The post-closeout test-suite maintainability batches changed only
 the Desktop characterization safety net and its tracked closeout records; they
 did not change source, packaging, tool schemas, or runtime behavior.
 
-Runtime feature work, managed deployment, production rollout, additional
-integrations, and `KCS-15` style/markup parity remain deferred until a new
-explicitly approved slice reopens them.
+KCS-14.5 did not establish stable semantic ownership for noisy multi-issue
+tickets. Reopening that problem requires a separately reviewed behavior-change
+design with a new authority source, such as upstream structured issue scope or
+operator-provided scope at workflow entry. It may not weaken evidence gates or
+add another prompt-correction workflow. Managed deployment, production
+rollout, additional integrations, and `KCS-15` style/markup parity remain
+deferred until an explicitly approved slice reopens them.
 
 Resolution steps must remain evidence-grounded. If the ticket gives the
 resolution outcome or a high-level resolution description but does not include
@@ -105,6 +111,11 @@ the exact executable procedure needed to apply and verify it, the workflow
 should block with `approved_summary_resolution_steps_incomplete` instead of
 inventing implementation details. The operator may add operator-confirmed
 resolution detail and rerun the same pipeline.
+
+Batch results report retryable blockers without asking the operator to choose
+one or confirm leaving already blocked candidates blocked. A retry resumes only
+after the operator independently supplies exact confirmed resolution or
+workaround steps.
 
 Implemented code slices:
 
@@ -237,7 +248,7 @@ exposes `kcs_draft_ticket` for `/draft <ticket_ref>`,
 `kcs_register_clean_ticket` for sanitized attachment/long-paste registration,
 `kcs_draft_article` for short inline text or operator selection continuation,
 and bounded semantic-review prepare/submit tools. Python owns semantic
-extraction, workflow state, validation, KCS decisions, rendering, local
+proposal acceptance and audit, workflow state, validation, KCS decisions, rendering, local
 reviewer bundle writing, and output safety. Default successful results return
 compact status plus local bundle refs and hashes; full
 `reviewer_only_html` is returned only in explicit debug/smoke compatibility
@@ -250,10 +261,15 @@ complex/noisy approved clean tickets. Python first attempts deterministic item
 identification. If the ticket is likely KCS-relevant but low-confidence,
 Python returns `semantic_review_required` with a bounded next-tool contract.
 Claude Desktop may inspect only bounded sanitized excerpts and propose
-`candidate_semantic_extraction_v1`. Python validates that proposal as
-untrusted input, decides split/single/block, renders reviewer-only output, and
-writes any bundle. KCS-13 does not let Claude draft freehand articles, decide
-KCS actions, bypass validation, publish content, write Zendesk, or expose raw
+source-grounded observations and issue boundaries in
+`semantic_issue_proposal_v1`. Python validates and projects that untrusted
+proposal, preserves unassigned evidence in the audit ledger, produces native
+candidate selection for multiple draftable issues, decides split/single/block,
+renders reviewer-only output, and writes any bundle. The bounded
+`candidate_semantic_extraction_v1` parser remains a compatibility island for
+the approved-summary provider and comparison tooling, not a normal alternative
+Desktop route. KCS-13 does not let Claude draft freehand articles, decide KCS
+actions, bypass validation, publish content, write Zendesk, or expose raw
 tickets.
 
 Local smoke accounting is implemented as adapter-layer
@@ -589,13 +605,14 @@ tools are not loaded into the active chat.
 - Historical parent Jira item: PAUX-7083
 - Current hardening umbrella: PAUX-7103, pending/subject to external tracker
   confirmation
-- Last completed runtime slice: KCS-13 Controlled Semantic Review Fallback
+- Last completed runtime experiment: KCS-14.5 Semantic Stabilization and
+  Contract Consolidation (strict multi-issue stability target not accepted)
 - Last completed engineering slice: KCS-14 Engineering and Codebase Design
   Hardening, including the post-closeout characterization-suite
   maintainability pass
 - Deferred runtime hardening slice: KCS-15 KCS Style and Markup Parity
-- Current implementation subtask: none; runtime expansion is frozen pending a
-  separately approved slice
+- Current implementation subtask: none; semantic expansion is frozen pending a
+  separately approved scope-authority design
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

@@ -1,0 +1,12 @@
+{
+  "conversation_fresh": true,
+  "package_guidance_profile_id": "kcs-mcpb-guidance-v1",
+  "registry_cache_ok": true,
+  "schema_version": "kcs_langfuse_control_surface_profile_v1",
+  "source_commit": "0000000",
+  "source_dirty_state": "clean",
+  "system_instruction_profile_id": "unknown",
+  "system_prompt_state": "unknown",
+  "tool_instruction_profile_id": "semantic-issue-shadow-v1",
+  "tool_surface_profile_id": "kcs-desktop-tools-v1"
+}

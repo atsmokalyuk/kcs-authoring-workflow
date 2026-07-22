@@ -26,7 +26,7 @@ def _approved_ticket_payload(
         "approved_summary_text": (
             "Approved sanitized summary: Monitoring graphs show no data."
         ),
-        "case_ref": "96024747",
+        "case_ref": "example-simple",
         "item": {
             "article_type": ArticleType.TECHNICAL_SCR.value,
             "environment": {
@@ -128,12 +128,29 @@ def test_desktop_ticket_ref_loads_and_merges_local_approved_summary(
     assert arguments["approved_summary_text"] == (
         "Approved sanitized summary: Monitoring graphs show no data."
     )
-    assert arguments["case_ref"] == "96024747"
+    assert arguments["case_ref"] == "example-simple"
     assert arguments["debug"] is True
     assert arguments["reuse_search_checked"] is True
     assert arguments["reuse_search_run_ref"] == "reuse-search-001"
     assert "schema_version" not in arguments
     assert "ticket_ref" not in arguments
+
+
+def test_desktop_ticket_ref_rejects_legacy_summary_with_compressed_ipv6(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    payload = _approved_ticket_payload()
+    private_value = "2001:db8::1"
+    payload["approved_summary_text"] = f"Affected server: {private_value}"
+    _write_approved_ticket_summary(tmp_path, payload)
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        approved_ticket_author_arguments({"ticket_ref": "ticket-001"})
+
+    assert exc_info.value.debug_code == "approved_ticket_summary_invalid"
+    assert private_value not in str(exc_info.value)
 
 
 def test_desktop_ticket_ref_loads_clean_ticket_text_file(
@@ -240,6 +257,28 @@ def test_desktop_ticket_ref_rejects_clean_ticket_file_secret_artifact(
         approved_ticket_author_arguments({"ticket_ref": "ticket-clean-form"})
 
     assert exc_info.value.debug_code == "approved_ticket_summary_invalid"
+
+
+def test_desktop_ticket_ref_rejects_cleanup_file_with_compressed_ipv6(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    private_value = "2001:db8::1"
+    text = (
+        "Customer Ticket Content\n"
+        "Issue: safe ticket.\n"
+        f"Affected server address: {private_value}\n"
+        "Resolution: fixed the configuration.\n"
+    )
+    _write_clean_ticket_text(tmp_path, text, ticket_ref="ticket-clean-form")
+    _write_cleanup_form_metadata(tmp_path, text, ticket_ref="ticket-clean-form")
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        approved_ticket_author_arguments({"ticket_ref": "ticket-clean-form"})
+
+    assert exc_info.value.debug_code == "approved_ticket_summary_invalid"
+    assert private_value not in str(exc_info.value)
 
 
 def test_register_clean_ticket_writes_clean_ticket_file(
@@ -366,14 +405,16 @@ def test_register_clean_ticket_accepts_operator_ticket_ref(
     result = register_clean_ticket_arguments(
         {
             "clean_ticket_text": "Customer Ticket Content\nSafe sanitized text.",
-            "ticket_ref": "ticket-96024747",
+            "ticket_ref": "ticket-example-simple",
         }
     )
-    arguments = approved_ticket_author_arguments({"ticket_ref": "ticket-96024747"})
+    arguments = approved_ticket_author_arguments(
+        {"ticket_ref": "ticket-example-simple"}
+    )
 
-    assert result["ticket_ref"] == "ticket-96024747"
-    assert result["next_arguments"] == {"ticket_ref": "ticket-96024747"}
-    assert arguments["case_ref"] == "approved-ticket-ticket-96024747"
+    assert result["ticket_ref"] == "ticket-example-simple"
+    assert result["next_arguments"] == {"ticket_ref": "ticket-example-simple"}
+    assert arguments["case_ref"] == "approved-ticket-ticket-example-simple"
     assert arguments["approved_summary_text"] == (
         "Customer Ticket Content\nSafe sanitized text."
     )
@@ -592,6 +633,29 @@ def test_register_clean_ticket_accepts_large_complete_transcript(
     assert arguments["approved_summary_text"] == saved_text
 
 
+def test_register_clean_ticket_rejects_compressed_ipv6_before_storage(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    private_value = "2001:db8::1"
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        register_clean_ticket_arguments(
+            {
+                "clean_ticket_text": (
+                    "Customer Ticket Content\n"
+                    f"The affected server address is {private_value}.\n"
+                ),
+                "ticket_ref": "compressed-ipv6-001",
+            }
+        )
+
+    assert exc_info.value.debug_code == "clean_ticket_text_invalid"
+    assert private_value not in str(exc_info.value)
+    assert not (tmp_path / "local-data").exists()
+
+
 def test_register_clean_ticket_rejects_upload_path_ref_without_echo(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
@@ -743,6 +807,64 @@ def test_desktop_ticket_ref_uses_default_case_ref_when_file_omits_it(
     arguments = approved_ticket_author_arguments({"ticket_ref": "ticket-001"})
 
     assert arguments["case_ref"] == "approved-ticket-ticket-001"
+
+
+def test_desktop_ticket_ref_resolves_existing_bare_numeric_alias(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    canonical_ref = "ticket-123456"
+    _write_approved_ticket_summary(
+        tmp_path,
+        _approved_ticket_payload(ticket_ref=canonical_ref),
+        ticket_ref=canonical_ref,
+    )
+
+    arguments = approved_ticket_author_arguments({"ticket_ref": "123456"})
+
+    assert approved_ticket_ref_from_arguments({"ticket_ref": "123456"}) == (
+        canonical_ref
+    )
+    assert arguments["case_ref"] == "example-simple"
+
+
+def test_desktop_ticket_ref_does_not_invent_missing_numeric_alias(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+
+    assert approved_ticket_ref_from_arguments({"ticket_ref": "123456"}) == "123456"
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        approved_ticket_author_arguments({"ticket_ref": "123456"})
+
+    assert exc_info.value.debug_code == "approved_ticket_summary_not_found"
+
+
+def test_desktop_ticket_ref_prefers_existing_exact_numeric_ref(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KCS_AUTHORING_MVP_REPO_ROOT", str(tmp_path))
+    canonical_ref = "ticket-123456"
+    _write_approved_ticket_summary(
+        tmp_path,
+        _approved_ticket_payload(ticket_ref=canonical_ref),
+        ticket_ref=canonical_ref,
+    )
+    exact_payload = _approved_ticket_payload(ticket_ref="123456")
+    exact_payload["case_ref"] = "exact-numeric-ref"
+    source_dir = tmp_path / "local-data" / "approved-summaries"
+    (source_dir / "123456.json").write_text(
+        json.dumps(exact_payload, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    arguments = approved_ticket_author_arguments({"ticket_ref": "123456"})
+
+    assert approved_ticket_ref_from_arguments({"ticket_ref": "123456"}) == "123456"
+    assert arguments["case_ref"] == "exact-numeric-ref"
 
 
 def test_desktop_ticket_ref_rejects_unsafe_ref_without_echo() -> None:

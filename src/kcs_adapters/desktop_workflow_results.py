@@ -11,6 +11,7 @@ from kcs_adapters.desktop_operator_selection import (
     operator_choice_review_summary,
     split_candidate_cards,
 )
+from kcs_adapters.desktop_semantic_candidates import ProjectedIssueSet
 from kcs_core.json_payload import JsonDict
 from kcs_core.models import (
     ArticleType,
@@ -18,6 +19,17 @@ from kcs_core.models import (
     ReadinessState,
     RecommendedAction,
 )
+
+_BOUNDARY_BLOCKER_REASON_CODES = frozenset(
+    {
+        "evidence_shape_invalid",
+        "source_role_missing",
+        "unassigned_evidence",
+        "untrusted_provenance_visibility",
+        "visibility_ambiguous",
+    }
+)
+_UNCLASSIFIED_BOUNDARY_BLOCKER_CODE = "semantic_boundary_unclassified"
 
 
 def semantic_provider_unavailable_result(*, schema_version: str) -> JsonDict:
@@ -136,6 +148,7 @@ def semantic_review_prepare_failure_result(
 
 def semantic_review_submit_failure_result(
     *,
+    correction: JsonDict | None,
     debug_code: str,
     schema_version: str,
 ) -> JsonDict:
@@ -150,17 +163,56 @@ def semantic_review_submit_failure_result(
         {
             "draft_generated": False,
             "manual_draft_allowed": False,
-            "next_required_action": "operator_review_semantic_submission_blocker",
             "reviewer_bundle_written": False,
             "should_be_kcs_article": True,
             "workflow_state": "semantic_review_submit_blocked",
         }
     )
+    if correction is not None:
+        result["next_required_action"] = "retry_corrected_semantic_submission"
+        result["semantic_submission_correction"] = dict(correction)
     result["review_summary"] = {
         "draft_available": False,
-        "next_required_action": "operator_review_semantic_submission_blocker",
         "reason": debug_code,
         "workflow_state": "semantic_review_submit_blocked",
+    }
+    if correction is not None:
+        result["review_summary"]["next_required_action"] = (
+            "retry_corrected_semantic_submission"
+        )
+    return result
+
+
+def semantic_review_boundary_terminal_result(
+    *,
+    projected: ProjectedIssueSet,
+    schema_version: str,
+) -> JsonDict:
+    """Return a terminal result when no safe operator action is available."""
+
+    blocker_entries = (
+        *projected.unassigned_evidence,
+        *projected.blocked_proposals,
+    )
+    blocker_codes = {entry.reason_code for entry in blocker_entries}
+    if not blocker_codes or not blocker_codes <= _BOUNDARY_BLOCKER_REASON_CODES:
+        blocker_codes = {_UNCLASSIFIED_BOUNDARY_BLOCKER_CODE}
+    result = semantic_review_submit_failure_result(
+        correction=None,
+        debug_code="semantic_issue_boundary_ambiguous",
+        schema_version=schema_version,
+    )
+    result["next_required_action"] = "operator_review_semantic_boundary_blocker"
+    result["workflow_state"] = "semantic_review_boundary_terminal"
+    result["boundary_blocker_codes"] = sorted(blocker_codes)
+    result["boundary_blocker_count"] = len(blocker_entries)
+    result["review_summary"] = {
+        "boundary_blocker_codes": sorted(blocker_codes),
+        "boundary_blocker_count": len(blocker_entries),
+        "draft_available": False,
+        "next_required_action": "operator_review_semantic_boundary_blocker",
+        "reason": "semantic_issue_boundary_ambiguous",
+        "workflow_state": "semantic_review_boundary_terminal",
     }
     return result
 
@@ -389,6 +441,7 @@ __all__ = [
     "operator_selection_unavailable_result",
     "selection_error_result",
     "semantic_review_metadata_blocked_result",
+    "semantic_review_boundary_terminal_result",
     "semantic_review_prepare_failure_result",
     "semantic_review_required_result",
     "semantic_provider_unavailable_result",

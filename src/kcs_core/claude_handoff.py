@@ -54,6 +54,18 @@ _ACTION_TOKEN_RE = re.compile(
     r"split_required|no_article)\b",
     re.I,
 )
+
+
+def bounded_claude_handoff_title_hint(value: object) -> str:
+    """Return a sanitized title hint bounded to the handoff packet contract."""
+
+    normalized = normalize_optional_string(value) or ""
+    return _safe_text(
+        normalized[:_MAX_TITLE_HINT_LENGTH],
+        "safe_context.title_hint",
+        _MAX_TITLE_HINT_LENGTH,
+        required=False,
+    )
 _FORBIDDEN_TEXT_LABEL_RE = re.compile(
     r"\b(?:zendesk_source_html|public_article_candidate|reviewer_packet|"
     r"evidence_basis|raw_ticket|raw_comments?|internal_comments?|"

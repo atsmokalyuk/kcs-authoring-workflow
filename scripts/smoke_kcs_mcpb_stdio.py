@@ -17,12 +17,7 @@ from typing import Any, NamedTuple
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_NAME = "kcs-authoring-mvp-validator-control"
 DEFAULT_SOURCE_WRAPPER = (
-    REPO_ROOT
-    / "packaging"
-    / "claude-desktop"
-    / BUNDLE_NAME
-    / "server"
-    / "index.js"
+    REPO_ROOT / "packaging" / "claude-desktop" / BUNDLE_NAME / "server" / "index.js"
 )
 DEFAULT_INSTALLED_WRAPPER = (
     Path.home()
@@ -114,7 +109,9 @@ _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
             {
                 "approved_summary_text",
                 "debug",
+                "operator_confirmed_resolution_steps",
                 "operator_selected_item_ref",
+                "operator_selected_item_refs",
                 "operator_selection_ref",
             }
         ),
@@ -123,7 +120,12 @@ _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
         idempotent=False,
         open_world=False,
         read_only=False,
-        description_includes=("/draft <ticket_ref>", "use kcs_draft_ticket"),
+        description_includes=(
+            "operator-selected candidate batch",
+            "Operator-confirmed resolution steps",
+            "/draft <ticket_ref>",
+            "use kcs_draft_ticket",
+        ),
         description_excludes=("raw comments", "internal notes"),
         debug_description_includes=("reviewer-only Zendesk HTML",),
     ),
@@ -140,14 +142,17 @@ _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
     _ExpectedToolSurface(
         name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
         properties=frozenset(
-            {"candidate_semantic_extraction", "semantic_review_ref"}
+            {
+                "semantic_issue_proposal",
+                "semantic_review_ref",
+            }
         ),
-        required=("semantic_review_ref", "candidate_semantic_extraction"),
+        required=("semantic_issue_proposal", "semantic_review_ref"),
         destructive=False,
         idempotent=False,
         open_world=False,
         read_only=False,
-        description_includes=("candidate_semantic_extraction_v1", "No article draft"),
+        description_includes=("semantic_issue_proposal_v1", "No article draft"),
     ),
     _ExpectedToolSurface(
         name=BEHAVIOR_TOOL_NAME,
@@ -197,7 +202,7 @@ _EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS: tuple[
     ),
     _ExpectedManifestToolDescription(
         name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
-        includes=("candidate_semantic_extraction_v1", "No article draft"),
+        includes=("semantic_issue_proposal_v1", "No article draft"),
     ),
     _ExpectedManifestToolDescription(
         name=BEHAVIOR_TOOL_NAME,
@@ -300,9 +305,7 @@ def run_smoke(
             uv_command=uv_command,
         )
         checks["split_choice_ok"] = _split_choice_ok(split_choice)
-        checks["register_then_draft_ok"] = _register_then_draft_ok(
-            registered_ticket
-        )
+        checks["register_then_draft_ok"] = _register_then_draft_ok(registered_ticket)
         semantic_review = _run_semantic_review_submit_smoke(
             node=node,
             wrapper=wrapper,
@@ -340,11 +343,11 @@ def run_smoke(
             ],
             "split_choice_debug_codes": [
                 _structured(split_choice["split"]).get("debug_code", ""),
-                _structured(split_choice["selected"]).get("debug_code", ""),
+                _structured(split_choice["batch"]).get("debug_code", ""),
             ],
-            "registered_ticket_debug_code": _structured(
-                registered_ticket["draft"]
-            ).get("debug_code", ""),
+            "registered_ticket_debug_code": _structured(registered_ticket["draft"]).get(
+                "debug_code", ""
+            ),
             "semantic_review_debug_codes": [
                 _structured(semantic_review["draft"]).get("debug_code", ""),
                 _structured(semantic_review["submit"]).get("debug_code", ""),
@@ -407,8 +410,7 @@ def _run_jsonrpc_session(
     messages: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     payload = "".join(
-        json.dumps(message, separators=(",", ":")) + "\n"
-        for message in messages
+        json.dumps(message, separators=(",", ":")) + "\n" for message in messages
     )
     try:
         completed = subprocess.run(
@@ -455,9 +457,9 @@ def _run_split_choice_smoke(
     except OSError as exc:
         raise SmokeError("wrapper_failed") from exc
     try:
-        initialize = _send_jsonrpc(process, _request(7, "initialize", {
-            "protocolVersion": PROTOCOL_VERSION
-        }))
+        initialize = _send_jsonrpc(
+            process, _request(7, "initialize", {"protocolVersion": PROTOCOL_VERSION})
+        )
         _write_process_message(
             process,
             {"jsonrpc": "2.0", "method": "notifications/initialized"},
@@ -470,30 +472,18 @@ def _run_split_choice_smoke(
                 {"name": TOOL_NAME, "arguments": _multi_item_summary_args()},
             ),
         )
-        submit_arguments = _selected_submit_arguments(split, option_index=1)
-        selected = _send_jsonrpc(
+        batch_arguments = _native_batch_submit_arguments(split)
+        batch = _send_jsonrpc(
             process,
             _request(
                 9,
                 "tools/call",
-                {"name": TOOL_NAME, "arguments": submit_arguments},
-            ),
-        )
-        selected_again = _send_jsonrpc(
-            process,
-            _request(
-                10,
-                "tools/call",
-                {
-                    "name": TOOL_NAME,
-                    "arguments": _structured(selected).get("next_arguments", {}),
-                },
+                {"name": TOOL_NAME, "arguments": batch_arguments},
             ),
         )
         return {
+            "batch": batch,
             "initialize": initialize,
-            "selected": selected,
-            "selected_again": selected_again,
             "split": split,
         }
     finally:
@@ -577,6 +567,7 @@ def _run_semantic_review_submit_smoke(
         wrapper=wrapper,
         uv_command=uv_command,
         invalid_submit=False,
+        identity_overlap=True,
     )
 
 
@@ -591,6 +582,7 @@ def _run_semantic_review_invalid_submit_smoke(
         wrapper=wrapper,
         uv_command=uv_command,
         invalid_submit=True,
+        identity_overlap=False,
     )
 
 
@@ -600,6 +592,7 @@ def _run_semantic_review_smoke(
     wrapper: Path,
     uv_command: str,
     invalid_submit: bool,
+    identity_overlap: bool,
 ) -> dict[str, dict[str, Any]]:
     ticket_ref = f"smoke-semantic-review-{int(time.time() * 1000)}"
     try:
@@ -665,11 +658,12 @@ def _run_semantic_review_smoke(
             ),
         )
         packet = _structured(prepare)
-        extraction = _semantic_review_candidate_extraction(
+        proposal = _semantic_issue_proposal(
             packet,
             invalid_submit=invalid_submit,
+            identity_overlap=identity_overlap,
         )
-        submit = _send_jsonrpc(
+        initial_submit = _send_jsonrpc(
             process,
             _request(
                 17,
@@ -677,19 +671,34 @@ def _run_semantic_review_smoke(
                 {
                     "name": SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
                     "arguments": {
-                        "candidate_semantic_extraction": extraction,
+                        "semantic_issue_proposal": proposal,
                         "semantic_review_ref": semantic_review_ref,
                     },
                 },
             ),
         )
-        return {
+        submit = initial_submit
+        responses = {
             "draft": draft,
             "initialize": initialize,
             "prepare": prepare,
             "register": register,
             "submit": submit,
         }
+        if not invalid_submit:
+            batch = _send_jsonrpc(
+                process,
+                _request(
+                    19,
+                    "tools/call",
+                    {
+                        "name": TOOL_NAME,
+                        "arguments": _native_batch_submit_arguments(submit),
+                    },
+                ),
+            )
+            responses["batch"] = batch
+        return responses
     finally:
         _close_process(process)
 
@@ -1018,59 +1027,221 @@ def _semantic_review_ticket_text() -> str:
     return (
         "Customer Ticket Content\n"
         "Customer reports that a product task fails with an error.\n"
-        "The investigation mentions one possible cause, then another.\n"
-        "Support restarted one service and later discussed another issue."
+        "Support confirmed that a required Plesk service was unavailable.\n"
+        "Support connected through SSH and ran systemctl restart sw-cp-server.\n"
+        "Support opened Plesk and confirmed that the task completed.\n"
+        "The investigation later discussed another possible issue."
     )
 
 
-def _semantic_review_candidate_extraction(
+def _semantic_issue_proposal(
     packet: dict[str, Any],
     *,
     invalid_submit: bool,
+    identity_overlap: bool,
 ) -> dict[str, object]:
     allowed_refs = packet.get("allowed_source_refs")
     if not isinstance(allowed_refs, list) or not allowed_refs:
         raise SmokeError("semantic_review_packet_invalid")
     source_refs = [str(ref) for ref in allowed_refs]
-    resolution = (
-        "<h1>Article draft</h1>"
-        if invalid_submit
-        else "Restart the affected Plesk service and confirm the task succeeds."
+    proposal_refs = (
+        source_refs[:-1]
+        if identity_overlap and not invalid_submit and len(source_refs) > 1
+        else source_refs
     )
+    excerpt_text_by_ref = _semantic_excerpt_text_by_ref(packet)
+    if invalid_submit:
+        issues = [
+            _invalid_semantic_smoke_issue(
+                issue_ref="issue-001",
+                proposal_refs=proposal_refs,
+                source_refs=source_refs,
+            )
+        ]
+    else:
+        if len(source_refs) < 2:
+            raise SmokeError("semantic_review_packet_invalid")
+        issues = [
+            _extractive_semantic_smoke_issue(
+                excerpt_text_by_ref=excerpt_text_by_ref,
+                proposal_refs=proposal_refs,
+                issue_ref="issue-001",
+                summary="Plesk task fails with an error",
+            ),
+            _extractive_semantic_smoke_issue(
+                excerpt_text_by_ref=excerpt_text_by_ref,
+                proposal_refs=proposal_refs,
+                issue_ref="issue-002",
+                summary="Second Plesk task fails after service interruption",
+            ),
+        ]
+
+    coverage_records: list[dict[str, object]] = []
+    if proposal_refs != source_refs:
+        coverage_records.append(
+            {
+                "coverage_ref": "coverage-smoke-unassigned-001",
+                "duplicate_of_source_ref": None,
+                "reason_code": "ticket_metadata",
+                "source_refs": source_refs[len(proposal_refs) :],
+            }
+        )
+
     return {
         "case_ref": packet.get("case_ref"),
-        "extraction_source_ref": "semantic-review-smoke-submit-001",
-        "items": [
-            {
-                "article_type_hint": "technical_scr",
-                "candidate_id": "candidate-001",
-                "confirmed_facts": [
-                    "The clean ticket contains confirmed service failure evidence."
-                ],
-                "environment": {
-                    "applicable_to": ["Plesk for Linux"],
-                    "platform": "Plesk for Linux",
-                },
-                "kcs_item_status": "candidate_allowed",
-                "product_relation": "plesk_owned",
-                "resolution_steps": [
-                    "Connect to the Plesk server via SSH.",
-                    "Run systemctl restart sw-cp-server.",
-                    "Open Plesk and confirm the task completes successfully.",
-                ],
-                "source_refs": source_refs,
-                "summary": "Plesk task fails with an error",
-                "supportability": "supported",
-                "supportability_basis": "not_checked",
-                "supported_cause": "A Plesk service issue caused the failure.",
-                "supported_resolution_or_workaround": resolution,
-                "symptoms": ["A Plesk task fails with an error."],
-                "visibility_hint": "public_customer_safe",
-            }
-        ],
-        "schema_version": "candidate_semantic_extraction_v1",
+        "coverage_records": coverage_records,
+        "extraction_source_ref": "semantic-proposal-smoke-submit-001",
+        "issues": issues,
+        "schema_version": "semantic_issue_proposal_v1",
         "source_refs": source_refs,
     }
+
+
+def _semantic_excerpt_text_by_ref(packet: dict[str, Any]) -> dict[str, str]:
+    selected_excerpts = packet.get("selected_excerpts")
+    if not isinstance(selected_excerpts, list):
+        raise SmokeError("semantic_review_packet_invalid")
+    index: dict[str, str] = {}
+    for excerpt in selected_excerpts:
+        if not isinstance(excerpt, dict):
+            raise SmokeError("semantic_review_packet_invalid")
+        source_ref = excerpt.get("source_ref")
+        text = excerpt.get("text")
+        if not isinstance(source_ref, str) or not isinstance(text, str):
+            raise SmokeError("semantic_review_packet_invalid")
+        index[source_ref] = text
+    return index
+
+
+def _extractive_semantic_smoke_issue(
+    *,
+    excerpt_text_by_ref: dict[str, str],
+    proposal_refs: list[str],
+    issue_ref: str,
+    summary: str,
+) -> dict[str, object]:
+    symptom_ref = _semantic_ref_containing(
+        excerpt_text_by_ref,
+        proposal_refs,
+        "product task fails",
+    )
+    cause_ref = _semantic_ref_containing(
+        excerpt_text_by_ref,
+        proposal_refs,
+        "required Plesk service",
+    )
+    resolution_ref = _semantic_ref_containing(
+        excerpt_text_by_ref,
+        proposal_refs,
+        "systemctl restart",
+    )
+    verification_ref = _semantic_ref_containing(
+        excerpt_text_by_ref,
+        proposal_refs,
+        "task completed",
+    )
+    symptom = _semantic_smoke_observation(
+        excerpt_text_by_ref[symptom_ref],
+        [symptom_ref],
+    )
+    return {
+        "answer_evidence": [],
+        "cause_evidence": [
+            _semantic_smoke_observation(
+                excerpt_text_by_ref[cause_ref],
+                [cause_ref],
+            )
+        ],
+        "context_evidence": [],
+        "error_evidence": [symptom],
+        "issue_ref": issue_ref,
+        "question": None,
+        "resolution_evidence": [
+            _semantic_smoke_observation(
+                excerpt_text_by_ref[resolution_ref],
+                [resolution_ref],
+            )
+        ],
+        "summary": _semantic_smoke_observation(summary, proposal_refs),
+        "symptoms": [symptom],
+        "verification_evidence": [
+            _semantic_smoke_observation(
+                excerpt_text_by_ref[verification_ref],
+                [verification_ref],
+            )
+        ],
+    }
+
+
+def _invalid_semantic_smoke_issue(
+    *,
+    issue_ref: str,
+    proposal_refs: list[str],
+    source_refs: list[str],
+) -> dict[str, object]:
+    return {
+        "answer_evidence": [],
+        "cause_evidence": [
+            _semantic_smoke_observation(
+                "A required Plesk service was unavailable.",
+                source_refs,
+            )
+        ],
+        "context_evidence": [],
+        "error_evidence": [
+            _semantic_smoke_observation(
+                "A product task fails with an error.",
+                proposal_refs,
+            )
+        ],
+        "issue_ref": issue_ref,
+        "question": None,
+        "resolution_evidence": [
+            _semantic_smoke_observation(
+                "Connect to the Plesk server through SSH.",
+                source_refs,
+            ),
+            _semantic_smoke_observation("<h1>Article draft</h1>", source_refs),
+            _semantic_smoke_observation(
+                "Run systemctl restart sw-cp-server.",
+                source_refs,
+            ),
+        ],
+        "summary": _semantic_smoke_observation(
+            "Plesk task fails with an error",
+            proposal_refs,
+        ),
+        "symptoms": [
+            _semantic_smoke_observation(
+                "A product task fails with an error.",
+                proposal_refs,
+            )
+        ],
+        "verification_evidence": [
+            _semantic_smoke_observation(
+                "Open Plesk and confirm the task completes successfully.",
+                proposal_refs,
+            )
+        ],
+    }
+
+
+def _semantic_ref_containing(
+    excerpt_text_by_ref: dict[str, str],
+    proposal_refs: list[str],
+    needle: str,
+) -> str:
+    for source_ref in proposal_refs:
+        if needle in excerpt_text_by_ref.get(source_ref, ""):
+            return source_ref
+    raise SmokeError("semantic_review_packet_invalid")
+
+
+def _semantic_smoke_observation(
+    text: str,
+    refs: list[str],
+) -> dict[str, object]:
+    return {"source_refs": refs, "text": text}
 
 
 def _initialize_ok(response: dict[str, Any]) -> bool:
@@ -1182,11 +1353,7 @@ def _registry_manifest_tool_by_name(
     name: str,
 ) -> dict[str, Any] | None:
     return next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict) and item.get("name") == name
-        ),
+        (item for item in tools if isinstance(item, dict) and item.get("name") == name),
         None,
     )
 
@@ -1234,8 +1401,7 @@ def _tool_matches_surface_spec(
     if spec.debug_description_includes:
         debug_description = str(properties.get("debug", {}).get("description", ""))
         return all(
-            text in debug_description
-            for text in spec.debug_description_includes
+            text in debug_description for text in spec.debug_description_includes
         )
     return True
 
@@ -1351,22 +1517,20 @@ def _non_debug_labeled_draft_text_ok(response: dict[str, Any]) -> bool:
     )
 
 
-def _selected_submit_arguments(
+def _native_batch_submit_arguments(
     split_response: dict[str, Any],
-    *,
-    option_index: int = 1,
 ) -> dict[str, Any]:
     structured = _structured(split_response)
     choice_request = structured.get("operator_choice_request")
     if not isinstance(choice_request, dict):
         raise SmokeError("split_choice_missing")
     options = choice_request.get("options")
-    if not isinstance(options, list) or len(options) <= option_index:
+    if not isinstance(options, list) or not options:
         raise SmokeError("split_choice_missing")
-    selected = options[option_index]
-    if not isinstance(selected, dict):
+    all_option = options[-1]
+    if not isinstance(all_option, dict) or all_option.get("value") != "all":
         raise SmokeError("split_choice_missing")
-    submit_arguments = selected.get("submit_arguments")
+    submit_arguments = all_option.get("submit_arguments")
     if not isinstance(submit_arguments, dict):
         raise SmokeError("split_choice_missing")
     return dict(submit_arguments)
@@ -1374,47 +1538,108 @@ def _selected_submit_arguments(
 
 def _split_choice_ok(responses: dict[str, dict[str, Any]]) -> bool:
     split = _structured(responses["split"])
-    selected = _structured(responses["selected"])
-    selected_again = _structured(responses["selected_again"])
+    batch = _structured(responses["batch"])
     choice_request = split.get("operator_choice_request")
     if not isinstance(choice_request, dict):
         return False
     options = choice_request.get("options")
-    selected_html = _response_bundle_html_text(responses["selected"])
     return (
-        split.get("debug_code") == "multiple_kcs_items_detected"
-        and split.get("recommended_action") == "split_required"
-        and choice_request.get("mode") == "single_select"
-        and choice_request.get("prose_only_choice_allowed") is False
-        and isinstance(options, list)
-        and len(options) == 2
-        and options[1].get("submit_arguments")
-        == {
-            "operator_selected_item_ref": "candidate-002",
-            "operator_selection_ref": split.get("operator_selection_ref"),
-        }
-        and selected.get("draft_generated") is True
-        and selected.get("item_ref") == "candidate-002"
-        and selected.get("debug_code") == "draft_only_reuse_search_missing"
-        and selected.get("reviewer_bundle_written") is True
-        and selected.get("writes_files") is True
-        and selected.get("next_arguments")
-        == {
-            "operator_selected_item_ref": "candidate-001",
-            "operator_selection_ref": split.get("operator_selection_ref"),
-        }
-        and selected_again.get("draft_generated") is True
-        and selected_again.get("item_ref") == "candidate-001"
-        and "next_arguments" not in selected_again
-        and isinstance(selected.get("html_path"), str)
-        and _bundle_file_ok(
-            str(selected.get("html_path")),
-            selected.get("html_sha256"),
-        )
-        and "reviewer_only_html" not in selected
-        and "<h2>Resolution</h2>" in selected_html
+        isinstance(options, list)
+        and _split_choice_request_ok(split, choice_request, options)
+        and _completed_batch_ok(batch)
         and _split_choice_text_ok(responses["split"])
+        and _batch_result_text_ok(responses["batch"])
     )
+
+
+def _split_choice_request_ok(
+    split: dict[str, Any],
+    choice_request: dict[str, Any],
+    options: list[object],
+) -> bool:
+    second_submit_arguments = None
+    all_option = None
+    if len(options) == 3 and isinstance(options[1], dict):
+        second_submit_arguments = options[1].get("submit_arguments")
+    if len(options) == 3 and isinstance(options[2], dict):
+        all_option = options[2]
+    selection_ref = split.get("operator_selection_ref")
+    actual = {
+        "all_option": all_option,
+        "debug_code": split.get("debug_code"),
+        "detached_arguments_absent": "all_submit_arguments" not in choice_request,
+        "mode": choice_request.get("mode"),
+        "option_count": len(options),
+        "prose_only_choice_allowed": choice_request.get("prose_only_choice_allowed"),
+        "recommended_action": split.get("recommended_action"),
+        "second_submit_arguments": second_submit_arguments,
+    }
+    return actual == {
+        "all_option": {
+            "label": "All candidates",
+            "submit_arguments": {
+                "operator_selected_item_refs": ["candidate-001", "candidate-002"],
+                "operator_selection_ref": selection_ref,
+            },
+            "value": "all",
+        },
+        "debug_code": "multiple_kcs_items_detected",
+        "detached_arguments_absent": True,
+        "mode": "single_or_batch_select",
+        "option_count": 3,
+        "prose_only_choice_allowed": False,
+        "recommended_action": "split_required",
+        "second_submit_arguments": {
+            "operator_selected_item_ref": "candidate-002",
+            "operator_selection_ref": selection_ref,
+        },
+    }
+
+
+def _completed_batch_ok(batch: dict[str, Any]) -> bool:
+    candidate_outcomes = batch.get("candidate_outcomes")
+    if not isinstance(candidate_outcomes, list) or not all(
+        isinstance(item, dict) for item in candidate_outcomes
+    ):
+        return False
+    actual = {
+        "batch_status": batch.get("batch_status"),
+        "draft_generated_count": batch.get("draft_generated_count"),
+        "item_refs": [item.get("item_ref") for item in candidate_outcomes],
+        "outcomes": [item.get("outcome") for item in candidate_outcomes],
+        "result_kind": batch.get("result_kind"),
+        "reviewer_only_html_present": "reviewer_only_html" in batch,
+    }
+    return actual == {
+        "batch_status": "batch_completed",
+        "draft_generated_count": 2,
+        "item_refs": ["candidate-001", "candidate-002"],
+        "outcomes": ["completed_draft", "completed_draft"],
+        "result_kind": "draft_article_batch",
+        "reviewer_only_html_present": False,
+    } and _batch_bundle_files_ok(candidate_outcomes)
+
+
+def _batch_bundle_files_ok(candidate_outcomes: list[object]) -> bool:
+    return all(
+        isinstance(item, dict)
+        and isinstance(item.get("html_path"), str)
+        and _bundle_file_ok(str(item["html_path"]), item.get("html_sha256"))
+        and _bundle_file_contains(str(item["html_path"]), "<h2>Resolution</h2>")
+        for item in candidate_outcomes
+    )
+
+
+def _bundle_file_contains(html_path: str, expected_text: str) -> bool:
+    roots = tuple(dict.fromkeys((REPO_ROOT, *_BUNDLE_FILE_ROOTS)))
+    for root in roots:
+        try:
+            content = (root / html_path).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if expected_text in content:
+            return True
+    return False
 
 
 def _register_then_draft_ok(responses: dict[str, dict[str, Any]]) -> bool:
@@ -1458,9 +1683,8 @@ def _semantic_review_submit_ok(responses: dict[str, dict[str, Any]]) -> bool:
     draft = _structured(responses["draft"])
     prepare = _structured(responses["prepare"])
     submit = _structured(responses["submit"])
+    batch = _structured(responses["batch"])
     response_text = json.dumps(responses["submit"], sort_keys=True)
-    submit_html = _response_bundle_html_text(responses["submit"])
-    html_path = submit.get("html_path")
     return (
         responses["draft"].get("result", {}).get("isError") is False
         and responses["prepare"].get("result", {}).get("isError") is False
@@ -1471,19 +1695,90 @@ def _semantic_review_submit_ok(responses: dict[str, dict[str, Any]]) -> bool:
         and prepare.get("result_kind") == "semantic_review_packet"
         and prepare.get("submit_tool") == SUBMIT_SEMANTIC_REVIEW_TOOL_NAME
         and prepare.get("selected_excerpts")
-        and submit.get("result_kind") == "draft_article_authoring"
-        and submit.get("approved_summary_source") == "semantic_review"
-        and str(submit.get("ticket_ref", "")).startswith("smoke-semantic-review-")
-        and submit.get("draft_generated") is True
-        and submit.get("debug_code") == "draft_only_reuse_search_missing"
-        and submit.get("reviewer_bundle_written") is True
-        and submit.get("writes_files") is True
-        and isinstance(html_path, str)
-        and html_path.startswith("local-data/reviewer-bundles/")
-        and _bundle_file_ok(html_path, submit.get("html_sha256"))
+        and "active_output_schema" not in prepare
+        and "allowed_output_schema" not in prepare
+        and "runtime_default" not in prepare
+        and "shadow_mode" not in prepare
+        and set(prepare.get("proposal_field_contracts", {}))
+        == {"reason_code"}
+        and "semantic_issue_proposal" in prepare.get("required_submit_shape", {})
+        and _unassigned_ledger_ok(submit)
+        and _shared_identity_refs_remain_audit_only(submit)
+        and _active_semantic_all_batch_ok(submit, batch)
         and "reviewer_only_html" not in submit
-        and "candidate_semantic_extraction" not in response_text
-        and "<h2>Resolution</h2>" in submit_html
+        and "semantic_issue_proposal" not in response_text
+        and _batch_bundle_files_ok(batch.get("candidate_outcomes", []))
+    )
+
+
+def _shared_identity_refs_remain_audit_only(submit: dict[str, Any]) -> bool:
+    outcomes = submit.get("semantic_item_outcomes")
+    if not isinstance(outcomes, list):
+        return False
+    issue_outcomes = [
+        outcome
+        for outcome in outcomes
+        if isinstance(outcome, dict) and outcome.get("outcome") == "draft_candidate"
+    ]
+    return (
+        len(issue_outcomes) == 2
+        and all(
+            "boundary_state" not in outcome
+            and "boundary_provenance" not in outcome
+            for outcome in issue_outcomes
+        )
+    )
+
+
+def _unassigned_ledger_ok(submit: dict[str, Any]) -> bool:
+    outcomes = submit.get("semantic_item_outcomes")
+    return (
+        isinstance(outcomes, list)
+        and any(
+            isinstance(outcome, dict)
+            and outcome.get("outcome") == "unassigned_evidence"
+            for outcome in outcomes
+        )
+        and submit.get("workflow_state")
+        != "semantic_review_boundary_choice_required"
+    )
+
+
+def _active_semantic_all_batch_ok(
+    submit: dict[str, Any],
+    batch: dict[str, Any],
+) -> bool:
+    choice_request = submit.get("operator_choice_request")
+    if not isinstance(choice_request, dict):
+        return False
+    options = choice_request.get("options")
+    if not isinstance(options, list) or not options:
+        return False
+    all_option = options[-1]
+    if not isinstance(all_option, dict):
+        return False
+    return (
+        submit.get("recommended_action") == "split_required"
+        and submit.get("operator_prompt_style") == "native_choice_popup"
+        and choice_request.get("prose_only_choice_allowed") is False
+        and all_option.get("value") == "all"
+        and _active_semantic_batch_outcomes_ok(batch)
+    )
+
+
+def _active_semantic_batch_outcomes_ok(batch: dict[str, Any]) -> bool:
+    outcomes = batch.get("candidate_outcomes")
+    if not isinstance(outcomes, list) or not all(
+        isinstance(outcome, dict) for outcome in outcomes
+    ):
+        return False
+    return (
+        batch.get("result_kind") == "draft_article_batch"
+        and batch.get("batch_status") == "batch_completed"
+        and batch.get("draft_generated_count") == 2
+        and [outcome.get("item_ref") for outcome in outcomes]
+        == ["issue-001", "issue-002"]
+        and all(outcome.get("attempted") is True for outcome in outcomes)
     )
 
 
@@ -1513,11 +1808,33 @@ def _split_choice_text_ok(response: dict[str, Any]) -> bool:
     return (
         text.startswith("Multiple KCS article candidates were detected.")
         and "Operator selection is required before drafting." in text
-        and "Use the native single-choice popup" in text
+        and "Use the native choice popup" in text
         and "Do not answer with a prose-only candidate list." in text
         and "submit_arguments" in text
+        and "operator_all_submit_arguments" not in text
+        and "do not call each option independently" in text
         and "Do not draft manually." in text
         and "candidate-002" in text
+    )
+
+
+def _batch_result_text_ok(response: dict[str, Any]) -> bool:
+    structured = _structured(response)
+    followup = structured.get("operator_followup")
+    text = _response_text(response)
+    return (
+        isinstance(followup, dict)
+        and followup.get("kind") == "none"
+        and followup.get("retryable_candidates") == []
+        and "Present the Python-owned ordered candidate summary" in text
+        and "Operator result summary:" in text
+        and "1. **" in text
+        and "2. **" in text
+        and "Reviewer bundle:" in text
+        and "Reviewer HTML:" in text
+        and "Authoritative per-candidate summary" not in text
+        and '"candidate_outcomes"' not in text
+        and "- Next:" not in text
     )
 
 
@@ -1547,11 +1864,7 @@ def _clean_ticket_file_ok(
     roots = tuple(dict.fromkeys((REPO_ROOT, *_BUNDLE_FILE_ROOTS)))
     for root in roots:
         path = (
-            root
-            / "local-data"
-            / "approved-summaries"
-            / ticket_ref
-            / "clean.ticket.txt"
+            root / "local-data" / "approved-summaries" / ticket_ref / "clean.ticket.txt"
         )
         try:
             stat = path.stat()

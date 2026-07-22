@@ -268,6 +268,27 @@ Review when touching:
 Risk: package-level exports can create implicit coupling between otherwise
 separate ownership areas.
 
+### Synthetic Rebaseline Observability
+
+Owns value-safe synthetic rebaseline record validation and metadata-only export
+to the separately managed loopback Langfuse service.
+
+Must not own runtime KCS decisions, model invocation, Desktop control flow,
+provider response content, raw ticket or excerpt storage, reviewer bundles, or
+publication behavior. Langfuse availability must not become a product runtime
+dependency.
+
+Review when touching:
+
+- `scripts/rebaseline_semantic_issue_projection.py`
+- `scripts/kcs14_langfuse_rebaseline.py`
+- `evals/kcs14_langfuse_control_surface_profile.example.json`
+- `tests/kcs_adapters/test_semantic_projection_rebaseline.py`
+- `tests/kcs_adapters/test_kcs14_langfuse_rebaseline.py`
+
+Risk: observability metadata can become a side channel for private input or be
+mistaken for causal evidence when the control-surface profile is not comparable.
+
 ### Engineering Policy Tests
 
 Owns KCS-14 deterministic policy checks, documentation/process guardrail

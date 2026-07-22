@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -24,20 +24,30 @@ from kcs_adapters.desktop_draft_output import (
     compact_draft_result,
     quality_blocked_result,
     quality_blocker_gaps,
+    reviewer_only_quality_debt_allowed,
+    reviewer_only_quality_draft_result,
 )
 from kcs_adapters.desktop_reviewer_bundle import write_desktop_reviewer_bundle
+from kcs_adapters.desktop_semantic_candidate_contract import (
+    semantic_submission_correction,
+)
 from kcs_adapters.desktop_semantic_candidates import (
-    desktop_candidate_set_from_semantic_extraction,
+    ProjectedIssueSet,
+    desktop_candidate_set_from_semantic_issue_proposal,
     desktop_item_candidates_from_semantic_extraction,
+    project_semantic_issue_proposals,
+    semantic_projection_requires_terminal_review,
 )
 from kcs_adapters.desktop_semantic_review import (
     PendingSemanticReview,
     new_pending_semantic_review,
     prepared_pending_semantic_review,
-    semantic_review_extraction_from_submission,
+    semantic_issue_proposal_from_submission,
+    semantic_review_excerpt_role_index,
 )
 from kcs_core.claude_handoff import (
     KcsClaudeHandoffRequestPacket,
+    bounded_claude_handoff_title_hint,
     build_claude_handoff_request,
 )
 from kcs_core.errors import ContractValidationError
@@ -52,9 +62,7 @@ from kcs_core.safety import SafetyGateResult
 from kcs_core.sanitizer import (
     ensure_safe_sanitized_payload,
 )
-from kcs_core.semantic_extraction import (
-    SemanticExtractionProvider,
-)
+from kcs_core.semantic_extraction import SemanticExtractionProvider
 from kcs_core.validation import EvidenceValidationResult
 
 _LINUX_ENVIRONMENT_RE = re.compile(
@@ -77,12 +85,6 @@ SEMANTIC_PROVIDER_APPROVED_SUMMARY = (
 )
 SEMANTIC_PROVIDER_FIXTURE = _desktop_semantic_providers.SEMANTIC_PROVIDER_FIXTURE
 SEMANTIC_PROVIDER_APPROVED = _desktop_semantic_providers.SEMANTIC_PROVIDER_APPROVED
-ApprovedSemanticExtractionClient = (
-    _desktop_semantic_providers.ApprovedSemanticExtractionClient
-)
-ApprovedSemanticExtractionProvider = (
-    _desktop_semantic_providers.ApprovedSemanticExtractionProvider
-)
 ApprovedSummarySemanticExtractionProvider = (
     _desktop_semantic_providers.ApprovedSummarySemanticExtractionProvider
 )
@@ -114,6 +116,12 @@ selected_pending_candidate = _desktop_operator_selection.selected_pending_candid
 split_candidate_cards = _desktop_operator_selection.split_candidate_cards
 pending_selection_after_draft = (
     _desktop_operator_selection.pending_selection_after_draft
+)
+pending_selection_after_completed_candidate = (
+    _desktop_operator_selection.pending_selection_after_completed_candidate
+)
+pending_selection_after_retryable_blocker = (
+    _desktop_operator_selection.pending_selection_after_retryable_blocker
 )
 remaining_operator_choice_status = (
     _desktop_operator_selection.remaining_operator_choice_status
@@ -208,9 +216,41 @@ class SemanticReviewInvalidError(RuntimeError):
 class SemanticReviewSubmissionInvalidError(RuntimeError):
     """Semantic-review submission did not pass validation."""
 
-    def __init__(self, debug_code: str) -> None:
+    def __init__(
+        self,
+        debug_code: str,
+        *,
+        correction: JsonDict | None,
+    ) -> None:
         super().__init__("semantic review submission invalid")
+        self.correction = correction
         self.debug_code = debug_code
+
+
+class SemanticReviewBoundaryAmbiguousError(RuntimeError):
+    """A proposal has no safe candidate-selection or operator action path."""
+
+    def __init__(self, projected: ProjectedIssueSet) -> None:
+        super().__init__("semantic boundary remained ambiguous")
+        self.projected = projected
+
+
+_TERMINAL_SEMANTIC_SUBMISSION_DEBUG_CODES = frozenset(
+    {
+        "semantic_coverage_shape_invalid",
+        "semantic_observation_shape_invalid",
+        "semantic_issue_proposal_shape_invalid",
+        "semantic_issue_submission_invalid",
+        "semantic_ref_shape_invalid",
+        "semantic_review_forbidden_field",
+        "semantic_review_forbidden_html_or_markdown",
+        "semantic_review_local_ref_blocked",
+        "semantic_review_packet_unavailable",
+        "semantic_review_submission_invalid",
+        "semantic_review_unsafe_value_blocked",
+        "semantic_source_refs_shape_invalid",
+    }
+)
 
 
 class ApprovedSummaryPipelineStageError(ContractValidationError):
@@ -384,34 +424,37 @@ class DesktopDraftWorkflow:
         self,
         *,
         semantic_review_ref: object,
-        candidate_semantic_extraction: object,
-    ) -> tuple[list[JsonDict], str, str, str | None, list[JsonDict]]:
+        semantic_issue_proposal: object = None,
+    ) -> JsonDict | tuple[list[JsonDict], str, str, str | None, list[JsonDict]]:
         """Validate a semantic-review submit and return Desktop candidates."""
 
         pending = self._pending_semantic_review_for_submit(semantic_review_ref)
         try:
-            extraction = semantic_review_extraction_from_submission(
-                pending=pending,
-                candidate_semantic_extraction=candidate_semantic_extraction,
+            submission = self._semantic_submission_candidates(
+                pending,
+                semantic_issue_proposal=semantic_issue_proposal,
             )
+        except SemanticReviewBoundaryAmbiguousError:
+            raise
         except ContractValidationError as exc:
-            raise SemanticReviewSubmissionInvalidError(
-                "semantic_review_submission_invalid"
-            ) from exc
+            self._raise_semantic_submission_invalid(
+                pending,
+                debug_code="semantic_review_submission_invalid",
+                cause=exc,
+            )
         except Exception as exc:
             debug_code = getattr(
                 exc, "debug_code", "semantic_review_submission_invalid"
             )
-            raise SemanticReviewSubmissionInvalidError(str(debug_code)) from exc
-        self._pending_semantic_review = None
-        candidates, semantic_item_outcomes = (
-            desktop_candidate_set_from_semantic_extraction(
-            extraction,
-            fallback_environment=_minimal_environment_from_text(
-                pending.approved_summary_text
-            ),
+            self._raise_semantic_submission_invalid(
+                pending,
+                debug_code=str(debug_code),
+                cause=exc,
             )
-        )
+        if isinstance(submission, dict):
+            return submission
+        candidates, semantic_item_outcomes = submission
+        self._pending_semantic_review = None
         return (
             candidates,
             pending.approved_summary_text,
@@ -419,6 +462,63 @@ class DesktopDraftWorkflow:
             pending.source_kind,
             semantic_item_outcomes,
         )
+
+    def _semantic_submission_candidates(
+        self,
+        pending: PendingSemanticReview,
+        *,
+        semantic_issue_proposal: object,
+    ) -> JsonDict | tuple[list[JsonDict], list[JsonDict]]:
+        fallback_environment = _minimal_environment_from_text(
+            pending.approved_summary_text
+        )
+        proposal = semantic_issue_proposal_from_submission(
+            pending=pending,
+            semantic_issue_proposal=semantic_issue_proposal,
+        )
+        projected = project_semantic_issue_proposals(
+            proposal,
+            semantic_review_excerpt_role_index(pending),
+        )
+        if semantic_projection_requires_terminal_review(projected):
+            self._pending_semantic_review = None
+            raise SemanticReviewBoundaryAmbiguousError(projected)
+        return desktop_candidate_set_from_semantic_issue_proposal(
+            proposal,
+            projected,
+            fallback_environment=fallback_environment,
+        )
+
+    def _raise_semantic_submission_invalid(
+        self,
+        pending: PendingSemanticReview,
+        *,
+        debug_code: str,
+        cause: Exception,
+    ) -> None:
+        failed_submit_attempts = pending.failed_submit_attempts + 1
+        correction = semantic_submission_correction(debug_code)
+        if correction is None or pending.failed_submit_attempts > 0:
+            self._pending_semantic_review = None
+            terminal_debug_code = (
+                debug_code
+                if correction is None
+                and debug_code in _TERMINAL_SEMANTIC_SUBMISSION_DEBUG_CODES
+                else "semantic_issue_submission_invalid"
+            )
+            raise SemanticReviewSubmissionInvalidError(
+                terminal_debug_code,
+                correction=None,
+            ) from cause
+        self._pending_semantic_review = replace(
+            pending,
+            failed_submit_attempts=failed_submit_attempts,
+        )
+        correction["retry_allowed"] = True
+        raise SemanticReviewSubmissionInvalidError(
+            debug_code,
+            correction=correction,
+        ) from cause
 
     def _pending_semantic_review_for_submit(
         self,
@@ -486,6 +586,47 @@ class DesktopDraftWorkflow:
         )
         return self._pending_selection
 
+    def mark_selected_candidate_completed_blocked(
+        self,
+        selected_item_ref: object,
+    ) -> PendingDraftSelection | None:
+        """Complete one terminally blocked candidate for the current run."""
+
+        pending_selection = self._pending_selection
+        if pending_selection is None or not isinstance(selected_item_ref, str):
+            self._pending_selection = None
+            return None
+        self._pending_selection = pending_selection_after_completed_candidate(
+            pending_selection,
+            selected_item_ref,
+        )
+        return self._pending_selection
+
+    def mark_selected_candidate_retryable(
+        self,
+        selected_item_ref: object,
+    ) -> PendingDraftSelection | None:
+        """Keep one selected candidate pending for bounded evidence retry."""
+
+        pending_selection = self._pending_selection
+        if pending_selection is None or not isinstance(selected_item_ref, str):
+            return pending_selection
+        self._pending_selection = pending_selection_after_retryable_blocker(
+            pending_selection,
+            selected_item_ref,
+        )
+        return self._pending_selection
+
+    def selected_candidate_is_retryable(self, selected_item_ref: object) -> bool:
+        """Return whether a pending candidate has a retryable blocker."""
+
+        pending_selection = self._pending_selection
+        return (
+            pending_selection is not None
+            and isinstance(selected_item_ref, str)
+            and selected_item_ref in pending_selection.retryable_candidate_refs
+        )
+
 
 def _minimal_environment_from_text(text: str) -> JsonDict:
     """Infer only draft-level product/platform metadata from clean ticket text."""
@@ -532,7 +673,7 @@ def execute_approved_summary_pipeline(
         handoff_ref=f"handoff-{item_ref}",
         safe_context={
             "short_public_safe_summary": hooks.short_summary(arguments),
-            "title_hint": hooks.title(arguments),
+            "title_hint": bounded_claude_handoff_title_hint(hooks.title(arguments)),
         },
     )
     draft_request_ready = approved_summary_draft_request_ready(
@@ -579,16 +720,23 @@ def finalize_author_result_with_bundle(
             schema_version=schema_version,
         )
     quality_blockers = quality_blocker_gaps(result)
-    if quality_blockers:
+    if quality_blockers and not reviewer_only_quality_debt_allowed(
+        quality_blockers
+    ):
         return quality_blocked_result(
             result,
             quality_blockers,
             schema_version=schema_version,
         )
+    bundle_result = (
+        reviewer_only_quality_draft_result(result, quality_blockers)
+        if quality_blockers
+        else dict(result)
+    )
     try:
         bundle = write_desktop_reviewer_bundle(
             root=bundle_root,
-            result=result,
+            result=bundle_result,
             reviewer_only_html=html,
         )
     except OSError:
@@ -598,7 +746,7 @@ def finalize_author_result_with_bundle(
             schema_version=schema_version,
         )
     return compact_draft_result(
-        result,
+        bundle_result,
         bundle,
         include_reviewer_only_html=include_reviewer_only_html,
         reviewer_only_html=html,

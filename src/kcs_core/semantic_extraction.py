@@ -13,8 +13,8 @@ from kcs_core.evidence_builder import (
     EvidenceBuildPolicy,
     build_evidence_packet_from_zendesk_export,
 )
-from kcs_core.json_payload import JsonDict, require_json_object
-from kcs_core.models import ArticleType, NormalizedTicketEvidencePacket
+from kcs_core.json_payload import JsonDict, dumps_payload, require_json_object
+from kcs_core.models import ArticleType, CandidateOrigin, NormalizedTicketEvidencePacket
 from kcs_core.safety import InputClass
 from kcs_core.sanitizer import (
     ensure_allowed_keys,
@@ -25,6 +25,13 @@ from kcs_core.sanitizer import (
 )
 
 CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION = "candidate_semantic_extraction_v1"
+SEMANTIC_ISSUE_PROPOSAL_SCHEMA_VERSION = "semantic_issue_proposal_v1"
+SEMANTIC_ISSUE_PROPOSAL_MAX_ISSUES = 12
+SEMANTIC_ISSUE_PROPOSAL_MAX_COVERAGE_RECORDS = 24
+SEMANTIC_ISSUE_PROPOSAL_MAX_OBSERVATIONS_PER_FIELD = 24
+SEMANTIC_ISSUE_PROPOSAL_MAX_OBSERVATION_BYTES = 4_000
+SEMANTIC_ISSUE_PROPOSAL_MAX_SOURCE_REFS = 48
+SEMANTIC_ISSUE_PROPOSAL_MAX_TOTAL_BYTES = 64_000
 
 _ALLOWED_EXTRACTION_FIELDS = frozenset(
     {
@@ -40,6 +47,7 @@ _ALLOWED_ITEM_FIELDS = frozenset(
         "article_type_hint",
         "answer_steps",
         "candidate_id",
+        "candidate_origin",
         "confirmed_facts",
         "eol_role",
         "environment",
@@ -60,6 +68,335 @@ _ALLOWED_ITEM_FIELDS = frozenset(
         "visibility_hint",
     }
 )
+
+_ALLOWED_ISSUE_PROPOSAL_PACKET_FIELDS = frozenset(
+    {
+        "case_ref",
+        "coverage_records",
+        "extraction_source_ref",
+        "issues",
+        "schema_version",
+        "source_refs",
+    }
+)
+_ALLOWED_ISSUE_PROPOSAL_FIELDS = frozenset(
+    {
+        "answer_evidence",
+        "cause_evidence",
+        "context_evidence",
+        "error_evidence",
+        "issue_ref",
+        "question",
+        "resolution_evidence",
+        "summary",
+        "symptoms",
+        "verification_evidence",
+    }
+)
+_ALLOWED_SEMANTIC_OBSERVATION_FIELDS = frozenset({"source_refs", "text"})
+_ALLOWED_SEMANTIC_COVERAGE_FIELDS = frozenset(
+    {"coverage_ref", "duplicate_of_source_ref", "reason_code", "source_refs"}
+)
+class SemanticCoverageReason(StrEnum):
+    """Closed non-issue coverage reason proposed for deterministic review."""
+
+    INTERNAL_WORKFLOW_NOTE = "internal_workflow_note"
+    TICKET_METADATA = "ticket_metadata"
+    DUPLICATE_EXCERPT = "duplicate_excerpt"
+    FORMATTING_ARTIFACT = "formatting_artifact"
+
+
+@dataclass(frozen=True)
+class SemanticObservation:
+    """One bounded semantic observation with field-level provenance."""
+
+    text: str
+    source_refs: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _ensure_required_text(self.text, field_name="observation text")
+        text_bytes = len(self.text.encode("utf-8"))
+        if text_bytes > SEMANTIC_ISSUE_PROPOSAL_MAX_OBSERVATION_BYTES:
+            raise ContractValidationError("semantic observation text invalid")
+        _ensure_nonempty_source_ref_tuple(
+            self.source_refs,
+            field_name="observation source_refs",
+        )
+        ensure_safe_sanitized_payload(self.to_json_dict())
+
+    @classmethod
+    def from_json_dict(
+        cls, payload: Mapping[str, Any] | object
+    ) -> "SemanticObservation":
+        data = require_json_object(payload)
+        ensure_allowed_keys(
+            data,
+            _ALLOWED_SEMANTIC_OBSERVATION_FIELDS,
+            label="semantic observation",
+        )
+        return cls(
+            text=_string_field(data, "text"),
+            source_refs=tuple(
+                _proposal_source_refs(data.get("source_refs"), required=True)
+            ),
+        )
+
+    def to_json_dict(self) -> JsonDict:
+        return {"source_refs": list(self.source_refs), "text": self.text}
+
+
+@dataclass(frozen=True)
+class SemanticIssueProposal:
+    """Untrusted observation-only issue proposal without KCS action fields."""
+
+    issue_ref: str
+    summary: SemanticObservation
+    symptoms: tuple[SemanticObservation, ...] = ()
+    error_evidence: tuple[SemanticObservation, ...] = ()
+    question: SemanticObservation | None = None
+    cause_evidence: tuple[SemanticObservation, ...] = ()
+    resolution_evidence: tuple[SemanticObservation, ...] = ()
+    verification_evidence: tuple[SemanticObservation, ...] = ()
+    answer_evidence: tuple[SemanticObservation, ...] = ()
+    context_evidence: tuple[SemanticObservation, ...] = ()
+
+    def __post_init__(self) -> None:
+        ensure_safe_ref(self.issue_ref, label="issue_ref")
+        if not isinstance(self.summary, SemanticObservation):
+            raise ContractValidationError("semantic issue summary invalid")
+        if self.question is not None and not isinstance(
+            self.question, SemanticObservation
+        ):
+            raise ContractValidationError("semantic issue question invalid")
+        for field_name in _ISSUE_OBSERVATION_SEQUENCE_FIELDS:
+            _ensure_observation_tuple(
+                getattr(self, field_name),
+                field_name=field_name,
+            )
+        ensure_safe_sanitized_payload(self.to_json_dict())
+
+    @classmethod
+    def from_json_dict(
+        cls, payload: Mapping[str, Any] | object
+    ) -> "SemanticIssueProposal":
+        data = require_json_object(payload)
+        ensure_allowed_keys(
+            data,
+            _ALLOWED_ISSUE_PROPOSAL_FIELDS,
+            label="semantic issue proposal",
+        )
+        return cls(
+            issue_ref=_safe_ref_field(data, "issue_ref"),
+            summary=SemanticObservation.from_json_dict(data.get("summary")),
+            symptoms=_observation_tuple(data.get("symptoms"), field_name="symptoms"),
+            error_evidence=_observation_tuple(
+                data.get("error_evidence", []), field_name="error_evidence"
+            ),
+            question=_optional_observation(data.get("question")),
+            cause_evidence=_observation_tuple(
+                data.get("cause_evidence"), field_name="cause_evidence"
+            ),
+            resolution_evidence=_observation_tuple(
+                data.get("resolution_evidence"), field_name="resolution_evidence"
+            ),
+            verification_evidence=_observation_tuple(
+                data.get("verification_evidence"),
+                field_name="verification_evidence",
+            ),
+            answer_evidence=_observation_tuple(
+                data.get("answer_evidence", []), field_name="answer_evidence"
+            ),
+            context_evidence=_observation_tuple(
+                data.get("context_evidence"), field_name="context_evidence"
+            ),
+        )
+
+    def to_json_dict(self) -> JsonDict:
+        return {
+            "answer_evidence": _observations_json(self.answer_evidence),
+            "cause_evidence": _observations_json(self.cause_evidence),
+            "context_evidence": _observations_json(self.context_evidence),
+            "error_evidence": _observations_json(self.error_evidence),
+            "issue_ref": self.issue_ref,
+            "question": self.question.to_json_dict() if self.question else None,
+            "resolution_evidence": _observations_json(self.resolution_evidence),
+            "summary": self.summary.to_json_dict(),
+            "symptoms": _observations_json(self.symptoms),
+            "verification_evidence": _observations_json(self.verification_evidence),
+        }
+
+    def source_refs(self) -> tuple[str, ...]:
+        refs = list(self.summary.source_refs)
+        if self.question is not None:
+            refs.extend(self.question.source_refs)
+        for field_name in _ISSUE_OBSERVATION_SEQUENCE_FIELDS:
+            for observation in getattr(self, field_name):
+                refs.extend(observation.source_refs)
+        return tuple(dict.fromkeys(refs))
+
+
+@dataclass(frozen=True)
+class SemanticCoverageRecord:
+    """Non-issue source coverage proposal with no candidate authority."""
+
+    coverage_ref: str
+    reason_code: str
+    source_refs: tuple[str, ...]
+    duplicate_of_source_ref: str | None = None
+
+    def __post_init__(self) -> None:
+        ensure_safe_ref(self.coverage_ref, label="coverage_ref")
+        _ensure_enum_value(
+            self.reason_code,
+            SemanticCoverageReason,
+            field_name="coverage_reason",
+        )
+        _ensure_nonempty_source_ref_tuple(
+            self.source_refs,
+            field_name="coverage source_refs",
+        )
+        if self.reason_code == SemanticCoverageReason.DUPLICATE_EXCERPT.value:
+            if self.duplicate_of_source_ref is None:
+                raise ContractValidationError(
+                    "semantic duplicate coverage source ref required"
+                )
+            ensure_safe_ref(
+                self.duplicate_of_source_ref,
+                label="duplicate_of_source_ref",
+            )
+            if self.duplicate_of_source_ref in self.source_refs:
+                raise ContractValidationError(
+                    "semantic duplicate coverage source ref invalid"
+                )
+        elif self.duplicate_of_source_ref is not None:
+            raise ContractValidationError(
+                "semantic coverage duplicate source ref not allowed"
+            )
+        ensure_safe_sanitized_payload(self.to_json_dict())
+
+    @classmethod
+    def from_json_dict(
+        cls, payload: Mapping[str, Any] | object
+    ) -> "SemanticCoverageRecord":
+        data = require_json_object(payload)
+        ensure_allowed_keys(
+            data,
+            _ALLOWED_SEMANTIC_COVERAGE_FIELDS,
+            label="semantic coverage record",
+        )
+        duplicate_ref = data.get("duplicate_of_source_ref")
+        if duplicate_ref is not None and not isinstance(duplicate_ref, str):
+            raise ContractValidationError(
+                "semantic coverage duplicate source ref invalid"
+            )
+        return cls(
+            coverage_ref=_safe_ref_field(data, "coverage_ref"),
+            reason_code=_enum_field(
+                data,
+                "reason_code",
+                SemanticCoverageReason,
+            ),
+            source_refs=tuple(
+                _proposal_source_refs(data.get("source_refs"), required=True)
+            ),
+            duplicate_of_source_ref=duplicate_ref,
+        )
+
+    def to_json_dict(self) -> JsonDict:
+        return {
+            "coverage_ref": self.coverage_ref,
+            "duplicate_of_source_ref": self.duplicate_of_source_ref,
+            "reason_code": self.reason_code,
+            "source_refs": list(self.source_refs),
+        }
+
+
+@dataclass(frozen=True)
+class SemanticIssueProposalPacket:
+    """Validated observation and coverage proposals for later projection."""
+
+    case_ref: str
+    extraction_source_ref: str
+    source_refs: tuple[str, ...]
+    issues: tuple[SemanticIssueProposal, ...]
+    coverage_records: tuple[SemanticCoverageRecord, ...]
+    schema_version: str = SEMANTIC_ISSUE_PROPOSAL_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if self.schema_version != SEMANTIC_ISSUE_PROPOSAL_SCHEMA_VERSION:
+            raise ContractValidationError(
+                "unsupported semantic issue proposal schema_version"
+            )
+        ensure_safe_ref(self.case_ref, label="case_ref")
+        ensure_safe_ref(self.extraction_source_ref, label="extraction_source_ref")
+        _ensure_nonempty_source_ref_tuple(self.source_refs, field_name="source_refs")
+        _validate_issue_proposal_packet_items(self)
+        ensure_safe_sanitized_payload(self.to_json_dict())
+        packet_bytes = len(dumps_payload(self).encode("utf-8"))
+        if packet_bytes > SEMANTIC_ISSUE_PROPOSAL_MAX_TOTAL_BYTES:
+            raise ContractValidationError("semantic issue proposal packet too large")
+
+    @classmethod
+    def from_json_dict(
+        cls, payload: Mapping[str, Any] | object
+    ) -> "SemanticIssueProposalPacket":
+        data = require_json_object(payload)
+        ensure_safe_sanitized_payload(data)
+        ensure_allowed_keys(
+            data,
+            _ALLOWED_ISSUE_PROPOSAL_PACKET_FIELDS,
+            label="semantic issue proposal packet",
+        )
+        if data.get("schema_version") != SEMANTIC_ISSUE_PROPOSAL_SCHEMA_VERSION:
+            raise ContractValidationError(
+                "unsupported semantic issue proposal schema_version"
+            )
+        raw_issues = data.get("issues")
+        raw_coverage = data.get("coverage_records")
+        if (
+            not isinstance(raw_issues, list)
+            or len(raw_issues) > SEMANTIC_ISSUE_PROPOSAL_MAX_ISSUES
+            or not isinstance(raw_coverage, list)
+            or len(raw_coverage) > SEMANTIC_ISSUE_PROPOSAL_MAX_COVERAGE_RECORDS
+        ):
+            raise ContractValidationError("semantic issue proposal items invalid")
+        return cls(
+            case_ref=_safe_ref_field(data, "case_ref"),
+            extraction_source_ref=_safe_ref_field(data, "extraction_source_ref"),
+            source_refs=tuple(
+                _proposal_source_refs(data.get("source_refs"), required=True)
+            ),
+            issues=tuple(
+                SemanticIssueProposal.from_json_dict(item) for item in raw_issues
+            ),
+            coverage_records=tuple(
+                SemanticCoverageRecord.from_json_dict(item) for item in raw_coverage
+            ),
+        )
+
+    def to_json_dict(self) -> JsonDict:
+        return {
+            "case_ref": self.case_ref,
+            "coverage_records": [
+                record.to_json_dict() for record in self.coverage_records
+            ],
+            "extraction_source_ref": self.extraction_source_ref,
+            "issues": [issue.to_json_dict() for issue in self.issues],
+            "schema_version": self.schema_version,
+            "source_refs": list(self.source_refs),
+        }
+
+
+_ISSUE_OBSERVATION_SEQUENCE_FIELDS = (
+    "symptoms",
+    "error_evidence",
+    "cause_evidence",
+    "resolution_evidence",
+    "verification_evidence",
+    "answer_evidence",
+    "context_evidence",
+)
+
 
 class ProductRelation(StrEnum):
     """Semantic product-relation hint for a candidate KCS item."""
@@ -121,6 +458,32 @@ class VisibilityHint(StrEnum):
     UNCLEAR = "unclear"
 
 
+_PRODUCT_RELATION_VALUE_REQUIREMENTS: Mapping[str, Mapping[str, tuple[str, ...]]] = {
+    ProductRelation.CUSTOMER_ENVIRONMENT_SPECIFIC.value: {
+        "kcs_item_status": (KcsItemStatus.NO_ARTICLE.value,),
+    },
+    ProductRelation.GENERIC_THIRD_PARTY.value: {
+        "kcs_item_status": (KcsItemStatus.NO_ARTICLE.value,),
+    },
+    ProductRelation.NON_PLESK_OWNED_BUT_SUPPORT_PROVIDED_SOLUTION.value: {
+        "kcs_item_status": (KcsItemStatus.INTERNAL_ONLY_CANDIDATE.value,),
+        "visibility_hint": (VisibilityHint.INTERNAL_REVIEWER_ONLY.value,),
+    },
+}
+
+
+def product_relation_value_requirements() -> JsonDict:
+    """Return fresh machine-readable cross-field product-relation rules."""
+
+    return {
+        relation: {
+            field_name: list(accepted_values)
+            for field_name, accepted_values in requirements.items()
+        }
+        for relation, requirements in _PRODUCT_RELATION_VALUE_REQUIREMENTS.items()
+    }
+
+
 class SemanticExtractionProvider(Protocol):
     """Provider boundary for bounded semantic item identification."""
 
@@ -139,6 +502,7 @@ class CandidateKcsItem:
     product_relation: str
     supportability: str
     kcs_item_status: str
+    candidate_origin: str = CandidateOrigin.CUSTOMER_REPORTED.value
     supportability_basis: str = SupportabilityBasis.NOT_CHECKED.value
     article_type_hint: str = ArticleType.NONE.value
     visibility_hint: str = VisibilityHint.UNCLEAR.value
@@ -173,6 +537,12 @@ class CandidateKcsItem:
                 default=SupportabilityBasis.NOT_CHECKED,
             ),
             kcs_item_status=_enum_field(data, "kcs_item_status", KcsItemStatus),
+            candidate_origin=_enum_field(
+                data,
+                "candidate_origin",
+                CandidateOrigin,
+                default=CandidateOrigin.CUSTOMER_REPORTED,
+            ),
             article_type_hint=_article_type_hint(data),
             visibility_hint=_enum_field(
                 data, "visibility_hint", VisibilityHint, default=VisibilityHint.UNCLEAR
@@ -196,6 +566,7 @@ class CandidateKcsItem:
         return {
             "article_type_hint": self.article_type_hint,
             "candidate_id": self.candidate_id,
+            "candidate_origin": self.candidate_origin,
             "confirmed_facts": list(self.confirmed_facts),
             "eol_role": self.eol_role,
             "environment": dict(self.environment),
@@ -391,9 +762,7 @@ def _validate_extraction(extraction: CandidateSemanticExtraction) -> None:
     if extraction.schema_version != CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION:
         raise ContractValidationError("unsupported semantic extraction schema_version")
     ensure_safe_ref(extraction.case_ref, label="case_ref")
-    ensure_safe_ref(
-        extraction.extraction_source_ref, label="extraction_source_ref"
-    )
+    ensure_safe_ref(extraction.extraction_source_ref, label="extraction_source_ref")
     _ensure_source_ref_tuple(extraction.source_refs, field_name="source_refs")
     if not isinstance(extraction.items, tuple) or not extraction.items:
         raise ContractValidationError("semantic extraction requires items")
@@ -425,9 +794,7 @@ def _validate_item(item: CandidateKcsItem) -> None:
     _ensure_enum_value(
         item.product_relation, ProductRelation, field_name="product_relation"
     )
-    _ensure_enum_value(
-        item.supportability, Supportability, field_name="supportability"
-    )
+    _ensure_enum_value(item.supportability, Supportability, field_name="supportability")
     _ensure_enum_value(
         item.supportability_basis,
         SupportabilityBasis,
@@ -435,6 +802,9 @@ def _validate_item(item: CandidateKcsItem) -> None:
     )
     _ensure_enum_value(
         item.kcs_item_status, KcsItemStatus, field_name="kcs_item_status"
+    )
+    _ensure_enum_value(
+        item.candidate_origin, CandidateOrigin, field_name="candidate_origin"
     )
     _ensure_enum_value(
         item.article_type_hint, ArticleType, field_name="article_type_hint"
@@ -491,21 +861,10 @@ def _validate_eol_rules(item: CandidateKcsItem) -> None:
 
 
 def _validate_product_relation_rules(item: CandidateKcsItem) -> None:
-    if (
-        item.product_relation == ProductRelation.CUSTOMER_ENVIRONMENT_SPECIFIC.value
-        and item.kcs_item_status != KcsItemStatus.NO_ARTICLE.value
-    ):
-        raise ContractValidationError("semantic extraction product relation invalid")
-    if (
-        item.product_relation == ProductRelation.GENERIC_THIRD_PARTY.value
-        and item.kcs_item_status != KcsItemStatus.NO_ARTICLE.value
-    ):
-        raise ContractValidationError("semantic extraction product relation invalid")
-    if item.product_relation == (
-        ProductRelation.NON_PLESK_OWNED_BUT_SUPPORT_PROVIDED_SOLUTION.value
-    ) and (
-        item.kcs_item_status != KcsItemStatus.INTERNAL_ONLY_CANDIDATE.value
-        or item.visibility_hint != VisibilityHint.INTERNAL_REVIEWER_ONLY.value
+    requirements = _PRODUCT_RELATION_VALUE_REQUIREMENTS.get(item.product_relation, {})
+    if any(
+        getattr(item, field_name) not in accepted_values
+        for field_name, accepted_values in requirements.items()
     ):
         raise ContractValidationError("semantic extraction product relation invalid")
 
@@ -518,11 +877,13 @@ def _export_candidate(
         "article_type": item.article_type_hint,
         "atomic": True,
         "candidate_id": item.candidate_id,
+        "candidate_origin": item.candidate_origin,
         "confirmed_facts": list(item.confirmed_facts),
-        "customer_reported": True,
+        "customer_reported": (
+            item.candidate_origin == CandidateOrigin.CUSTOMER_REPORTED.value
+        ),
         "customer_specific": (
-            item.product_relation
-            == ProductRelation.CUSTOMER_ENVIRONMENT_SPECIFIC.value
+            item.product_relation == ProductRelation.CUSTOMER_ENVIRONMENT_SPECIFIC.value
         ),
         "environment": item.environment,
         "kcs_applicable": item.kcs_item_status
@@ -542,9 +903,7 @@ def _export_candidate(
         "summary": item.summary,
         "supported_answer": item.supported_answer,
         "supported_cause": item.supported_cause,
-        "supported_resolution_or_workaround": (
-            item.supported_resolution_or_workaround
-        ),
+        "supported_resolution_or_workaround": (item.supported_resolution_or_workaround),
         "symptoms": list(item.symptoms),
         "third_party_generic": (
             item.product_relation == ProductRelation.GENERIC_THIRD_PARTY.value
@@ -632,6 +991,127 @@ def _ensure_source_ref_tuple(value: object, *, field_name: str) -> tuple[str, ..
     return value
 
 
+def _ensure_nonempty_source_ref_tuple(
+    value: object,
+    *,
+    field_name: str,
+) -> tuple[str, ...]:
+    refs = _ensure_source_ref_tuple(value, field_name=field_name)
+    if (
+        not refs
+        or len(refs) > SEMANTIC_ISSUE_PROPOSAL_MAX_SOURCE_REFS
+        or len(refs) != len(set(refs))
+    ):
+        raise ContractValidationError(f"semantic {field_name} invalid")
+    return refs
+
+
+def _observation_tuple(
+    value: object,
+    *,
+    field_name: str,
+) -> tuple[SemanticObservation, ...]:
+    if not isinstance(value, list):
+        raise ContractValidationError(f"semantic {field_name} invalid")
+    if len(value) > SEMANTIC_ISSUE_PROPOSAL_MAX_OBSERVATIONS_PER_FIELD:
+        raise ContractValidationError(f"semantic {field_name} invalid")
+    return tuple(SemanticObservation.from_json_dict(item) for item in value)
+
+
+def _optional_observation(value: object) -> SemanticObservation | None:
+    if value is None:
+        return None
+    return SemanticObservation.from_json_dict(value)
+
+
+def _ensure_observation_tuple(value: object, *, field_name: str) -> None:
+    if (
+        not isinstance(value, tuple)
+        or len(value) > SEMANTIC_ISSUE_PROPOSAL_MAX_OBSERVATIONS_PER_FIELD
+        or any(not isinstance(item, SemanticObservation) for item in value)
+    ):
+        raise ContractValidationError(f"semantic {field_name} invalid")
+
+
+def _observations_json(
+    observations: tuple[SemanticObservation, ...],
+) -> list[JsonDict]:
+    return [observation.to_json_dict() for observation in observations]
+
+
+def _validate_issue_proposal_packet_items(
+    packet: SemanticIssueProposalPacket,
+) -> None:
+    _validate_proposal_item_collections(packet)
+    _validate_proposal_item_refs(packet)
+    _validate_proposal_source_coverage(packet)
+
+
+def _validate_proposal_item_collections(
+    packet: SemanticIssueProposalPacket,
+) -> None:
+    if (
+        not isinstance(packet.issues, tuple)
+        or len(packet.issues) > SEMANTIC_ISSUE_PROPOSAL_MAX_ISSUES
+        or any(not isinstance(item, SemanticIssueProposal) for item in packet.issues)
+    ):
+        raise ContractValidationError("semantic issue proposal items invalid")
+    if (
+        not isinstance(packet.coverage_records, tuple)
+        or len(packet.coverage_records) > SEMANTIC_ISSUE_PROPOSAL_MAX_COVERAGE_RECORDS
+        or any(
+            not isinstance(item, SemanticCoverageRecord)
+            for item in packet.coverage_records
+        )
+    ):
+        raise ContractValidationError("semantic coverage records invalid")
+
+
+def _validate_proposal_item_refs(packet: SemanticIssueProposalPacket) -> None:
+    issue_refs = [item.issue_ref for item in packet.issues]
+    coverage_refs = [item.coverage_ref for item in packet.coverage_records]
+    if len(issue_refs) != len(set(issue_refs)):
+        raise ContractValidationError("semantic issue proposal refs invalid")
+    if len(coverage_refs) != len(set(coverage_refs)):
+        raise ContractValidationError("semantic coverage refs invalid")
+
+
+def _validate_proposal_source_coverage(
+    packet: SemanticIssueProposalPacket,
+) -> None:
+    allowed_refs = set(packet.source_refs)
+    covered_refs: set[str] = set()
+    for issue in packet.issues:
+        covered_refs.update(_validated_issue_refs(issue, allowed_refs))
+    for record in packet.coverage_records:
+        covered_refs.update(_validated_coverage_refs(record, allowed_refs))
+    if covered_refs != allowed_refs:
+        raise ContractValidationError("semantic issue proposal coverage incomplete")
+
+
+def _validated_issue_refs(
+    issue: SemanticIssueProposal,
+    allowed_refs: set[str],
+) -> set[str]:
+    refs = set(issue.source_refs())
+    if not refs.issubset(allowed_refs):
+        raise ContractValidationError("semantic issue proposal source refs invalid")
+    return refs
+
+
+def _validated_coverage_refs(
+    record: SemanticCoverageRecord,
+    allowed_refs: set[str],
+) -> set[str]:
+    refs = set(record.source_refs)
+    if not refs.issubset(allowed_refs):
+        raise ContractValidationError("semantic coverage source refs invalid")
+    duplicate_ref = record.duplicate_of_source_ref
+    if duplicate_ref is not None and duplicate_ref not in allowed_refs:
+        raise ContractValidationError("semantic duplicate coverage source ref invalid")
+    return refs
+
+
 def _ensure_enum_value(
     value: object, enum_type: type[StrEnum], *, field_name: str
 ) -> str:
@@ -640,9 +1120,7 @@ def _ensure_enum_value(
     try:
         return enum_type(value).value
     except ValueError:
-        raise ContractValidationError(
-            f"unsupported semantic {field_name}"
-        ) from None
+        raise ContractValidationError(f"unsupported semantic {field_name}") from None
 
 
 def _source_refs(value: object, *, required: bool = False) -> list[str]:
@@ -650,6 +1128,15 @@ def _source_refs(value: object, *, required: bool = False) -> list[str]:
         ensure_safe_ref(ref, label="source_ref")
         for ref in normalize_string_list(value, required=required)
     ]
+
+
+def _proposal_source_refs(value: object, *, required: bool = False) -> list[str]:
+    if (
+        not isinstance(value, list)
+        or len(value) > SEMANTIC_ISSUE_PROPOSAL_MAX_SOURCE_REFS
+    ):
+        raise ContractValidationError("semantic source_refs invalid")
+    return _source_refs(value, required=required)
 
 
 def _string_field(data: Mapping[str, Any], key: str) -> str:

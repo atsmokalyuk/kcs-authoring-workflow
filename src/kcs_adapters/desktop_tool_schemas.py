@@ -9,14 +9,6 @@ from kcs_core.json_payload import JsonDict
 from kcs_core.models import ArticleType
 
 
-def _string_array_schema(description: str) -> JsonDict:
-    return {
-        "type": "array",
-        "description": description,
-        "items": {"type": "string"},
-    }
-
-
 def approved_summary_input_schema() -> JsonDict:
     return object_schema(
         properties={
@@ -151,6 +143,27 @@ def draft_article_input_schema() -> JsonDict:
                 "type": "string",
                 "description": "Opaque item ref from a split-required result.",
             },
+            "operator_selected_item_refs": {
+                "type": "array",
+                "description": (
+                    "Ordered unique item refs for one Python-owned sequential "
+                    "batch. Do not combine with operator-confirmed evidence."
+                ),
+                "items": {"type": "string"},
+                "minItems": 1,
+                "maxItems": 5,
+                "uniqueItems": True,
+            },
+            "operator_confirmed_resolution_steps": {
+                "type": "array",
+                "description": (
+                    "Bounded sanitized resolution evidence supplied by the "
+                    "operator for one candidate already blocked as retryable."
+                ),
+                "items": {"type": "string", "maxLength": 1600},
+                "minItems": 1,
+                "maxItems": 12,
+            },
             "operator_selection_ref": {
                 "type": "string",
                 "description": "Opaque selection ref from a split-required result.",
@@ -192,11 +205,11 @@ def prepare_semantic_review_input_schema() -> JsonDict:
 def submit_semantic_review_input_schema() -> JsonDict:
     return object_schema(
         properties={
-            "candidate_semantic_extraction": {
+            "semantic_issue_proposal": {
                 "type": "object",
                 "description": (
-                    "candidate_semantic_extraction_v1 only, following the "
-                    "prepared packet required_submit_shape. Python validates."
+                    "semantic_issue_proposal_v1 only, following the prepared "
+                    "packet required_submit_shape. Python validates and projects."
                 ),
             },
             "semantic_review_ref": {
@@ -204,7 +217,7 @@ def submit_semantic_review_input_schema() -> JsonDict:
                 "description": "Opaque semantic-review ref from the prepared packet.",
             },
         },
-        required=["semantic_review_ref", "candidate_semantic_extraction"],
+        required=["semantic_issue_proposal", "semantic_review_ref"],
     )
 
 
@@ -324,46 +337,52 @@ def tool_output_schema() -> JsonDict:
 
 
 _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
-    "allowed_output_schema": {"type": "string"},
     "allowed_source_refs": {"type": "array"},
     "auto_publish_allowed": {"type": "boolean"},
     "automatic_item_retry_allowed": {"type": "boolean"},
+    "batch_status": {"type": "string"},
     "approved_summary_source": {"type": "string"},
     "article_type": {"type": "string"},
     "atomic_item": {"type": "object"},
+    "attempted_count": {"type": "integer"},
     "blockers": {"type": "array"},
+    "boundary_blocker_codes": {"type": "array"},
+    "boundary_blocker_count": {"type": "integer"},
     "bundle_ref": {"type": "string"},
     "bundle_storage_hint": {"type": "string"},
     "bundle_storage_ref": {"type": "string"},
     "byte_length": {"type": "integer"},
-    "candidate_count_policy": {"type": "string"},
-    "candidate_environment_field_names": {"type": "array"},
-    "candidate_item_field_names": {"type": "array"},
-    "candidate_plain_string_array_fields": {"type": "array"},
+    "candidate_outcomes": {"type": "array"},
+    "candidate_origin": {"type": "string"},
     "case_ref": {"type": "string"},
     "checks": {"type": "array"},
     "clean_ticket_sha256": {"type": "string"},
     "clean_ticket_store_ref": {"type": "string"},
     "clean_ticket_storage_hint": {"type": "string"},
     "clean_ticket_storage_ref": {"type": "string"},
+    "completed_count": {"type": "integer"},
+    "coverage_record_field_names": {"type": "array"},
     "customer_replies": {"type": "boolean"},
     "debug_code": {"type": "string"},
     "draft_ref": {"type": "string"},
     "draft_generated": {"type": "boolean"},
+    "draft_generated_count": {"type": "integer"},
+    "new_draft_created_count": {"type": "integer"},
     "draft_request_ready": {"type": "boolean"},
     "draft_sections": {"type": "object"},
     "evidence_valid": {"type": "boolean"},
     "existing_article_review": {"type": "object"},
     "excerpt_count": {"type": "integer"},
-    "excerpt_coverage_policy": {"type": "string"},
     "excerpt_total_bytes": {"type": "integer"},
     "draft_status": {"type": "string"},
     "failure_stage": {"type": "string"},
     "handoff_ref": {"type": "string"},
     "html_path": {"type": "string"},
     "html_sha256": {"type": "string"},
-    "howto_qa_submit_item_shape": {"type": "object"},
     "input_safety_ok": {"type": "boolean"},
+    "issue_boundary_contract": {"type": "object"},
+    "issue_field_names": {"type": "array"},
+    "issue_shape_contract": {"type": "object"},
     "item_candidates": {"type": "array"},
     "item_ref": {"type": "string"},
     "kcs_ready": {"type": "boolean"},
@@ -381,18 +400,22 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "operator_choice_confirmed": {"type": "boolean"},
     "operator_choice_request": {"type": "object"},
     "operator_choice_submit_options": {"type": "array"},
-    "operator_all_submit_arguments": {"type": "array"},
+    "operator_evidence_provenance": {"type": "string"},
+    "operator_followup": {"type": "object"},
     "operator_prompt": {"type": "string"},
     "operator_prompt_style": {"type": "string"},
     "operator_resolution_detail_policy": {"type": "object"},
     "operator_selected_item_ref": {"type": "string"},
+    "operator_selected_item_refs": {"type": "array"},
     "operator_selection_ref": {"type": "string"},
     "original_article_type": {"type": "string"},
     "original_decision_status": {"type": "string"},
     "original_readiness_state": {"type": "string"},
     "original_recommended_action": {"type": "string"},
     "prompts_exposed": {"type": "boolean"},
+    "proposal_field_contracts": {"type": "object"},
     "protocol_version": {"type": "string"},
+    "proposal_shape_contracts": {"type": "object"},
     "provider_calls": {"type": "boolean"},
     "provider_error_code": {"type": "string"},
     "provider_status": {"type": "string"},
@@ -407,10 +430,11 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "remaining_operator_choice_request": {"type": "object"},
     "remaining_operator_choice_submit_options": {"type": "array"},
     "remaining_selection_ref": {"type": "string"},
+    "retryable_blocked_count": {"type": "integer"},
+    "retryable_item_candidates": {"type": "array"},
     "request_schema_version": {"type": "string"},
     "request_sha256": {"type": "string"},
     "required_submit_shape": {"type": "object"},
-    "resolution_step_requirements": {"type": "array"},
     "resources_exposed": {"type": "boolean"},
     "response_schema_version": {"type": "string"},
     "response_sha256": {"type": "string"},
@@ -424,22 +448,27 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "reviewer_bundle_written": {"type": "boolean"},
     "reuse_search_run_ref": {"type": "string"},
     "reuse_search_status": {"type": "string"},
+    "schema_correction_used": {"type": "boolean"},
     "schema_version": {"type": "string"},
     "selected_excerpts": {"type": "array"},
+    "selected_count": {"type": "integer"},
     "selected_reuse_match": {"type": "object"},
     "server_name": {"type": "string"},
     "server_version": {"type": "string"},
     "should_be_kcs_article": {"type": "boolean"},
     "semantic_review_ref": {"type": "string"},
+    "semantic_submission_correction": {"type": "object"},
     "semantic_review_packet_sha256": {"type": "string"},
     "smoke_ok": {"type": "boolean"},
     "submit_arguments": {"type": "object"},
     "submit_tool": {"type": "string"},
     "task": {"type": "string"},
+    "terminal_blocked_count": {"type": "integer"},
     "tool_count": {"type": "integer"},
     "tools": {"type": "array"},
     "ticket_ref": {"type": "string"},
     "validation_ok": {"type": "boolean"},
+    "workflow_stopped_count": {"type": "integer"},
     "workflow_state": {"type": "string"},
     "writes_files": {"type": "boolean"},
 }
@@ -486,6 +515,8 @@ def _copy_safe_schema_metadata(schema: Mapping[str, Any], result: JsonDict) -> N
     if isinstance(max_length, int):
         result["maxLength"] = max_length
 
+    _copy_safe_array_metadata(schema, result)
+
     additional_properties = schema.get("additionalProperties")
     if isinstance(additional_properties, bool):
         result["additionalProperties"] = additional_properties
@@ -493,6 +524,19 @@ def _copy_safe_schema_metadata(schema: Mapping[str, Any], result: JsonDict) -> N
     required = schema.get("required")
     if isinstance(required, list) and all(isinstance(item, str) for item in required):
         result["required"] = list(required)
+
+
+def _copy_safe_array_metadata(
+    schema: Mapping[str, Any],
+    result: JsonDict,
+) -> None:
+    for key in ("minItems", "maxItems"):
+        value = schema.get(key)
+        if isinstance(value, int):
+            result[key] = value
+    unique_items = schema.get("uniqueItems")
+    if isinstance(unique_items, bool):
+        result["uniqueItems"] = unique_items
 
 
 def _copy_safe_schema_children(schema: Mapping[str, Any], result: JsonDict) -> None:

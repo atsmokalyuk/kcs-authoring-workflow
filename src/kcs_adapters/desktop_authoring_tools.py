@@ -15,6 +15,7 @@ from kcs_adapters.desktop_stdio_transport import McpArgumentError
 from kcs_adapters.desktop_workflow import (
     ApprovedSummaryPipelineStageError,
     DesktopDraftWorkflow,
+    SemanticReviewBoundaryAmbiguousError,
     SemanticReviewExpiredError,
     SemanticReviewInvalidError,
     SemanticReviewSubmissionInvalidError,
@@ -178,23 +179,15 @@ class DesktopAuthoringTools:
         )
 
     def submit_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
+        correction: JsonDict | None = None
         try:
-            _require_args(
-                arguments,
-                frozenset(
-                    {
-                        "candidate_semantic_extraction",
-                        "semantic_review_ref",
-                    }
-                ),
-                required=frozenset(
-                    {
-                        "candidate_semantic_extraction",
-                        "semantic_review_ref",
-                    }
-                ),
-            )
+            _require_semantic_submit_args(arguments)
             return self._draft_article_tool.submit_semantic_review(arguments)
+        except SemanticReviewBoundaryAmbiguousError as exc:
+            return _desktop_workflow_results.semantic_review_boundary_terminal_result(
+                projected=exc.projected,
+                schema_version=self._schema_version,
+            )
         except SemanticReviewExpiredError:
             debug_code = "semantic_review_expired"
         except SemanticReviewUnavailableError:
@@ -202,10 +195,16 @@ class DesktopAuthoringTools:
         except SemanticReviewInvalidError:
             debug_code = "semantic_review_invalid"
         except SemanticReviewSubmissionInvalidError as exc:
+            correction = exc.correction
             debug_code = exc.debug_code
-        except (ContractValidationError, McpArgumentError):
+        except (ContractValidationError, McpArgumentError) as exc:
+            _terminalize_invalid_semantic_submit_shape(
+                self._draft_workflow,
+                exc,
+            )
             debug_code = "semantic_review_submission_invalid"
         return _desktop_workflow_results.semantic_review_submit_failure_result(
+            correction=correction,
             debug_code=debug_code,
             schema_version=self._schema_version,
         )
@@ -228,6 +227,23 @@ class DesktopAuthoringTools:
             "validation_ok": True,
             "writes_files": False,
         }
+
+
+def _require_semantic_submit_args(arguments: Mapping[str, Any]) -> None:
+    _require_args(
+        arguments,
+        frozenset({"semantic_issue_proposal", "semantic_review_ref"}),
+        required=frozenset({"semantic_issue_proposal", "semantic_review_ref"}),
+    )
+
+
+def _terminalize_invalid_semantic_submit_shape(
+    draft_workflow: DesktopDraftWorkflow,
+    error: Exception,
+) -> None:
+    if isinstance(error, McpArgumentError):
+        draft_workflow.clear_pending_semantic_review()
+
 
 def _execute_approved_summary_pipeline(
     arguments: Mapping[str, Any],

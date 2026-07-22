@@ -8,7 +8,7 @@ from typing import Any
 
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict, require_json_object
-from kcs_core.models import ArticleType, NormalizedTicketEvidencePacket
+from kcs_core.models import ArticleType, CandidateOrigin, NormalizedTicketEvidencePacket
 from kcs_core.safety import (
     EvidenceVisibility,
     InputClass,
@@ -25,6 +25,11 @@ from kcs_core.sanitizer import (
 )
 
 APPROVED_EVIDENCE_EXPORT_SCHEMA_VERSION = "approved_zendesk_evidence_export_v1"
+
+
+class EvidenceBuildSafetyError(ContractValidationError):
+    """Raised when a normalized evidence export fails the safety gate."""
+
 
 _ALLOWED_EXPORT_FIELDS = frozenset(
     {
@@ -49,6 +54,7 @@ _ALLOWED_CANDIDATE_FIELDS = frozenset(
         "article_type",
         "atomic",
         "candidate_id",
+        "candidate_origin",
         "confirmed_facts",
         "customer_reported",
         "customer_specific",
@@ -79,6 +85,7 @@ _ALLOWED_CANDIDATE_FIELDS = frozenset(
 _CANDIDATE_STRING_FIELDS = frozenset(
     {
         "article_type",
+        "candidate_origin",
         "question",
         "resolution_state",
         "reuse_search_run_ref",
@@ -236,6 +243,13 @@ def _validate_candidate_string(key: str, value: str) -> None:
             raise ContractValidationError(
                 "unsupported issue candidate article_type"
             ) from exc
+    if key == "candidate_origin":
+        try:
+            CandidateOrigin(value)
+        except ValueError as exc:
+            raise ContractValidationError(
+                "unsupported issue candidate origin"
+            ) from exc
 
 
 def _candidate_list(key: str, value: object) -> list[str]:
@@ -314,6 +328,6 @@ def _sanitizer_report(
 def _ensure_packet_safe(packet: NormalizedTicketEvidencePacket) -> None:
     result = validate_evidence_safety(packet)
     if not result.ok:
-        raise ContractValidationError(
+        raise EvidenceBuildSafetyError(
             f"evidence export failed safety gate: {', '.join(result.blockers)}"
         )

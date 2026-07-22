@@ -13,6 +13,7 @@ from kcs_core.claude_handoff import (
     ClaudeHandoffProviderStatus,
     KcsClaudeHandoffRequestPacket,
     KcsClaudeHandoffResponsePacket,
+    bounded_claude_handoff_title_hint,
     build_claude_handoff_request,
     submit_claude_handoff,
     validate_claude_handoff_response,
@@ -28,6 +29,13 @@ from kcs_core.models import (
     RecommendedAction,
     RequiredNextStep,
 )
+
+
+def test_bounded_title_hint_preserves_safe_text_and_limits_packet_value() -> None:
+    assert bounded_claude_handoff_title_hint("Safe title") == "Safe title"
+    assert bounded_claude_handoff_title_hint("A" * 161) == "A" * 160
+    with pytest.raises(ContractValidationError):
+        bounded_claude_handoff_title_hint("Contact person@example.com")
 
 
 def _decision(**overrides: object) -> KcsActionDecisionPacket:

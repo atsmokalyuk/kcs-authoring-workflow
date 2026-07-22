@@ -4,6 +4,7 @@ import pytest
 
 from kcs_adapters import desktop_workflow
 from kcs_adapters.desktop_semantic_candidates import (
+    desktop_candidate_set_from_semantic_extraction,
     desktop_item_candidates_from_semantic_extraction,
 )
 from kcs_core.errors import ContractValidationError
@@ -60,6 +61,7 @@ def test_semantic_extraction_converts_to_desktop_candidates() -> None:
         {
             "applicable_to": ["Plesk for Linux"],
             "article_type": ArticleType.TECHNICAL_SCR.value,
+            "candidate_origin": "customer_reported",
             "confirmed_facts": ["A safe Plesk fact is confirmed."],
             "environment": {
                 "applicable_to": ["Plesk for Linux"],
@@ -201,6 +203,25 @@ def test_semantic_extraction_action_like_cause_with_question_becomes_howto() -> 
     )
     assert "supported_cause" not in candidates[0]
     assert candidates[0]["answer_steps"] == item["resolution_steps"]
+
+
+def test_blocked_item_with_issue_evidence_remains_blocked() -> None:
+    payload = _extraction_payload()
+    item = dict(payload["items"][0])
+    item.update(
+        {
+            "article_type_hint": ArticleType.NONE.value,
+            "kcs_item_status": KcsItemStatus.BLOCKED_NEED_MORE_EVIDENCE.value,
+            "question": "How to apply a supported Plesk setting?",
+            "supported_answer": "The ticket does not confirm the answer.",
+        }
+    )
+    payload["items"] = [item]
+
+    candidates, outcomes = desktop_candidate_set_from_semantic_extraction(payload)
+
+    assert candidates == []
+    assert outcomes[0]["outcome"] == "blocked_need_more_evidence"
 
 
 def test_semantic_extraction_invalid_output_is_controlled() -> None:

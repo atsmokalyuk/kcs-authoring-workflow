@@ -34,6 +34,88 @@ summaries, deterministic extraction where possible, or bounded Claude-assisted
 semantic extraction when approved. Python validation owns packet acceptance.
 Claude output is untrusted until validated.
 
+## Active Semantic Proposal And Audit Contract
+
+As of M3 (2026-07-14), the Desktop semantic-review default is
+`semantic_issue_proposal_v1`. Claude proposes only source-grounded observations,
+issue boundaries, and closed coverage records. It does not propose article
+type, origin, visibility, supportability, KCS item status, KCS action, reuse,
+readiness, selection, or renderer state.
+
+The issue partition is model-proposed. Python owns schema and evidence
+admissibility, deterministic audit and projection of that partition, workflow
+state, and every downstream decision. Source-union completeness and candidate
+count do not prove semantic identity equality.
+
+The model owns semantic assignment, not canonical evidence wording. Except for
+the model-owned issue `summary`, every submitted observation must be an
+extractive, whitespace-normalized contiguous fragment of one immutable
+referenced excerpt. This preserves customer symptoms/questions, support
+procedures, commands, and public support references for deterministic
+downstream checks. When an excerpt has an explicit `customer` or `support`
+speaker label, Python rejects symptoms/questions grounded only in an explicit
+support turn. `unknown` speaker remains admissible and Python does not infer its
+author.
+
+For a recognized Client/Support clean-ticket transcript, the active preparation
+path preserves the complete bounded original speaker-turn inventory in source
+order. Python splits only for fixed byte bounds and does not use lexical signals
+to decide which eligible transcript turns the model receives. Internal-support
+turns remain local and are not part of the model-visible inventory. If the
+complete eligible inventory exceeds the fixed source-ref or total-byte bounds,
+preparation blocks fail-closed. For non-transcript structured clean text, the
+existing lexical selector ranks a bounded twelve-excerpt atomic evidence set.
+
+Ordinary model-visible evidence uses the explicitly neutral
+`unclassified_evidence` role; lexical matches do not assert symptom, question,
+cause, resolution, or fact semantics. Closed deterministic non-issue roles
+remain available for coverage validation. Until authenticated per-excerpt
+provenance exists, Python marks runtime excerpts `internal_reviewer_only` and
+derives conservative `support_discovered` origin.
+
+```text
+immutable approved excerpts + typed neutral/non-issue role index
+  -> SemanticIssueProposalPacket (untrusted)
+  -> Python schema, evidence, provenance, and visibility validation
+  -> deterministic projection of model-grouped issues + disposition ledgers
+  -> Python-generated operator one/all candidate choice when multiple issues exist
+  -> selected candidate evidence
+  -> existing reuse / decision / renderer / reviewer-bundle pipeline
+```
+
+Native candidate selection is the only operator-owned scope checkpoint. The
+retired model boundary-uncertainty field is not accepted by the active packet
+schema. Unassigned evidence remains in the complete disposition ledger and does
+not add a checkpoint. An issue-local `evidence_shape_invalid` disposition does
+not hide complete sibling issues: those siblings continue through normal
+authoring, with native selection when multiple complete siblings remain, and
+the incomplete issue remains `blocked_need_more_evidence` in the outcome
+ledger. A packet with no complete issue still terminates fail-closed.
+Deterministic non-issue-role, provenance, and visibility blockers remain
+packet-terminal for tool-side review.
+The model-owned issue summary remains intact as semantic evidence. Before
+operator display or article rendering, Python derives a bounded title from that
+summary; renderer title limits remain fail-closed and are not weakened.
+The independent one-use schema correction remains available for
+observation-shape errors only. A terminal submit without a bounded correction
+preserves its closed, value-safe validation reason code; it never echoes
+proposal or ticket content and does not authorize retry.
+Terminal boundary review reports only the closed blocker-code set and blocker
+count needed for tool-side diagnosis; it does not expose observations, issue
+summaries, source refs, ticket content, or recovery arguments.
+
+The retired identity-evidence overlap guard is not part of the active runtime.
+Real-ticket refs-only evidence showed that it would not detect the reviewed
+incorrect partition, so retaining it would add control-flow complexity without
+supporting a semantic-stability claim. Shared refs remain visible in local
+evaluation records; they do not create a runtime action.
+
+`candidate_semantic_extraction_v1` is no longer a Desktop semantic-review
+packet or submit option. It remains internal to the approved-summary provider
+and current LF-1 comparison tooling until separate real-ticket evidence and
+behavior review authorize parser retirement. There is no runtime schema flag,
+development MCP tool, or second semantic-review owner.
+
 ## KCS-2 Scope Alignment
 
 KCS-2 is limited to safety and sanitized-evidence readiness gates.

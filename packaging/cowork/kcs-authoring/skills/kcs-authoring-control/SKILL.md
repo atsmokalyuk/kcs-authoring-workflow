@@ -70,6 +70,11 @@ The operator may provide operator-confirmed resolution detail and rerun the
 same pipeline; that added detail is approved evidence, not a manual/freehand
 draft.
 
+After a batch, report retryable blockers declaratively. Do not ask the operator
+to choose a retryable candidate or confirm leaving already blocked candidates
+blocked. Preserve them in the returned ledger; resume one only when the
+operator later supplies exact confirmed resolution or workaround steps.
+
 When a resolution uses a Plesk panel screen, use a concrete navigation path from
 the Plesk home page, for example `Plesk > Domains > example.com > Hosting
 Settings`. The renderer/style gate expects such GUI paths to be bold in Zendesk
@@ -84,8 +89,9 @@ The Desktop-visible primary input is intentionally thin:
 - Selected-item continuation: `operator_selection_ref` and
   `operator_selected_item_ref`, optionally `debug`.
 
-Do not provide `article_type`. Python owns local semantic extraction and may use only
-canonical values `technical_scr` or `howto_qa`.
+Do not provide `article_type`. Python owns semantic proposal acceptance,
+validation, projection, and article-type derivation and may use only canonical
+values `technical_scr` or `howto_qa`.
 
 Production semantic extraction is provider-owned inside Python. If the approved
 provider is not configured and the tool returns
@@ -116,11 +122,22 @@ If `kcs_draft_article` returns
 `workflow_state=semantic_review_required`, call
 `kcs_prepare_semantic_review` with the returned `semantic_review_ref`. That
 tool returns a bounded Claude-visible semantic-review packet with
-`selected_excerpts` only. Use it only to identify atomic KCS item candidates
-for `candidate_semantic_extraction_v1`; do not draft article prose, choose a
-KCS action, produce HTML, or pass `item` / `item_candidates` payloads through
-`kcs_draft_article`. Then call `kcs_submit_semantic_review` with only
-`semantic_review_ref` and the strict `candidate_semantic_extraction_v1` object.
+`selected_excerpts` only. Use it only to propose source-grounded observations,
+atomic issue boundaries, and explicit coverage records for
+`semantic_issue_proposal_v1`; do not draft article prose, choose a KCS action,
+produce HTML, or pass `item` / `item_candidates` payloads through
+`kcs_draft_article`. Then call `kcs_submit_semantic_review` with the same
+`semantic_review_ref` and the strict `semantic_issue_proposal_v1` object.
+
+If multiple candidates pass Python validation, present the native candidate
+selection and wait for the operator. Submit only its exact `submit_arguments`.
+Unassigned evidence remains in the outcome ledger and must never create a
+separate operator checkpoint.
+
+During semantic review, use only bounded excerpts and return only the exact
+fields requested by the current packet. Python validates the submission; the
+operator selects scope; Python owns the final KCS action. Do not choose for the
+operator, draft manually, or publish.
 
 Do not try to construct KCS-9b or KCS-9c packet schemas manually from chat.
 

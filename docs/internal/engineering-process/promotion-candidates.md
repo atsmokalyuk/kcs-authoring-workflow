@@ -9,7 +9,7 @@ product contract.
 ## Promotion Cadence
 
 ```text
-Once = note.
+Once = review note, not a registry entry.
 Twice = review checklist item.
 Three times = candidate for test/tool/check.
 Stable across KCS-14 and KCS-15 = reusable infrastructure candidate.
@@ -49,30 +49,27 @@ Valid promotion targets:
 
 Valid statuses:
 
-- note;
 - checklist-item;
 - candidate;
 - accepted;
-- probation-advisory;
 - blocking;
 - implemented;
 - deferred;
 - rejected.
-- expired.
 
 ## Agent Responsibility
 
-During staged-diff review, slice closeout before commit, or repeated
-validation/review failure with the same cause, the development agent should
-propose a candidate when a finding is repeated, stable, or mechanically
-checkable. The agent should record the candidate here with a stable value-safe
-finding code such as `KCS14-PROMO-NNN`, or explicitly state that there are no
-new promotion candidates.
+During aggregate review, aggregate closeout, or repeated validation/review
+failure with the same cause, the development agent should propose a candidate
+when a process finding is repeated, stable, or mechanically checkable. The
+agent should record the candidate here with a stable value-safe finding code
+such as `KCS14-PROMO-NNN`, or explicitly state at aggregate closeout that there
+are no new promotion candidates.
 
-Before writing "Promotion candidates: none" in a slice closeout, the agent must
-re-read the Findings, watch-item, warnings, and aggregate-review sections for
-the slice being closed. Repeated findings found there must be recorded here or
-explicitly rejected with a reason.
+Before writing "Promotion candidates: none" in an aggregate closeout, the
+agent must re-read the Findings, watch-item, warnings, and aggregate-review
+sections for the slice being closed. Repeated findings found there must be
+recorded here or explicitly rejected with a reason.
 
 Promotion implementation should be a small scoped action or commit, not hidden
 inside unrelated feature or refactor work.
@@ -83,35 +80,33 @@ records. The agent must not count chat memory as evidence.
 AI reviewer suggestions may trigger a proposal, but model output never grants
 implicit approval.
 
-Candidates in `note`, `checklist-item`, `candidate`, or `deferred` status
-expire after three completed slices without new evidence. Expired candidates
-require fresh evidence before promotion.
+Runtime and contract defects with known expected behavior go directly to
+focused regression tests. Parked ownership or import-contract questions stay
+in the code map, design notes, or an explicitly scoped follow-up. They do not
+need registry lifecycle states.
 
 ## Active Candidates
 
 | Finding code | Rule / finding | Seen in | Promotion target | Owner slice | Status |
 | --- | --- | --- | --- | --- | --- |
 | KCS14-PROMO-009 | Packaged guidance and tracked engineering docs can drift around supported tool names, manual/freehand drafting boundaries, publication/customer-reply boundaries, and command-surface wording | Slice 8 packaging aggregate, desktop protocol aggregate, Slice 8 closeout, external Slice 8 review | review checklist item now; possible policy/package test later | KCS-14 Slice 9 / future package-edit slice | checklist-item |
-| KCS14-PROMO-010 | Behavior-preserving implementation touches to frozen-path files need an explicit review protocol: contract unchanged, focused characterization tests passed, graph hash updated, and broad freeze diff gate re-run after commit | Slice 9 Target 2, Slice 9 Target 3 | review checklist item now; possible closeout-shape check later | KCS-14 Slice 9 / Slice 10 policy hardening if repeated | checklist-item |
-| KCS14-PROMO-NOTE-001 | `desktop_workflow.py` compatibility reexports are a parked import-contract question, not a cleanup target | Slice 8 desktop draft workflow review | code-map/review note only | future import-contract slice if reopened | note |
+| KCS14-PROMO-012 | Intentional frozen-path implementation changes still need human old-to-new behavior mapping and a residual drift judgment after deterministic snapshot, graph, and freeze checks pass | Slice 9 Targets 2-3, KCS-14.5 M0-M4 | review checklist item | future frozen-path implementation changes | checklist-item |
 
-Future promotion decisions for complexity measurement should use the probation
-signal from Slice 6/Slice 7 closeouts, not chat memory.
+The complexity sensor is implemented but remains advisory. A blocking threshold
+would require separately approved repeated evidence.
 
-## Frozen-Path Implementation Touch Protocol Detail
+## Frozen-Path Human Review Residue
 
 Finding code:
 
-- see the active candidates row above.
+- see the active human-review residue row above.
 
 Rule / finding:
 
-- A frozen-path diff gate is useful, but Slice 9 showed a legitimate
-  behavior-preserving refactor can touch a frozen implementation file while
-  preserving the frozen contract.
-- Such touches need an explicit protocol so agents do not either bypass the
-  gate silently or treat every frozen-path implementation touch as a behavior
-  change.
+- Deterministic snapshot, graph-hash, and freeze checks now detect frozen-path
+  changes and stale evidence.
+- They cannot decide whether an intentional change preserves behavior. That
+  residue stays as one human review judgment rather than a second workflow.
 
 Seen in:
 
@@ -128,20 +123,22 @@ Evidence:
 
 Trigger:
 
-- Same review concern appeared in two Slice 9 runtime targets.
+- The review concern appeared in two Slice 9 runtime targets and throughout
+  the KCS-14.5 frozen-path changes.
 
 Manual correction needed:
 
-- yes, until the protocol is added to review checklist and closeout templates.
+- yes, for the semantic old-to-new mapping and residual drift judgment.
 
 Can be checked mechanically:
 
-- partly. A future closeout-shape check can require fields for frozen-path
-  implementation touches, but equivalence remains review-gated.
+- no. Detection and evidence freshness are already mechanical; equivalence
+  remains review-gated.
 
 False-positive risk:
 
-- medium if implemented as a blocker; low as a review checklist item.
+- low as a review checklist item; high if a mechanical check pretends to prove
+  semantic equivalence.
 
 KCS-specific or generic:
 
@@ -149,22 +146,19 @@ KCS-specific or generic:
 
 Promotion target:
 
-- review checklist item;
-- future closeout-shape check for required evidence fields.
+- review checklist item.
 
 Target layer:
 
-- review gate now;
-- deterministic shape check later only for evidence presence.
+- review gate for semantic equivalence only.
 
 Decision:
 
-- record as checklist-item. Do not automate as a blocker until more evidence
-  appears.
+- retain only the human semantic-equivalence residue as a checklist item.
 
 Owner slice:
 
-- KCS-14 Slice 9 / Slice 10 policy hardening if repeated.
+- future frozen-path implementation changes.
 
 Scope:
 
@@ -173,9 +167,8 @@ Scope:
 
 Validation:
 
-- closeout must state the frozen path touched, unchanged contract, focused
-  characterization tests, graph hash update, post-commit freeze check, and
-  residual review-only drift risks.
+- aggregate closeout must state the intentional frozen path touched, unchanged
+  contract, old-to-new mapping, and residual review-only drift risks.
 
 Approval:
 
@@ -280,42 +273,6 @@ Status:
 
 - checklist-item.
 
-## Parked Import-Contract Note
-
-Finding code:
-
-- `KCS14-PROMO-NOTE-001`
-
-Rule / finding:
-
-- `desktop_workflow.py` compatibility reexports should not be removed as
-  cleanup. They are an import-contract question.
-
-Seen in:
-
-- Slice 8 desktop draft workflow review.
-- External Slice 8 review requested a note-level registry record.
-
-Evidence:
-
-- Compatibility exports were identified as a review-only drift risk.
-
-Trigger:
-
-- Parked ownership question with potential compatibility impact.
-
-Promotion target:
-
-- code-map/review note only.
-
-Decision:
-
-- keep parked until a future explicit import-contract slice.
-
-Status:
-
-- note.
-
 ## Implemented Promotions
 
 | Finding code | Rule / finding | Seen in | Promotion target | Owner slice | Status |
@@ -324,10 +281,89 @@ Status:
 | KCS14-PROMO-002 | Active docs must not list unavailable development harnesses as active | Slice 1 planning/review | policy test | Slice 1 | implemented |
 | KCS14-PROMO-003 | Tool entrypoint list and manual/deterministic classification should not drift | Slice 2 planning/review | policy test and help liveness check | Slice 2 | implemented |
 | KCS14-PROMO-004 | Clean-ticket-derived fixtures need provenance and privacy-scan markers | Slice 3 planning/review | policy test | Slice 3 | implemented |
-| KCS14-PROMO-005 | Refactor closeouts repeatedly recorded complexity distribution as not measured by a tool | Slice 6 batches 5-16 external review | advisory complexity/coupling/interface measurement entrypoint and baseline snapshot | Slice 6 | probation-advisory |
+| KCS14-PROMO-005 | Refactor closeouts repeatedly recorded complexity distribution as not measured by a tool | Slice 6 batches 5-16 external review | advisory complexity/coupling/interface measurement entrypoint and baseline snapshot | Slice 6 | implemented |
 | KCS14-PROMO-006 | Contract-term/spec-table extraction should preserve all old terms with all-quantified checks and avoid broad table-driven rewrites | Slice 6 batches 19-22 external review | review checklist item and policy anchor | Slice 7 | implemented |
 | KCS14-PROMO-007 | Refactor closeouts that cite complexity measurement should record the full sensor summary/delta block, not only selected headline fields | Slice 6 batches 19-22 external review | closeout shape policy anchor | Slice 7 | implemented |
 | KCS14-PROMO-008 | Behavior-preserving refactors need explicit old-to-new and new-to-old drift mapping evidence | Slice 6 batches 1-22 closeouts and external review | behavior drift checklist and policy anchor | Slice 7 | implemented |
+| KCS14-PROMO-010 | Frozen-path implementation changes must be detected and stale snapshot or graph evidence must fail deterministic policy checks | Slice 9 Targets 2-3, repeated KCS-14.5 frozen-path changes | freeze snapshot, graph hash, and post-commit freeze/graph checks | KCS-14.5 | implemented |
+| KCS14-PROMO-011 | Durable review notes must not record absolute local artifact paths; use an opaque basename plus value-safe hash/count/verdict | M3 aggregate closeout review, 13 repeated paths | review-context policy test | KCS-14.5 M3 closeout | implemented |
+| KCS14-PROMO-013 | M3 canaries must run in fail-closed order: legacy baseline, medium, continuation, then complex only after the first two stages are stable | M2 closeout and M3 staged canary gate | ordered documentation policy test | KCS-14.5 M2 closeout | implemented |
+
+## Durable Review Artifact Reference Promotion Detail
+
+Finding code:
+
+- see the implemented promotions row above.
+
+Rule / finding:
+
+- Durable review and closeout notes must not store absolute local artifact
+  paths. Record only an opaque artifact basename plus value-safe
+  hash/count/verdict evidence.
+
+Seen in:
+
+- M3 aggregate closeout review found 13 absolute local canary artifact paths
+  in the tracked review notes.
+
+Evidence:
+
+- The paths added no comparison value beyond the basename and violated the
+  existing private-filesystem boundary in the review-context protocol.
+
+Trigger:
+
+- repeated mechanically checkable finding in one material closeout.
+
+Manual correction needed:
+
+- replace the local root with an opaque basename.
+
+Can be checked mechanically:
+
+- yes, against the durable KCS-14 review-notes artifact.
+
+False-positive risk:
+
+- low for the exact absolute local canary root.
+
+KCS-specific or generic:
+
+- generic durable-review privacy boundary.
+
+Promotion target:
+
+- policy test.
+
+Target layer:
+
+- review-context policy.
+
+Decision:
+
+- implement in the M3 closeout because it directly locks the reviewed privacy
+  correction and is limited to policy/docs.
+
+Owner slice:
+
+- KCS-14.5 M3 closeout.
+
+Scope:
+
+- tracked KCS-14 durable review notes only.
+
+Validation:
+
+- review-context policy suite and `git diff --check`.
+
+Approval:
+
+- implicit promotion path: stable mechanical rule, low false-positive risk,
+  and policy/docs-only diff.
+
+Status:
+
+- implemented.
 
 ## Complexity Measurement Promotion Detail
 
@@ -389,7 +425,7 @@ Target layer:
 
 Decision:
 
-- implemented as advisory/probation sensor.
+- implemented as an advisory sensor.
 
 Owner slice:
 
@@ -413,7 +449,7 @@ Approval:
 
 Status:
 
-- probation-advisory.
+- implemented.
 
 ## Contract-Term / Spec-Table Extraction Detail
 
