@@ -18,12 +18,11 @@ turning chat history into a source of truth.
 ## Ownership
 
 - This file owns the review packet protocol and promotion candidate protocol.
-- `docs/internal/engineering-process/kcs-14-review-notes.md` owns material
-  review verdicts and slice closeouts.
+- The pull-request description owns the material review handoff and validation
+  record; durable product or architecture decisions belong in their existing
+  authoritative documents.
 - `docs/internal/engineering-process/promotion-candidates.md` owns the
   registry of repeated findings that may move down the enforcement ladder.
-- `docs/internal/engineering-process/review-packets/` may hold file-based
-  review packets when a review needs a persistent artifact.
 - `docs/internal/engineering-process/tool-entrypoints.md` owns validation
   commands.
 - `docs/internal/engineering-process/agent-operable-engineering-workflow.md`
@@ -31,20 +30,14 @@ turning chat history into a source of truth.
 
 ## Packet Location
 
-For material or external review, create a file-based packet:
-
-```text
-docs/internal/engineering-process/review-packets/<slice>-review-packet.md
-```
-
-Chat-only review is acceptable for tiny local checkpoints, but any material
-review that changes authoritative process docs, contract wording, acceptance
-criteria, ownership maps, or promotion decisions should have a file-based
-packet or a closeout entry that preserves the same fields.
+Use the pull-request description as the default durable review packet. Create
+a tracked design or decision document only when the content remains
+authoritative after the PR closes. Do not create a separate Markdown file for
+each batch, review pass, or transient checkpoint.
 
 ## Required Sections
 
-Each file-based review packet should include:
+Each material review packet should include:
 
 - `Review Task`;
 - `Slice Intent`;
@@ -168,11 +161,9 @@ Promotion candidates:
 ```
 
 Counts must come from
-`docs/internal/engineering-process/promotion-candidates.md` and material
-closeout entries in `docs/internal/engineering-process/kcs-14-review-notes.md`.
-The agent must not rely on chat memory to decide whether a finding is repeated.
-The agent must report that it checked these durable sources even when the
-result is `Promotion candidates: none`.
+`docs/internal/engineering-process/promotion-candidates.md` and merged pull
+requests or final closeout records. The agent must not rely on chat memory to
+decide whether a finding is repeated. The closeout must report that it checked these durable sources even when no new promotion candidate exists.
 
 Use stable value-safe finding codes such as `KCS14-PROMO-NNN` when recording
 promotion candidates. Without a code or closeout entry, a finding does not

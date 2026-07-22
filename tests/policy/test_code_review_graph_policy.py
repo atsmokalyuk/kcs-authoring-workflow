@@ -16,31 +16,6 @@ MODULE_BOUNDARIES = (
 REVIEW_CHECKPOINTS = (
     ROOT / "docs" / "internal" / "engineering-process" / "review-checkpoints.md"
 )
-FEATURE_NOTE = (
-    ROOT
-    / "docs"
-    / "internal"
-    / "engineering-process"
-    / "slice-plans"
-    / "kcs-14-slice-5-code-review-graph-baseline-feature-note.md"
-)
-SLICE_6_METHODOLOGY = (
-    ROOT
-    / "docs"
-    / "internal"
-    / "engineering-process"
-    / "slice-plans"
-    / "kcs-14-slice-6-refactor-methodology.md"
-)
-OUTCOME_CONTRACT = (
-    ROOT
-    / "docs"
-    / "internal"
-    / "engineering-process"
-    / "slice-plans"
-    / "kcs-14-outcome-contract.md"
-)
-
 FORBIDDEN_GRAPH_PATTERNS = (
     re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
     re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
@@ -245,67 +220,5 @@ def test_code_map_docs_define_orientation_not_source_replacement() -> None:
     )
     combined = f"{boundary_text}\n{checkpoint_text}"
     missing = [phrase for phrase in required if phrase not in combined]
-
-    assert not missing, "\n".join(missing)
-
-
-def test_code_review_graph_baseline_feature_note_has_required_shape() -> None:
-    text = FEATURE_NOTE.read_text(encoding="utf-8")
-
-    required = (
-        "Feature Note: Code-Review Graph Baseline",
-        "## Problem",
-        "## Decision",
-        "## Workflow",
-        "## Agent Stop Condition",
-        "## Implemented In Slice",
-        "## Not In Scope",
-        "## Later Use",
-    )
-    missing = [phrase for phrase in required if phrase not in text]
-
-    assert not missing, "\n".join(missing)
-
-
-def test_slice_6_refactor_methodology_defines_pre_refactor_gates() -> None:
-    text = (
-        SLICE_6_METHODOLOGY.read_text(encoding="utf-8")
-        + "\n"
-        + OUTCOME_CONTRACT.read_text(encoding="utf-8")
-    )
-
-    required = (
-        "Pre-Refactor Commit 0",
-        "Desktop `tools/list` snapshot",
-        "packet schema/version/field-set snapshot",
-        "compact-result key-set snapshot",
-        "freeze-list or diff gate",
-        "ready for planning only",
-        "not ready for code movement",
-        "First Refactor Target",
-        "`smoke_log_tooling`",
-        "Result-Shaping Ownership Gate",
-        "target 2 starts",
-        "Cross-Package Movement Rule",
-        "keep graph ownership-definition edits separate",
-        "demonstrated by green snapshots",
-        "Aggregate Design Review Gate",
-        "after every two completed refactor batches",
-        "batches since aggregate review",
-        "promotion candidates by node",
-        "continue current node-by-node refactor",
-        "pause and write a higher-level design proposal",
-        "demote or retire noisy checks",
-        "separately scoped slice",
-        "MVP safety floor",
-        "KCS-14 Success Signals",
-        "Ousterhout Review Lens",
-        "Information hiding",
-        "Deep modules",
-        "Classitis",
-        "Temporal decomposition",
-        "Pass-through layers",
-    )
-    missing = [phrase for phrase in required if phrase not in text]
 
     assert not missing, "\n".join(missing)

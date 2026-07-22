@@ -89,6 +89,6 @@ If the same graph ambiguity recurs in two material reviews, record a promotion
 candidate for a clearer code-map entry, review checklist item, or deterministic
 policy check.
 
-For Slice 6 refactor work, the aggregate design review gate in
-`docs/internal/engineering-process/slice-plans/kcs-14-slice-6-refactor-methodology.md`
-owns cadence, event triggers, required substrate, and allowed outcomes.
+For new refactor work, the task's accepted behavior specification and this
+document own the review cadence. Historical KCS-14 batch methodology remains
+available in Git history; it is not an active release-tree dependency.

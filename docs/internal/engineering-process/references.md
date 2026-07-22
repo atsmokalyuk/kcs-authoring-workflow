@@ -50,8 +50,8 @@ Primary lens for code map, design review, and behavior-preserving refactor
   until Slice 6 Aggregate Design Review diagnoses an `architecture_error`
   around core/adapters/tests boundaries. It is not activated by ordinary
   `map_error` or `process_error` findings. When activated, use the protocol in
-  `docs/internal/engineering-process/slice-plans/kcs-14-slice-6-refactor-methodology.md`
-  rather than applying book patterns broadly.
+  current behavior specification and `review-checkpoints.md` rather than
+  applying book patterns broadly.
 
 ### 2. Agentic Engineering Practice
 

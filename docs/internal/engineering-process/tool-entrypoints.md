@@ -45,7 +45,7 @@ Use these before commits when relevant to the touched files.
 | Diff whitespace check | `git diff --check` | deterministic | Use for unstaged working-tree diff. |
 | Staged whitespace check | `git diff --cached --check` | deterministic | Use before commit. |
 | Staged file review | `git diff --cached --name-status` | deterministic | Confirms the commit contains only intended files. |
-| Complexity measurement | `uv run --extra dev python scripts/measure_complexity.py --paths src tests scripts --baseline docs/internal/engineering-process/kcs-14-complexity-baseline.json` | deterministic | Advisory sensor for refactor closeouts. It fails only if the measurement command crashes; values do not block commits. |
+| Complexity measurement | `uv run --extra dev python scripts/measure_complexity.py --paths src tests scripts` | deterministic | Optional on-demand advisory sensor. Generated snapshots are not tracked; values do not block commits. |
 
 ## Deterministic Tool Help / Liveness
 

@@ -27,8 +27,7 @@ REQUIRED_COMMANDS = (
     "uv run --extra dev python scripts/measure_complexity.py --help",
     (
         "uv run --extra dev python scripts/measure_complexity.py "
-        "--paths src tests scripts --baseline "
-        "docs/internal/engineering-process/kcs-14-complexity-baseline.json"
+        "--paths src tests scripts"
     ),
 )
 

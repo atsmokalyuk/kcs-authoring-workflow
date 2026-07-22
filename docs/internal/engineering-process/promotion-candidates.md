@@ -77,9 +77,8 @@ explicitly rejected with a reason.
 Promotion implementation should be a small scoped action or commit, not hidden
 inside unrelated feature or refactor work.
 
-Counts must come from this registry and material closeout entries in
-`docs/internal/engineering-process/kcs-14-review-notes.md`. The agent must not
-count chat memory as evidence.
+Counts must come from this registry and merged pull requests or final closeout
+records. The agent must not count chat memory as evidence.
 
 AI reviewer suggestions may trigger a proposal, but model output never grants
 implicit approval.
@@ -399,13 +398,12 @@ Owner slice:
 Scope:
 
 - `scripts/measure_complexity.py`;
-- `docs/internal/engineering-process/kcs-14-complexity-baseline.json`;
 - `docs/internal/engineering-process/tool-entrypoints.md`;
 - policy tests.
 
 Validation:
 
-- command runs and emits a compatible snapshot/delta;
+- command runs and emits a compatible on-demand snapshot;
 - values do not block commits;
 - command failure is a validation failure.
 

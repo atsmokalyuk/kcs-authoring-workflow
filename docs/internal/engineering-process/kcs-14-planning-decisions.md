@@ -177,8 +177,7 @@ Required evidence:
   contracts/process rules;
 - migration table: constraint, old location, new location, status
   `moved` / `referenced` / `unchanged`;
-- migration table artifact:
-  `docs/internal/engineering-process/kcs-14-slice-0-migration-table.md`;
+- migration decisions recorded in this document and preserved in Git history;
 - expanded touched-list for README, AGENTS, Jira tracking, feature engineering,
   playbooks, architecture/contracts docs, and any old roadmap/refactor docs
   that still carry active KCS-14 meaning.
@@ -302,9 +301,8 @@ Slice 9 is not a whole-repository cleanup pass. It exists because graph
 coverage and a targeted Slice 6 refactor do not prove that the most involved
 runtime/core files are clean enough for feature-heavy KCS-15 work.
 
-Planned artifact:
-
-- `docs/internal/engineering-process/slice-plans/kcs-14-slice-9-targeted-runtime-design-debt.md`
+The completed target disposition is summarized in
+`docs/internal/engineering-process/slice-plans/kcs-14-final-closeout.md`.
 
 Default target order:
 
@@ -324,9 +322,10 @@ higher than the design-debt payoff.
 KCS-14 may use value-safe closeout metadata to see whether the process is
 improving. This is not runtime workflow observability.
 
-Closeout records should live in
-`docs/internal/engineering-process/kcs-14-review-notes.md` unless a later slice
-creates a more specific tracked closeout artifact.
+Material release conclusions live in
+`docs/internal/engineering-process/slice-plans/kcs-14-final-closeout.md`.
+Intermediate batch evidence remains available in Git history and should not be
+copied into new tracked journals.
 
 Closeout records should be enum/count/path based and avoid raw tickets,
 private payloads, excerpts, reviewer bundles, provider payloads, credentials,

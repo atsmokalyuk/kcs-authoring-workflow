@@ -128,13 +128,12 @@ engineering/process hardening cycle.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening
 
-KCS-14 is an umbrella plan, not a single implementation branch. It should be
-implemented as small, reviewable slices that separate documentation ownership,
-engineering process, local tool entrypoints, review context, code orientation,
-behavior-preserving refactor, and later tooling.
+KCS-14 was implemented as small, reviewable slices separating documentation
+ownership, engineering process, local tool entrypoints, review context, code
+orientation, and behavior-preserving refactor work.
 
-Detailed local plan:
-`docs/internal/engineering-process/slice-plans/kcs-14-engineering-and-codebase-design-hardening.md`
+Final scope and validation record:
+`docs/internal/engineering-process/slice-plans/kcs-14-final-closeout.md`
 
 Design-review criteria:
 `docs/internal/engineering-process/review-criteria/ousterhout-design-review-checklist.md`

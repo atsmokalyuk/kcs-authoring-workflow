@@ -222,6 +222,31 @@ KCS-16 / KCS-17 boundaries:
 - Slice 9 closeout policy validation passed with 31 policy checks.
 - `git diff --check` passed for closeout edits.
 
+## Release Tree Pruning
+
+Before merge, the KCS-14 branch removed intermediate process artifacts from
+the release tree. The removed material remains recoverable from pre-pruning
+commit `56d57a6` and the retained remote branch history.
+
+Removed from the release tree:
+
+- per-batch and per-review slice notes;
+- the cumulative review-notes and refactor-log journals;
+- the generated complexity baseline snapshot;
+- the historical file-based review packet and migration checklist.
+
+Retained as active engineering context:
+
+- this final closeout and the KCS-14 outcome contract;
+- authoritative architecture, policy, playbook, and tool-entrypoint docs;
+- the code-review graph, module boundaries, review checkpoints, and their
+  deterministic integrity tests;
+- the promotion-candidate registry.
+
+The pruning changes documentation/process storage only. Runtime source,
+packet/tool schemas, safety and privacy boundaries, and reviewer-only behavior
+are unchanged.
+
 ## Final Verdict
 
 KCS-14 can close.

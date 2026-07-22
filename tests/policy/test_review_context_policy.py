@@ -10,60 +10,13 @@ REVIEW_PROTOCOL = (
 PROMOTION_CANDIDATES = (
     ROOT / "docs" / "internal" / "engineering-process" / "promotion-candidates.md"
 )
-REVIEW_NOTES = (
-    ROOT / "docs" / "internal" / "engineering-process" / "kcs-14-review-notes.md"
-)
-SLICE_6_FINAL_CLOSEOUT = (
+FINAL_CLOSEOUT = (
     ROOT
     / "docs"
     / "internal"
     / "engineering-process"
     / "slice-plans"
-    / "kcs-14-slice-6-final-closeout.md"
-)
-ENFORCEMENT_FEATURE_NOTE = (
-    ROOT
-    / "docs"
-    / "internal"
-    / "engineering-process"
-    / "slice-plans"
-    / "kcs-14-slice-4-enforcement-ladder-feature-note.md"
-)
-COMPLEX_FEATURE_NOTES = (
-    ROOT
-    / "docs"
-    / "internal"
-    / "engineering-process"
-    / "slice-plans"
-    / "kcs-14-slice-1-agent-operable-workflow-feature-note.md",
-    ROOT
-    / "docs"
-    / "internal"
-    / "engineering-process"
-    / "slice-plans"
-    / "kcs-14-slice-2-local-tool-entrypoints-feature-note.md",
-    ROOT
-    / "docs"
-    / "internal"
-    / "engineering-process"
-    / "slice-plans"
-    / "kcs-14-slice-3-functional-test-from-behavior-feature-note.md",
-    ROOT
-    / "docs"
-    / "internal"
-    / "engineering-process"
-    / "slice-plans"
-    / "kcs-14-slice-4-review-context-protocol-feature-note.md",
-    ROOT
-    / "docs"
-    / "internal"
-    / "engineering-process"
-    / "slice-plans"
-    / "kcs-14-slice-5-code-review-graph-baseline-feature-note.md",
-    ENFORCEMENT_FEATURE_NOTE,
-)
-REVIEW_PACKET_DIR = (
-    ROOT / "docs" / "internal" / "engineering-process" / "review-packets"
+    / "kcs-14-final-closeout.md"
 )
 PROMOTION_CODE_RE = re.compile(r"\bKCS14-PROMO-\d{3}\b")
 
@@ -111,25 +64,12 @@ REQUIRED_COMPLEXITY_FIELDS = (
     "all_exports",
 )
 
-FORBIDDEN_REVIEW_PACKET_PATTERNS = (
-    re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
-    re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
-    re.compile(r"/Users/[^/\\\s]+"),
-    re.compile(r"C:\\Users\\[^\\\s]+"),
-    re.compile(r"\b(?:password|passwd|token|secret|api[_-]?key)\s*[:=]", re.I),
-    re.compile(r"\braw_ticket\b", re.I),
-    re.compile(r"\bprovider_payload\b", re.I),
-    re.compile(r"BEGIN REVIEWER BUNDLE", re.I),
-)
-
-
 def test_review_context_protocol_defines_required_packet_sections() -> None:
     text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
 
     missing = [section for section in REQUIRED_PACKET_SECTIONS if section not in text]
 
     assert not missing, "\n".join(missing)
-
 
 def test_review_context_protocol_defines_forbidden_content_and_output_budget() -> None:
     text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
@@ -235,12 +175,11 @@ def test_review_protocol_requires_behavior_drift_mapping_evidence() -> None:
     assert not missing, "\n".join(missing)
 
 
-def test_slice6_final_closeout_records_full_complexity_summary_and_delta() -> None:
-    text = SLICE_6_FINAL_CLOSEOUT.read_text(encoding="utf-8")
+def test_final_closeout_records_full_complexity_summary() -> None:
+    text = FINAL_CLOSEOUT.read_text(encoding="utf-8")
 
     required = (
-        "Complexity sensor summary after Batch 22",
-        "Complexity sensor delta from baseline after Batch 22",
+        "Final Full-Repo Sensor Snapshot",
         *REQUIRED_COMPLEXITY_FIELDS,
     )
     missing = [phrase for phrase in required if phrase not in text]
@@ -265,81 +204,3 @@ def test_promotion_registry_records_contract_term_table_guidance() -> None:
     missing = [phrase for phrase in required if phrase not in text]
 
     assert not missing, "\n".join(missing)
-
-
-def test_enforcement_ladder_feature_note_connects_grounding_and_scope() -> None:
-    text = ENFORCEMENT_FEATURE_NOTE.read_text(encoding="utf-8")
-
-    required = (
-        "Feature Note: Enforcement Ladder And Promotion Workflow",
-        "tracked Markdown rule",
-        "policy test",
-        "tool entrypoint",
-        "code map / freeze-list / hash check",
-        "Registry As Memory",
-        "Probation And Demotion",
-        "Not In Scope",
-        "Implemented In Slice 4",
-    )
-    missing = [phrase for phrase in required if phrase not in text]
-
-    assert not missing, "\n".join(missing)
-
-
-def test_complex_kcs14_feature_notes_have_required_shape() -> None:
-    failures: list[str] = []
-    required = (
-        "## Problem",
-        "## Decision",
-        "## Not In Scope",
-        "## Implemented In Slice",
-        "## Later Use",
-    )
-
-    for path in COMPLEX_FEATURE_NOTES:
-        text = path.read_text(encoding="utf-8")
-        missing = [phrase for phrase in required if phrase not in text]
-        if missing:
-            rel_path = path.relative_to(ROOT)
-            failures.append(f"{rel_path}: missing {missing}")
-
-    assert not failures, "\n".join(failures)
-
-
-def test_review_note_promotion_codes_exist_in_registry() -> None:
-    registry = set(PROMOTION_CODE_RE.findall(PROMOTION_CANDIDATES.read_text()))
-    notes = set(PROMOTION_CODE_RE.findall(REVIEW_NOTES.read_text()))
-
-    missing = sorted(notes - registry)
-
-    assert not missing, "\n".join(missing)
-
-
-def test_file_based_review_packets_have_required_sections() -> None:
-    packet_paths = sorted(REVIEW_PACKET_DIR.glob("*.md"))
-    assert packet_paths
-
-    failures: list[str] = []
-    for path in packet_paths:
-        text = path.read_text(encoding="utf-8")
-        missing = [
-            section for section in REQUIRED_PACKET_SECTIONS if section not in text
-        ]
-        if missing:
-            rel_path = path.relative_to(ROOT)
-            failures.append(f"{rel_path}: missing {missing}")
-
-    assert not failures, "\n".join(failures)
-
-
-def test_file_based_review_packets_do_not_include_forbidden_content() -> None:
-    failures: list[str] = []
-
-    for path in sorted(REVIEW_PACKET_DIR.glob("*.md")):
-        text = path.read_text(encoding="utf-8")
-        for pattern in FORBIDDEN_REVIEW_PACKET_PATTERNS:
-            if pattern.search(text):
-                rel_path = path.relative_to(ROOT)
-                failures.append(f"{rel_path}: matched {pattern.pattern}")
-
-    assert not failures, "\n".join(failures)

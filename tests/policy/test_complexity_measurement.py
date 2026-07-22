@@ -41,7 +41,32 @@ def test_complexity_measurement_outputs_advisory_snapshot() -> None:
     assert "scripts" in snapshot["groups"]
 
 
-def test_complexity_measurement_compares_to_baseline() -> None:
+def test_complexity_measurement_compares_to_generated_baseline(
+    tmp_path: Path,
+) -> None:
+    baseline_result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "--extra",
+            "dev",
+            "python",
+            str(SCRIPT.relative_to(ROOT)),
+            "--paths",
+            "scripts/measure_complexity.py",
+            "--format",
+            "json",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=15,
+    )
+    assert baseline_result.returncode == 0, baseline_result.stderr
+    baseline_path = tmp_path / "complexity-baseline.json"
+    baseline_path.write_text(baseline_result.stdout, encoding="utf-8")
+
     result = subprocess.run(
         [
             "uv",
@@ -50,8 +75,10 @@ def test_complexity_measurement_compares_to_baseline() -> None:
             "dev",
             "python",
             str(SCRIPT.relative_to(ROOT)),
+            "--paths",
+            "scripts/measure_complexity.py",
             "--baseline",
-            "docs/internal/engineering-process/kcs-14-complexity-baseline.json",
+            str(baseline_path),
             "--format",
             "json",
         ],
@@ -67,3 +94,4 @@ def test_complexity_measurement_compares_to_baseline() -> None:
 
     assert "delta_from_baseline" in snapshot
     assert "max_cc" in snapshot["delta_from_baseline"]
+    assert snapshot["delta_from_baseline"]["max_cc"] == 0
