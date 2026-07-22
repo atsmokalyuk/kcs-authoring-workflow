@@ -8,6 +8,7 @@ from kcs_core.errors import ContractValidationError
 from kcs_core.evidence_builder import (
     APPROVED_EVIDENCE_EXPORT_SCHEMA_VERSION,
     EvidenceBuildPolicy,
+    EvidenceBuildSafetyError,
     build_evidence_packet_from_zendesk_export,
 )
 from kcs_core.json_payload import dump_json_dict
@@ -509,6 +510,20 @@ def test_unsafe_private_values_fail_without_echo(private_value: str) -> None:
         )
 
     assert private_value not in str(captured.value)
+
+
+def test_unsafe_ipv6_uses_typed_evidence_safety_error_without_echo() -> None:
+    private_value = "2606:4700:4700::1111"
+
+    with pytest.raises(EvidenceBuildSafetyError) as captured:
+        build_evidence_packet_from_zendesk_export(
+            _export_payload(symptoms=[private_value]),
+            case_ref="approved-export-001",
+            policy=_policy(),
+        )
+
+    assert private_value not in str(captured.value)
+    assert "unsafe_text" in str(captured.value)
 
 
 def test_text_only_raw_narrative_does_not_trigger_semantic_extraction() -> None:

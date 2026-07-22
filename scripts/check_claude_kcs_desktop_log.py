@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -45,6 +46,22 @@ def check_log(
         return _failure("log_not_found", log_path=log_path)
     line = _latest_tool_surface_line(text, since=since_dt)
     if line is None:
+        request_line, response_line = _latest_redacted_tool_surface_exchange(
+            text,
+            since=since_dt,
+        )
+        if request_line is not None:
+            return {
+                "checks": {
+                    "tools_list_request_observed": True,
+                    "tools_list_response_observed": response_line is not None,
+                },
+                "error_code": "tool_surface_detail_unavailable",
+                "latest_tools_list_at": _line_timestamp(request_line),
+                "log_file": log_path.name,
+                "ok": False,
+                "schema_version": SCHEMA_VERSION,
+            }
         return _failure("tools_list_not_found", log_path=log_path)
     checks = _tool_surface_checks(line)
     initialize_line = _latest_initialize_line(text, since=since_dt)
@@ -116,6 +133,38 @@ def _latest_initialize_line(text: str, *, since: datetime | None) -> str | None:
             continue
         return line
     return None
+
+
+def _latest_redacted_tool_surface_exchange(
+    text: str,
+    *,
+    since: datetime | None,
+) -> tuple[str | None, str | None]:
+    lines = text.splitlines()
+    for index in range(len(lines) - 1, -1, -1):
+        line = lines[index]
+        if 'Message from client: method="tools/list"' not in line:
+            continue
+        timestamp = _parse_line_timestamp(line)
+        if since is not None and (timestamp is None or timestamp < since):
+            continue
+        request_id = _line_message_id(line)
+        response = next(
+            (
+                candidate
+                for candidate in lines[index + 1 :]
+                if "Message from server:" in candidate
+                and _line_message_id(candidate) == request_id
+            ),
+            None,
+        )
+        return line, response
+    return None, None
+
+
+def _line_message_id(line: str) -> str | None:
+    match = re.search(r"\bid=(\d+)\b", line)
+    return match.group(1) if match is not None else None
 
 
 def _is_tool_surface_line(line: str) -> bool:
@@ -234,7 +283,10 @@ _EXPECTED_TOOLS = {
     ),
     "kcs_submit_semantic_review": _ExpectedTool(
         properties=frozenset(
-            {"candidate_semantic_extraction", "semantic_review_ref"}
+            {
+                "semantic_issue_proposal",
+                "semantic_review_ref",
+            }
         ),
         read_only=False,
     ),

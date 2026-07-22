@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping
+from ipaddress import IPv6Address
 from math import isfinite
 from typing import Any
 
@@ -27,6 +28,10 @@ _PRIVATE_VALUE_PATTERNS = (
         re.I,
     ),
     re.compile(r"\bauthorization:\s*bearer\s+\S+", re.I),
+)
+_IPV6_CANDIDATE_RE = re.compile(
+    r"(?<!\w)(?=[0-9A-Fa-f:.]*:)[0-9A-Fa-f:.]{2,}"
+    r"(?:%[A-Za-z0-9_.-]+)?(?![\w:])"
 )
 _SAFE_FILENAME_RE = re.compile(
     r"\b[A-Za-z0-9][A-Za-z0-9_-]*\."
@@ -115,6 +120,13 @@ def ensure_safe_sanitized_payload(value: object) -> None:
 
     _ensure_strict_json_value(value)
     if _contains_private_raw_value(value):
+        raise ContractValidationError("sanitized input contains unsafe value")
+
+
+def ensure_no_ipv6_address(value: str) -> None:
+    """Reject residual IPv6 before clean-ticket semantic handoff."""
+
+    if _contains_ipv6_address(value):
         raise ContractValidationError("sanitized input contains unsafe value")
 
 
@@ -306,3 +318,14 @@ def _contains_private_raw_text(value: str) -> bool:
         pattern.search(text_without_safe_filenames)
         for pattern in _PRIVATE_VALUE_PATTERNS
     )
+
+
+def _contains_ipv6_address(value: str) -> bool:
+    for match in _IPV6_CANDIDATE_RE.finditer(value):
+        candidate = match.group(0).rstrip(".,;").split("%", 1)[0]
+        try:
+            IPv6Address(candidate)
+        except ValueError:
+            continue
+        return True
+    return False

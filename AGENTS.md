@@ -139,9 +139,9 @@ Authoritative layers:
   refactor-safety test expectations.
 - `docs/internal/engineering-process/review-context-protocol.md`: compact
   review packet protocol, output budget, forbidden-content rules, and
-  promotion-candidate workflow. During review or closeout, surface repeated or
-  mechanically checkable findings as promotion candidates instead of leaving
-  them as chat-only advice.
+  promotion-candidate workflow. During aggregate review/closeout or after a
+  repeated failure, surface repeated or mechanically checkable process findings
+  as promotion candidates instead of leaving them as chat-only advice.
 - `docs/internal/engineering-process/code-review-graph.json`,
   `docs/internal/engineering-process/module-boundaries.md`, and
   `docs/internal/engineering-process/review-checkpoints.md`: advisory

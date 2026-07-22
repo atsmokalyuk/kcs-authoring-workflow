@@ -4,6 +4,8 @@ from kcs_adapters.desktop_draft_output import (
     compact_draft_result,
     quality_blocked_result,
     quality_blocker_gaps,
+    reviewer_only_quality_debt_allowed,
+    reviewer_only_quality_draft_result,
 )
 from kcs_core.models import ArticleType
 
@@ -63,3 +65,36 @@ def test_quality_blocked_result_keeps_bundle_unwritten() -> None:
     assert blocked["draft_generated"] is False
     assert blocked["reviewer_bundle_written"] is False
     assert blocked["writes_files"] is False
+
+
+def test_only_bounded_reviewer_quality_debt_is_draftable() -> None:
+    reviewable = [
+        {"kind": "cause_contains_resolution_action", "severity": "blocker"},
+        {"kind": "transcript_placeholder_in_public_body", "severity": "blocker"},
+    ]
+    assert reviewer_only_quality_debt_allowed(reviewable) is True
+    assert (
+        reviewer_only_quality_debt_allowed(
+            [
+                *reviewable,
+                {"kind": "missing_required_section", "severity": "blocker"},
+            ]
+        )
+        is False
+    )
+
+    draft_only = reviewer_only_quality_draft_result(
+        {
+            "ready_for_reviewer": True,
+            "recommended_action": "create_candidate",
+        },
+        reviewable,
+    )
+
+    assert draft_only["debug_code"] == "draft_only_quality_gaps"
+    assert draft_only["blockers"] == [
+        "cause_contains_resolution_action",
+        "transcript_placeholder_in_public_body",
+    ]
+    assert draft_only["ready_for_reviewer"] is False
+    assert draft_only["recommended_action"] == "draft_only"

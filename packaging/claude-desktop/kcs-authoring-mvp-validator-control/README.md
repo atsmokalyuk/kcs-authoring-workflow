@@ -98,9 +98,12 @@ Claude Desktop should call `kcs_prepare_semantic_review` with the returned
 semantic item identification. It does not return the full ticket and must not
 be used for freehand drafting. Claude Desktop should then call
 `kcs_submit_semantic_review` with only the same `semantic_review_ref` and a
-strict `candidate_semantic_extraction_v1` object grounded in the returned
-excerpt refs. Do not submit article prose, HTML, `recommended_action`, `item`,
-`item_candidates`, raw ticket text, local paths, or publication flags.
+strict `semantic_issue_proposal_v1` object grounded in the returned excerpt
+refs. Do not submit article prose, HTML, `recommended_action`, `item`,
+`item_candidates`, raw ticket text, local paths, or publication flags. If
+multiple candidates pass Python validation, wait for the native candidate
+selection and submit only its exact `submit_arguments`. Unassigned evidence
+remains in the outcome ledger and never creates a separate operator checkpoint.
 
 It must not pass uploaded filenames, local paths, Claude upload paths,
 structured `item`, `item_candidates`, reference article bodies, or field
@@ -117,8 +120,10 @@ the visible sanitized content as-is; Claude must not summarize, condense,
 rewrite, redact labeled sections, or omit symptoms, cause, resolution, config
 paths, commands, services, platform facts, or other visible sanitized evidence.
 
-Python owns local semantic extraction, workflow state, validation, KCS decisions,
-rendering, and output safety. The workflow does not branch on Claude Desktop
+Python owns semantic proposal acceptance and audit, workflow state, validation,
+KCS decisions, rendering, and output safety. The model-proposed issue partition
+remains untrusted; Python blocks undeclared overlap in identity-bearing evidence.
+The workflow does not branch on Claude Desktop
 Free vs Enterprise; client capabilities are observed from the MCP initialize
 message, and the same tool contract is used for both. If the tool returns
 `split_required`, treat that result as terminal for the current turn: show the
@@ -202,6 +207,11 @@ the exact executable procedure needed to apply and verify it, the pipeline may
 block with `approved_summary_resolution_steps_incomplete`. That blocker is
 expected. An operator can add verified resolution detail and rerun the workflow;
 Claude must not infer the missing procedure.
+
+After a batch, retryable blockers are declarative ledger outcomes. Claude must
+not ask the operator to choose one or confirm leaving already blocked
+candidates blocked. A candidate is resumed only after the operator later
+supplies exact confirmed resolution or workaround steps.
 
 The tool returns compact reviewer-only draft/status metadata:
 

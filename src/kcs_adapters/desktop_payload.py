@@ -70,6 +70,7 @@ APPROVED_SUMMARY_FALSE_ONLY_ARGS = frozenset(
 )
 APPROVED_SUMMARY_PIPELINE_ARGS = frozenset(
     {
+        "_operator_resolution_evidence_provenance",
         "_approved_summary_text_source",
         "applicable_to",
         "approved_summary_text",
@@ -129,6 +130,7 @@ APPROVED_SUMMARY_PIPELINE_ARGS = frozenset(
     }
 )
 APPROVED_SUMMARY_TEXT_SOURCE_APPROVED_CLEAN_TICKET = "approved_clean_ticket"
+OPERATOR_CONFIRMED_RESOLUTION_PROVENANCE = "operator_confirmed"
 APPROVED_SUMMARY_ITEM_FIELDS = frozenset(
     {
         "answer_steps",
@@ -243,7 +245,11 @@ class ApprovedSummaryPayloadArgumentError(ValueError):
     """Approved-summary argument shape error."""
 
 
-def approved_summary_pipeline_payload(arguments: Mapping[str, Any]) -> JsonDict:
+def approved_summary_pipeline_payload(
+    arguments: Mapping[str, Any],
+    *,
+    explicit_existing_article_match: bool = False,
+) -> JsonDict:
     """Normalize approved-summary authoring arguments into evidence export."""
 
     require_approved_summary_args(arguments)
@@ -258,6 +264,7 @@ def approved_summary_pipeline_payload(arguments: Mapping[str, Any]) -> JsonDict:
     require_approved_summary_authoring_fields(
         article_type=article_type,
         environment=environment,
+        explicit_existing_article_match=explicit_existing_article_match,
         item=item,
         resolution_steps=resolution_steps,
     )
@@ -303,7 +310,7 @@ def approved_summary_pipeline_payload(arguments: Mapping[str, Any]) -> JsonDict:
         "open_questions": approved_summary_optional_string_list(
             item, "open_questions"
         ),
-        "sanitizer_report": {},
+        "sanitizer_report": approved_summary_sanitizer_report(arguments),
         "schema_version": APPROVED_EVIDENCE_EXPORT_SCHEMA_VERSION,
         "source_refs": ["approved-summary-source-001"],
         "supported_cause": candidate.get("supported_cause"),
@@ -315,6 +322,20 @@ def approved_summary_pipeline_payload(arguments: Mapping[str, Any]) -> JsonDict:
         "visibility_summary": {
             "classes": [EvidenceVisibility.PUBLIC_CUSTOMER_SAFE.value]
         },
+    }
+
+
+def approved_summary_sanitizer_report(arguments: Mapping[str, Any]) -> JsonDict:
+    """Return sanitizer provenance for bounded operator-confirmed evidence."""
+
+    provenance = arguments.get("_operator_resolution_evidence_provenance")
+    if provenance is None:
+        return {}
+    if provenance != OPERATOR_CONFIRMED_RESOLUTION_PROVENANCE:
+        raise ApprovedSummaryInputError("approved_summary_input_invalid")
+    return {
+        "source": OPERATOR_CONFIRMED_RESOLUTION_PROVENANCE,
+        "status": "passed",
     }
 
 
@@ -662,6 +683,7 @@ def require_approved_summary_authoring_fields(
     *,
     article_type: str,
     environment: Mapping[str, Any],
+    explicit_existing_article_match: bool,
     item: Mapping[str, Any],
     resolution_steps: list[str],
 ) -> None:
@@ -672,7 +694,8 @@ def require_approved_summary_authoring_fields(
     if article_type == ArticleType.TECHNICAL_SCR.value:
         require_supported_cause_not_speculative(item)
         require_non_destructive_resolution_steps(resolution_steps)
-        require_executable_resolution_steps(resolution_steps)
+        if not explicit_existing_article_match:
+            require_executable_resolution_steps(resolution_steps)
 
 
 def require_supported_cause_not_speculative(item: Mapping[str, Any]) -> None:

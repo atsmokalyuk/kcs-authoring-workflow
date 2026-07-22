@@ -1,0 +1,19 @@
+{
+  "attempted_count": 2,
+  "blocked_retryable_count": 1,
+  "completed_count": 1,
+  "later_candidate_continued": true,
+  "manual_fallback_detected": false,
+  "milestone": "m3_continuation",
+  "native_choice_present": true,
+  "operator_action_kind": "all",
+  "overall_verdict": "passed",
+  "reviewer_bundle_count": 1,
+  "run_index": 1,
+  "safety_violation": false,
+  "scenario_id": "split_with_internal_coverage",
+  "schema_version": "kcs_langfuse_runtime_outcome_v1",
+  "selected_count": 2,
+  "selection_gate_present": true,
+  "workflow_stopped_count": 0
+}

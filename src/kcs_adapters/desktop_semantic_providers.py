@@ -5,12 +5,12 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Mapping
-from typing import Any, Protocol
+from typing import Any
 
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
 from kcs_core.models import ArticleType
-from kcs_core.sanitizer import ensure_safe_ref, ensure_safe_sanitized_payload
+from kcs_core.sanitizer import ensure_safe_sanitized_payload
 from kcs_core.semantic_extraction import (
     CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION,
     CandidateSemanticExtraction,
@@ -48,15 +48,6 @@ class NoSemanticCandidatesError(RuntimeError):
     """Provider completed but found no candidate KCS items."""
 
 
-class ApprovedSemanticExtractionClient(Protocol):
-    """Small boundary for an approved semantic extraction runtime client."""
-
-    def propose_candidates(
-        self, context: Mapping[str, Any]
-    ) -> CandidateSemanticExtraction | Mapping[str, Any]:
-        """Return untrusted provider output."""
-
-
 class UnavailableSemanticExtractionProvider:
     """Production default when no approved semantic provider is configured."""
 
@@ -65,34 +56,6 @@ class UnavailableSemanticExtractionProvider:
     ) -> CandidateSemanticExtraction | Mapping[str, Any]:
         ensure_safe_sanitized_payload(context)
         raise SemanticExtractionProviderUnavailableError
-
-
-class ApprovedSemanticExtractionProvider:
-    """Approved-provider adapter with safe refs and bounded public surface."""
-
-    def __init__(
-        self,
-        *,
-        provider_ref: str,
-        client: ApprovedSemanticExtractionClient | None = None,
-    ) -> None:
-        ensure_safe_ref(provider_ref, label="provider_ref")
-        self._provider_ref = provider_ref
-        self._client = client
-
-    def propose_candidates(
-        self, context: Mapping[str, Any]
-    ) -> CandidateSemanticExtraction | Mapping[str, Any]:
-        ensure_safe_sanitized_payload(context)
-        if self._client is None:
-            raise SemanticExtractionProviderUnavailableError
-        provider_context: JsonDict = {
-            "approved_summary_text": str(context.get("approved_summary_text", "")),
-            "provider_ref": self._provider_ref,
-            "schema_version": "kcs_desktop_semantic_request_v1",
-        }
-        ensure_safe_sanitized_payload(provider_context)
-        return self._client.propose_candidates(provider_context)
 
 
 class ApprovedSummarySemanticExtractionProvider:
@@ -355,8 +318,6 @@ def _fixture_technical_item(
 
 
 __all__ = [
-    "ApprovedSemanticExtractionClient",
-    "ApprovedSemanticExtractionProvider",
     "ApprovedSummarySemanticExtractionProvider",
     "FixtureSemanticExtractionProvider",
     "NoSemanticCandidatesError",

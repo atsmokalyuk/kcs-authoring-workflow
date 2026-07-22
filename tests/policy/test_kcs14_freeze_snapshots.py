@@ -10,8 +10,16 @@ from kcs_adapters.desktop_draft_output import (
     quality_blocked_result,
 )
 from kcs_adapters.desktop_mcp_results import McpToolResult, mcp_tool_response
+from kcs_adapters.desktop_protocol import (
+    MCP_INITIALIZE_INSTRUCTIONS,
+    SEMANTIC_CONTROL_GUIDANCE,
+)
 from kcs_adapters.desktop_tool_descriptors import tool_descriptors
-from kcs_adapters.desktop_tool_names import CLAUDE_DESKTOP_TOOL_ALIASES
+from kcs_adapters.desktop_tool_names import (
+    CLAUDE_DESKTOP_TOOL_ALIASES,
+    TOOL_SUBMIT_SEMANTIC_REVIEW,
+)
+from kcs_adapters.desktop_tool_results import tool_result_text
 from kcs_adapters.desktop_tool_schemas import tool_output_schema
 from kcs_adapters.desktop_workflow_results import (
     draft_author_failure_result,
@@ -102,7 +110,9 @@ DESKTOP_TOOL_SNAPSHOT = (
         (
             "approved_summary_text",
             "debug",
+            "operator_confirmed_resolution_steps",
             "operator_selected_item_ref",
+            "operator_selected_item_refs",
             "operator_selection_ref",
         ),
         (),
@@ -120,8 +130,11 @@ DESKTOP_TOOL_SNAPSHOT = (
     (
         "kcs.submit_semantic_review",
         "kcs_submit_semantic_review",
-        ("candidate_semantic_extraction", "semantic_review_ref"),
-        ("semantic_review_ref", "candidate_semantic_extraction"),
+        (
+            "semantic_issue_proposal",
+            "semantic_review_ref",
+        ),
+        ("semantic_issue_proposal", "semantic_review_ref"),
         False,
         False,
     ),
@@ -208,47 +221,66 @@ DESKTOP_TOOL_SNAPSHOT = (
     ),
 )
 
+REJECTED_ACTIVE_SEMANTIC_SUBMIT_FIELDS = frozenset(
+    {
+        "operator_excluded_source_refs",
+        "semantic_boundary_action",
+        "semantic_claim_ownership",
+        "semantic_observation_relations",
+    }
+)
+
+REJECTED_ACTIVE_SEMANTIC_SCHEMA_TERMS = (
+    "semantic_claim_ownership_v1",
+    "semantic_observation_relations_v1",
+)
+
 TOOL_OUTPUT_SUCCESS_KEYS = (
-    "allowed_output_schema",
     "allowed_source_refs",
     "approved_summary_source",
     "article_type",
     "atomic_item",
+    "attempted_count",
     "auto_publish_allowed",
     "automatic_item_retry_allowed",
+    "batch_status",
     "blockers",
+    "boundary_blocker_codes",
+    "boundary_blocker_count",
     "bundle_ref",
     "bundle_storage_hint",
     "bundle_storage_ref",
     "byte_length",
-    "candidate_count_policy",
-    "candidate_environment_field_names",
-    "candidate_item_field_names",
-    "candidate_plain_string_array_fields",
+    "candidate_origin",
+    "candidate_outcomes",
     "case_ref",
     "checks",
     "clean_ticket_sha256",
     "clean_ticket_storage_hint",
     "clean_ticket_storage_ref",
     "clean_ticket_store_ref",
+    "completed_count",
+    "coverage_record_field_names",
     "customer_replies",
     "debug_code",
     "draft_generated",
+    "draft_generated_count",
     "draft_ref",
     "draft_request_ready",
     "draft_sections",
     "draft_status",
     "evidence_valid",
     "excerpt_count",
-    "excerpt_coverage_policy",
     "excerpt_total_bytes",
     "existing_article_review",
     "failure_stage",
     "handoff_ref",
-    "howto_qa_submit_item_shape",
     "html_path",
     "html_sha256",
     "input_safety_ok",
+    "issue_boundary_contract",
+    "issue_field_names",
+    "issue_shape_contract",
     "item_candidates",
     "item_ref",
     "kcs_ready",
@@ -256,21 +288,24 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "manual_draft_allowed",
     "max_candidates",
     "network_calls",
+    "new_draft_created_count",
     "next_arguments",
     "next_required_action",
     "next_tool",
     "next_tool_name",
     "ok",
     "open_questions",
-    "operator_all_submit_arguments",
     "operator_choice_confirmed",
     "operator_choice_options",
     "operator_choice_request",
     "operator_choice_submit_options",
+    "operator_evidence_provenance",
+    "operator_followup",
     "operator_prompt",
     "operator_prompt_style",
     "operator_resolution_detail_policy",
     "operator_selected_item_ref",
+    "operator_selected_item_refs",
     "operator_selection_ref",
     "original_article_type",
     "original_decision_status",
@@ -278,6 +313,8 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "original_recommended_action",
     "pipeline_ok",
     "prompts_exposed",
+    "proposal_field_contracts",
+    "proposal_shape_contracts",
     "protocol_version",
     "provider_calls",
     "provider_error_code",
@@ -295,11 +332,12 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "request_schema_version",
     "request_sha256",
     "required_submit_shape",
-    "resolution_step_requirements",
     "resources_exposed",
     "response_schema_version",
     "response_sha256",
     "result_kind",
+    "retryable_blocked_count",
+    "retryable_item_candidates",
     "reuse_search_run_ref",
     "reuse_search_status",
     "review_summary",
@@ -308,12 +346,15 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "reviewer_only_html",
     "reviewer_only_preview",
     "reviewer_only_preview_text",
+    "schema_correction_used",
     "schema_version",
+    "selected_count",
     "selected_excerpts",
     "selected_reuse_match",
     "semantic_item_outcomes",
     "semantic_review_packet_sha256",
     "semantic_review_ref",
+    "semantic_submission_correction",
     "server_name",
     "server_version",
     "should_be_kcs_article",
@@ -321,11 +362,13 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "submit_arguments",
     "submit_tool",
     "task",
+    "terminal_blocked_count",
     "ticket_ref",
     "tool_count",
     "tools",
     "validation_ok",
     "workflow_state",
+    "workflow_stopped_count",
     "writes_files",
 )
 
@@ -572,6 +615,33 @@ def _schema_version(cls: type[Any]) -> str:
     return default_version
 
 
+def test_semantic_control_guidance_consistency() -> None:
+    submit_descriptor = next(
+        descriptor
+        for descriptor in tool_descriptors()
+        if descriptor.name == TOOL_SUBMIT_SEMANTIC_REVIEW
+    )
+    surfaces = {
+        "initialize": MCP_INITIALIZE_INSTRUCTIONS,
+        "submit tool": submit_descriptor.description,
+        "result prose": tool_result_text(
+            {"required_submit_shape": {}, "result_kind": "semantic_review_packet"}
+        ),
+        "Cowork skill": (
+            ROOT / "packaging/cowork/kcs-authoring/skills/"
+            "kcs-authoring-control/SKILL.md"
+        ).read_text(encoding="utf-8"),
+        "Desktop manifest": (
+            ROOT / "packaging/claude-desktop/"
+            "kcs-authoring-mvp-validator-control/manifest.json"
+        ).read_text(encoding="utf-8"),
+    }
+    expected = " ".join(SEMANTIC_CONTROL_GUIDANCE.split())
+
+    for surface_name, surface_text in surfaces.items():
+        assert expected in " ".join(surface_text.split()), surface_name
+
+
 def test_desktop_tools_list_shape_matches_pre_refactor_snapshot() -> None:
     actual = tuple(
         (
@@ -586,6 +656,20 @@ def test_desktop_tools_list_shape_matches_pre_refactor_snapshot() -> None:
     )
 
     assert actual == DESKTOP_TOOL_SNAPSHOT
+
+
+def test_rejected_semantic_experiments_stay_off_active_submit_surface() -> None:
+    descriptor = next(
+        item
+        for item in tool_descriptors()
+        if item.name == TOOL_SUBMIT_SEMANTIC_REVIEW
+    )
+    properties = frozenset(descriptor.input_schema.get("properties", {}))
+
+    assert properties == {"semantic_issue_proposal", "semantic_review_ref"}
+    assert properties.isdisjoint(REJECTED_ACTIVE_SEMANTIC_SUBMIT_FIELDS)
+    for schema_term in REJECTED_ACTIVE_SEMANTIC_SCHEMA_TERMS:
+        assert schema_term not in descriptor.description
 
 
 def test_tool_output_success_keys_match_pre_refactor_snapshot() -> None:

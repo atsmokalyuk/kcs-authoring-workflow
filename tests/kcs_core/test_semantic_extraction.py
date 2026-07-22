@@ -7,7 +7,7 @@ import pytest
 
 import kcs_core
 from kcs_core.errors import ContractValidationError
-from kcs_core.models import ArticleType, NormalizedTicketEvidencePacket
+from kcs_core.models import ArticleType, CandidateOrigin, NormalizedTicketEvidencePacket
 from kcs_core.semantic_extraction import (
     CANDIDATE_SEMANTIC_EXTRACTION_SCHEMA_VERSION,
     CandidateKcsItem,
@@ -20,6 +20,7 @@ from kcs_core.semantic_extraction import (
     VisibilityHint,
     build_evidence_packet_from_semantic_extraction,
     normalize_candidate_semantic_extraction,
+    product_relation_value_requirements,
     propose_semantic_kcs_items,
     validate_candidate_semantic_extraction,
 )
@@ -105,6 +106,21 @@ def test_builds_evidence_packet_from_valid_semantic_extraction() -> None:
     assert packet.case_ref == "semantic-case-001"
     assert packet.issue_candidates[0]["candidate_id"] == "item-001"
     assert validate_evidence_packet(packet).ok is True
+
+
+def test_support_discovered_origin_is_preserved_without_customer_report_claim() -> None:
+    candidates = _issue_candidates(
+        _payload(
+            items=[
+                _item(
+                    candidate_origin=CandidateOrigin.SUPPORT_DISCOVERED.value,
+                )
+            ]
+        )
+    )
+
+    assert candidates[0]["candidate_origin"] == "support_discovered"
+    assert candidates[0]["customer_reported"] is False
 
 
 def test_multi_item_extraction_preserves_atomic_candidates() -> None:
@@ -278,6 +294,55 @@ def test_non_plesk_support_solution_cannot_be_public_candidate() -> None:
 
     with pytest.raises(ContractValidationError, match="product relation"):
         CandidateSemanticExtraction.from_json_dict(payload)
+
+
+def test_non_plesk_support_solution_requires_internal_visibility() -> None:
+    payload = _payload(
+        items=[
+            _item(
+                kcs_item_status=KcsItemStatus.INTERNAL_ONLY_CANDIDATE.value,
+                product_relation=(
+                    ProductRelation.NON_PLESK_OWNED_BUT_SUPPORT_PROVIDED_SOLUTION.value
+                ),
+                visibility_hint=VisibilityHint.PUBLIC_CUSTOMER_SAFE.value,
+            )
+        ]
+    )
+
+    with pytest.raises(ContractValidationError, match="product relation"):
+        CandidateSemanticExtraction.from_json_dict(payload)
+
+
+def test_product_relation_requirements_are_fresh_and_correct_invalid_payload() -> None:
+    invalid_item = _item(
+        kcs_item_status=KcsItemStatus.CANDIDATE_ALLOWED.value,
+        product_relation=(
+            ProductRelation.NON_PLESK_OWNED_BUT_SUPPORT_PROVIDED_SOLUTION.value
+        ),
+        visibility_hint=VisibilityHint.PUBLIC_CUSTOMER_SAFE.value,
+    )
+    with pytest.raises(ContractValidationError, match="product relation"):
+        CandidateSemanticExtraction.from_json_dict(_payload(items=[invalid_item]))
+
+    first = product_relation_value_requirements()
+    requirements = first[
+        ProductRelation.NON_PLESK_OWNED_BUT_SUPPORT_PROVIDED_SOLUTION.value
+    ]
+    invalid_item.update(
+        {
+            field_name: accepted_values[0]
+            for field_name, accepted_values in requirements.items()
+        }
+    )
+
+    assert CandidateSemanticExtraction.from_json_dict(
+        _payload(items=[invalid_item])
+    ).items[0].kcs_item_status == KcsItemStatus.INTERNAL_ONLY_CANDIDATE.value
+    requirements["visibility_hint"].append("invalid")
+    second = product_relation_value_requirements()
+    assert second[
+        ProductRelation.NON_PLESK_OWNED_BUT_SUPPORT_PROVIDED_SOLUTION.value
+    ]["visibility_hint"] == [VisibilityHint.INTERNAL_REVIEWER_ONLY.value]
 
 
 def test_blocked_need_more_evidence_maps_to_unsolved_candidate() -> None:

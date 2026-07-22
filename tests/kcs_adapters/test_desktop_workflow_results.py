@@ -2,12 +2,17 @@ from __future__ import annotations
 
 from kcs_adapters import desktop_workflow
 from kcs_adapters.desktop_operator_selection import new_pending_draft_selection
+from kcs_adapters.desktop_semantic_candidates import (
+    ProjectedIssueSet,
+    SemanticProjectionLedgerEntry,
+)
 from kcs_adapters.desktop_workflow_results import (
     draft_author_failure_result,
     operator_selection_expired_result,
     operator_selection_unavailable_result,
     selection_error_result,
     semantic_provider_unavailable_result,
+    semantic_review_boundary_terminal_result,
     split_required_result,
 )
 from kcs_core.models import ArticleType
@@ -117,6 +122,32 @@ def test_draft_author_failure_result_uses_blocked_contract() -> None:
     assert result["blockers"] == ["draft_article_args_invalid"]
     assert result["ready_for_reviewer"] is False
     assert result["writes_files"] is False
+
+
+def test_boundary_terminal_result_exposes_only_closed_blocker_codes() -> None:
+    projected = ProjectedIssueSet(
+        issues=(),
+        coverage_ledger=(),
+        unassigned_evidence=(),
+        blocked_proposals=(
+            SemanticProjectionLedgerEntry(
+                record_ref="issue-001",
+                outcome="proposal_blocked",
+                reason_code="unregistered_internal_reason",
+                source_refs=("excerpt-001",),
+            ),
+        ),
+        selectable_issue_refs=(),
+    )
+
+    result = semantic_review_boundary_terminal_result(
+        projected=projected,
+        schema_version="kcs_mcp_tool_result_v1",
+    )
+
+    assert result["boundary_blocker_codes"] == ["semantic_boundary_unclassified"]
+    assert result["boundary_blocker_count"] == 1
+    assert "unregistered_internal_reason" not in str(result)
 
 
 def test_desktop_workflow_reexports_workflow_result_builders() -> None:

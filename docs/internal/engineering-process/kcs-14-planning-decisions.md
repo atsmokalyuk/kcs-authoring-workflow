@@ -364,7 +364,8 @@ Starting freeze list:
 - blocker, warning, `required_next_step`, and `state` enums;
 - safety gate input and visibility classes;
 - Desktop tool schemas and compact output behavior;
-- `candidate_semantic_extraction_v1` acceptance rules;
+- `semantic_issue_proposal_v1` acceptance rules and the bounded
+  `candidate_semantic_extraction_v1` compatibility island;
 - `clean_ticket_sha256` metadata binding;
 - local reviewer-bundle pathing;
 - compact-default vs debug-only `reviewer_only_html`;
@@ -381,6 +382,106 @@ the `KCS14-PROMO-010` protocol: unchanged contract stated, focused
 characterization tests passed, graph hash updated when needed, broad freeze
 diff gate rerun after commit, and residual review-only drift risks recorded.
 Contract changes still stop and require an explicit behavior-change proposal.
+
+## Runtime Control-Surface Incident Reopening
+
+KCS-14 has a bounded M4 closeout for the runtime control-surface incident
+discovered after the historical final closeout. The historical closeout remains
+evidence of the tested Python-visible contracts; it must not be rewritten as
+though the incident was already known.
+
+The incident's repeated semantic-scope fixes crossed the aggregate design
+threshold and were classified as `architecture_error` inside the semantic
+issue ownership boundary. The operator approved the replacement design, M0-M3
+are complete, and M4 has a bounded closeout. The full incident plan and design
+review remain in the retained historical branch
+`feature/PAUX-7103-kcs-14.5-contract-consolidation`; the release tree keeps the
+compact decision log, aggregate attempt review, forensic audit, and contract
+consolidation closeout.
+
+The proposal uses incident-local migration steps `M0` through `M4`; they do not
+renumber the global KCS-14 slices. The retained legacy provider/evaluation
+blocker is owned by `desktop_draft_workflow/provider boundary` with review-by
+`2026-08-13`. It does not restore a Claude-visible legacy schema or authorize a
+parallel workflow.
+
+External Fable 5 architecture review on 2026-07-12 returned `approve with
+changes`. Its pre-M0 specification blockers were incorporated into the
+proposal: new-schema discoverability/corrections, explicit parser ownership,
+mixed-worktree separation evidence, the M0-M2 operational suppression window,
+and bounded re-proposal state. The operator subsequently approved the migration;
+the review verdict alone did not authorize runtime implementation.
+
+The bounded boundary re-proposal and the remaining accept/exclude boundary
+lifecycle were retired during M4 simplification after real-ticket canaries
+showed that they added latency and repeated ambiguity without improving the
+final scope decision. Native candidate selection is now the only human scope
+checkpoint. Deterministic evidence, provenance, and visibility blockers remain
+fail-closed.
+
+KCS-14.5 semantic stabilization is closed unsuccessfully. A reversible
+rollback audit found no demonstrated working runtime target:
+
+- the current M4 package reached native selection and accounted for five
+  candidates, but produced zero reviewer-only drafts;
+- the fixed KCS-14 closeout state `c51ca35` produced three semantic outcomes
+  and zero reviewer-only drafts;
+- the model/client changed between those runs, so they are not a strict
+  quantitative A/B series, but the closeout baseline is still falsified as a
+  known-good yield rollback target;
+- the current M4 package was restored because it retains the smaller control
+  surface and unchanged safety floor.
+
+Do not continue this workstream with another merge/split prompt patch, semantic
+schema generation, unchanged real-ticket canary series, or weaker mandatory
+resolution validation. Reopening requires a separate behavior-change design
+whose primary capability is obtaining or explicitly recording confirmed
+resolution evidence before article drafting. Blocked evidence may support a
+reviewer work item, but it must not be represented as an article draft or
+KCS-ready content.
+
+The completed explicit-reference recovery slice preserves an approved public
+support-article reference through the
+existing bounded evidence and reuse path. It adds no fetch, search, tool,
+workflow state, or general resolution-validation bypass. The reviewed runtime
+implementation, rebuilt install, and final synthetic installed canary are
+complete. The canary reached the native `flag_existing` result with checked
+reuse, duplicate prevention, no network calls, and no public output.
+
+This recovery result does not reopen or reverse the unsuccessful KCS-14.5
+semantic-stabilization verdict. It proves only the generic explicit-reference
+reuse path; real-ticket semantic partition stability and candidates without
+grounded resolution evidence remain unpromoted.
+
+The final cross-attempt decision and no-loop rules are recorded in:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-5-semantic-stabilization-aggregate-attempt-review.md`.
+
+The compact decision index that must be checked before any further KCS-14.5
+runtime change is:
+
+- `docs/internal/engineering-process/slice-plans/kcs-14-5-decision-log.md`.
+
+It consolidates retained, rejected, falsified, and provisional decisions
+without replacing their detailed evidence records. A new change must name the
+prior decision it preserves or supersedes, add a deterministic regression, and
+define one installed canary stop condition.
+
+The later flat claim-ownership canary passed one complete single-identity
+scenario and failed its first two-identity scenario before candidate
+projection. The active switch was reverted and the verified grouped package
+was restored. This closes schema rearrangement as a recovery strategy: a future
+semantic design must introduce a new authority source rather than another
+model interpretation of the same bounded excerpts.
+
+While the retained legacy provider/evaluation M4 blocker remains active:
+
+- do not commit new runtime incident candidates as refactor-only;
+- do not mix runtime incident changes into the test-suite-maintainability
+  branch;
+- do not start KCS-15 runtime implementation;
+- KCS-15 planning may continue only without changes to incident control-surface
+  code, tests, package guidance, or contracts.
 
 ## Review Routing
 

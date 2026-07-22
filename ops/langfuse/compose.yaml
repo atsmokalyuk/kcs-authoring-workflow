@@ -1,0 +1,244 @@
+name: kcs-langfuse-local
+
+# Adapted from the official Langfuse v3 Docker Compose topology on 2026-07-13.
+# Langfuse release: v3.212.0. Every image is pinned to the verified linux/arm64
+# manifest digest. Review and update the whole set as one change.
+
+x-langfuse-environment: &langfuse-environment
+  NEXTAUTH_URL: http://127.0.0.1:3000
+  DATABASE_URL: postgresql://${POSTGRES_USER:?required}:${POSTGRES_PASSWORD:?required}@postgres:5432/${POSTGRES_DB:?required}
+  SALT: ${SALT:?required}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:?required}
+  TELEMETRY_ENABLED: "false"
+  LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+  AUTH_DISABLE_SIGNUP: "true"
+  CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_USER: ${CLICKHOUSE_USER:?required}
+  CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?required}
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  LANGFUSE_USE_AZURE_BLOB: "false"
+  LANGFUSE_USE_OCI_NATIVE_OBJECT_STORAGE: "false"
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?required}
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?required}
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?required}
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?required}
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+  LANGFUSE_S3_BATCH_EXPORT_ENABLED: "false"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_AUTH: ${REDIS_AUTH:?required}
+  REDIS_TLS_ENABLED: "false"
+  EMAIL_FROM_ADDRESS: ""
+  SMTP_CONNECTION_URL: ""
+
+services:
+  langfuse-worker:
+    image: docker.io/langfuse/langfuse-worker:3.212.0@sha256:a631beddad0edec9e667195dc3b01c6e2d60e43f70d01d0d5919604c220f1b88
+    restart: unless-stopped
+    depends_on: &langfuse-dependencies
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment: *langfuse-environment
+    expose:
+      - "3030"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch(`http://$${require('os').hostname()}:3030/api/health`).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - langfuse-internal
+
+  langfuse-web:
+    image: docker.io/langfuse/langfuse:3.212.0@sha256:b06e302e3a517cdbf1cfec9e3544fea717948ed718fa9684d50f9db8d21bfd68
+    restart: unless-stopped
+    depends_on: *langfuse-dependencies
+    environment:
+      <<: *langfuse-environment
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?required}
+      LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:?required}
+      LANGFUSE_INIT_ORG_NAME: ${LANGFUSE_INIT_ORG_NAME:?required}
+      LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:?required}
+      LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:?required}
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:?required}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:?required}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:?required}
+      LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME:?required}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:?required}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch(`http://$${require('os').hostname()}:3000/api/public/health?failIfDatabaseUnavailable=true`).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+    networks:
+      - langfuse-internal
+
+  # A no-secret TCP forwarder is required because Colima cannot publish a
+  # port directly from an internal-only Docker network. The Langfuse
+  # application and all data services remain egress-isolated.
+  langfuse-local-gateway:
+    image: docker.io/langfuse/langfuse:3.212.0@sha256:b06e302e3a517cdbf1cfec9e3544fea717948ed718fa9684d50f9db8d21bfd68
+    restart: unless-stopped
+    depends_on:
+      langfuse-web:
+        condition: service_healthy
+    entrypoint:
+      - node
+      - -e
+    command:
+      - >-
+        const net=require('net');
+        net.createServer(client=>{
+          const upstream=net.connect(3000,'langfuse-web');
+          client.on('error',()=>upstream.destroy());
+          upstream.on('error',()=>client.destroy());
+          client.pipe(upstream).pipe(client);
+        }).listen(3000,'0.0.0.0');
+    ports:
+      - 127.0.0.1:3000:3000
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/api/public/health?failIfDatabaseUnavailable=true').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - langfuse-internal
+      - langfuse-local-access
+
+  postgres:
+    image: docker.io/postgres:17@sha256:982d62d15cbf9449c7f573216be0cbaa803bd39a0ad2ef11e0f0c10f9e5fa851
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_DB: ${POSTGRES_DB:?required}
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - langfuse-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - langfuse-internal
+
+  clickhouse:
+    image: docker.io/clickhouse/clickhouse-server:latest@sha256:e35b10a33c93ab369dfa3607c829a42e4bc7f0d0efff7663b2e07383b98a360c
+    restart: unless-stopped
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:?required}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?required}
+    volumes:
+      - langfuse-clickhouse-data:/var/lib/clickhouse
+      - langfuse-clickhouse-logs:/var/log/clickhouse-server
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - langfuse-internal
+
+  redis:
+    image: docker.io/redis:7@sha256:cd8543478f9cebbe4ef1662438832bc7dd1cb4d024657ebfa918a0778f24835a
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_AUTH:?required}
+      - --maxmemory-policy
+      - noeviction
+    environment:
+      REDIS_AUTH: ${REDIS_AUTH:?required}
+    volumes:
+      - langfuse-redis-data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$$REDIS_AUTH" redis-cli ping | grep -q PONG
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - langfuse-internal
+
+  minio:
+    image: cgr.dev/chainguard/minio:latest@sha256:9a11e833bb501380d1c6eb7cf1fa38ec4e96c9e4b45f82057107e618a8de7f43
+    restart: unless-stopped
+    entrypoint: sh
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?required}
+    volumes:
+      - langfuse-minio-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - mc
+        - ready
+        - local
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - langfuse-internal
+
+networks:
+  langfuse-internal:
+    internal: true
+  langfuse-local-access:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.host_binding_ipv4: 127.0.0.1
+
+volumes:
+  langfuse-postgres-data:
+  langfuse-clickhouse-data:
+  langfuse-clickhouse-logs:
+  langfuse-redis-data:
+  langfuse-minio-data:

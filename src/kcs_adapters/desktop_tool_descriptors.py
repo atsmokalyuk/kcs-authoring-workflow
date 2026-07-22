@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from kcs_adapters import desktop_tool_schemas as _desktop_tool_schemas
+from kcs_adapters.desktop_protocol import SEMANTIC_CONTROL_GUIDANCE
 from kcs_adapters.desktop_tool_names import (
     TOOL_AUTHOR_APPROVED_SUMMARY,
     TOOL_AUTHOR_TICKET,
@@ -195,8 +196,11 @@ def _draft_article_descriptor() -> McpToolDescriptor:
     descriptor = _descriptor(
         name=TOOL_DRAFT_ARTICLE,
         description=(
-            "Use only for short approved_summary_text or operator selection. "
-            "For `/draft <ticket_ref>`, use kcs_draft_ticket."
+            "Use only for short approved_summary_text, one operator-selected "
+            "candidate, or one ordered operator-selected candidate batch. "
+            "Operator-confirmed resolution steps are accepted only for a "
+            "singular candidate already returned as retryable. For `/draft "
+            "<ticket_ref>`, use kcs_draft_ticket."
         ),
         input_schema=_desktop_tool_schemas.draft_article_input_schema(),
     )
@@ -210,7 +214,9 @@ def _draft_ticket_descriptor() -> McpToolDescriptor:
         name=TOOL_DRAFT_TICKET,
         description=(
             "Use immediately for `/draft <ticket_ref>`. Call with only "
-            "ticket_ref and optional debug. Do not ask for an attachment."
+            "ticket_ref and optional debug. Copy the ref exactly, including "
+            "any `ticket-` prefix; do not normalize or strip it. Do not ask "
+            "for an attachment."
         ),
         input_schema=_desktop_tool_schemas.draft_ticket_input_schema(),
     )
@@ -236,11 +242,12 @@ def _submit_semantic_review_descriptor() -> McpToolDescriptor:
     descriptor = _descriptor(
         name=TOOL_SUBMIT_SEMANTIC_REVIEW,
         description=(
-            "Submit candidate_semantic_extraction_v1 from the prepared packet. "
-            "Submit all separately searchable candidates and support-route "
-            "answers visible in the packet, including licensing/customer-success "
-            "routing items. No article draft, HTML, item, item_candidates, or "
-            "raw ticket text."
+            "Submit semantic_issue_proposal_v1 from the prepared packet. "
+            "Propose all separately searchable issue boundaries and explicit "
+            "coverage records visible in the packet. Do not choose operator or "
+            "KCS actions. No article draft, HTML, legacy candidate fields, item, "
+            "item_candidates, or raw ticket text. "
+            f"{SEMANTIC_CONTROL_GUIDANCE}"
         ),
         input_schema=_desktop_tool_schemas.submit_semantic_review_input_schema(),
     )

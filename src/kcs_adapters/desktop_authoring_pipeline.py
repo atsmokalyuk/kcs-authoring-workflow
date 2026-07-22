@@ -35,6 +35,7 @@ from kcs_core.decision import decide_kcs_action
 from kcs_core.errors import ContractValidationError
 from kcs_core.evidence_builder import (
     EvidenceBuildPolicy,
+    EvidenceBuildSafetyError,
     build_evidence_packet_from_zendesk_export,
 )
 from kcs_core.json_payload import JsonDict
@@ -63,13 +64,21 @@ _EXPLICIT_SUPPORT_ARTICLE_URL_RE = re.compile(
     r"https://support\.plesk\.com/hc/en-us/articles/(?P<article_id>[A-Za-z0-9_-]+)",
     re.I,
 )
-_EXPLICIT_EXISTING_ARTICLE_CONTEXT_RE = re.compile(
-    r"\b(?:existing|knowledge\s+base|kb|article|documented\s+fix|"
-    r"refer(?:ence|red)?|open|apply|follow)\b",
+_EXPLICIT_EXISTING_ARTICLE_RELATION_RE = re.compile(
+    r"(?:"
+    r"\b(?:existing|public|support|knowledge\s+base|kb)\b.{0,40}"
+    r"\barticle\b.{0,40}\bSUPPORT_ARTICLE_URL\b"
+    r"|"
+    r"\b(?:fix|resolution|solution|workaround)\b.{0,40}"
+    r"\b(?:documented|described|available|provided)\b.{0,30}"
+    r"(?:\b(?:at|in|by|via)\b.{0,12})?\bSUPPORT_ARTICLE_URL\b"
+    r"|"
+    r"\b(?:follow|apply|open|refer(?:red)?\s+to)\b.{0,60}"
+    r"\bSUPPORT_ARTICLE_URL\b"
+    r")",
     re.I,
 )
 _EXPLICIT_EXISTING_ARTICLE_TEXT_FIELDS = (
-    "summary",
     "supported_cause",
     "supported_resolution_or_workaround",
     "supported_answer",
@@ -354,7 +363,12 @@ def _checked_approved_summary_pipeline_payload(
     arguments: Mapping[str, Any],
 ) -> JsonDict:
     try:
-        return _desktop_payload.approved_summary_pipeline_payload(arguments)
+        return _desktop_payload.approved_summary_pipeline_payload(
+            arguments,
+            explicit_existing_article_match=(
+                _explicit_existing_article_match(arguments) is not None
+            ),
+        )
     except ApprovedSummaryInputError as exc:
         raise ApprovedSummaryPipelineStageError(
             failure_stage="input_validation",
@@ -431,6 +445,11 @@ def _build_approved_summary_evidence(
                 assume_sanitized=True,
             ),
         )
+    except EvidenceBuildSafetyError:
+        raise ApprovedSummaryPipelineStageError(
+            failure_stage="input_safety",
+            debug_code="approved_summary_safety_blocked",
+        ) from None
     except ContractValidationError:
         raise ApprovedSummaryPipelineStageError(
             failure_stage="evidence_builder",
@@ -632,10 +651,7 @@ def _split_existing_article_resolution_steps(
 
 
 def _is_existing_article_delegation_step(step: str) -> bool:
-    return (
-        _EXPLICIT_SUPPORT_ARTICLE_URL_RE.search(step) is not None
-        and _EXPLICIT_EXISTING_ARTICLE_CONTEXT_RE.search(step) is not None
-    )
+    return _explicit_existing_article_url_match(step) is not None
 
 
 def _approved_summary_pipeline_reuse_status(
@@ -653,9 +669,7 @@ def _explicit_existing_article_match(
     if item is None:
         return None
     text = _explicit_existing_article_text(item)
-    if not _EXPLICIT_EXISTING_ARTICLE_CONTEXT_RE.search(text):
-        return None
-    match = _EXPLICIT_SUPPORT_ARTICLE_URL_RE.search(text)
+    match = _explicit_existing_article_url_match(text)
     if match is None:
         return None
     article_type = str(
@@ -676,6 +690,24 @@ def _explicit_existing_article_match(
         "match_ref": f"kb-{match.group('article_id')}",
         "publication_status": "public",
     }
+
+
+def _explicit_existing_article_url_match(text: str) -> re.Match[str] | None:
+    for line in text.splitlines():
+        for match in _EXPLICIT_SUPPORT_ARTICLE_URL_RE.finditer(line):
+            start = max(0, match.start() - 180)
+            end = min(len(line), match.end() + 180)
+            context = line[start:end]
+            local_start = match.start() - start
+            local_end = match.end() - start
+            marked_context = (
+                context[:local_start]
+                + " SUPPORT_ARTICLE_URL "
+                + context[local_end:]
+            )
+            if _EXPLICIT_EXISTING_ARTICLE_RELATION_RE.search(marked_context):
+                return match
+    return None
 
 
 def _explicit_existing_article_text(item: Mapping[str, Any]) -> str:

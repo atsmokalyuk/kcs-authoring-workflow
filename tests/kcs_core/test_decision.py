@@ -4,6 +4,7 @@ import kcs_core
 from kcs_core.decision import DecisionBlocker, decide_kcs_action
 from kcs_core.models import (
     ArticleType,
+    CandidateOrigin,
     DecisionStatus,
     KcsActionDecisionPacket,
     NormalizedTicketEvidencePacket,
@@ -690,6 +691,28 @@ def test_no_customer_reported_reusable_issue_returns_no_article() -> None:
     assert decision.allowed_override_modes == [
         OperatorOverrideMode.REVIEWER_ONLY_DRAFT.value
     ]
+
+
+def test_support_discovered_reusable_issue_remains_candidate_eligible() -> None:
+    evidence = _evidence(
+        issue_candidates=[
+            {
+                "candidate_id": "ISSUE-SYNTH-SUPPORT-DISCOVERED",
+                "article_type": ArticleType.TECHNICAL_SCR.value,
+                "atomic": True,
+                "candidate_origin": CandidateOrigin.SUPPORT_DISCOVERED.value,
+                "customer_reported": False,
+                "kcs_applicable": True,
+                "resolution_state": "solved",
+                "public_solution_safe": True,
+            }
+        ]
+    )
+
+    decision = decide_kcs_action(evidence, _reuse_results())
+
+    assert decision.recommended_action == RecommendedAction.CREATE_CANDIDATE.value
+    assert DecisionBlocker.NO_CUSTOMER_REPORTED_ISSUE.value not in decision.blockers
 
 
 def test_customer_specific_issue_returns_no_article_with_blocker() -> None:

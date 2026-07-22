@@ -90,3 +90,25 @@ def test_desktop_payload_keeps_existing_content_debug_codes() -> None:
         approved_summary_pipeline_payload(arguments)
 
     assert exc_info.value.debug_code == "approved_summary_resolution_steps_required"
+
+
+def test_desktop_payload_preserves_operator_confirmed_evidence_provenance() -> None:
+    arguments = _payload_args()
+    arguments["_operator_resolution_evidence_provenance"] = "operator_confirmed"
+
+    payload = approved_summary_pipeline_payload(arguments)
+
+    assert payload["sanitizer_report"] == {
+        "source": "operator_confirmed",
+        "status": "passed",
+    }
+
+
+def test_desktop_payload_rejects_unknown_operator_evidence_provenance() -> None:
+    arguments = _payload_args()
+    arguments["_operator_resolution_evidence_provenance"] = "unreviewed"
+
+    with pytest.raises(ApprovedSummaryInputError) as exc_info:
+        approved_summary_pipeline_payload(arguments)
+
+    assert exc_info.value.debug_code == "approved_summary_input_invalid"

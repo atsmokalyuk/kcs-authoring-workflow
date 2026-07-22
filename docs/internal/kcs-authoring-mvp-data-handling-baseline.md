@@ -131,9 +131,10 @@ Allowed lane:
 ```text
 approved clean ticket
   -> semantic-review eligible metadata
-  -> bounded selected excerpts
-  -> candidate_semantic_extraction_v1 proposal
-  -> Python validation / decision / rendering
+  -> bounded approved excerpts
+  -> semantic_issue_proposal_v1 observations
+  -> Python validation / deterministic projection
+  -> operator selection / decision / rendering
 ```
 
 Semantic review is allowed only when a metadata file next to the clean ticket
@@ -148,18 +149,33 @@ The metadata must bind the approval to the exact clean ticket by
 invalid schema, ticket-ref mismatch, or hash mismatch must block semantic
 review before any excerpt is returned to Claude Desktop.
 
-Claude-visible semantic-review output is limited to bounded selected excerpts.
-It must not return raw Zendesk JSON, attachments, redaction maps, full ticket
-dumps, arbitrary chunks, local absolute paths, reviewer packets, Zendesk HTML,
-article drafts, KCS decisions, publication flags, or provider payloads.
+Claude-visible semantic-review output is limited to bounded approved excerpts.
+For a recognized Client/Support transcript, the lane may return the complete
+sanitized speaker-turn inventory only when the exact approved clean-ticket hash
+is bound by metadata and the inventory fits the fixed 48-ref, 12,000-byte
+per-excerpt, and 144,000-byte total bounds. Original speaker turns remain
+separate and retain deterministic speaker-side metadata; a long turn may be
+split only to enforce the per-excerpt byte bound. If the complete inventory
+does not fit, semantic review blocks before returning excerpts rather than
+semantically pruning the transcript in Python. This allowance is limited to
+the explicitly approved, sanitized clean-ticket lane. Internal-support turns
+remain excluded under the Internal Comments rule below.
 
-Claude Desktop may propose only `candidate_semantic_extraction_v1`. Python must
-reject article drafts, Markdown or HTML, `reviewer_only_html`,
-`recommended_action`, `item`, `item_candidates`, publication flags, local paths,
-copied full ticket text, broad aliases, unknown source refs, unsafe values, and
-raw provider payloads. No reviewer bundle may be written until Python validates
-the submitted semantic extraction and runs the existing decision/rendering
-pipeline.
+The lane must not return raw Zendesk JSON, unapproved or unbounded full ticket
+dumps, attachments, redaction maps, arbitrary chunks, local absolute paths,
+reviewer packets, Zendesk HTML, article drafts, KCS decisions, publication
+flags, or provider payloads. Non-transcript structured clean text retains the
+bounded twelve-excerpt selector.
+
+Claude Desktop may propose only `semantic_issue_proposal_v1` observations,
+issue boundaries, and closed coverage records. It cannot propose article type,
+candidate eligibility, visibility, supportability, KCS action, reuse, readiness,
+selection, or renderer state. Python must reject article drafts, Markdown or
+HTML, `reviewer_only_html`, `recommended_action`, `item`, `item_candidates`,
+publication flags, local paths, copied full ticket text, broad aliases, unknown
+source refs, unsafe values, and raw provider payloads. No reviewer bundle may be
+written until Python validates and projects the submission, the operator selects
+scope, and Python runs the existing decision/rendering pipeline.
 
 ### Internal Comments
 - Internal Zendesk comments are internal-only by default and are not passed to Claude by default.

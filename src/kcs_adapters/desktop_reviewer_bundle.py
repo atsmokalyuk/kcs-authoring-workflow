@@ -71,16 +71,21 @@ def _desktop_reviewer_bundle_manifest(
     """Return the compact Desktop reviewer-bundle manifest."""
 
     reuse_search_status = result.get("reuse_search_status")
-    draft_only = reuse_search_status == "skipped"
+    quality_draft = result.get("debug_code") == "draft_only_quality_gaps"
+    draft_only = reuse_search_status == "skipped" or quality_draft
     ready_for_reviewer = result.get("ready_for_reviewer") is True and not draft_only
     manifest: JsonDict = {
         "article_type": result.get("article_type"),
         "auto_publish_allowed": False,
         "bundle_ref": bundle_ref,
         "debug_code": (
-            "draft_only_reuse_search_missing"
-            if draft_only
-            else result.get("debug_code")
+            "draft_only_quality_gaps"
+            if quality_draft
+            else (
+                "draft_only_reuse_search_missing"
+                if draft_only
+                else result.get("debug_code")
+            )
         ),
         "html_path": relative_html_path,
         "html_sha256": html_sha256,

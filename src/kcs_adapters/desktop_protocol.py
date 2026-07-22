@@ -9,10 +9,19 @@ MCP_SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", MCP_PROTOCOL_VERSION)
 MCP_DESKTOP_SERVER_NAME = "kcs-authoring-desktop-mcp"
 MCP_DESKTOP_SERVER_VERSION = "0.1.0"
 
+SEMANTIC_CONTROL_GUIDANCE = (
+    "During semantic review, use only bounded excerpts and return only the "
+    "exact fields requested by the current packet. Python validates the "
+    "submission; the operator selects scope; Python owns the final KCS action. "
+    "Do not choose for the operator, draft manually, or publish."
+)
+
 MCP_INITIALIZE_INSTRUCTIONS = (
     "KCS Authoring MCP server. For `/draft <ticket_ref>` or any "
     "existing ticket_ref draft request, call kcs_draft_ticket with "
-    "only ticket_ref from the configured approved-summaries store. "
+    "only ticket_ref from the configured approved-summaries store. Copy "
+    "the ref exactly, including any `ticket-` prefix; do not normalize or "
+    "strip it. "
     "Use only the listed KCS Authoring tools. If a legacy instruction "
     "requires support_get_behavior_instructions, call it at most once, "
     "use its returned route, and continue with KCS tools. Do not report "
@@ -28,6 +37,7 @@ MCP_INITIALIZE_INSTRUCTIONS = (
     "If semantic_review_required is returned, call "
     "kcs_prepare_semantic_review, then kcs_submit_semantic_review. "
     "Do not draft manually or pass item/item_candidates."
+    f" {SEMANTIC_CONTROL_GUIDANCE}"
 )
 
 
@@ -55,5 +65,6 @@ __all__ = [
     "MCP_INITIALIZE_INSTRUCTIONS",
     "MCP_PROTOCOL_VERSION",
     "MCP_SUPPORTED_PROTOCOL_VERSIONS",
+    "SEMANTIC_CONTROL_GUIDANCE",
     "initialize_result",
 ]

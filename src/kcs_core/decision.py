@@ -9,6 +9,7 @@ from typing import Any
 
 from kcs_core.models import (
     ArticleType,
+    CandidateOrigin,
     DecisionStatus,
     KcsActionDecisionPacket,
     NormalizedTicketEvidencePacket,
@@ -480,7 +481,9 @@ def _article_type(
 def _no_article_blocker(candidate: Mapping[str, Any]) -> str | None:
     checks = (
         (
-            candidate.get("customer_reported") is False,
+            candidate.get("customer_reported") is False
+            and candidate.get("candidate_origin")
+            != CandidateOrigin.SUPPORT_DISCOVERED.value,
             DecisionBlocker.NO_CUSTOMER_REPORTED_ISSUE,
         ),
         (candidate.get("kcs_applicable") is False, DecisionBlocker.KCS_NOT_APPLICABLE),

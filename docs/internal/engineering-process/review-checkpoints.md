@@ -76,7 +76,7 @@ without explaining the new owner.
 
 ## Closeout
 
-Material slice closeout should state:
+Aggregate slice closeout should state:
 
 - affected graph nodes;
 - batches since aggregate review, when the slice is part of Slice 6 refactor;
@@ -84,6 +84,9 @@ Material slice closeout should state:
 - related tests run;
 - unchanged contracts;
 - promotion candidates or `none`.
+
+Micro-batch closeouts only mention promotion when they add evidence to an
+existing candidate or surface a new repeated finding.
 
 If the same graph ambiguity recurs in two material reviews, record a promotion
 candidate for a clearer code-map entry, review checklist item, or deterministic

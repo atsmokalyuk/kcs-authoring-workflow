@@ -13,7 +13,7 @@ from kcs_adapters import desktop_clean_ticket_metadata, desktop_payload
 from kcs_adapters.desktop_payload import ApprovedSummaryInputError
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
-from kcs_core.sanitizer import ensure_safe_sanitized_payload
+from kcs_core.sanitizer import ensure_no_ipv6_address, ensure_safe_sanitized_payload
 
 APPROVED_TICKET_ARGS = frozenset(
     {
@@ -50,6 +50,7 @@ APPROVED_TICKET_STORAGE_REF_ENV = "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF
 MAX_APPROVED_TICKET_FILE_BYTES = 512 * 1024
 
 _SAFE_APPROVED_TICKET_REF_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}")
+_BARE_TICKET_NUMBER_REF_RE = re.compile(r"[0-9]{1,72}")
 _REGISTER_CLEAN_TICKET_ARGS = frozenset({"clean_ticket_text", "debug", "ticket_ref"})
 _CLEAN_TICKET_TRUNCATION_RE = re.compile(
     r"\[(?:debug\s+)?output\s+truncated\]|\boutput\s+truncated\b",
@@ -92,7 +93,7 @@ def approved_ticket_author_arguments(arguments: Mapping[str, Any]) -> JsonDict:
         if "ticket_ref" not in arguments:
             raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
         desktop_payload.require_approved_summary_false_only_args(arguments)
-        ticket_ref = checked_approved_ticket_ref(arguments["ticket_ref"])
+        ticket_ref = resolved_approved_ticket_ref(arguments["ticket_ref"])
         file_payload = approved_ticket_file_payload(ticket_ref)
         merged = approved_ticket_merged_arguments(
             ticket_ref=ticket_ref,
@@ -109,7 +110,7 @@ def approved_ticket_author_arguments(arguments: Mapping[str, Any]) -> JsonDict:
 
 def approved_ticket_ref_from_arguments(arguments: Mapping[str, Any]) -> str:
     try:
-        return checked_approved_ticket_ref(arguments.get("ticket_ref"))
+        return resolved_approved_ticket_ref(arguments.get("ticket_ref"))
     except (ApprovedSummaryInputError, ContractValidationError):
         return "invalid-ticket-ref"
 
@@ -161,6 +162,26 @@ def checked_approved_ticket_ref(value: object) -> str:
     return value
 
 
+def resolved_approved_ticket_ref(value: object) -> str:
+    """Resolve a bare ticket number only when its canonical ref exists."""
+
+    ticket_ref = checked_approved_ticket_ref(value)
+    if _approved_ticket_ref_exists(ticket_ref):
+        return ticket_ref
+    if not _BARE_TICKET_NUMBER_REF_RE.fullmatch(ticket_ref):
+        return ticket_ref
+    canonical_ref = f"ticket-{ticket_ref}"
+    if _approved_ticket_ref_exists(canonical_ref):
+        return canonical_ref
+    return ticket_ref
+
+
+def _approved_ticket_ref_exists(ticket_ref: str) -> bool:
+    return approved_ticket_summary_path(ticket_ref).is_file() or (
+        approved_ticket_clean_text_path(ticket_ref).is_file()
+    )
+
+
 def _checked_clean_ticket_text(value: object) -> str:
     if not isinstance(value, str):
         raise ApprovedSummaryInputError("clean_ticket_text_invalid")
@@ -169,7 +190,11 @@ def _checked_clean_ticket_text(value: object) -> str:
         raise ApprovedSummaryInputError("clean_ticket_text_invalid")
     if len(text.encode("utf-8")) > MAX_APPROVED_TICKET_FILE_BYTES:
         raise ApprovedSummaryInputError("clean_ticket_text_invalid")
-    ensure_safe_sanitized_payload(text)
+    try:
+        ensure_safe_sanitized_payload(text)
+        ensure_no_ipv6_address(text)
+    except ContractValidationError:
+        raise ApprovedSummaryInputError("clean_ticket_text_invalid") from None
     if _clean_ticket_text_has_tool_artifact(text):
         raise ApprovedSummaryInputError("clean_ticket_text_invalid")
     if _clean_ticket_text_looks_incomplete(text):
@@ -378,6 +403,10 @@ def _ensure_approved_clean_ticket_file_text_safe(text: str) -> None:
         raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
     if _CLEAN_TICKET_SECRET_ARTIFACT_RE.search(text):
         raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
+    try:
+        ensure_no_ipv6_address(text)
+    except ContractValidationError:
+        raise ApprovedSummaryInputError("approved_ticket_summary_invalid") from None
 
 
 def _validate_approved_ticket_file_payload(
@@ -394,6 +423,12 @@ def _validate_approved_ticket_file_payload(
             if key not in {"schema_version", "ticket_ref"}
         }
     )
+    approved_summary_text = payload.get("approved_summary_text")
+    if isinstance(approved_summary_text, str):
+        try:
+            ensure_no_ipv6_address(approved_summary_text)
+        except ContractValidationError:
+            raise ApprovedSummaryInputError("approved_ticket_summary_invalid") from None
     if payload.get("schema_version") != APPROVED_TICKET_FILE_SCHEMA_VERSION:
         raise ApprovedSummaryInputError("approved_ticket_summary_invalid")
     if payload.get("ticket_ref") != ticket_ref:

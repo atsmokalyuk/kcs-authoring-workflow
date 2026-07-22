@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import Any
 
 from kcs_adapters import desktop_payload as _desktop_payload
 from kcs_adapters.desktop_operator_selection import PendingDraftSelection
+from kcs_adapters.desktop_semantic_review_submission import (
+    SemanticReviewSubmissionError,
+    ensure_no_forbidden_submit_values,
+)
 from kcs_adapters.desktop_workflow_results import (
     selection_error_result,
     split_required_result,
@@ -14,6 +19,23 @@ from kcs_adapters.desktop_workflow_results import (
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict, require_json_object
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
+
+OPERATOR_CONFIRMED_RESOLUTION_MAX_ITEMS = 12
+OPERATOR_CONFIRMED_RESOLUTION_MAX_ITEM_BYTES = 1_600
+OPERATOR_CONFIRMED_RESOLUTION_MAX_TOTAL_BYTES = 12_000
+OPERATOR_RESOLUTION_EVIDENCE_PROVENANCE = (
+    _desktop_payload.OPERATOR_CONFIRMED_RESOLUTION_PROVENANCE
+)
+
+_OPERATOR_EVIDENCE_CONTROL_TEXT_RE = re.compile(
+    r"(?:"
+    r"^\s*(?:article|assistant|cause|developer|draft|instructions?|system|title)\s*:|"
+    r"\b(?:ignore|disregard)\s+(?:all\s+)?(?:previous|prior|system|developer)\s+"
+    r"instructions\b|"
+    r"\b(?:assistant|developer|system)\s+(?:message|prompt)\b"
+    r")",
+    re.I,
+)
 
 # Internal/canonical compatibility helpers only. Do not use this broad allowed
 # set to validate the Claude Desktop alias path; primary Desktop calls must use
@@ -29,7 +51,9 @@ DRAFT_ARTICLE_ARGS = frozenset(
         "item_candidates",
         "network_calls",
         "operator_choice_confirmed",
+        "operator_confirmed_resolution_steps",
         "operator_selected_item_ref",
+        "operator_selected_item_refs",
         "operator_selection_ref",
         "provider_calls",
         "public_output_approved",
@@ -48,7 +72,9 @@ DRAFT_ARTICLE_DESKTOP_PRIMARY_ARGS = frozenset(
     {
         "approved_summary_text",
         "debug",
+        "operator_confirmed_resolution_steps",
         "operator_selected_item_ref",
+        "operator_selected_item_refs",
         "operator_selection_ref",
         "ticket_ref",
     }
@@ -76,7 +102,9 @@ _DRAFT_ARTICLE_OPERATOR_SELECTION_FIELDS = frozenset(
     {
         "item_candidates",
         "operator_choice_confirmed",
+        "operator_confirmed_resolution_steps",
         "operator_selected_item_ref",
+        "operator_selected_item_refs",
         "operator_selection_ref",
     }
 )
@@ -142,6 +170,38 @@ def draft_article_candidates_with_refs(
             candidate_with_ref["item_ref"] = f"candidate-{index:03d}"
         normalized.append(candidate_with_ref)
     return normalized
+
+
+def operator_confirmed_resolution_steps(value: object) -> list[str]:
+    """Return bounded, sanitized operator-confirmed resolution evidence."""
+
+    if not isinstance(value, list) or not value:
+        raise DraftArticleArgumentError("Invalid operator resolution evidence.")
+    if len(value) > OPERATOR_CONFIRMED_RESOLUTION_MAX_ITEMS:
+        raise DraftArticleArgumentError("Invalid operator resolution evidence.")
+    steps: list[str] = []
+    total_bytes = 0
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise DraftArticleArgumentError("Invalid operator resolution evidence.")
+        step = item.strip()
+        item_bytes = len(step.encode("utf-8"))
+        total_bytes += item_bytes
+        if (
+            item_bytes > OPERATOR_CONFIRMED_RESOLUTION_MAX_ITEM_BYTES
+            or total_bytes > OPERATOR_CONFIRMED_RESOLUTION_MAX_TOTAL_BYTES
+            or _OPERATOR_EVIDENCE_CONTROL_TEXT_RE.search(step)
+        ):
+            raise DraftArticleArgumentError("Invalid operator resolution evidence.")
+        try:
+            ensure_safe_sanitized_payload(step)
+            ensure_no_forbidden_submit_values(step)
+        except (ContractValidationError, SemanticReviewSubmissionError) as exc:
+            raise DraftArticleArgumentError(
+                "Invalid operator resolution evidence."
+            ) from exc
+        steps.append(step)
+    return steps
 
 
 def draft_article_with_normalized_item(
@@ -273,6 +333,10 @@ __all__ = [
     "DRAFT_ARTICLE_ARGS",
     "DRAFT_ARTICLE_DESKTOP_PRIMARY_ARGS",
     "DraftArticleArgumentError",
+    "OPERATOR_CONFIRMED_RESOLUTION_MAX_ITEMS",
+    "OPERATOR_CONFIRMED_RESOLUTION_MAX_ITEM_BYTES",
+    "OPERATOR_CONFIRMED_RESOLUTION_MAX_TOTAL_BYTES",
+    "OPERATOR_RESOLUTION_EVIDENCE_PROVENANCE",
     "draft_article_arguments",
     "draft_article_authoring_args_from_candidate",
     "draft_article_candidates_with_refs",
@@ -285,5 +349,6 @@ __all__ = [
     "draft_article_without_uploaded_ticket_ref",
     "has_approved_summary_authoring_input",
     "has_structured_approved_summary_item_input",
+    "operator_confirmed_resolution_steps",
     "require_args",
 ]

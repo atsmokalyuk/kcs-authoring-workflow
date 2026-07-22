@@ -338,6 +338,51 @@ def test_desktop_workflow_blocks_diagnostic_transcript_in_resolution_html() -> N
     } in approved_summary_quality_gaps(execution, {})
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ls -ld /var/lib/product-data",
+        "stat -c %U:%G /var/lib/product-data",
+        "getenforce",
+        "ps aux",
+    ],
+)
+def test_desktop_workflow_allows_labeled_diagnostic_commands(command: str) -> None:
+    execution = SimpleNamespace(
+        arguments={"item": {"reuse_search_checked": True}},
+        decision=SimpleNamespace(
+            article_type=ArticleType.TECHNICAL_SCR.value,
+            recommended_action=RecommendedAction.CREATE_CANDIDATE.value,
+        ),
+        payload={"issue_candidates": [{"supported_resolution_or_workaround": ""}]},
+        reviewer_packet=SimpleNamespace(
+            public_article_candidate={
+                "applicable_to": ["Plesk for Linux"],
+                "cause": "A product data directory has incorrect ownership.",
+                "resolution_steps": [
+                    f"Run {command} to verify the product state.",
+                ],
+                "symptoms": ["A product task fails."],
+                "title": "Product task fails due to directory ownership",
+            },
+            zendesk_source_html=(
+                "<h1>Product task fails due to directory ownership</h1>"
+                "<h2>Applicable to</h2><ul><li>Plesk for Linux</li></ul>"
+                "<h2>Symptoms</h2><ol><li>A product task fails.</li></ol>"
+                "<h2>Cause</h2><p>A product data directory has incorrect "
+                "ownership.</p><h2>Resolution</h2><ol><li>"
+                f"<p>Verify the product state:</p><p><code>{command}</code></p>"
+                "</li></ol>"
+            ),
+        ),
+    )
+
+    assert {
+        "kind": "diagnostic_transcript_in_resolution",
+        "severity": "blocker",
+    } not in approved_summary_quality_gaps(execution, {})
+
+
 def test_desktop_workflow_calls_provider_and_converts_candidates() -> None:
     provider = _Provider(_extraction_payload())
     workflow = DesktopDraftWorkflow(provider=provider, selection_ttl_seconds=60)
@@ -354,6 +399,7 @@ def test_desktop_workflow_calls_provider_and_converts_candidates() -> None:
         {
             "applicable_to": ["Plesk for Linux"],
             "article_type": ArticleType.TECHNICAL_SCR.value,
+            "candidate_origin": "customer_reported",
             "confirmed_facts": ["A safe Plesk fact is confirmed."],
             "environment": {
                 "applicable_to": ["Plesk for Linux"],
@@ -447,7 +493,7 @@ def test_desktop_workflow_builds_operator_choice_request() -> None:
     request = operator_choice_request(pending, submit_tool="kcs_draft_article")
     review_summary = operator_choice_review_summary(pending)
 
-    assert request["mode"] == "single_select"
+    assert request["mode"] == "single_or_batch_select"
     assert request["submit_tool"] == "kcs_draft_article"
     assert request["options"] == [
         {
@@ -460,7 +506,7 @@ def test_desktop_workflow_builds_operator_choice_request() -> None:
         }
     ]
     assert review_summary == {
-        "mode": "single_select",
+        "mode": "single_or_batch_select",
         "option_count": 1,
         "presentation": "native_choice_popup_preferred",
         "prose_only_choice_allowed": False,
@@ -788,6 +834,90 @@ def test_finalize_author_result_manifest_marks_missing_reuse_as_draft_only(
     assert manifest["ready_for_reviewer"] is False
     assert manifest["kcs_ready"] is False
     assert manifest["recommended_action"] == "draft_only"
+
+
+def test_finalize_author_result_writes_reviewer_remediable_quality_debt(
+    tmp_path,
+) -> None:
+    bundle_root = tmp_path / "local-data" / "reviewer-bundles"
+    compact = finalize_author_result_with_bundle(
+        {
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "item_ref": "candidate-001",
+            "ok": True,
+            "pipeline_ok": True,
+            "quality_gaps": [
+                {
+                    "kind": "cause_contains_resolution_action",
+                    "severity": "blocker",
+                },
+                {
+                    "kind": "transcript_placeholder_in_public_body",
+                    "severity": "blocker",
+                },
+            ],
+            "ready_for_reviewer": True,
+            "recommended_action": "create_candidate",
+            "reuse_search_status": "checked",
+            "reviewer_only_html": "<p>{{HOST_1}}</p>",
+            "schema_version": "kcs_mcp_tool_result_v1",
+            "should_be_kcs_article": True,
+        },
+        bundle_root=bundle_root,
+        include_reviewer_only_html=False,
+        schema_version="kcs_mcp_tool_result_v1",
+    )
+
+    assert compact["debug_code"] == "draft_only_quality_gaps"
+    assert compact["draft_generated"] is True
+    assert compact["reviewer_bundle_written"] is True
+    assert compact["kcs_ready"] is False
+    assert compact["ready_for_reviewer"] is False
+    assert compact["recommended_action"] == "draft_only"
+    assert compact["public_output_approved"] is False
+    assert compact["blockers"] == [
+        "cause_contains_resolution_action",
+        "transcript_placeholder_in_public_body",
+    ]
+    manifest_path = next(bundle_root.glob("run-*/manifest.json"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["debug_code"] == "draft_only_quality_gaps"
+    assert manifest["kcs_ready"] is False
+    assert manifest["ready_for_reviewer"] is False
+    assert manifest["recommended_action"] == "draft_only"
+
+
+def test_finalize_author_result_keeps_other_quality_blockers_terminal(
+    tmp_path,
+) -> None:
+    bundle_root = tmp_path / "local-data" / "reviewer-bundles"
+    blocked = finalize_author_result_with_bundle(
+        {
+            "article_type": ArticleType.TECHNICAL_SCR.value,
+            "item_ref": "candidate-001",
+            "quality_gaps": [
+                {"kind": "missing_required_section", "severity": "blocker"},
+                {
+                    "kind": "cause_contains_resolution_action",
+                    "severity": "blocker",
+                },
+            ],
+            "ready_for_reviewer": True,
+            "recommended_action": "create_candidate",
+            "reuse_search_status": "checked",
+            "reviewer_only_html": "<h1>Incomplete reviewer draft</h1>",
+            "should_be_kcs_article": True,
+        },
+        bundle_root=bundle_root,
+        include_reviewer_only_html=False,
+        schema_version="kcs_mcp_tool_result_v1",
+    )
+
+    assert blocked["debug_code"] == "reviewer_html_quality_blocked"
+    assert blocked["draft_generated"] is False
+    assert blocked["reviewer_bundle_written"] is False
+    assert blocked["writes_files"] is False
+    assert not list(bundle_root.glob("**/*"))
 
 
 def test_finalize_author_result_rejects_bundle_root_outside_boundary(

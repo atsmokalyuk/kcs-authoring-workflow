@@ -97,39 +97,38 @@ def test_promotion_candidate_registry_defines_required_fields() -> None:
     assert not missing, "\n".join(missing)
 
 
-def test_promotion_protocol_keeps_automation_after_stability() -> None:
-    text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
+def test_promotion_protocol_keeps_aggregate_automation_after_stability() -> None:
+    text = " ".join(REVIEW_PROTOCOL.read_text(encoding="utf-8").split())
 
     required = (
-        "Once = note.",
+        "Once = review note, not a registry entry.",
         "Twice = review checklist item.",
         "Three times = candidate for test/tool/check.",
         "Stable across KCS-14 and KCS-15 = reusable infrastructure candidate.",
         "Do not automate design judgment with blocking regex checks.",
         "Agent Promotion Responsibility",
-        "Promotion discovery is automatic.",
+        "Promotion discovery is automatic at aggregate closeout",
         "Promotion implementation is approval-gated.",
         "operator should not need to remember",
         "development agent must surface a promotion candidate",
         "Promotion implementation should be its own small scoped",
         "action or commit",
         "Promotion Checkpoints",
-        "before starting a refactor target",
-        "during staged-diff review",
-        "during slice closeout before commit",
+        "during aggregate review or aggregate closeout",
+        "Staged-diff review may attach evidence",
         "after repeated validation or review failure with the same cause",
         "Promotion candidates: none",
         "Counts must come from",
         "The agent must not rely on chat memory",
-        "report that it checked these durable sources",
+        "Micro-batch closeouts only mention promotion",
         "stable value-safe finding codes",
         "Promotion Readiness Gates",
         "Implicit approval is allowed only when",
         "model output never grants",
         "implicit approval",
-        "Probation And Demotion",
-        "false positive must be demoted to advisory",
-        "expire after three completed slices without new evidence",
+        "Promotion Scope",
+        "runtime and contract defects go directly to focused regression tests",
+        "No probation, demotion, or time-based expiry state machine",
     )
     missing = [phrase for phrase in required if phrase not in text]
 

@@ -11,7 +11,7 @@ from kcs_core.safety import (
     ensure_evidence_safe,
     validate_evidence_safety,
 )
-from kcs_core.sanitizer import ensure_safe_sanitized_payload
+from kcs_core.sanitizer import ensure_no_ipv6_address, ensure_safe_sanitized_payload
 
 
 def _safe_packet(**overrides: object) -> NormalizedTicketEvidencePacket:
@@ -135,6 +135,29 @@ def test_sanitizer_accepts_public_plesk_support_contact() -> None:
     ensure_safe_sanitized_payload(
         "Customer Success team (cs@plesk.com) handles my.plesk.com questions."
     )
+
+
+@pytest.mark.parametrize(
+    "private_value",
+    [
+        "2001:db8::1",
+        "::1",
+        "::ffff:192.0.2.1",
+        "fe80::1%eth0",
+    ],
+)
+def test_sanitizer_rejects_ipv6_forms(private_value: str) -> None:
+    with pytest.raises(ContractValidationError):
+        ensure_no_ipv6_address(f"Server address: {private_value}")
+
+
+def test_sanitizer_accepts_colon_timestamp() -> None:
+    ensure_no_ipv6_address("Recorded at 2026:07:20:12:30:45.")
+
+
+def test_sanitizer_rejects_compressed_ipv6_adjacent_to_label() -> None:
+    with pytest.raises(ContractValidationError):
+        ensure_no_ipv6_address("IPv6:2001:db8::1")
 
 
 def test_evidence_safety_accepts_local_config_file_path() -> None:

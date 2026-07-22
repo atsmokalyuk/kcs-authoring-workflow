@@ -8,6 +8,13 @@ from typing import Any
 from kcs_core.json_payload import JsonDict
 from kcs_core.models import ArticleType
 
+REVIEWER_REMEDIABLE_QUALITY_BLOCKERS = frozenset(
+    {
+        "cause_contains_resolution_action",
+        "transcript_placeholder_in_public_body",
+    }
+)
+
 
 def compact_draft_result(
     result: Mapping[str, Any],
@@ -66,10 +73,21 @@ def compact_draft_result(
         if isinstance(storage_value, str) and storage_value:
             compact[storage_key] = storage_value
     if result.get("reuse_search_status") == "skipped":
+        existing_blockers = result.get("blockers")
+        blockers = (
+            [item for item in existing_blockers if isinstance(item, str)]
+            if isinstance(existing_blockers, list)
+            else []
+        )
+        blockers.append("reuse_search_not_checked")
         compact.update(
             {
-                "blockers": ["reuse_search_not_checked"],
-                "debug_code": "draft_only_reuse_search_missing",
+                "blockers": list(dict.fromkeys(blockers)),
+                "debug_code": (
+                    "draft_only_quality_gaps"
+                    if result.get("debug_code") == "draft_only_quality_gaps"
+                    else "draft_only_reuse_search_missing"
+                ),
                 "kcs_ready": False,
                 "pipeline_ok": False,
                 "ready_for_reviewer": False,
@@ -95,6 +113,46 @@ def quality_blocker_gaps(result: Mapping[str, Any]) -> list[JsonDict]:
         for gap in quality_gaps
         if isinstance(gap, Mapping) and gap.get("severity") == "blocker"
     ]
+
+
+def reviewer_only_quality_debt_allowed(
+    quality_blockers: list[JsonDict],
+) -> bool:
+    """Return whether every blocker is safe, local reviewer-editing debt."""
+
+    return bool(quality_blockers) and all(
+        gap.get("kind") in REVIEWER_REMEDIABLE_QUALITY_BLOCKERS
+        for gap in quality_blockers
+    )
+
+
+def reviewer_only_quality_draft_result(
+    result: Mapping[str, Any],
+    quality_blockers: list[JsonDict],
+) -> JsonDict:
+    """Mark bounded quality debt while retaining a local reviewer-only draft."""
+
+    draft_only = dict(result)
+    blockers = list(
+        dict.fromkeys(
+            str(gap["kind"])
+            for gap in quality_blockers
+            if gap.get("kind") in REVIEWER_REMEDIABLE_QUALITY_BLOCKERS
+        )
+    )
+    draft_only.update(
+        {
+            "blockers": blockers,
+            "debug_code": "draft_only_quality_gaps",
+            "kcs_ready": False,
+            "ok": False,
+            "pipeline_ok": False,
+            "ready_for_reviewer": False,
+            "recommended_action": "draft_only",
+            "validation_ok": False,
+        }
+    )
+    return draft_only
 
 
 def quality_blocked_result(
@@ -145,7 +203,10 @@ def quality_blocked_result(
 
 
 __all__ = [
+    "REVIEWER_REMEDIABLE_QUALITY_BLOCKERS",
     "compact_draft_result",
     "quality_blocked_result",
     "quality_blocker_gaps",
+    "reviewer_only_quality_debt_allowed",
+    "reviewer_only_quality_draft_result",
 ]

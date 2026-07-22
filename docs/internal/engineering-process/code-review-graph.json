@@ -1,7 +1,7 @@
 {
   "schema_version": "kcs_code_review_graph_v1",
   "status": "advisory_orientation_snapshot",
-  "generated_for_commit": "a263492",
+  "generated_for_commit": "c7b5548",
   "path_root": "repository-relative",
   "purpose": "Orient development agents and reviewers before KCS-14 refactor work by mapping ownership areas, contract edges, risky files, and related tests. This graph is not a replacement for reading touched files and direct dependencies.",
   "rules": {
@@ -51,12 +51,12 @@
         },
         {
           "path": "src/kcs_adapters/desktop_tool_schemas.py",
-          "file_hash": "6b1f3df30688cb4dc778e31f4399214b6a1494a3c0b09bf7eac3a0894457a2ee",
+          "file_hash": "2a50d57860688e06aa11012692fe6271b0ef3f2d49af86a239a65fe17e266880",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_tool_results.py",
-          "file_hash": "fd287d96f687fcdfa531b0684acba8b5ba67dd6400c2bbba3b1052c5b7723d9e",
+          "file_hash": "50a723c68aaec40272a4c295dce076bea23ca2a9d1693d410daa9c9c90f5a7e7",
           "valid_until_changed": true
         },
         {
@@ -66,7 +66,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_authoring_tools.py",
-          "file_hash": "3debf411f76c497ad0a61fddc7b3bb904dafe739236f35478a4a80a55fabc178",
+          "file_hash": "eff38f04cf7ac49b9f0be53cce128fea8e5d02841067a8b7e48d0f2f75250dd1",
           "valid_until_changed": true
         },
         {
@@ -76,7 +76,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_tool_descriptors.py",
-          "file_hash": "fbc8d712430b62d710222531447b74e306290fe8b0707e32d0cb73073f200c84",
+          "file_hash": "852d3c0197f790060c86ee8093fd9f5df48f9a3a56004dddd3c506970377f880",
           "valid_until_changed": true
         },
         {
@@ -130,7 +130,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_protocol.py",
-          "file_hash": "014f0920ac53fe54c8a9823b4bf42b0d1a16afaa3be29326260558ce7a013a86",
+          "file_hash": "53884d9e9a4eacc0f2a7e30638086342e0983a91207ef83da4b7773d7f8f6f1f",
           "valid_until_changed": true
         },
         {
@@ -140,7 +140,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_payload.py",
-          "file_hash": "9425e04f68eec9e8af378371f433f39a02bc387bff2b89e354798b4059aa46eb",
+          "file_hash": "17dc7b4d767886ef26b88d9553a428d972a40a45de9ea9067f10d7656fab82df",
           "valid_until_changed": true
         },
         {
@@ -188,7 +188,7 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_ticket_ref.py",
-          "file_hash": "4dc7ed05d29511b8337d6a378b79d7a746284fbedd213699f3876127bd4b8af2",
+          "file_hash": "5e740ce968b129cdfb08839cbb35c1cb84ab69ee4f83af65754eb448983fe772",
           "valid_until_changed": true
         },
         {
@@ -249,7 +249,7 @@
         },
         {
           "path": "src/kcs_core/claude_handoff.py",
-          "file_hash": "06e643cec1cbbd12f1d3bee4a49c5b9189d3d79db2867bb3cf37f8a153b65612",
+          "file_hash": "bee0dd6fe618b6cc05d961d3b51396f2391c1f58c61fe20c4f2f1a36ac75123c",
           "valid_until_changed": true
         }
       ],
@@ -269,7 +269,8 @@
       "owns": [
         "bounded semantic-review packet",
         "pending semantic-review state",
-        "candidate_semantic_extraction_v1 submit validation",
+        "semantic_issue_proposal_v1 submit validation",
+        "Desktop-facing semantic proposal field metadata and corrections",
         "allowed source_ref rules"
       ],
       "must_not_own": [
@@ -295,36 +296,47 @@
       ],
       "files": [
         {
+          "path": "src/kcs_adapters/desktop_semantic_candidate_contract.py",
+          "file_hash": "8624a12c95606387887d93dbbc93134c51aa9cfda1b4acf26f1280d8c4082fd6",
+          "valid_until_changed": true
+        },
+        {
           "path": "src/kcs_adapters/desktop_semantic_review.py",
-          "file_hash": "ce62e2001fb0f6d439f43e3b03b276cd038974a976c8b522d720db9bf001b206",
+          "file_hash": "f4b8062b4193365bf3ed3b5d8971d4622b6ae69236ffe02ad419a5ca69587c23",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_semantic_review_submission.py",
-          "file_hash": "3767bb52d64c3ff809ed7d4dd915fea88f737f441bd066ea25c59f8bdfec9837",
+          "file_hash": "ffc37376414ad1b3acbc84dcc75d2ccb2fcd1d8497732738a5933f57d8bdc057",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_semantic_candidates.py",
-          "file_hash": "ca1dbf7b01055f0d7a3c5795a0570b1afa3e366eec1ef45b40c82dc252b38446",
+          "file_hash": "265714bb5020fe25d0e47e8311e3966a28434893a313de62823474fab703c8d8",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_semantic_providers.py",
-          "file_hash": "79fc93aa770fe938e145c971956fef08fbee611bb6f64fec5c947193cd919fd4",
+          "file_hash": "7ca7746d82d838cfb6c1cb815e03b94b5254b2b23508b2e10d0e2127247f547c",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_core/semantic_extraction.py",
-          "file_hash": "b02537c07c62c1192a8355785dd2d43d7ed536786752fde9b4cc26b4c178262c",
+          "file_hash": "61a277bbd1bd5cda8e3c7361bda69526b4ea6b74885061b6ac87d7dab0d16f52",
           "valid_until_changed": true
         }
       ],
       "related_tests": [
+        "tests/kcs_adapters/test_desktop_semantic_candidate_contract.py",
+        "tests/kcs_adapters/test_desktop_semantic_review_submission.py",
         "tests/kcs_adapters/test_desktop_semantic_candidates.py",
+        "tests/kcs_adapters/test_semantic_issue_projection.py",
         "tests/kcs_adapters/test_approved_summary_semantic.py",
         "tests/kcs_core/test_semantic_extraction.py",
-        "tests/kcs_adapters/test_mcp_desktop.py"
+        "tests/kcs_core/test_semantic_issue_proposal.py",
+        "tests/kcs_adapters/test_mcp_desktop.py",
+        "tests/kcs_adapters/test_semantic_review_input_adequacy.py",
+        "tests/kcs_adapters/test_runtime_control_surface_incident.py"
       ]
     },
     {
@@ -334,6 +346,7 @@
       "owns": [
         "Desktop draft orchestration",
         "operator selection state",
+        "sequential candidate-batch taxonomy and outcome ledger",
         "semantic provider handoff",
         "workflow status and compact results"
       ],
@@ -345,6 +358,7 @@
       ],
       "must_preserve": [
         "Python owns workflow state and validated decisions",
+        "unknown batch blocker codes stop fail-closed",
         "split/single/block decisions stay deterministic",
         "reviewer bundle writing only happens after validated packet decisions allow it"
       ],
@@ -364,37 +378,42 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_draft_tool.py",
-          "file_hash": "153d25aaeba7e8e91f691b56128fca45ca84bba7293055288956d291128056d2",
+          "file_hash": "d20abffa5f1f9d4b1ee2f408dc2433845803ef067e2bf5572f77bb464bc03189",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_draft_batch.py",
+          "file_hash": "e39ad31f908fbe80b5c478a841cf5b1a445b4bf323414e98c9b716094cada603",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_workflow.py",
-          "file_hash": "27932e83a4cd04ec4d05032c71136ae92659f0f56e47f33725f757153cebe7f2",
+          "file_hash": "8d28034647c5da20bed09dd26741061738af49046dba283de858ea29e38bf988",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_operator_selection.py",
-          "file_hash": "a21750ab889dab67a25c168b439beb2a028a0f5339550aa5a9703e601014ed8c",
+          "file_hash": "f908d84bb9ef100a867cfc9abb31dfb209f0ade15e3a7cf1814e503a3cc5cd1a",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_authoring_pipeline.py",
-          "file_hash": "335223c6d5e61b50e3c8dbb6e4922502f22f6315b1fee3b4217b01e2eea64291",
+          "file_hash": "2d9cd9b09ab4ad1a0f64620ff105178cd92ebad5ee09b34836988d9e95a2c247",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_draft_arguments.py",
-          "file_hash": "6c73a881436658d643515bb53833c6b4c507fc9888848fd6c7c40da63709797e",
+          "file_hash": "a4613bb529419ae9a644cfbeff4743c17ece8550973dda5d2b1e89df69bcdd8a",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_draft_output.py",
-          "file_hash": "a7c0b056f6dcb18e7a9f6234796b490990faf47fea5a8381bbe25deecc316bfb",
+          "file_hash": "e22935b9fbc4c19ad58b4431039aaa76c8fd28b215a516977b7762b8d0772620",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_workflow_results.py",
-          "file_hash": "2250b74f832eeb9403480fe4891381f09f2b054576db81533944a9af1ca20d1f",
+          "file_hash": "d41a1c161c59d1bc5c2386bb3b8601f36ec5f6519bafddf7e09b8183bcf452e3",
           "valid_until_changed": true
         },
         {
@@ -404,6 +423,7 @@
         }
       ],
       "related_tests": [
+        "tests/kcs_adapters/test_desktop_draft_batch.py",
         "tests/kcs_adapters/test_desktop_draft_tool.py",
         "tests/kcs_adapters/test_desktop_workflow.py",
         "tests/kcs_adapters/test_desktop_operator_selection.py",
@@ -450,7 +470,7 @@
       "files": [
         {
           "path": "src/kcs_core/models.py",
-          "file_hash": "5f94a71bc07d7f90818ffcf9437e66fe256e8bd1c0afac810240c346d6fd617c",
+          "file_hash": "07180b9bf5ec443d189a801ef98224536fbd751a818797d91067e63379877b9e",
           "valid_until_changed": true
         },
         {
@@ -465,17 +485,17 @@
         },
         {
           "path": "src/kcs_core/decision.py",
-          "file_hash": "5beabd2829f7eb3c3f0b0dce51f274b2bdedd22960d43e78a76d633ce1a48ce3",
+          "file_hash": "fc3920739c381cf72e40ee1aacd0379ca058f2d90fef884365f2d05b22c0e940",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_core/evidence_builder.py",
-          "file_hash": "379ad02f2ba102baa1a186512afa475c5a40675f017bbf077c0db977f9f11899",
+          "file_hash": "21077033ed034b8ea345630c40c452e3a5e5b7bafb1db855c58ea51a5cbbf6fe",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_core/sanitizer.py",
-          "file_hash": "07dbd6535100c0b3bcf196fb6387857490c81281c32c10152655682da0bdfe87",
+          "file_hash": "9577199de33f11e623e64f813b272e6a147760c9598cd473666ac85d9d99a142",
           "valid_until_changed": true
         }
       ],
@@ -590,7 +610,7 @@
         },
         {
           "path": "src/kcs_adapters/zendesk_markup_quality.py",
-          "file_hash": "5cbcf6c420a6e5f10c0f1909c80edd42bb73708b9e66a961ccbf9e85d66297d6",
+          "file_hash": "161258a5f29bfb3e0e63da6f5fa76dd40540f38b9fa47fcaa08f1a865d04b396",
           "valid_until_changed": true
         },
         {
@@ -644,7 +664,7 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_reviewer_bundle.py",
-          "file_hash": "22b32f600ca4808d06ebe170a53c1e5a4114d4a751cfe475d1774dee76515b25",
+          "file_hash": "36b4000e547f895a765d25b3b7f119aebb58e9a29b3dfc79778a41cea73faa14",
           "valid_until_changed": true
         },
         {
@@ -671,7 +691,9 @@
       "owns": [
         "value-safe smoke accounting",
         "Desktop log check entrypoints",
-        "MCPB stdio smoke scripts"
+        "MCPB stdio smoke scripts",
+        "local model/client rebaseline evidence harnesses",
+        "metadata-only synthetic trace export to loopback observability"
       ],
       "must_not_own": [
         "runtime KCS decisions",
@@ -690,7 +712,8 @@
       ],
       "risk_areas": [
         "tooling can accidentally make local Desktop state look deterministic",
-        "log parsing can pull private transcripts into review context"
+        "log parsing can pull private transcripts into review context",
+        "observability metadata can leak private values or overstate non-comparable evidence"
       ],
       "files": [
         {
@@ -705,23 +728,35 @@
         },
         {
           "path": "scripts/check_claude_kcs_desktop_log.py",
-          "file_hash": "b94ed235b31934ad47fa897bdaa7d9e41e0c6015463be1694a26143b179af74b",
+          "file_hash": "30bd91f4e0759824192ff51d555e3c8f20c9a28c9f8e4a6daac3922bf949b25e",
           "valid_until_changed": true
         },
         {
           "path": "scripts/smoke_kcs_mcpb_stdio.py",
-          "file_hash": "38178f61bbc8ba62790fb60ee84af6659f36d011be0b2ba1592e71159a3375ad",
+          "file_hash": "51a3115197146eda7c41c18de232b001d15fea70871b10a240ddc2c51bafdc1f",
           "valid_until_changed": true
         },
         {
           "path": "scripts/smoke_claude_desktop_ui_prompt.py",
           "file_hash": "c9e9a264f4fc2ff8d8d4e3613875bed682aff660124f4fedd387bb36544f8d7b",
           "valid_until_changed": true
+        },
+        {
+          "path": "scripts/rebaseline_semantic_issue_projection.py",
+          "file_hash": "529b1ea89580167770331e68209a129cb61f747be441401e9a5470fa15a9ca7e",
+          "valid_until_changed": true
+        },
+        {
+          "path": "scripts/kcs14_langfuse_rebaseline.py",
+          "file_hash": "859a4a1cb83b332b12e5046518728a6436d2ccd1a3ff59a597f26541e155ea8f",
+          "valid_until_changed": true
         }
       ],
       "related_tests": [
         "tests/kcs_adapters/test_smoke_accounting.py",
-        "tests/kcs_adapters/test_mcpb_package.py"
+        "tests/kcs_adapters/test_mcpb_package.py",
+        "tests/kcs_adapters/test_semantic_projection_rebaseline.py",
+        "tests/kcs_adapters/test_kcs14_langfuse_rebaseline.py"
       ]
     },
     {
@@ -773,12 +808,12 @@
         },
         {
           "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/README.md",
-          "file_hash": "7be3b4c02c5e06b8ee263644c6a2e2b8ee79c588f50463f1dbdced481edbc0da",
+          "file_hash": "7c29b3f3f85898f204a64918de9bfdb436fcdd0296376095607f6bb324917ff7",
           "valid_until_changed": true
         },
         {
           "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/manifest.json",
-          "file_hash": "6719cbaa2d6660b044ae31766eb69b86de730779755cd4c6b6bba2a34ef4843c",
+          "file_hash": "3706a7ea890f1d1551f3dc36dd5f84ecae1738839531f509f4206dafbd1d2337",
           "valid_until_changed": true
         },
         {
@@ -803,7 +838,7 @@
         },
         {
           "path": "packaging/cowork/kcs-authoring/skills/kcs-authoring-control/SKILL.md",
-          "file_hash": "74462d1990f07e91ab9e50a11d5775b96dd3d46ce19bfe28fded29ac41b1150b",
+          "file_hash": "8b6d262ec06d2f00610b69faec3fdb6af77c97eb446529479200e279a54fbd41",
           "valid_until_changed": true
         },
         {
@@ -917,18 +952,28 @@
           "valid_until_changed": true
         },
         {
+          "path": "tests/policy/test_kcs14_5_release_docs_policy.py",
+          "file_hash": "48ad8ec525584168f1a4072b943f669add082764c155081baffb5e5383542e16",
+          "valid_until_changed": true
+        },
+        {
           "path": "tests/policy/test_kcs14_freeze_snapshots.py",
-          "file_hash": "a4d627d2dd983069e6de1b21932e28cd02882e7bbd4e037c337032cbf118abf7",
+          "file_hash": "6cad07323660850a730f3c733708875876ecece221d1bd01b77cbfc95ffbde87",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_kcs14_legacy_semantic_island.py",
+          "file_hash": "2863eb89933859c93445337f1c50a7fd5beabdf28470d1b7467af03cc908d52b",
           "valid_until_changed": true
         },
         {
           "path": "tests/policy/test_review_context_policy.py",
-          "file_hash": "41cd63b65a1508c3fcbc769e7a138d75db234078a3ff9a1e10b4d7ce07d0b529",
+          "file_hash": "7fbe1c247c7f0c33310036ffd40d570c5f40ca8e55f5112746dcb8f4e52f2734",
           "valid_until_changed": true
         },
         {
           "path": "tests/policy/test_tool_entrypoints.py",
-          "file_hash": "0dae49e16442781b69a4af66351b59633f1680e7c1ff7e4253bec0459ae0c330",
+          "file_hash": "e558bdd4df9b6d9ff401cbea061ea46be456fb756f6c3f853916301d3536fd50",
           "valid_until_changed": true
         }
       ],
@@ -937,7 +982,9 @@
         "tests/policy/test_complexity_measurement.py",
         "tests/policy/test_functional_test_policy.py",
         "tests/policy/test_kcs14_docs_policy.py",
+        "tests/policy/test_kcs14_5_release_docs_policy.py",
         "tests/policy/test_kcs14_freeze_snapshots.py",
+        "tests/policy/test_kcs14_legacy_semantic_island.py",
         "tests/policy/test_review_context_policy.py",
         "tests/policy/test_tool_entrypoints.py"
       ]

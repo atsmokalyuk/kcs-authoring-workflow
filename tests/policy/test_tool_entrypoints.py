@@ -24,6 +24,8 @@ REQUIRED_COMMANDS = (
     "uv run python scripts/smoke_kcs_mcpb_stdio.py --help",
     "uv run python scripts/check_claude_kcs_desktop_log.py --help",
     "uv run python scripts/smoke_claude_desktop_ui_prompt.py --help",
+    "uv run python scripts/rebaseline_semantic_issue_projection.py --help",
+    "uv run python scripts/kcs14_langfuse_rebaseline.py --help",
     "uv run --extra dev python scripts/measure_complexity.py --help",
     (
         "uv run --extra dev python scripts/measure_complexity.py "
@@ -46,6 +48,8 @@ HELP_COMMANDS = (
     [sys.executable, "scripts/smoke_kcs_mcpb_stdio.py", "--help"],
     [sys.executable, "scripts/check_claude_kcs_desktop_log.py", "--help"],
     [sys.executable, "scripts/smoke_claude_desktop_ui_prompt.py", "--help"],
+    [sys.executable, "scripts/rebaseline_semantic_issue_projection.py", "--help"],
+    [sys.executable, "scripts/kcs14_langfuse_rebaseline.py", "--help"],
     [
         "uv",
         "run",

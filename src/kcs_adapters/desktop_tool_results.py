@@ -7,6 +7,11 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from kcs_adapters.desktop_draft_batch import closed_blocker_codes
+from kcs_adapters.desktop_protocol import SEMANTIC_CONTROL_GUIDANCE
+from kcs_adapters.desktop_semantic_candidate_contract import (
+    semantic_submission_correction,
+)
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict, require_json_object
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
@@ -69,7 +74,7 @@ def tool_result_content(structured: Mapping[str, Any]) -> list[JsonDict]:
 
 
 def tool_result_text(structured: Mapping[str, Any]) -> str:
-    pre_draft_text = _pre_draft_tool_result_text(structured)
+    pre_draft_text = _initial_tool_result_text(structured)
     if pre_draft_text is not None:
         return pre_draft_text
     debug_text = _debug_tool_result_text(structured)
@@ -113,14 +118,7 @@ def tool_result_text(structured: Mapping[str, Any]) -> str:
             "selected_reuse_match": structured.get("selected_reuse_match"),
             "validation_ok": structured.get("validation_ok"),
         }
-        return (
-            "```html\n"
-            f"{html}\n"
-            "```\n\n"
-            "```json\n"
-            f"{_compact_json(status)}\n"
-            "```"
-        )
+        return f"```html\n{html}\n```\n\n```json\n{_compact_json(status)}\n```"
     if (
         structured.get("result_kind") == "draft_article_authoring"
         and structured.get("draft_generated") is True
@@ -170,12 +168,210 @@ def tool_result_text(structured: Mapping[str, Any]) -> str:
             f"{_compact_json(status)}\n"
             "```"
         )
-    if (
-        structured.get("recommended_action") == "split_required"
-        and isinstance(structured.get("operator_choice_request"), Mapping)
+    if structured.get("recommended_action") == "split_required" and isinstance(
+        structured.get("operator_choice_request"), Mapping
     ):
         return _split_required_tool_result_text(structured)
     return _compact_json(structured)
+
+
+def _initial_tool_result_text(structured: Mapping[str, Any]) -> str | None:
+    if structured.get("result_kind") == "draft_article_batch":
+        return _draft_article_batch_tool_result_text(structured)
+    return _pre_draft_tool_result_text(structured)
+
+
+def _draft_article_batch_tool_result_text(
+    structured: Mapping[str, Any],
+) -> str:
+    operator_followup = _safe_batch_operator_followup(
+        structured.get("operator_followup")
+    )
+    status = {
+        "attempted_count": structured.get("attempted_count"),
+        "auto_publish_allowed": structured.get("auto_publish_allowed"),
+        "batch_status": structured.get("batch_status"),
+        "blockers": closed_blocker_codes(structured.get("blockers")),
+        "completed_count": structured.get("completed_count"),
+        "debug_code": structured.get("debug_code"),
+        "draft_generated_count": structured.get("draft_generated_count"),
+        "failure_stage": structured.get("failure_stage"),
+        "new_draft_created_count": structured.get("new_draft_created_count"),
+        "next_required_action": structured.get("next_required_action"),
+        "operator_followup": operator_followup,
+        "public_output_approved": structured.get("public_output_approved"),
+        "remaining_item_candidates": structured.get("remaining_item_candidates"),
+        "retryable_blocked_count": structured.get("retryable_blocked_count"),
+        "retryable_item_candidates": structured.get("retryable_item_candidates"),
+        "result_kind": structured.get("result_kind"),
+        "reviewer_bundle_written": structured.get("reviewer_bundle_written"),
+        "selected_count": structured.get("selected_count"),
+        "terminal_blocked_count": structured.get("terminal_blocked_count"),
+        "workflow_stopped_count": structured.get("workflow_stopped_count"),
+        "writes_files": structured.get("writes_files"),
+    }
+    guidance = (
+        "Present the Python-owned ordered candidate summary below. Preserve each "
+        "candidate title, outcome meaning, reviewer bundle reference, and HTML "
+        "path. Follow `operator_followup` exactly. When its kind is `none`, do "
+        "not ask the operator to provide retry detail or confirm leaving a "
+        "candidate blocked. Do not reproduce raw "
+        "machine fields, invent actions, retry terminal or not-attempted "
+        "candidates, fan out a batch, draft manually, offer artifact inspection, "
+        "or ask an open-ended follow-up question. Closed blocker kinds and "
+        "aggregate counters in the compact status are value-safe diagnostics "
+        "and may be reported exactly."
+    )
+    followup_text = _batch_operator_followup_text(operator_followup)
+    return (
+        f"{guidance}\n\n"
+        "Operator result summary:\n"
+        f"{followup_text}\n\n"
+        "Compact status:\n"
+        "```json\n"
+        f"{_compact_json(status)}\n"
+        "```\n\n"
+        "Response end condition: the batch result is complete. End after the "
+        "ordered summary. Do not ask a question, request resolution detail, or "
+        "offer a retry. A deferred candidate may be resumed only after the "
+        "operator independently supplies confirmed detail in a later turn."
+    )
+
+
+def _batch_operator_followup_text(value: object) -> str:
+    if not isinstance(value, Mapping):
+        return "- Follow-up contract unavailable; stop and request tool-side review."
+    candidates = value.get("summary_candidates")
+    lines = _batch_candidate_summary_lines(candidates)
+    prompt = value.get("prompt")
+    if value.get("kind") != "none" and isinstance(prompt, str) and prompt:
+        label = "Status" if value.get("kind") == "tool_review_required" else "Next"
+        lines.append(f"- {label}: {prompt}")
+    return "\n".join(lines) if lines else "- No operator follow-up is required."
+
+
+def _batch_candidate_summary_lines(candidates: object) -> list[str]:
+    if not isinstance(candidates, list):
+        return []
+    lines: list[str] = []
+    for index, candidate in enumerate(candidates, start=1):
+        if not isinstance(candidate, Mapping):
+            continue
+        label = _batch_followup_candidate_label(candidate, include_artifacts=False)
+        item_ref = candidate.get("item_ref")
+        heading = f"{label} ({item_ref})" if isinstance(item_ref, str) else label
+        headline, explanation = _batch_candidate_outcome_text(candidate)
+        lines.extend(
+            (
+                f"{index}. **{heading}**",
+                f"   - **{headline}** - {explanation}",
+            )
+        )
+        for artifact_label, key in (
+            ("Reviewer bundle", "bundle_ref"),
+            ("Reviewer HTML", "html_path"),
+        ):
+            artifact = candidate.get(key)
+            if isinstance(artifact, str) and artifact:
+                lines.append(f"   - {artifact_label}: `{artifact}`")
+        blockers = closed_blocker_codes(candidate.get("blockers"))
+        if blockers:
+            lines.append(
+                "   - Closed blockers: "
+                + ", ".join(blockers)
+            )
+    return lines
+
+
+def _safe_batch_operator_followup(value: object) -> object:
+    if not isinstance(value, Mapping):
+        return value
+    safe_followup = dict(value)
+    for key in (
+        "completed_not_ready_candidates",
+        "not_attempted_candidates",
+        "retryable_candidates",
+        "reviewer_ready_candidates",
+        "summary_candidates",
+        "tool_review_candidates",
+    ):
+        cards = value.get(key)
+        if not isinstance(cards, list):
+            continue
+        safe_cards: list[JsonDict] = []
+        for card in cards:
+            if not isinstance(card, Mapping):
+                continue
+            safe_card = dict(card)
+            blockers = closed_blocker_codes(card.get("blockers"))
+            if blockers:
+                safe_card["blockers"] = blockers
+            else:
+                safe_card.pop("blockers", None)
+            safe_cards.append(safe_card)
+        safe_followup[key] = safe_cards
+    return safe_followup
+
+
+def _batch_candidate_outcome_text(value: Mapping[str, Any]) -> tuple[str, str]:
+    status = value.get("presentation_status")
+    action = value.get("recommended_action")
+    if status == "existing_article_review" or action == "flag_existing":
+        return (
+            "Flag existing article",
+            "A matching article was found; review it instead of creating a duplicate.",
+        )
+    if status == "draft_generated_not_kcs_ready":
+        return (
+            "Draft generated, not KCS-ready",
+            "A reviewer draft was written but still requires the recorded checks.",
+        )
+    if status == "blocked_retryable":
+        return (
+            "Blocked, deferred",
+            (
+                "No current operator action is required; resume only after the "
+                "operator later initiates with exact confirmed resolution or "
+                "workaround steps."
+            ),
+        )
+    if status in {"completed_blocked", "workflow_stopped"}:
+        return (
+            "Blocked",
+            "No operator retry is available; tool-side review is required.",
+        )
+    if status == "not_attempted":
+        return "Not attempted", "The fail-closed batch stop prevented this attempt."
+    if value.get("ready_for_reviewer") is True:
+        return "Ready for reviewer", "The reviewer artifact was generated successfully."
+    return "Completed", "The candidate was processed with no further operator action."
+
+
+def _batch_followup_candidate_label(
+    value: Mapping[str, Any],
+    *,
+    include_artifacts: bool = True,
+) -> str:
+    title = value.get("title")
+    if isinstance(title, str) and title:
+        label = title
+    else:
+        option_label = value.get("label")
+        if isinstance(option_label, str) and option_label:
+            label = option_label
+        else:
+            item_ref = value.get("item_ref")
+            label = item_ref if isinstance(item_ref, str) else "candidate"
+    artifact_fields = (
+        ("bundle", value.get("bundle_ref")),
+        ("html", value.get("html_path")),
+    )
+    artifacts = "; ".join(
+        f"{name}={field_value}"
+        for name, field_value in artifact_fields
+        if isinstance(field_value, str) and field_value
+    )
+    return f"{label} ({artifacts})" if include_artifacts and artifacts else label
 
 
 def desktop_structured_content(
@@ -203,14 +399,14 @@ def validate_tool_structured_content(
         raise ContractValidationError("MCP tool result schema mismatch")
 
 
-def _pre_draft_tool_result_text(structured: Mapping[str, Any]) -> str | None:
+def _early_pre_draft_tool_result_text(
+    structured: Mapping[str, Any],
+) -> str | None:
     if structured.get("result_kind") == "clean_ticket_registered":
         status = {
             "clean_ticket_sha256": structured.get("clean_ticket_sha256"),
             "clean_ticket_store_ref": structured.get("clean_ticket_store_ref"),
-            "clean_ticket_storage_hint": structured.get(
-                "clean_ticket_storage_hint"
-            ),
+            "clean_ticket_storage_hint": structured.get("clean_ticket_storage_hint"),
             "clean_ticket_storage_ref": structured.get("clean_ticket_storage_ref"),
             "next_arguments": structured.get("next_arguments"),
             "next_tool_name": structured.get("next_tool_name"),
@@ -227,43 +423,39 @@ def _pre_draft_tool_result_text(structured: Mapping[str, Any]) -> str | None:
             f"{_compact_json(status)}\n"
             "```"
         )
+    return None
+
+
+def _semantic_review_packet_result_text(structured: Mapping[str, Any]) -> str:
+    required_submit_shape = structured.get("required_submit_shape")
+    return (
+        "Semantic review packet prepared by the KCS Authoring tool. "
+        f"{SEMANTIC_CONTROL_GUIDANCE}\n\n"
+        "Propose observation-only issue boundaries and explicit coverage "
+        "records from selected_excerpts. Do not choose an operator action, "
+        "KCS action, reuse result, readiness state, renderer output, or "
+        "workflow state. Cover every allowed_source_ref with an issue "
+        "observation or a valid non-issue coverage record. Except for summary, "
+        "copy each observation text exactly from one referenced selected_excerpt; "
+        "do not paraphrase. Do not draft an article or use legacy candidate "
+        "fields.\n\n"
+        "Call kcs_submit_semantic_review with this argument shape:\n"
+        "```json\n"
+        f"{_compact_json(required_submit_shape)}\n"
+        "```\n\n"
+        "Packet:\n"
+        "```json\n"
+        f"{_compact_json(structured)}\n"
+        "```"
+    )
+
+
+def _pre_draft_tool_result_text(structured: Mapping[str, Any]) -> str | None:
+    early_text = _early_pre_draft_tool_result_text(structured)
+    if early_text is not None:
+        return early_text
     if structured.get("result_kind") == "semantic_review_packet":
-        required_submit_shape = structured.get("required_submit_shape")
-        return (
-            "Semantic review packet prepared by the KCS Authoring tool. "
-            "Identify atomic KCS item candidates only. Do not draft an article, "
-            "choose a KCS action, choose a candidate yourself, produce HTML, or "
-            "use item/item_candidates payloads. If selected_excerpts contain "
-            "more than one separately searchable KCS issue, submit all of those "
-            "candidates together in the items array; Python will return the "
-            "operator choice request. Use only the selected_excerpts and cite "
-            "only allowed_source_refs in candidate_semantic_extraction_v1 "
-            "output. Do not copy raw transcript text, raw command output, local "
-            "workstation paths, or reviewer-bundle paths into the submission. "
-            "Sanitized server configuration and log paths are allowed only when "
-            "needed for standalone evidence. Do not add extra fields such as "
-            "candidates, commands, log_file, service_names, or services_affected. "
-            "The candidate array key must be items.\n\n"
-            "For technical_scr candidates, resolution_steps must be standalone "
-            "and executable. Include command names with arguments, service "
-            "names, ports, rule names, and verification targets when present in "
-            "selected_excerpts. Avoid vague steps such as 'create a rule' or "
-            "'block the traffic' unless the concrete action detail is included. "
-            "If the excerpts give only the resolution outcome or a high-level "
-            "resolution description without the exact executable procedure "
-            "needed to apply and verify it, do not invent the missing detail; "
-            "submit only supported evidence and let Python return a "
-            "resolution-steps blocker. That blocker may be resolved later only "
-            "with operator-confirmed resolution detail.\n\n"
-            "Call kcs_submit_semantic_review with this exact argument shape:\n"
-            "```json\n"
-            f"{_compact_json(required_submit_shape)}\n"
-            "```\n\n"
-            "Packet:\n"
-            "```json\n"
-            f"{_compact_json(structured)}\n"
-            "```"
-        )
+        return _semantic_review_packet_result_text(structured)
     if structured.get("debug_code") == "clean_ticket_text_incomplete":
         status = {
             "debug_code": structured.get("debug_code"),
@@ -388,6 +580,7 @@ def _debug_tool_result_text(structured: Mapping[str, Any]) -> str | None:
             "```"
         )
     if structured.get("workflow_state") in {
+        "semantic_review_boundary_terminal",
         "semantic_review_prepare_blocked",
         "semantic_review_submit_blocked",
     }:
@@ -474,7 +667,56 @@ def _authoring_failure_debug_tool_result_text(
             f"{_compact_json(status)}\n"
             "```"
         )
+    if _is_terminal_authoring_failure(structured):
+        return _terminal_authoring_failure_tool_result_text(structured)
     return None
+
+
+def _is_terminal_authoring_failure(structured: Mapping[str, Any]) -> bool:
+    return (
+        structured.get("result_kind") == "draft_article_authoring"
+        and structured.get("ok") is False
+        and structured.get("pipeline_ok") is False
+        and structured.get("recommended_action") == "blocked"
+        and structured.get("manual_draft_allowed") is False
+        and structured.get("reviewer_bundle_written") is False
+        and not structured.get("next_required_action")
+        and structured.get("draft_generated") is not True
+    )
+
+
+def _terminal_authoring_failure_tool_result_text(
+    structured: Mapping[str, Any],
+) -> str:
+    status = {
+        "auto_publish_allowed": structured.get("auto_publish_allowed"),
+        "blockers": structured.get("blockers"),
+        "debug_code": structured.get("debug_code"),
+        "draft_generated": structured.get("draft_generated"),
+        "failure_stage": structured.get("failure_stage"),
+        "manual_draft_allowed": structured.get("manual_draft_allowed"),
+        "next_required_action": structured.get("next_required_action"),
+        "pipeline_ok": structured.get("pipeline_ok"),
+        "public_output_approved": structured.get("public_output_approved"),
+        "ready_for_reviewer": structured.get("ready_for_reviewer"),
+        "recommended_action": structured.get("recommended_action"),
+        "result_kind": structured.get("result_kind"),
+        "reviewer_bundle_written": structured.get("reviewer_bundle_written"),
+    }
+    return (
+        "KCS article authoring reached a terminal blocked state. No "
+        "reviewer-only draft was generated. No operator selection or further "
+        "tool action was returned.\n\n"
+        "Any semantic_item_outcomes in structuredContent are a diagnostic "
+        "ledger only; they are not candidate options and do not authorize "
+        "another tool call. Do not ask the operator to select an item, do not "
+        "call another KCS tool, and do not draft manually. Stop and report the "
+        "compact status for tool-side review.\n\n"
+        "Compact status:\n"
+        "```json\n"
+        f"{_compact_json(status)}\n"
+        "```"
+    )
 
 
 def _approved_ticket_blocked_tool_result_text(
@@ -504,8 +746,7 @@ def _approved_ticket_blocked_tool_result_text(
         )
     else:
         explanation = (
-            "the clean ticket file was found but rejected by input/safety "
-            "validation"
+            "the clean ticket file was found but rejected by input/safety validation"
         )
         next_step = (
             "Re-run the local cleanup/preparation step for this ticket_ref "
@@ -528,58 +769,22 @@ def _approved_ticket_blocked_tool_result_text(
 def _semantic_review_blocked_tool_result_text(
     structured: Mapping[str, Any],
 ) -> str:
-    plain_string_hint = ""
-    if structured.get("debug_code") == "semantic_review_plain_string_arrays_required":
-        plain_string_hint = (
-            "\n\nSubmit shape correction: symptoms, confirmed_facts, "
-            "resolution_steps, source_refs, and open_questions must be arrays "
-            "of plain strings only. Preserve resolution order by array order; "
-            "do not submit objects such as {order, action}, {text}, or nested "
-            "step structures."
+    correction_hint = ""
+    correction = structured.get("semantic_submission_correction")
+    if correction is not None:
+        correction_text = _semantic_correction_text(
+            correction,
+            debug_code=structured.get("debug_code"),
         )
-    if structured.get("debug_code") == "semantic_review_environment_invalid":
-        plain_string_hint = (
-            "\n\nSubmit shape correction: environment must contain only "
-            "normalized product/platform metadata. Use product 'Plesk'; use "
-            "platform 'Linux', 'Windows', 'Plesk for Linux', or "
-            "'Plesk for Windows'; use applicable_to values 'Plesk for Linux' "
-            "or 'Plesk for Windows'. Put IPv4, IPv6, ports, services, and log "
-            "paths in confirmed_facts or resolution_steps when excerpt-grounded."
-        )
-    if structured.get("debug_code") in {
-        "semantic_review_forbidden_field",
-        "semantic_review_forbidden_html_or_markdown",
-        "semantic_review_local_ref_blocked",
-    }:
-        plain_string_hint = (
-            "\n\nSubmit shape correction: remove forbidden article/payload "
-            "content from the semantic extraction. Submit only "
-            "candidate_semantic_extraction_v1 fields from the prepared packet; "
-            "do not include HTML, Markdown article headings, local paths, "
-            "reviewer files, item/item_candidates, recommended_action, or "
-            "publication flags."
-        )
-    if structured.get("debug_code") in {
-        "semantic_review_case_ref_missing",
-        "semantic_review_extraction_source_ref_missing",
-        "semantic_review_item_required_field_missing",
-        "semantic_review_item_source_refs_missing",
-        "semantic_review_items_missing",
-        "semantic_review_schema_version_invalid",
-        "semantic_review_submit_payload_not_object",
-        "semantic_review_top_level_source_refs_missing",
-    }:
-        plain_string_hint = (
-            "\n\nSubmit shape correction: submit exactly the prepared "
-            "candidate_semantic_extraction_v1 object. Include schema_version, "
-            "case_ref, extraction_source_ref, top-level source_refs, and "
-            "items. Each item must include candidate_id, summary, "
-            "product_relation, supportability, kcs_item_status, and item "
-            "source_refs. Use only allowed_source_refs from the prepared "
-            "semantic review packet."
-        )
+        correction_hint = f"\n\n{correction_text}"
+    recovery_instruction = _semantic_review_recovery_instruction(
+        correction,
+        debug_code=structured.get("debug_code"),
+    )
     status = {
         "auto_publish_allowed": structured.get("auto_publish_allowed"),
+        "boundary_blocker_codes": structured.get("boundary_blocker_codes"),
+        "boundary_blocker_count": structured.get("boundary_blocker_count"),
         "debug_code": structured.get("debug_code"),
         "draft_generated": structured.get("draft_generated"),
         "failure_stage": structured.get("failure_stage"),
@@ -596,19 +801,98 @@ def _semantic_review_blocked_tool_result_text(
         "KCS semantic review is blocked by the KCS Authoring tool. No "
         "reviewer-only draft was generated.\n\n"
         "Do not draft manually. Do not ask the operator to choose a recovery "
-        "strategy. If the blocker includes a submit shape correction, retry "
-        "kcs_submit_semantic_review at most once with the same "
-        "semantic_review_ref and a corrected candidate_semantic_extraction. If "
-        "there is no submit shape correction, stop and report the compact "
-        "status. Do not restart or retry the same ticket_ref automatically "
+        "strategy. "
+        f"{recovery_instruction} Do not restart or retry the same ticket_ref "
+        "automatically "
         "unless the compact status explicitly asks for a restart. Re-register "
         "only when workflow_state is semantic_review_metadata_blocked.\n\n"
-        f"{plain_string_hint}\n\n"
+        f"{correction_hint}\n\n"
         "Compact status:\n"
         "```json\n"
         f"{_compact_json(status)}\n"
         "```"
     )
+
+
+def _semantic_correction_text(value: object, *, debug_code: object) -> str:
+    correction = _validated_semantic_correction(value, debug_code=debug_code)
+    if correction.get("correction_kind") == "submit_shape":
+        return _semantic_shape_correction_text(correction)
+    field_name = correction["field_name"]
+    accepted_values = correction["accepted_values"]
+    retry_allowed = correction["retry_allowed"]
+    if (
+        not isinstance(field_name, str)
+        or not isinstance(accepted_values, list)
+        or not all(isinstance(item, str) for item in accepted_values)
+        or not isinstance(retry_allowed, bool)
+    ):
+        raise ContractValidationError("semantic correction contract invalid")
+    accepted_text = ", ".join(accepted_values)
+    retry_text = str(retry_allowed).lower()
+    text = (
+        f"Submit enum correction: field {field_name} accepts: "
+        f"{accepted_text}; retry_allowed={retry_text}."
+    )
+    return text
+
+
+def _semantic_shape_correction_text(correction: Mapping[object, object]) -> str:
+    field_name = correction.get("field_name")
+    instruction = correction.get("instruction")
+    retry_allowed = correction.get("retry_allowed")
+    if (
+        not isinstance(field_name, str)
+        or not field_name
+        or not isinstance(instruction, str)
+        or not instruction
+        or not isinstance(retry_allowed, bool)
+    ):
+        raise ContractValidationError("semantic correction contract invalid")
+    retry_text = str(retry_allowed).lower()
+    return (
+        f"Submit shape correction for {field_name}: {instruction} "
+        f"retry_allowed={retry_text}."
+    )
+
+
+def _validated_semantic_correction(
+    value: object,
+    *,
+    debug_code: object,
+) -> JsonDict:
+    if not isinstance(value, Mapping) or not isinstance(debug_code, str):
+        raise ContractValidationError("semantic correction contract invalid")
+    retry_allowed = value.get("retry_allowed")
+    expected = semantic_submission_correction(debug_code)
+    if expected is None or not isinstance(retry_allowed, bool):
+        raise ContractValidationError("semantic correction contract invalid")
+    expected["retry_allowed"] = retry_allowed
+    if dict(value) != expected:
+        raise ContractValidationError("semantic correction contract invalid")
+    return expected
+
+
+def _semantic_review_recovery_instruction(
+    correction: object,
+    *,
+    debug_code: object,
+) -> str:
+    if debug_code in {
+        "semantic_review_expired",
+        "semantic_review_unavailable",
+    }:
+        return (
+            "Semantic review state is unavailable; stop and report the compact status."
+        )
+    if isinstance(correction, Mapping):
+        if correction.get("retry_allowed") is True:
+            return (
+                "Retry kcs_submit_semantic_review once with the same "
+                "semantic_review_ref and the corrected semantic_issue_proposal."
+            )
+        return "The correction retry is exhausted; stop and report the compact status."
+    return "No bounded correction is available; stop and report the compact status."
 
 
 def _semantic_review_required_tool_result_text(
@@ -651,9 +935,7 @@ def _semantic_review_required_tool_result_text(
 def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
     choice_request = structured.get("operator_choice_request")
     options = (
-        choice_request.get("options")
-        if isinstance(choice_request, Mapping)
-        else None
+        choice_request.get("options") if isinstance(choice_request, Mapping) else None
     )
     option_lines: list[str] = []
     if isinstance(options, list):
@@ -684,19 +966,20 @@ def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
     options_text = (
         "\n".join(option_lines) if option_lines else "No safe options returned."
     )
-    outcome_text = _semantic_item_outcome_text(
-        structured.get("semantic_item_outcomes")
-    )
+    outcome_text = _semantic_item_outcome_text(structured.get("semantic_item_outcomes"))
     return (
         "Multiple KCS article candidates were detected. Operator selection is "
-        "required before drafting.\n\n"
-        "Use the native single-choice popup when Claude Desktop provides one. "
+        "required before drafting. Selection eligibility does not mean a "
+        "candidate is ready to draft, KCS-ready, or ready for reviewer handoff; "
+        "those states are determined only by the later Python authoring result.\n\n"
+        "Use the native choice popup when Claude Desktop provides one. "
         "Do not answer with a prose-only candidate list. If no popup is "
-        "available, show these options and then continue only by calling "
-        "kcs_draft_article with exactly the selected option's submit_arguments. "
-        "If the operator answers 'both' or 'all', call each listed option's "
-        "submit_arguments sequentially in order, without calling "
-        "kcs_submit_semantic_review again. "
+        "available, show these options. For one selected item, call "
+        "kcs_draft_article with exactly that option's submit_arguments. If the "
+        "operator answers 'both' or 'all', use the native All candidates "
+        "option and call kcs_draft_article once with exactly its nested "
+        "submit_arguments. Python owns the sequential batch; "
+        "do not call each option independently. "
         "Do not call kcs_submit_semantic_review again for this choice. Do not "
         "draft manually.\n\n"
         f"{outcome_text}"
@@ -844,9 +1127,7 @@ def _ensure_no_forbidden_tool_result_html(value: str) -> None:
     compact = normalized.replace("_", "").replace("-", "")
     if any(fragment in normalized for fragment in _RESULT_FORBIDDEN_FRAGMENTS):
         raise ContractValidationError("MCP tool result contains unsafe value")
-    if any(
-        fragment in compact for fragment in _RESULT_FORBIDDEN_COMPACT_FRAGMENTS
-    ):
+    if any(fragment in compact for fragment in _RESULT_FORBIDDEN_COMPACT_FRAGMENTS):
         raise ContractValidationError("MCP tool result contains unsafe value")
     for url in _HTML_URL_RE.findall(value):
         if url not in _APPROVED_HTML_URL_REFS:
@@ -858,9 +1139,7 @@ def _ensure_no_forbidden_tool_result_text(value: str) -> None:
     compact = normalized.replace("_", "").replace("-", "")
     if any(fragment in normalized for fragment in _RESULT_FORBIDDEN_FRAGMENTS):
         raise ContractValidationError("MCP tool result contains unsafe value")
-    if any(
-        fragment in compact for fragment in _RESULT_FORBIDDEN_COMPACT_FRAGMENTS
-    ):
+    if any(fragment in compact for fragment in _RESULT_FORBIDDEN_COMPACT_FRAGMENTS):
         raise ContractValidationError("MCP tool result contains unsafe value")
     if _FORBIDDEN_TEXT_HTML_TAG_RE.search(value):
         raise ContractValidationError("MCP tool result contains unsafe value")

@@ -27,6 +27,7 @@ dist/
 # Local config and secrets
 .env
 .env.*
+!ops/langfuse/.env.example
 *.pem
 *.key
 *.crt

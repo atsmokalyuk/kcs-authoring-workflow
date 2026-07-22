@@ -67,7 +67,7 @@ MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES = {
         "bounded excerpts",
     ),
     "kcs_submit_semantic_review": (
-        "candidate_semantic_extraction_v1",
+        "semantic_issue_proposal_v1",
         "No article draft",
     ),
     "support_get_behavior_instructions": (
@@ -268,7 +268,7 @@ def test_stdio_smoke_checks_persisted_clean_ticket_file(
     monkeypatch,
 ) -> None:
     smoke = _load_smoke_module()
-    ticket_ref = "ticket-96024747"
+    ticket_ref = "ticket-example-simple"
     clean_ticket = (
         tmp_path
         / "local-data"
@@ -471,10 +471,13 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "openWorldHint": False,
                         "readOnlyHint": False,
                     },
-                    "description": (
-                        "Use only for short approved_summary_text or operator "
-                        "selection. For /draft <ticket_ref>, use "
-                        "kcs_draft_ticket."
+                        "description": (
+                            "Use only for short approved_summary_text, one "
+                            "operator-selected candidate, or one ordered "
+                            "operator-selected candidate batch. "
+                            "Operator-confirmed resolution steps are accepted "
+                            "only for a singular retryable candidate. For "
+                            "/draft <ticket_ref>, use kcs_draft_ticket."
                     ),
                     "inputSchema": {
                         "properties": {
@@ -484,9 +487,11 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                                     "Successful Desktop draft results already "
                                     "include reviewer-only Zendesk HTML."
                                 )
-                            },
-                            "operator_selected_item_ref": {},
-                            "operator_selection_ref": {},
+                                },
+                                "operator_confirmed_resolution_steps": {},
+                                "operator_selected_item_ref": {},
+                                "operator_selected_item_refs": {},
+                                "operator_selection_ref": {},
                         }
                     },
                     "name": "kcs_draft_article",
@@ -517,18 +522,18 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                         "readOnlyHint": False,
                     },
                     "description": (
-                        "Submit candidate_semantic_extraction_v1 from the "
-                        "prepared packet. No article draft, HTML, item, "
+                        "Submit semantic_issue_proposal_v1 from the prepared "
+                        "packet. No article draft, HTML, item, "
                         "item_candidates, or raw ticket text."
                     ),
                     "inputSchema": {
                         "properties": {
-                            "candidate_semantic_extraction": {},
+                            "semantic_issue_proposal": {},
                             "semantic_review_ref": {},
                         },
                         "required": [
+                            "semantic_issue_proposal",
                             "semantic_review_ref",
-                            "candidate_semantic_extraction",
                         ],
                     },
                     "name": "kcs_submit_semantic_review",
@@ -669,16 +674,20 @@ def test_mcpb_stdio_smoke_result_checks_controlled_statuses(tmp_path: Path) -> N
 
 def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> None:
     module = _load_smoke_module()
-    html_path = "local-data/reviewer-bundles/run/candidate-002/reviewer_only.html"
+    html_paths = {
+        item_ref: f"local-data/reviewer-bundles/run/{item_ref}/reviewer_only.html"
+        for item_ref in ("candidate-001", "candidate-002")
+    }
     html = (
         "<h1>Monitoring extension post-install fails</h1>"
         "<h2>Resolution</h2><ol><li>Restart the service.</li></ol>"
     )
     old_repo_root = module.REPO_ROOT
     module.REPO_ROOT = tmp_path
-    bundle_file = tmp_path / html_path
-    bundle_file.parent.mkdir(parents=True, exist_ok=True)
-    bundle_file.write_text(html, encoding="utf-8")
+    for html_path in html_paths.values():
+        bundle_file = tmp_path / html_path
+        bundle_file.parent.mkdir(parents=True, exist_ok=True)
+        bundle_file.write_text(html, encoding="utf-8")
     split = {
         "result": {
             "content": [
@@ -686,9 +695,11 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
                     "text": (
                         "Multiple KCS article candidates were detected. "
                         "Operator selection is required before drafting.\n\n"
-                        "Use the native single-choice popup when Claude Desktop "
-                        "provides one. Do not answer with a prose-only candidate "
-                        "list. submit_arguments. Do not draft manually.\n"
+                        "Use the native choice popup when Claude Desktop provides "
+                        "one. Do not answer with a prose-only candidate list. "
+                        "Use the native All candidates option and exactly its "
+                        "nested submit_arguments. do not call each option "
+                        "independently. Do not draft manually.\n"
                         "candidate-002"
                     ),
                     "type": "text",
@@ -697,7 +708,7 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
             "structuredContent": {
                 "debug_code": "multiple_kcs_items_detected",
                 "operator_choice_request": {
-                    "mode": "single_select",
+                    "mode": "single_or_batch_select",
                     "options": [
                         {
                             "submit_arguments": {
@@ -713,34 +724,97 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
                             },
                             "value": "candidate-002",
                         },
+                        {
+                            "label": "All candidates",
+                            "submit_arguments": {
+                                "operator_selected_item_refs": [
+                                    "candidate-001",
+                                    "candidate-002",
+                                ],
+                                "operator_selection_ref": "operator-selection-abc",
+                            },
+                            "value": "all",
+                        },
                     ],
                     "prose_only_choice_allowed": False,
                 },
                 "operator_selection_ref": "operator-selection-abc",
                 "recommended_action": "split_required",
+                "semantic_item_outcomes": [
+                    {
+                        "outcome": "draft_candidate",
+                    },
+                    {
+                        "outcome": "draft_candidate",
+                    },
+                ],
             }
         }
     }
-    selected = {
+    batch = {
         "result": {
             "content": [
                 {
-                    "text": "```html\n"
-                    f"{html}\n"
-                    "```\n\n"
-                    "```json\n"
-                    '{"html_path":"local-data/reviewer-bundles/run/'
-                    'candidate-002/reviewer_only.html"}\n'
-                    "```",
+                    "text": (
+                        "Present the Python-owned ordered candidate summary below.\n\n"
+                        "Operator result summary:\n"
+                        "1. **Synthetic item candidate-001 (candidate-001)**\n"
+                        "   - **Draft generated, not KCS-ready** - Review needed.\n"
+                        "   - Reviewer bundle: `run-synthetic/candidate-001`\n"
+                        "   - Reviewer HTML: `local-data/reviewer-bundles/"
+                        "candidate-001/reviewer_only.html`\n"
+                        "2. **Synthetic item candidate-002 (candidate-002)**\n"
+                        "   - **Draft generated, not KCS-ready** - Review needed.\n"
+                        "   - Reviewer bundle: `run-synthetic/candidate-002`\n"
+                        "   - Reviewer HTML: `local-data/reviewer-bundles/"
+                        "candidate-002/reviewer_only.html`"
+                    ),
                     "type": "text",
                 },
             ],
             "structuredContent": {
-                "debug_code": "draft_only_reuse_search_missing",
-                "draft_generated": True,
-                "html_path": html_path,
-                "html_sha256": module.sha256(html.encode("utf-8")).hexdigest(),
-                "item_ref": "candidate-002",
+                "batch_status": "batch_completed",
+                "candidate_outcomes": [
+                    {
+                        "html_path": html_paths[item_ref],
+                        "html_sha256": module.sha256(
+                            html.encode("utf-8")
+                        ).hexdigest(),
+                        "item_ref": item_ref,
+                        "outcome": "completed_draft",
+                    }
+                    for item_ref in ("candidate-001", "candidate-002")
+                ],
+                "draft_generated_count": 2,
+                "operator_followup": {
+                    "allow_leave_blocked": False,
+                    "completed_not_ready_candidates": [
+                        {
+                            "item_ref": item_ref,
+                            "label": f"Synthetic item {item_ref}",
+                        }
+                        for item_ref in ("candidate-001", "candidate-002")
+                    ],
+                    "kind": "none",
+                    "not_attempted_candidates": [],
+                    "prompt": "No operator follow-up is required.",
+                    "retryable_candidates": [],
+                    "reviewer_ready_candidates": [],
+                    "summary_candidates": [
+                        {
+                            "bundle_ref": f"run-synthetic/{item_ref}",
+                            "html_path": html_paths[item_ref],
+                            "item_ref": item_ref,
+                            "label": f"Synthetic item {item_ref}",
+                            "presentation_status": (
+                                "draft_generated_not_kcs_ready"
+                            ),
+                        }
+                        for item_ref in ("candidate-001", "candidate-002")
+                    ],
+                    "tool_review_candidates": [],
+                },
+                "result_kind": "draft_article_batch",
                 "reviewer_bundle_written": True,
                 "writes_files": True,
             }
@@ -748,36 +822,22 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
     }
 
     try:
-        assert module._selected_submit_arguments(split, option_index=1) == {
-            "operator_selected_item_ref": "candidate-002",
+        assert module._shared_identity_refs_remain_audit_only(
+            split["result"]["structuredContent"]
+        )
+        assert module._native_batch_submit_arguments(split) == {
+            "operator_selected_item_refs": ["candidate-001", "candidate-002"],
             "operator_selection_ref": "operator-selection-abc",
         }
-        assert module._split_choice_ok(
-            {
-                "selected": {
-                    "result": {
-                        **selected["result"],
-                        "structuredContent": {
-                            **selected["result"]["structuredContent"],
-                            "next_arguments": {
-                                "operator_selected_item_ref": "candidate-001",
-                                "operator_selection_ref": "operator-selection-abc",
-                            },
-                        },
-                    }
-                },
-                "selected_again": {
-                    "result": {
-                        "structuredContent": {
-                            "debug_code": "draft_only_reuse_search_missing",
-                            "draft_generated": True,
-                            "item_ref": "candidate-001",
-                        }
-                    }
-                },
-                "split": split,
-            }
-        ) is True
+        assert module._split_choice_ok({"batch": batch, "split": split}) is True
+
+        html_without_resolution = "<h1>Synthetic article</h1><p>No list.</p>"
+        first_bundle = tmp_path / html_paths["candidate-001"]
+        first_bundle.write_text(html_without_resolution, encoding="utf-8")
+        batch["result"]["structuredContent"]["candidate_outcomes"][0][
+            "html_sha256"
+        ] = module.sha256(html_without_resolution.encode("utf-8")).hexdigest()
+        assert module._split_choice_ok({"batch": batch, "split": split}) is False
     finally:
         module.REPO_ROOT = old_repo_root
 
@@ -945,7 +1005,7 @@ def test_claude_desktop_log_check_accepts_latest_thin_tool_surface(
                     },
                     "inputSchema": {
                         "properties": {
-                            "candidate_semantic_extraction": {},
+                            "semantic_issue_proposal": {},
                             "semantic_review_ref": {},
                         }
                     },
@@ -1077,6 +1137,42 @@ def test_claude_desktop_log_check_honors_since_timestamp(tmp_path: Path) -> None
 
     assert report["ok"] is False
     assert report["error_code"] == "tools_list_not_found"
+
+
+def test_claude_desktop_log_check_reports_redacted_tool_surface_detail(
+    tmp_path: Path,
+) -> None:
+    module = _load_log_check_module()
+    log = tmp_path / "mcp-server-KCS Authoring.log"
+    log.write_text(
+        "\n".join(
+            [
+                (
+                    "2026-07-11T04:41:50.711Z [KCS Authoring] [info] "
+                    'Message from client: method="tools/list" id=1 params'
+                ),
+                (
+                    "2026-07-11T04:41:50.718Z [KCS Authoring] [info] "
+                    "Message from server: id=1 result"
+                ),
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    report = module.check_log(
+        log_path=log,
+        max_bytes=10000,
+        since="2026-07-11T00:00:00Z",
+    )
+
+    assert report["ok"] is False
+    assert report["error_code"] == "tool_surface_detail_unavailable"
+    assert report["checks"] == {
+        "tools_list_request_observed": True,
+        "tools_list_response_observed": True,
+    }
+    assert report["latest_tools_list_at"] == "2026-07-11T04:41:50.711Z"
 
 
 def test_claude_desktop_ui_prompt_smoke_accepts_single_draft_log() -> None:
