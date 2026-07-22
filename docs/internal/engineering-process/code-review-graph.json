@@ -581,17 +581,18 @@
       "owns": [
         "reviewer packet rendering",
         "Zendesk HTML rendering",
-        "current markup-quality checks"
+        "source-backed markup-quality checks",
+        "compact approved markup patterns"
       ],
       "must_not_own": [
-        "KCS-15 style/markup parity expansion",
         "KCS action decisions",
         "semantic-review candidate validation",
-        "Desktop transport"
+        "Desktop transport",
+        "automatic inference from evidence absent in rendered source"
       ],
       "must_preserve": [
-        "current renderer behavior remains stable during KCS-14 refactor",
-        "KCS-15 source-doc style parity remains deferred",
+        "renderer behavior changes only through an approved behavior slice",
+        "style and markup findings remain traceable to the KCS source pack",
         "renderer does not invent resolution details"
       ],
       "contract_edges": [
@@ -599,7 +600,7 @@
         "reviewer_bundle_output"
       ],
       "risk_areas": [
-        "formatting refactor can accidentally become KCS-15 behavior work",
+        "source-parity changes can add or remove reviewer blockers",
         "presentation helpers can leak decision or validation knowledge"
       ],
       "files": [
@@ -610,7 +611,7 @@
         },
         {
           "path": "src/kcs_adapters/zendesk_markup_quality.py",
-          "file_hash": "161258a5f29bfb3e0e63da6f5fa76dd40540f38b9fa47fcaa08f1a865d04b396",
+          "file_hash": "520da6fa5f7ee3c72d1778ac978b6812789d71290483d8538f7c03be4c6600ac",
           "valid_until_changed": true
         },
         {
@@ -621,6 +622,11 @@
         {
           "path": "src/kcs_adapters/kcs_article_style_refs.py",
           "file_hash": "7f61be8f30795db34bcc5b8f4032d7e83c5c9acc9bd80308db63b76be0a61d94",
+          "valid_until_changed": true
+        },
+        {
+          "path": "evals/kcs_markup_patterns_v1.jsonl",
+          "file_hash": "b9ea1d37cfe9e330ec9c7523f324156c1e5c4b0ea44cf4a3885339762788c9f9",
           "valid_until_changed": true
         }
       ],

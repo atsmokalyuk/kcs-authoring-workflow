@@ -6,10 +6,9 @@ Current implementation state is anchored by the repository README and Jira
 tracking document:
 
 ```text
-Last completed implementation slice: KCS-13 Controlled Semantic Review
-Current planned engineering/process hardening: KCS-14 Engineering and Codebase
-Design Hardening
-Deferred runtime hardening: KCS-15 KCS Style and Markup Parity
+Last completed engineering/process slice: KCS-14.5 Runtime Incident Closeout
+Completed KCS-15 prerequisite: KCS-15.0 Style Source And Governance Baseline
+Current approved runtime slice: KCS-15.1 PLESK_INFO Trigger Parity
 ```
 
 Historical KCS-1 guidance remains useful only as an early-slice boundary:
@@ -108,8 +107,9 @@ evidence directly.
   refactor.
 - KCS-15: KCS style and markup parity with the source KCS Style Guide, Article
   Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules. This is deferred and is not part of the current
-  engineering/process hardening cycle.
+  `plesk_support` rules. KCS-15 is active through independently approved
+  behavior slices; KCS-15.1 PLESK_INFO trigger parity is the current approved
+  slice.
 - Future deployment slice: optional managed internal service version of the
   current local Claude Desktop workflow.
 
@@ -123,10 +123,12 @@ This roadmap does not duplicate completed runtime slice contracts. Future work
 must preserve those active contracts unless an approved behavior-change slice
 explicitly changes them.
 
-## Deferred Runtime Hardening
+## Active Runtime Hardening
 
-KCS-15 style and markup parity is deferred and is not part of the current
-engineering/process hardening cycle.
+KCS-15 style and markup parity is active through independently approved,
+source-backed behavior slices. The first approved runtime slice is KCS-15.1
+PLESK_INFO trigger parity. Approval of KCS-15.1 does not approve the remaining
+KCS-15 inventory.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening
 

@@ -17,7 +17,8 @@ or reviewer-bundle behavior.
 Forward-looking repository documents should use this numbering:
 
 - KCS-14: Engineering and Codebase Design Hardening.
-- KCS-15: KCS Style and Markup Parity, deferred.
+- KCS-15: KCS Style and Markup Parity, active through independently approved
+  slices; KCS-15.1 PLESK_INFO trigger parity is the current approved slice.
 
 Historical files may mention the older KCS-14 style/markup framing only when
 the text is clearly historical. Active README, roadmap, Jira-tracking,
@@ -474,14 +475,22 @@ was restored. This closes schema rearrangement as a recovery strategy: a future
 semantic design must introduce a new authority source rather than another
 model interpretation of the same bounded excerpts.
 
-While the retained legacy provider/evaluation M4 blocker remains active:
+The retained legacy provider/evaluation M4 blocker remains active for the
+KCS-14.5 semantic/control-surface workstream. The operator narrowed the gate on
+2026-07-22 so that independently approved KCS-15 style/markup slices may
+proceed when they do not touch that workstream.
+
+While the scoped blocker remains active:
 
 - do not commit new runtime incident candidates as refactor-only;
 - do not mix runtime incident changes into the test-suite-maintainability
   branch;
-- do not start KCS-15 runtime implementation;
-- KCS-15 planning may continue only without changes to incident control-surface
-  code, tests, package guidance, or contracts.
+- do not change incident control-surface code, tests, package guidance, or
+  contracts from a KCS-15 style/markup slice;
+- require a separate behavior-change design to reopen semantic ownership,
+  provider, evaluation, or candidate-scope behavior;
+- allow an explicitly approved KCS-15 style/markup slice only after its diff
+  proves that the scoped incident surfaces remain untouched.
 
 ## Review Routing
 

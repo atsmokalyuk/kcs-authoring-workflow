@@ -69,7 +69,7 @@ Observed at `4acb0b320b692a281abfe56b5e27f61d8f3d`:
 | `NAME-001` | Product names are correct; database articles use `MySQL/MariaDB` unless specifically MySQL Community Server. | Content Standard | confirmed | No complete deterministic naming catalog observed in current renderer/quality module. | Needs bounded exact substitutions and exception fixtures. | deterministic |
 | `MARKUP-001` | Linux commands use `# ` trigger; Windows CMD uses `C:\> `; PowerShell uses `PS `. A space follows each trigger. | Plesk Style Triggers | confirmed | Renderer recognizes several trigger lines; pattern pack has Linux/CMD/PowerShell examples. | Exact spacing and automatic trigger selection need consolidated fixtures. | deterministic |
 | `MARKUP-002` | MySQL input uses `MYSQL_LIN: ` or `MYSQL_WIN: `. | Plesk Style Triggers | confirmed | Quality regex recognizes these as non-step trigger lines; no dedicated pattern entries. | Missing explicit approved snippets and platform-selection fixtures. | deterministic |
-| `MARKUP-003` | Plesk messages use `PLESK_ERROR:`, `PLESK_WARN:`, or `PLESK_INFO:` according to UI presentation. `PLESK_INFO` includes white/gray Plesk errors and messages. | Plesk Style Guide/Triggers | confirmed | Current validator blocks error-like text after `PLESK_INFO`; pattern guidance reserves it for informational output. | **Confirmed behavior drift:** current rule contradicts source meaning. | deterministic source fixtures; operator reviews severity/migration |
+| `MARKUP-003` | Plesk messages use `PLESK_ERROR:`, `PLESK_WARN:`, or `PLESK_INFO:` according to UI presentation. `PLESK_INFO` includes white/gray Plesk errors and messages. | Plesk Style Guide/Triggers | confirmed | KCS-15.1 removes lexical reclassification of `PLESK_INFO` and aligns compact guidance with source meaning. | Automatic trigger selection remains out of scope because rendered source lacks UI-presentation evidence. | deterministic source fixtures |
 | `MARKUP-004` | Configuration/log/output text uses `CONFIG_TEXT: ` when a more specific trigger does not apply. | Plesk Style Triggers | confirmed | Renderer and pattern pack support CONFIG_TEXT. | Current pattern guidance overgroups exact Plesk messages; precedence needs fixtures. | deterministic |
 | `MARKUP-005` | Warnings and notes use `Warning: ` and `Note: ` before relevant content. | Plesk Style Triggers | confirmed | Pattern and safety checks exist. | `Important:` is a local extension, not in the supplied Plesk trigger list. | deterministic; document extension or reject it |
 | `MARKUP-006` | Resizable images use approved class and meaningful alternative text. | Style Guides/Triggers | confirmed | Quality check enforces `class="resizable"`; pattern includes alt text. | Alt-text quality and public accessibility remain human/integration checks. | deterministic presence; named-human-review/accessibility smoke |
@@ -83,9 +83,10 @@ Observed at `4acb0b320b692a281abfe56b5e27f61d8f3d`:
 
 ## Confirmed source conflicts and drift
 
-1. `PLESK_INFO` is currently treated as informational-only, but both supplied
-   Plesk sources allow it for white/gray errors and messages. This is the
-   smallest clear deterministic behavior correction candidate.
+1. KCS-15.1 resolves the confirmed `PLESK_INFO` drift: error-like vocabulary no
+   longer overrides the source-valid white/gray presentation trigger. Automatic
+   trigger selection remains intentionally unimplemented without presentation
+   evidence.
 2. The Plesk-specific guide describes three SCR sections; the broader WebPros
    guide and portable operator rules allow Cause to be absent. Cause optionality
    remains an operator decision.
@@ -144,5 +145,8 @@ knowledge.
    approval. Operator benefit must exceed the cognitive cost of another
    confirmation step; it is not the definition of KCS-15.
 
-All runtime slices remain gated by the retained KCS-14.5 M4 baseline rule and
-require separate operator approval.
+The retained KCS-14.5 M4 gate remains active for semantic ownership,
+provider/evaluation, and incident control-surface changes. The operator narrowed
+it on 2026-07-22: an independently approved KCS-15 style/markup slice may
+proceed only when its diff leaves those surfaces and their safety contracts
+unchanged.

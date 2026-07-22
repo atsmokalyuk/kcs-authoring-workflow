@@ -40,7 +40,8 @@ instead of implying that external tracking was updated.
   stable
 - KCS-15 KCS style and markup parity with source KCS Style Guide, Article
   Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules; deferred runtime hardening, not current KCS-14 scope
+  `plesk_support` rules; active through independently approved behavior slices,
+  with KCS-15.1 PLESK_INFO trigger parity current; remains outside KCS-14 scope
 - Future deployment slice: intranet remote MCP service deployment for managed operator
   use, connected from Claude Desktop through a custom remote connector URL
   rather than the local MCPB stdio wrapper

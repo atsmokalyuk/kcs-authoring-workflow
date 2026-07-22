@@ -15,9 +15,10 @@ integration. Those are possible later solutions and need separate approval.
 ## Operational baseline
 
 - Base commit: `4acb0b320b692a281abfe56b5e27f61d8f3d` (merged KCS-14.5 baseline).
-- KCS-14.5 retains an M4 blocker. While it is active, KCS-15 runtime
-  implementation is forbidden; planning/evidence work must not modify incident
-  contracts or artifacts.
+- KCS-14.5 retains an M4 blocker for semantic/control-surface work. On
+  2026-07-22 the operator narrowed it so independently approved KCS-15
+  style/markup slices may proceed when incident code, tests, package guidance,
+  contracts, and safety boundaries remain unchanged.
 - The current core renders reviewer-only SCR and Q&A Zendesk HTML.
 - The current quality adapter deterministically checks structure, safety,
   public-data leakage, selected language rules, GUI paths, and known markup.
@@ -132,7 +133,8 @@ only when they block the next approved slice.
 
 ## Dependencies and blockers
 
-- Runtime KCS-15 work remains blocked by the retained KCS-14.5 M4 rule.
+- KCS-15 style/markup work requires an isolated approved slice and a diff check
+  proving no KCS-14.5 semantic/control-surface surface was touched.
 - The first deterministic parity correction requires operator approval of a
   separate behavior slice.
 - Cause/Symptoms/branching behavior changes require the corresponding operator
@@ -169,8 +171,8 @@ these risks.
 
 ## Next recommended slice
 
-After the M4 gate and explicit operator approval, the smallest behavior slice
-is deterministic Plesk trigger parity:
+The first explicitly approved behavior slice is deterministic Plesk trigger
+parity:
 
 1. correct `PLESK_INFO` semantics against source fixtures;
 2. add compact fixtures for missing source-backed trigger cases;

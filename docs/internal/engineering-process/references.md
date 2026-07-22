@@ -157,9 +157,9 @@ Primary lens for promotion gates, autonomy gate, and approval/change control.
 
 ### 8. KCS Domain Grounding
 
-Primary lens for KCS-15 style/markup parity (deferred) and for existing
-decision/identity rules. Listed here for completeness; KCS-15 remains out of
-KCS-14 scope.
+Primary lens for active KCS-15 style/markup parity and for existing
+decision/identity rules. KCS-15 remains out of KCS-14 scope and proceeds only
+through independently approved behavior slices.
 
 - Consortium for Service Innovation, KCS v6 Practices Guide.
   Grounds: knowledge capture in the workflow; reuse before create; article
@@ -195,7 +195,7 @@ KCS-14 scope.
 | Complexity threshold 7; Ruff gates | 4 | Project toolchain; SWE at Google |
 | Freeze-list diff and schema-hash checks | 4 | Policy-as-code practice |
 | Retry loops as process-defect signal | 6 | Kaizen/andon synthesis |
-| KCS action/identity rules; article quality (deferred KCS-15) | 8 | KCS v6; source style guide |
+| KCS action/identity rules; KCS-15 article quality | 8 | KCS v6; source style guide |
 
 ## Known Gaps And Honest Caveats
 

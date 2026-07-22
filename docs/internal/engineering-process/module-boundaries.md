@@ -177,11 +177,12 @@ they grow their own acceptance logic.
 
 ### Renderer And Current Style Gates
 
-Owns reviewer packet rendering, Zendesk HTML rendering, and current
-markup-quality checks.
+Owns reviewer packet rendering, Zendesk HTML rendering, source-backed
+markup-quality checks, and the compact approved markup pattern set.
 
-Must not own KCS-15 style/markup parity expansion, action decisions,
-semantic-review validation, or Desktop transport.
+Must not own KCS action decisions, semantic-review validation, Desktop
+transport, or automatic inference that needs evidence absent from rendered
+source.
 
 Review when touching:
 
@@ -189,8 +190,10 @@ Review when touching:
 - `src/kcs_adapters/zendesk_markup_quality.py`
 - `src/kcs_adapters/kcs_markup_patterns.py`
 - `src/kcs_adapters/kcs_article_style_refs.py`
+- `evals/kcs_markup_patterns_v1.jsonl`
 
-Risk: formatting cleanup can accidentally become deferred KCS-15 behavior work.
+Risk: a source-parity change can add or remove reviewer blockers. Every such
+change needs an explicit behavior contract, source fixture, and drift review.
 
 ### Reviewer Bundle Output
 

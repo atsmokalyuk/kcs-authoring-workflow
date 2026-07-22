@@ -98,8 +98,9 @@ Recommended slice order:
   review/agent tooling after the manual protocol is stable;
 - KCS-15: KCS style and markup parity with source KCS Style Guide, Article
   Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules. This is deferred runtime hardening, not part of
-  KCS-14 engineering/process hardening;
+  `plesk_support` rules. This was deferred during KCS-14 and is now active
+  through independently approved behavior slices, starting with KCS-15.1
+  PLESK_INFO trigger parity. It remains outside KCS-14 scope;
 - Future harness-portable agent engineering support: git-aware code-review
   graph, compact agent context, official local tool entrypoints, and review
   handoffs for Codex, ChatGPT Pro review, Fable 5 review, or future internal

@@ -51,8 +51,9 @@ Each PR should map to one Jira slice:
   review/agent tooling after the manual protocol is stable;
 - KCS-15: KCS style and markup parity with source KCS Style Guide, Article
   Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules. This is deferred runtime hardening, not part of
-  KCS-14 engineering/process hardening;
+  `plesk_support` rules. This was deferred during KCS-14 and is now active
+  through independently approved behavior slices, starting with KCS-15.1
+  PLESK_INFO trigger parity. It remains outside KCS-14 scope;
 - Future deployment slice: optional managed internal service version of the
   current local Claude Desktop workflow.
 

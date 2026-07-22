@@ -101,9 +101,11 @@ KCS-14.5 did not establish stable semantic ownership for noisy multi-issue
 tickets. Reopening that problem requires a separately reviewed behavior-change
 design with a new authority source, such as upstream structured issue scope or
 operator-provided scope at workflow entry. It may not weaken evidence gates or
-add another prompt-correction workflow. Managed deployment, production
-rollout, additional integrations, and `KCS-15` style/markup parity remain
-deferred until an explicitly approved slice reopens them.
+add another prompt-correction workflow. The retained M4 gate is scoped to that
+semantic/control-surface workstream. Independently approved `KCS-15`
+style/markup slices may proceed when their diff does not touch the frozen
+incident surfaces. Managed deployment, production rollout, and additional
+integrations remain separately deferred.
 
 Resolution steps must remain evidence-grounded. If the ticket gives the
 resolution outcome or a high-level resolution description but does not include
@@ -610,9 +612,10 @@ tools are not loaded into the active chat.
 - Last completed engineering slice: KCS-14 Engineering and Codebase Design
   Hardening, including the post-closeout characterization-suite
   maintainability pass
-- Deferred runtime hardening slice: KCS-15 KCS Style and Markup Parity
-- Current implementation subtask: none; semantic expansion is frozen pending a
-  separately approved scope-authority design
+- Active runtime hardening slice: KCS-15 KCS Style and Markup Parity
+- Current implementation subtask: KCS-15.1 `PLESK_INFO` trigger parity;
+  semantic expansion remains frozen pending a separately approved
+  scope-authority design
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.
