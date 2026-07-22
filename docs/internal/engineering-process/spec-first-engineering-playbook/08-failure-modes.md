@@ -5,6 +5,13 @@ closed and report a safe, actionable reason.
 
 ## Common Failure Modes
 
+- Proposed solution or architecture precedes confirmed target behavior.
+- Nominal behavior is treated as demonstrated operational behavior.
+- Unknown or missing evidence is treated as a default, permission, or success.
+- Feature scope requires an excessive material question batch.
+- Acceptance criterion has no deterministic, bounded-model, or named
+  human-review gate.
+- Model-mediated acceptance has no predeclared trial contract or stop rule.
 - Missing required input.
 - Unsafe input.
 - Incomplete evidence.
@@ -24,6 +31,22 @@ closed and report a safe, actionable reason.
 - No Help Center publication.
 - Actionable debug code or blocker code.
 - Safe next step for the operator.
+
+## Discovery And Trial Recovery
+
+Before implementation, recover from discovery failures by returning to the
+smallest missing decision:
+
+- confirm the target behavior and intended entrypoint;
+- record the relevant fact as provisional or unknown;
+- ask only the next material question batch;
+- narrow the slice when the question batch exceeds five;
+- complete the acceptance-to-gate mapping;
+- define or revise the bounded trial contract.
+
+For an experimental slice, repeated corrections without movement against the
+predeclared threshold are evidence for `stop`, not authorization to add another
+unbounded process or observability layer.
 
 ## Slice: KCS reviewer packet generation
 

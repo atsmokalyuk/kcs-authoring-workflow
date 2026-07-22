@@ -3,6 +3,19 @@
 Acceptance criteria define what must be true before merge. They should be
 observable, testable, and reviewable.
 
+Every observable criterion must name its gate before implementation:
+
+- `deterministic`: a test, type/schema check, lint rule, policy evaluator, or
+  supported validation command decides it;
+- `bounded-model-trial`: repeated model-mediated trials decide it against
+  predeclared invariants and a threshold;
+- `human-review`: a named reviewer role checks a judgment-based property using
+  stated evidence.
+
+Do not use a model trial where deterministic validation is possible. Do not
+pretend a judgment-based criterion is mechanically decidable. A criterion with
+no gate or no required evidence is incomplete.
+
 ## Slice Template
 
 ```markdown
@@ -16,6 +29,11 @@ observable, testable, and reviewable.
 
 ## Evidence required
 - ...
+
+## Acceptance-to-gate mapping
+| Criterion | Gate type | Gate / reviewer | Required evidence |
+| --- | --- | --- | --- |
+| ... | deterministic / bounded-model-trial / human-review | ... | ... |
 ```
 
 ## Slice: KCS reviewer packet generation

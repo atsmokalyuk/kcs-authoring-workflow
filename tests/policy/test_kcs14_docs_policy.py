@@ -141,3 +141,26 @@ def test_agent_workflow_is_tracked_authoritative_process() -> None:
     assert "visible compact checkpoint" in agents
     assert "Minimum visible checkpoint" in workflow
     assert "Stale context to ignore" in workflow
+
+
+def test_engineering_rule_portability_registry_structure_and_links() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    registry_path = (
+        "docs/internal/engineering-process/engineering-rule-portability.md"
+    )
+    registry = (ROOT / registry_path).read_text(encoding="utf-8")
+    promotions = (
+        ROOT / "docs/internal/engineering-process/promotion-candidates.md"
+    ).read_text(encoding="utf-8")
+
+    assert registry_path in agents
+    assert "## Rule Families" in registry
+    assert "### Enforcement Ladder" in registry
+    assert "### Portability Ladder" in registry
+    assert "## Candidate Registry" in registry
+    assert "KCS-14.5, completed" in registry
+    assert "KCS-16b owns extraction decisions" in registry
+    assert "KCS-17 owns the handoff and initiation" in registry
+    assert "The separate kit project owns agent roles" in registry
+    assert "local enforcement maturity" in promotions
+    assert registry_path in promotions

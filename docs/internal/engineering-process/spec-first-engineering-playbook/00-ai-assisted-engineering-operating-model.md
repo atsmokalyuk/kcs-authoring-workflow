@@ -49,8 +49,10 @@ slice with goal, user/operator, allowed inputs, forbidden inputs, output
 contract, failure behavior, tests/evals, acceptance criteria, and review
 checklist.
 
-Tests and evals are executable guardrails. They are not the only authority, but
-they are the proof that expected behavior remains true.
+Tests, bounded trials, and named human reviews are guardrails matched to the
+kind of acceptance criterion. Deterministic behavior should use executable
+tests. Model-mediated stability needs a predeclared bounded trial. Judgment-
+based properties need a named human-review gate with stated evidence.
 
 Source code is the deterministic runtime owner. AI may assist with drafting or
 semantic reasoning only inside bounded contracts; code owns validation,
@@ -60,9 +62,12 @@ decisions, rendering, persistence, and failure behavior.
 
 This project uses BDD-shaped pytest by default.
 
-Acceptance criteria should be translated into executable pytest tests that read
-as `Given / When / Then`, but remain ordinary Python tests unless a dedicated
-BDD runner becomes necessary.
+Deterministically testable acceptance criteria should be translated into
+executable pytest tests that read as `Given / When / Then`, but remain ordinary
+Python tests unless a dedicated BDD runner becomes necessary. Do not force
+model-mediated or judgment-based criteria into dishonest deterministic tests;
+map them to the bounded-model-trial or human-review gates defined by this
+playbook.
 
 Default mapping:
 
@@ -81,7 +86,9 @@ For now:
 ```text
 spec-first playbook defines the slice
 acceptance criteria define expected behavior
-BDD-shaped pytest proves the behavior
+BDD-shaped pytest proves deterministic behavior
+bounded trials evaluate model-mediated stability
+named human reviews evaluate judgment-based properties
 golden fixtures protect stable output
 forbidden-path tests protect safety boundaries
 ```

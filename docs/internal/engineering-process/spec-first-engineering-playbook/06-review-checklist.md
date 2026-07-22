@@ -5,10 +5,18 @@ Use this checklist for code, docs, contracts, and demo artifacts.
 ## General Review
 
 - Does the diff match the stated slice?
+- Was the requested outcome separated from the proposed solution before
+  architecture was selected?
+- Does the plan distinguish nominal behavior from demonstrated operational
+  behavior and identify the intended entrypoint/UX?
+- Are material facts marked as confirmed, provisional, unknown, or rejected?
+- Was only the smallest material question batch presented to the operator?
 - Are unrelated files untouched?
 - Are generated/runtime/private artifacts excluded?
 - Are contracts preserved or intentionally changed?
 - Are tests added or updated where behavior changed?
+- Does every observable acceptance criterion map to a deterministic,
+  bounded-model, or named human-review gate?
 - Does README or related documentation need an update?
 - Does the change avoid unsupported version, model, command, or API claims?
 
@@ -55,6 +63,24 @@ Warnings:
 - Is any LLM output treated as untrusted input?
 - Is semantic review bounded to candidate identification?
 - Are KCS decisions made by code, not by the model?
+- For model-mediated acceptance, were fixtures, `N`, conditions, invariants,
+  threshold, corrections, overhead, and stop conditions declared before the
+  trial?
+- Are results evaluated by stable behavior rather than exact model wording?
+
+## Discovery Failure Signals
+
+Treat these as findings requiring the design to return to clarification:
+
+- architecture was proposed before target behavior was confirmed;
+- nominal code or documentation behavior was treated as operational proof;
+- an unknown was silently converted into a default or permission;
+- the operator received the complete domain question inventory instead of the
+  smallest next decision batch;
+- more than five material questions are needed without narrowing the slice.
+
+These are judgment-based review signals. Do not add a deterministic blocker
+that claims to infer them from prose.
 
 ## Documentation Review
 

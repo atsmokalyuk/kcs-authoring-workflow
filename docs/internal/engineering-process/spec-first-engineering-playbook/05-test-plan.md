@@ -64,3 +64,40 @@ Use synthetic fixtures by default. Committed clean-ticket-derived fixtures must
 be sanitized, approved, privacy-scanned, portable, and marked with explicit
 provenance. Local clean-ticket refs must be skip-if-absent and must not make the
 suite machine-dependent.
+
+## Nondeterministic And Model-Mediated Trials
+
+Define these fields before the first trial:
+
+```markdown
+## Trial contract
+- fixtures and provenance:
+- trial count (`N`):
+- fixed runtime/model/client conditions:
+- behavioral invariants:
+- acceptable output variance:
+- success threshold:
+- terminal and retryable outcome rules:
+- permitted corrections:
+- operator/process overhead limit:
+- acceptable false-positive rate:
+- value-safe observations:
+- stop condition:
+```
+
+One run can demonstrate feasibility but cannot establish stability. Aggregate
+results by behavioral invariant and disposition, not by exact model wording.
+Changing fixtures, conditions, thresholds, or correction rules starts a new
+trial revision and must not be silently combined with earlier results.
+
+Observability must be proportional to the approved slice. Define the signals
+needed to evaluate the trial first; add infrastructure only when those signals
+cannot be captured safely through existing local results or logs.
+
+Close the trial with one explicit verdict:
+
+- `expand`: the threshold is met and overhead/drift remain within bounds;
+- `iterate`: the hypothesis remains plausible and a bounded correction is
+  identified;
+- `stop`: the threshold is missed, corrections are cycling, or overhead/drift
+  exceeds the predeclared bound.

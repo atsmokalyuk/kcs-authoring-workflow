@@ -120,10 +120,14 @@ Recommended slice order:
   slices with less manual correction. Extract only generic design/spec
   workflow pieces; KCS-specific contracts, ticket policy, privacy rules, and
   article standards stay in this repository;
-- KCS-17 or separate downstream project: personal agentic engineering kit
-  packaging, only after reusable extraction is stable and useful outside the
-  immediate KCS workflow. This is a future packaging decision, not a committed
-  architecture; choose the implementation after KCS-14/KCS-15 field results
+- KCS-17: handoff and initiation boundary for a separate personal agentic
+  engineering kit project, only after reusable extraction is stable and useful
+  outside the immediate KCS workflow. KCS-17 may produce an export manifest,
+  compatibility boundary, and evidence handoff; it does not implement agent
+  roles, orchestration, the integration gate, or the stable kit package in this
+  repository. The separate project assigns extracted assets to beta roles,
+  runs the end-to-end integration gate, and packages a stable kit only after
+  that gate passes. Choose its architecture after KCS-14/KCS-15 field results
   and a current review of agentic-engineering tooling;
 - Future deployment slice: intranet remote MCP service for managed
   operator use. Claude Desktop would connect through a custom remote MCP

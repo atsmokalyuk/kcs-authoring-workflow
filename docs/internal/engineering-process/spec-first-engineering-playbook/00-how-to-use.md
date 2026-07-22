@@ -16,12 +16,41 @@ create implementation plan
 
 1. Read `AGENTS.md`.
 2. Read the relevant files in this directory.
-3. Draft or update the slice spec before implementation.
-4. Ask the operator concise questions for material unknowns.
-5. Wait for confirmation before changing runtime behavior, privacy boundaries,
+3. Separate the requested outcome from any proposed solution. Record the
+   current operational behavior, intended user entrypoint, and target behavior
+   before proposing architecture.
+4. Record material facts as `confirmed`, `provisional`, `unknown`, or
+   `rejected`. Absence of evidence does not establish a default value.
+5. Draft or update the slice spec before implementation.
+6. Keep the complete inventory of material unknowns in the slice spec, but ask
+   the operator only the smallest question batch needed for the next decision.
+7. Wait for confirmation before changing runtime behavior, privacy boundaries,
    schemas/contracts, persistence, integrations, or public/reviewer output.
-6. Implement only the agreed slice.
-7. Report changed files, unchanged contracts, validation run, and open risks.
+8. Map every observable acceptance criterion to a deterministic gate, a
+   bounded model trial, or a named human-review gate.
+9. Implement only the agreed slice.
+10. Report changed files, unchanged contracts, validation run, and open risks.
+
+If more than five material questions are required before the next decision,
+narrow the feature boundary before asking them. This is a scope signal, not a
+quota that permits hiding unresolved assumptions.
+
+## Experimental And Model-Mediated Slices
+
+Before running a process experiment or evaluating nondeterministic behavior,
+predeclare:
+
+- fixtures and provenance;
+- trial count and fixed conditions;
+- stable behavioral invariants;
+- acceptable variance and success threshold;
+- permitted corrections;
+- acceptable operator/process overhead and false-positive rate;
+- value-safe observations required for closeout.
+
+A single successful run proves feasibility only. Close the experiment with an
+evidence-based `expand`, `iterate`, or `stop` decision using baseline-to-result,
+correction, overhead, false-positive, and drift evidence.
 
 ## Slice Planning Location
 

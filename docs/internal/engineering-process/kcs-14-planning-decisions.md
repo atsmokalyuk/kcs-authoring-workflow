@@ -102,12 +102,16 @@ This reopening does not authorize runtime feature work.
   that the same templates, review packets, tool entrypoints, and gates worked
   across both refactor-heavy and feature-heavy slices with less manual
   correction.
-- Personal agentic engineering kit packaging belongs in KCS-17 or a separate
-  downstream project after reusable extraction is stable and useful outside the
-  immediate KCS workflow. It is a future packaging decision, not a committed
-  architecture; choose the implementation after KCS-14/KCS-15 field results
-  and a current review of agentic-engineering tooling. KCS-14 should
-  stabilize repo-native practice first, not create a premature shared package.
+- KCS-17 is the handoff and initiation boundary for a separate personal
+  agentic engineering kit project after reusable extraction is stable and
+  useful outside the immediate KCS workflow. KCS-17 may define the export
+  manifest, compatibility boundary, and evidence handoff, but it does not own
+  agent roles, orchestration, the integration gate, or stable kit packaging.
+  The separate project integrates extracted assets into beta roles, runs the
+  end-to-end gate, and packages a stable kit only after that gate passes.
+  Choose its architecture after KCS-14/KCS-15 field results and a current
+  review of agentic-engineering tooling. KCS-14 should stabilize repo-native
+  practice first, not create a premature shared package.
 
 Golden-case evaluation for KCS-14 must stay within existing behavior
 contracts: action decision, split/single/block behavior, evidence grounding,

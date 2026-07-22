@@ -6,6 +6,15 @@ This file records repeated findings that may move from prose guidance to a
 stronger enforcement layer. It is a review/process artifact, not a runtime
 product contract.
 
+This registry tracks local enforcement maturity. It does not prove that a rule
+is portable. Cross-project evidence and extraction readiness are tracked
+separately in
+`docs/internal/engineering-process/engineering-rule-portability.md`.
+
+An implemented policy test may remain project-specific. A portable
+judgment-based rule may remain a review gate. Do not infer one ladder's status
+from the other.
+
 ## Promotion Cadence
 
 ```text

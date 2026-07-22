@@ -4,6 +4,27 @@ Use this file before implementation to remove ambiguity from a slice. Do not
 start code work until the slice has a bounded goal, operator, allowed inputs,
 forbidden inputs, output contract, and failure behavior.
 
+Do not start architecture from a proposed implementation. First establish:
+
+- the outcome the operator or user needs;
+- the nominal behavior described by code or documentation;
+- the operational behavior actually demonstrated by current evidence;
+- the intended user entrypoint and interaction;
+- the target behavior to confirm;
+- the material facts and unknowns that can change the design.
+
+Use these fact states:
+
+- `confirmed`: supported by current tracked evidence or an operator decision;
+- `provisional`: a bounded working assumption that still needs validation;
+- `unknown`: no sufficient evidence or decision exists;
+- `rejected`: evidence or an operator decision ruled it out.
+
+Do not treat missing evidence as permission, success, an empty value, or a
+default. Keep a complete unknown inventory in the slice plan. Ask the operator
+only the smallest batch needed for the next decision. More than five material
+questions before one decision is a signal to narrow the slice boundary.
+
 ## Slice Template
 
 ```markdown
@@ -11,6 +32,27 @@ forbidden inputs, output contract, and failure behavior.
 
 ## Goal
 What are we building?
+
+## Requested outcome
+What user or operator result is needed, independent of a proposed solution?
+
+## Current operational reality
+What behavior is actually demonstrated? What is only nominal or documented?
+
+## Intended entrypoint and UX
+Where does the user start and what interaction should they experience?
+
+## Target behavior
+What behavior must be confirmed before architecture is proposed?
+
+## Fact register
+Which material facts are confirmed, provisional, unknown, or rejected?
+
+## Complete unknown inventory
+What remains unknown, including questions not yet issued to the operator?
+
+## Next material question batch
+What is the smallest set of questions needed for the next decision?
 
 ## User / operator
 Who uses this?
@@ -32,6 +74,9 @@ What proves correctness?
 
 ## Acceptance criteria
 What must be true before merge?
+
+## Proposed solution
+Only after target behavior is confirmed: what implementation is proposed?
 
 ## Review checklist
 What should reviewer verify?

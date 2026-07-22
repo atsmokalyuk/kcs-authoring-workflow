@@ -134,6 +134,10 @@ Authoritative layers:
   inter-slice gates, review routing, and refactor freeze list.
 - `docs/internal/engineering-process/agent-operable-engineering-workflow.md`:
   authoritative development-agent workflow below this policy kernel.
+- `docs/internal/engineering-process/engineering-rule-portability.md`:
+  Discovery/Design/Delivery rule families, local-enforcement versus
+  cross-project portability ladders, pre-extraction candidate registry, and
+  KCS-14.5/KCS-15/KCS-16/KCS-17 gates.
 - `docs/internal/engineering-process/functional-test-from-behavior.md`:
   functional acceptance test convention, fixture tiers, provenance checks, and
   refactor-safety test expectations.
