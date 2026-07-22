@@ -511,16 +511,18 @@
     },
     {
       "id": "cli_ingest_readiness",
-      "label": "CLI, Ingest, And Readiness",
+      "label": "CLI, Ingest, Local Public Search, And Readiness",
       "risk": "medium",
       "owns": [
         "CLI entrypoint behavior",
         "JSON payload loading",
         "Zendesk ingest helpers",
+        "loopback-only local public RAG metadata adapter",
         "readiness checks and safe error surfaces"
       ],
       "must_not_own": [
         "Desktop-specific state",
+        "KCS article identity",
         "provider trust decisions",
         "renderer presentation policy",
         "reviewer bundle writing"
@@ -528,6 +530,7 @@
       "must_preserve": [
         "CLI errors remain value-safe",
         "input loading does not bypass packet validation",
+        "RAG hits remain unclassified search candidates",
         "readiness checks do not become runtime publication approval"
       ],
       "contract_edges": [
@@ -536,6 +539,7 @@
       ],
       "risk_areas": [
         "CLI and ingest helpers can bypass the same validators used by Desktop",
+        "RAG metadata can be mistaken for confirmed cause-resolution identity",
         "readiness checks can be mistaken for approval to publish"
       ],
       "files": [
@@ -563,6 +567,11 @@
           "path": "src/kcs_core/errors.py",
           "file_hash": "20b695a504669fd518fe1ae1e3abc7eeb8328c05666950f9d95d3119b3bd47e9",
           "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/local_public_rag.py",
+          "file_hash": "cd67205f6f377829c788847fe1c2da43662a7f341905fb15f8a09ea3ca0d06ff",
+          "valid_until_changed": true
         }
       ],
       "related_tests": [
@@ -571,7 +580,8 @@
         "tests/kcs_core/test_readiness.py",
         "tests/kcs_core/test_zendesk_ingest.py",
         "tests/kcs_core/test_validation.py",
-        "tests/kcs_core/test_safety.py"
+        "tests/kcs_core/test_safety.py",
+        "tests/kcs_adapters/test_local_public_rag.py"
       ]
     },
     {

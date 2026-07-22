@@ -8,7 +8,8 @@ tracking document:
 ```text
 Last completed engineering/process slice: KCS-14.5 Runtime Incident Closeout
 Completed KCS-15 prerequisite: KCS-15.0 Style Source And Governance Baseline
-Current approved runtime slice: KCS-15.1 PLESK_INFO Trigger Parity
+Completed KCS-15 behavior slice: KCS-15.1 PLESK_INFO Trigger Parity
+Current approved supporting slice: RAG-1 Local Public Search Adapter
 ```
 
 Historical KCS-1 guidance remains useful only as an early-slice boundary:
@@ -108,8 +109,10 @@ evidence directly.
 - KCS-15: KCS style and markup parity with the source KCS Style Guide, Article
   Quality criteria, KCS practices, approved article examples, and portable
   `plesk_support` rules. KCS-15 is active through independently approved
-  behavior slices; KCS-15.1 PLESK_INFO trigger parity is the current approved
-  slice.
+  behavior slices; KCS-15.1 PLESK_INFO trigger parity is complete.
+- RAG-1: loopback-only local public search adapter with fail-closed readiness
+  and metadata-only candidates. Desktop integration and identity confirmation
+  remain later decisions.
 - Future deployment slice: optional managed internal service version of the
   current local Claude Desktop workflow.
 
@@ -126,9 +129,9 @@ explicitly changes them.
 ## Active Runtime Hardening
 
 KCS-15 style and markup parity is active through independently approved,
-source-backed behavior slices. The first approved runtime slice is KCS-15.1
-PLESK_INFO trigger parity. Approval of KCS-15.1 does not approve the remaining
-KCS-15 inventory.
+source-backed behavior slices. KCS-15.1 PLESK_INFO trigger parity is complete.
+Its approval does not approve the remaining KCS-15 inventory. RAG-1 is a
+separate supporting adapter slice, not part of KCS-15 style behavior.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening
 

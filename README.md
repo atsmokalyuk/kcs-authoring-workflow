@@ -613,9 +613,9 @@ tools are not loaded into the active chat.
   Hardening, including the post-closeout characterization-suite
   maintainability pass
 - Active runtime hardening slice: KCS-15 KCS Style and Markup Parity
-- Current implementation subtask: KCS-15.1 `PLESK_INFO` trigger parity;
-  semantic expansion remains frozen pending a separately approved
-  scope-authority design
+- Last completed KCS-15 slice: KCS-15.1 `PLESK_INFO` trigger parity
+- Current implementation subtask: RAG-1 loopback local-public search adapter;
+  Desktop integration, article identity, and semantic expansion remain frozen
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

@@ -18,7 +18,9 @@ Forward-looking repository documents should use this numbering:
 
 - KCS-14: Engineering and Codebase Design Hardening.
 - KCS-15: KCS Style and Markup Parity, active through independently approved
-  slices; KCS-15.1 PLESK_INFO trigger parity is the current approved slice.
+  slices; KCS-15.1 PLESK_INFO trigger parity is complete.
+- RAG-1: separate approved local-public adapter/readiness slice. It does not
+  reopen Desktop, semantic ownership, or article-identity behavior.
 
 Historical files may mention the older KCS-14 style/markup framing only when
 the text is clearly historical. Active README, roadmap, Jira-tracking,

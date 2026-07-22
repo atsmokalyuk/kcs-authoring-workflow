@@ -156,13 +156,14 @@ Review when touching:
 Risk: validation or decision drift can silently change behavior while a change
 is described as refactor-only.
 
-### CLI, Ingest, And Readiness
+### CLI, Ingest, Local Public Search, And Readiness
 
 Owns CLI entrypoint behavior, JSON payload loading, Zendesk ingest helpers,
-readiness checks, and safe error surfaces.
+the loopback-only local public RAG adapter, readiness checks, and safe error
+surfaces.
 
-Must not own Desktop-specific state, provider trust decisions, renderer
-presentation policy, or reviewer bundle writing.
+Must not own Desktop-specific state, article identity, provider trust decisions,
+renderer presentation policy, or reviewer bundle writing.
 
 Review when touching:
 
@@ -171,9 +172,12 @@ Review when touching:
 - `src/kcs_core/zendesk_ingest.py`
 - `src/kcs_core/readiness.py`
 - `src/kcs_core/errors.py`
+- `src/kcs_adapters/local_public_rag.py`
 
 Risk: CLI and ingest helpers can bypass the same validators used by Desktop if
-they grow their own acceptance logic.
+they grow their own acceptance logic. Search hits can also be mistaken for
+confirmed KCS identity if the adapter boundary is widened without an approved
+operator-confirmation design.
 
 ### Renderer And Current Style Gates
 
