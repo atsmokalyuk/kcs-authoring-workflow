@@ -164,8 +164,8 @@ KCS-14 scope.
 - Consortium for Service Innovation, KCS v6 Practices Guide.
   Grounds: knowledge capture in the workflow; reuse before create; article
   quality; evolve loop remains human-owned.
-- Source KCS Style Guide and Article Quality criteria (corporate documents
-  referenced by the KCS-15 slice definition).
+- Source KCS Style Guide, Article Quality Criteria, Content Standard, and
+  supporting examples indexed in `docs/internal/kcs-sources/README.md`.
   Grounds: article structure, markup, and style parity targets.
 - Local `plesk_support` prototype (reference-only per portability policy).
   Grounds: proven workflow-first architecture, typed packets, deterministic

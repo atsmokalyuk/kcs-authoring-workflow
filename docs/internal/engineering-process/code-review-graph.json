@@ -901,7 +901,7 @@
       "label": "Engineering Policy Tests",
       "risk": "medium",
       "owns": [
-        "KCS-14 deterministic policy checks",
+        "KCS-14/KCS-15 deterministic policy checks",
         "documentation and process guardrail tests",
         "code-review graph coverage checks"
       ],
@@ -967,6 +967,11 @@
           "valid_until_changed": true
         },
         {
+          "path": "tests/policy/test_kcs15_source_pack_policy.py",
+          "file_hash": "33ecc98772db934e4c08f34c76d6dc20ae16dc0857d4e62fc27cc5621968c646",
+          "valid_until_changed": true
+        },
+        {
           "path": "tests/policy/test_review_context_policy.py",
           "file_hash": "7fbe1c247c7f0c33310036ffd40d570c5f40ca8e55f5112746dcb8f4e52f2734",
           "valid_until_changed": true
@@ -985,6 +990,7 @@
         "tests/policy/test_kcs14_5_release_docs_policy.py",
         "tests/policy/test_kcs14_freeze_snapshots.py",
         "tests/policy/test_kcs14_legacy_semantic_island.py",
+        "tests/policy/test_kcs15_source_pack_policy.py",
         "tests/policy/test_review_context_policy.py",
         "tests/policy/test_tool_entrypoints.py"
       ]
