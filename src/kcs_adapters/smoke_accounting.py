@@ -152,6 +152,34 @@ class _CliError(Exception):
     code: str
 
 
+@dataclass(frozen=True)
+class _SmokeMarkers:
+    tool_names: tuple[str, ...]
+    tool_call_count: int
+    failure_count: int
+    fallback_count: int
+    controlled_success_count: int
+    draft_call_count: int
+    draft_selected_count: int
+    draft_split_count: int
+    draft_success_count: int
+    draft_upload_ticket_ref_count: int
+    draft_blocker_codes: tuple[str, ...]
+    tool_result_invalid_count: int
+    timeout_or_disconnect_count: int
+
+    @property
+    def deterministic_draft_passed(self) -> bool:
+        return (
+            self.draft_call_count > 0
+            and self.draft_split_count > 0
+            and self.draft_selected_count > 0
+            and self.draft_success_count > 0
+            and self.fallback_count == 0
+            and self.tool_result_invalid_count == 0
+        )
+
+
 class _ArgumentParser(argparse.ArgumentParser):
     def error(self, message: str) -> None:
         raise _CliError("cli_usage_error")
@@ -173,31 +201,12 @@ def build_smoke_accounting_report(
 
     log_chars = len(text)
     estimated_tokens = _estimate_tokens(log_chars, chars_per_token)
-    tool_names = _tool_names(text)
-    failure_count = len(_FAILURE_RE.findall(text))
-    fallback_count = len(_MANUAL_FALLBACK_RE.findall(text))
-    success_count = len(_CONTROLLED_SUCCESS_RE.findall(text))
-    draft_call_count = len(_KCS_DRAFT_CLIENT_CALL_RE.findall(text))
-    draft_selected_count = len(_KCS_DRAFT_SELECTION_RE.findall(text))
-    draft_split_count = len(_KCS_DRAFT_SPLIT_RE.findall(text))
-    draft_success_count = len(_KCS_DRAFT_SUCCESS_RE.findall(text))
-    upload_ticket_ref_count = len(_KCS_DRAFT_UPLOAD_REF_RE.findall(text))
-    tool_result_invalid_count = len(_TOOL_RESULT_INVALID_RE.findall(text))
-    timeout_or_disconnect_count = len(_TIMEOUT_OR_DISCONNECT_RE.findall(text))
-    blocker_codes = _kcs_draft_blocker_codes(text)
-    deterministic_draft_passed = (
-        draft_call_count > 0
-        and draft_split_count > 0
-        and draft_selected_count > 0
-        and draft_success_count > 0
-        and fallback_count == 0
-        and tool_result_invalid_count == 0
-    )
+    markers = _smoke_markers(text)
     return SmokeAccountingReport(
         billing_exact=False,
         chars_per_token=chars_per_token,
-        controlled_success_marker_count=success_count,
-        deterministic_kcs_draft_smoke_passed=deterministic_draft_passed,
+        controlled_success_marker_count=markers.controlled_success_count,
+        deterministic_kcs_draft_smoke_passed=markers.deterministic_draft_passed,
         estimated_input_cost_usd=_cost(estimated_tokens, input_price_per_mtok_usd),
         estimated_log_tokens=estimated_tokens,
         estimated_output_cost_usd=_cost(estimated_tokens, output_price_per_mtok_usd),
@@ -205,28 +214,28 @@ def build_smoke_accounting_report(
             estimated_tokens,
             input_price_per_mtok_usd + output_price_per_mtok_usd,
         ),
-        failure_marker_count=failure_count,
+        failure_marker_count=markers.failure_count,
         input_price_per_mtok_usd=input_price_per_mtok_usd,
-        kcs_draft_blocker_codes=blocker_codes,
-        kcs_draft_call_count=draft_call_count,
-        kcs_draft_selected_call_count=draft_selected_count,
-        kcs_draft_split_required_count=draft_split_count,
-        kcs_draft_success_count=draft_success_count,
-        kcs_draft_upload_ticket_ref_count=upload_ticket_ref_count,
+        kcs_draft_blocker_codes=markers.draft_blocker_codes,
+        kcs_draft_call_count=markers.draft_call_count,
+        kcs_draft_selected_call_count=markers.draft_selected_count,
+        kcs_draft_split_required_count=markers.draft_split_count,
+        kcs_draft_success_count=markers.draft_success_count,
+        kcs_draft_upload_ticket_ref_count=markers.draft_upload_ticket_ref_count,
         log_bytes=len(text.encode("utf-8")),
         log_chars=log_chars,
-        manual_fallback_marker_count=fallback_count,
-        manual_fallback_observed=fallback_count > 0,
+        manual_fallback_marker_count=markers.fallback_count,
+        manual_fallback_observed=markers.fallback_count > 0,
         notes=_notes(),
         ok=True,
         output_price_per_mtok_usd=output_price_per_mtok_usd,
-        retry_risk=_retry_risk(failure_count, fallback_count),
+        retry_risk=_retry_risk(markers.failure_count, markers.fallback_count),
         schema_version=SMOKE_ACCOUNTING_SCHEMA_VERSION,
         source_kind=source_kind,
-        timeout_or_disconnect_count=timeout_or_disconnect_count,
-        tool_call_count=_tool_call_count(text),
-        tool_result_invalid_count=tool_result_invalid_count,
-        unique_tools=tool_names,
+        timeout_or_disconnect_count=markers.timeout_or_disconnect_count,
+        tool_call_count=markers.tool_call_count,
+        tool_result_invalid_count=markers.tool_result_invalid_count,
+        unique_tools=markers.tool_names,
     )
 
 
@@ -304,6 +313,24 @@ def _tool_names(text: str) -> tuple[str, ...]:
 
 def _tool_call_count(text: str) -> int:
     return sum(1 for line in text.splitlines() if _TOOL_CALL_HINT_RE.search(line))
+
+
+def _smoke_markers(text: str) -> _SmokeMarkers:
+    return _SmokeMarkers(
+        controlled_success_count=len(_CONTROLLED_SUCCESS_RE.findall(text)),
+        draft_blocker_codes=_kcs_draft_blocker_codes(text),
+        draft_call_count=len(_KCS_DRAFT_CLIENT_CALL_RE.findall(text)),
+        draft_selected_count=len(_KCS_DRAFT_SELECTION_RE.findall(text)),
+        draft_split_count=len(_KCS_DRAFT_SPLIT_RE.findall(text)),
+        draft_success_count=len(_KCS_DRAFT_SUCCESS_RE.findall(text)),
+        draft_upload_ticket_ref_count=len(_KCS_DRAFT_UPLOAD_REF_RE.findall(text)),
+        failure_count=len(_FAILURE_RE.findall(text)),
+        fallback_count=len(_MANUAL_FALLBACK_RE.findall(text)),
+        timeout_or_disconnect_count=len(_TIMEOUT_OR_DISCONNECT_RE.findall(text)),
+        tool_call_count=_tool_call_count(text),
+        tool_names=_tool_names(text),
+        tool_result_invalid_count=len(_TOOL_RESULT_INVALID_RE.findall(text)),
+    )
 
 
 def _kcs_draft_blocker_codes(text: str) -> tuple[str, ...]:

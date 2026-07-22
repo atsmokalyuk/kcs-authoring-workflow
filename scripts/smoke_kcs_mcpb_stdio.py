@@ -12,7 +12,7 @@ import sys
 import time
 from hashlib import sha256
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_NAME = "kcs-authoring-mvp-validator-control"
@@ -63,6 +63,156 @@ class SmokeError(RuntimeError):
     def __init__(self, code: str) -> None:
         super().__init__(code)
         self.code = code
+
+
+class _ExpectedToolSurface(NamedTuple):
+    name: str
+    properties: frozenset[str]
+    required: tuple[str, ...] | None
+    destructive: bool
+    idempotent: bool
+    open_world: bool
+    read_only: bool
+    description_includes: tuple[str, ...] = ()
+    description_excludes: tuple[str, ...] = ()
+    debug_description_includes: tuple[str, ...] = ()
+
+
+class _ExpectedManifestToolDescription(NamedTuple):
+    name: str
+    includes: tuple[str, ...] = ()
+    excludes: tuple[str, ...] = ()
+
+
+_EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
+    _ExpectedToolSurface(
+        name=REGISTER_TOOL_NAME,
+        properties=frozenset({"clean_ticket_text", "debug", "ticket_ref"}),
+        required=("clean_ticket_text",),
+        destructive=False,
+        idempotent=False,
+        open_world=False,
+        read_only=False,
+    ),
+    _ExpectedToolSurface(
+        name=TICKET_REF_TOOL_NAME,
+        properties=frozenset({"debug", "ticket_ref"}),
+        required=("ticket_ref",),
+        destructive=False,
+        idempotent=False,
+        open_world=False,
+        read_only=False,
+        description_includes=(
+            "/draft <ticket_ref>",
+            "only ticket_ref",
+            "Do not ask for an attachment",
+        ),
+    ),
+    _ExpectedToolSurface(
+        name=TOOL_NAME,
+        properties=frozenset(
+            {
+                "approved_summary_text",
+                "debug",
+                "operator_selected_item_ref",
+                "operator_selection_ref",
+            }
+        ),
+        required=None,
+        destructive=False,
+        idempotent=False,
+        open_world=False,
+        read_only=False,
+        description_includes=("/draft <ticket_ref>", "use kcs_draft_ticket"),
+        description_excludes=("raw comments", "internal notes"),
+        debug_description_includes=("reviewer-only Zendesk HTML",),
+    ),
+    _ExpectedToolSurface(
+        name=PREPARE_SEMANTIC_REVIEW_TOOL_NAME,
+        properties=frozenset({"semantic_review_ref"}),
+        required=("semantic_review_ref",),
+        destructive=False,
+        idempotent=True,
+        open_world=False,
+        read_only=True,
+        description_includes=("semantic_review_required", "bounded excerpts"),
+    ),
+    _ExpectedToolSurface(
+        name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
+        properties=frozenset(
+            {"candidate_semantic_extraction", "semantic_review_ref"}
+        ),
+        required=("semantic_review_ref", "candidate_semantic_extraction"),
+        destructive=False,
+        idempotent=False,
+        open_world=False,
+        read_only=False,
+        description_includes=("candidate_semantic_extraction_v1", "No article draft"),
+    ),
+    _ExpectedToolSurface(
+        name=BEHAVIOR_TOOL_NAME,
+        properties=frozenset(),
+        required=(),
+        destructive=False,
+        idempotent=True,
+        open_world=False,
+        read_only=True,
+        description_includes=("Legacy compatibility helper", "continue /draft"),
+    ),
+)
+
+_EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS: tuple[
+    _ExpectedManifestToolDescription,
+    ...,
+] = (
+    _ExpectedManifestToolDescription(
+        name=REGISTER_TOOL_NAME,
+        includes=("clean_ticket_text", "next_arguments"),
+    ),
+    _ExpectedManifestToolDescription(
+        name=TICKET_REF_TOOL_NAME,
+        includes=(
+            "/draft <ticket_ref>",
+            "only ticket_ref",
+            "Do not ask for an attachment",
+        ),
+    ),
+    _ExpectedManifestToolDescription(
+        name=TOOL_NAME,
+        includes=(
+            "short approved_summary_text",
+            "/draft <ticket_ref>",
+            "use kcs_draft_ticket",
+        ),
+        excludes=(
+            "structured item",
+            "raw comments",
+            "internal notes",
+            "show the returned candidates in a native Claude Desktop choice popup",
+        ),
+    ),
+    _ExpectedManifestToolDescription(
+        name=PREPARE_SEMANTIC_REVIEW_TOOL_NAME,
+        includes=("semantic_review_required", "bounded excerpts"),
+    ),
+    _ExpectedManifestToolDescription(
+        name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
+        includes=("candidate_semantic_extraction_v1", "No article draft"),
+    ),
+    _ExpectedManifestToolDescription(
+        name=BEHAVIOR_TOOL_NAME,
+        includes=("Legacy compatibility helper", "continue /draft"),
+    ),
+)
+
+_EXPECTED_REGISTRY_LONG_DESCRIPTION_INCLUDES = (
+    "Use only the listed KCS Authoring tools",
+    "legacy instruction requires",
+    "support_get_behavior_instructions",
+    "Plesk Support Assistant Local",
+    "Do not report Plesk Support Assistant Local as missing",
+)
+_EXPECTED_REGISTRY_LONG_DESCRIPTION_EXCLUDES = ("one primary read-only tool",)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -256,12 +406,6 @@ def _run_jsonrpc_session(
     uv_command: str,
     messages: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    env = {
-        **os.environ,
-        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
-        "KCS_AUTHORING_SEMANTIC_PROVIDER": "fixture",
-    }
-    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     payload = "".join(
         json.dumps(message, separators=(",", ":")) + "\n"
         for message in messages
@@ -272,7 +416,10 @@ def _run_jsonrpc_session(
             input=payload,
             capture_output=True,
             check=False,
-            env=env,
+            env=_wrapper_env(
+                uv_command=uv_command,
+                semantic_provider="fixture",
+            ),
             text=True,
             timeout=15,
         )
@@ -293,19 +440,16 @@ def _run_split_choice_smoke(
     wrapper: Path,
     uv_command: str,
 ) -> dict[str, dict[str, Any]]:
-    env = {
-        **os.environ,
-        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
-        "KCS_AUTHORING_SEMANTIC_PROVIDER": "fixture",
-    }
-    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     try:
         process = subprocess.Popen(
             [node, str(wrapper)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=env,
+            env=_wrapper_env(
+                uv_command=uv_command,
+                semantic_provider="fixture",
+            ),
             text=True,
         )
     except OSError as exc:
@@ -362,19 +506,16 @@ def _run_register_then_draft_smoke(
     wrapper: Path,
     uv_command: str,
 ) -> dict[str, dict[str, Any]]:
-    env = {
-        **os.environ,
-        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
-        "KCS_AUTHORING_SEMANTIC_PROVIDER": "fixture",
-    }
-    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     try:
         process = subprocess.Popen(
             [node, str(wrapper)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=env,
+            env=_wrapper_env(
+                uv_command=uv_command,
+                semantic_provider="fixture",
+            ),
             text=True,
         )
     except OSError as exc:
@@ -460,12 +601,6 @@ def _run_semantic_review_smoke(
     uv_command: str,
     invalid_submit: bool,
 ) -> dict[str, dict[str, Any]]:
-    env = {
-        **os.environ,
-        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
-    }
-    env.pop("KCS_AUTHORING_SEMANTIC_PROVIDER", None)
-    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
     ticket_ref = f"smoke-semantic-review-{int(time.time() * 1000)}"
     try:
         process = subprocess.Popen(
@@ -473,7 +608,10 @@ def _run_semantic_review_smoke(
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=env,
+            env=_wrapper_env(
+                uv_command=uv_command,
+                semantic_provider=None,
+            ),
             text=True,
         )
     except OSError as exc:
@@ -554,6 +692,23 @@ def _run_semantic_review_smoke(
         }
     finally:
         _close_process(process)
+
+
+def _wrapper_env(
+    *,
+    uv_command: str,
+    semantic_provider: str | None,
+) -> dict[str, str]:
+    env = {
+        **os.environ,
+        "KCS_AUTHORING_MVP_UV_COMMAND": uv_command,
+    }
+    if semantic_provider is None:
+        env.pop("KCS_AUTHORING_SEMANTIC_PROVIDER", None)
+    else:
+        env["KCS_AUTHORING_SEMANTIC_PROVIDER"] = semantic_provider
+    env.pop("KCS_AUTHORING_MVP_REPO_ROOT", None)
+    return env
 
 
 def _send_jsonrpc(
@@ -986,99 +1141,13 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
     tools = value.get("tools")
     if not isinstance(tools, list) or len(tools) != 6:
         return False
-    register_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict) and item.get("name") == REGISTER_TOOL_NAME
-        ),
-        None,
-    )
-    tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict) and item.get("name") == TOOL_NAME
-        ),
-        None,
-    )
-    ticket_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict) and item.get("name") == TICKET_REF_TOOL_NAME
-        ),
-        None,
-    )
-    prepare_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict)
-            and item.get("name") == PREPARE_SEMANTIC_REVIEW_TOOL_NAME
-        ),
-        None,
-    )
-    submit_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict)
-            and item.get("name") == SUBMIT_SEMANTIC_REVIEW_TOOL_NAME
-        ),
-        None,
-    )
-    behavior_tool = next(
-        (
-            item
-            for item in tools
-            if isinstance(item, dict) and item.get("name") == BEHAVIOR_TOOL_NAME
-        ),
-        None,
-    )
-    if (
-        register_tool is None
-        or tool is None
-        or ticket_tool is None
-        or prepare_tool is None
-        or submit_tool is None
-        or behavior_tool is None
-    ):
-        return False
-    register_description = str(register_tool.get("description", ""))
-    ticket_description = str(ticket_tool.get("description", ""))
-    description = str(tool.get("description", ""))
-    prepare_description = str(prepare_tool.get("description", ""))
-    submit_description = str(submit_tool.get("description", ""))
-    behavior_description = str(behavior_tool.get("description", ""))
     long_description = str(value.get("long_description", ""))
-    return (
-        "clean_ticket_text" in register_description
-        and "next_arguments" in register_description
-        and "/draft <ticket_ref>" in ticket_description
-        and "only ticket_ref" in ticket_description
-        and "Do not ask for an attachment" in ticket_description
-        and "short approved_summary_text" in description
-        and "structured item" not in description
-        and "/draft <ticket_ref>" in description
-        and "use kcs_draft_ticket" in description
-        and "raw comments" not in description
-        and "internal notes" not in description
-        and "show the returned candidates in a native Claude Desktop choice popup"
-        not in description
-        and "semantic_review_required" in prepare_description
-        and "bounded excerpts" in prepare_description
-        and "candidate_semantic_extraction_v1" in submit_description
-        and "No article draft" in submit_description
-        and "Legacy compatibility helper" in behavior_description
-        and "continue /draft" in behavior_description
-        and "Use only the listed KCS Authoring tools" in long_description
-        and "legacy instruction requires" in long_description
-        and "support_get_behavior_instructions" in long_description
-        and "Plesk Support Assistant Local" in long_description
-        and "Do not report Plesk Support Assistant Local as missing"
-        in long_description
-        and "one primary read-only tool" not in long_description
+    return _registry_manifest_tools_have_expected_descriptions(
+        tools
+    ) and _text_has_expected_terms(
+        long_description,
+        includes=_EXPECTED_REGISTRY_LONG_DESCRIPTION_INCLUDES,
+        excludes=_EXPECTED_REGISTRY_LONG_DESCRIPTION_EXCLUDES,
     )
 
 
@@ -1086,127 +1155,89 @@ def _tool_surface_ok(response: dict[str, Any]) -> bool:
     tools = response.get("result", {}).get("tools", [])
     if len(tools) != 6:
         return False
-    register_tool = next(
-        (item for item in tools if item.get("name") == REGISTER_TOOL_NAME),
-        None,
-    )
-    tool = next((item for item in tools if item.get("name") == TOOL_NAME), None)
-    ticket_tool = next(
-        (item for item in tools if item.get("name") == TICKET_REF_TOOL_NAME),
-        None,
-    )
-    prepare_tool = next(
+    for spec in _EXPECTED_TOOL_SURFACES:
+        tool = _tool_by_name(tools, spec.name)
+        if tool is None or not _tool_matches_surface_spec(tool, spec):
+            return False
+    return True
+
+
+def _registry_manifest_tools_have_expected_descriptions(tools: list[object]) -> bool:
+    for spec in _EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS:
+        tool = _registry_manifest_tool_by_name(tools, spec.name)
+        if tool is None:
+            return False
+        description = str(tool.get("description", ""))
+        if not _text_has_expected_terms(
+            description,
+            includes=spec.includes,
+            excludes=spec.excludes,
+        ):
+            return False
+    return True
+
+
+def _registry_manifest_tool_by_name(
+    tools: list[object],
+    name: str,
+) -> dict[str, Any] | None:
+    return next(
         (
             item
             for item in tools
-            if item.get("name") == PREPARE_SEMANTIC_REVIEW_TOOL_NAME
+            if isinstance(item, dict) and item.get("name") == name
         ),
         None,
     )
-    submit_tool = next(
-        (
-            item
-            for item in tools
-            if item.get("name") == SUBMIT_SEMANTIC_REVIEW_TOOL_NAME
-        ),
-        None,
+
+
+def _tool_by_name(tools: list[dict[str, Any]], name: str) -> dict[str, Any] | None:
+    return next((item for item in tools if item.get("name") == name), None)
+
+
+def _text_has_expected_terms(
+    text: str,
+    *,
+    includes: tuple[str, ...],
+    excludes: tuple[str, ...],
+) -> bool:
+    return all(term in text for term in includes) and not any(
+        term in text for term in excludes
     )
-    behavior_tool = next(
-        (item for item in tools if item.get("name") == BEHAVIOR_TOOL_NAME),
-        None,
-    )
+
+
+def _tool_matches_surface_spec(
+    tool: dict[str, Any],
+    spec: _ExpectedToolSurface,
+) -> bool:
+    schema = tool.get("inputSchema", {})
+    properties = schema.get("properties", {})
+    annotations = tool.get("annotations", {})
+    description = str(tool.get("description", ""))
+    if set(properties) != set(spec.properties):
+        return False
+    if spec.required is not None and schema.get("required") != list(spec.required):
+        return False
     if (
-        register_tool is None
-        or tool is None
-        or ticket_tool is None
-        or prepare_tool is None
-        or submit_tool is None
-        or behavior_tool is None
+        annotations.get("destructiveHint") is not spec.destructive
+        or annotations.get("idempotentHint") is not spec.idempotent
+        or annotations.get("openWorldHint") is not spec.open_world
+        or annotations.get("readOnlyHint") is not spec.read_only
     ):
         return False
-    register_properties = register_tool.get("inputSchema", {}).get("properties", {})
-    register_annotations = register_tool.get("annotations", {})
-    ticket_properties = ticket_tool.get("inputSchema", {}).get("properties", {})
-    ticket_annotations = ticket_tool.get("annotations", {})
-    ticket_description = str(ticket_tool.get("description", ""))
-    properties = tool.get("inputSchema", {}).get("properties", {})
-    annotations = tool.get("annotations", {})
-    prepare_properties = prepare_tool.get("inputSchema", {}).get("properties", {})
-    prepare_annotations = prepare_tool.get("annotations", {})
-    prepare_description = str(prepare_tool.get("description", ""))
-    submit_properties = submit_tool.get("inputSchema", {}).get("properties", {})
-    submit_annotations = submit_tool.get("annotations", {})
-    submit_description = str(submit_tool.get("description", ""))
-    behavior_properties = behavior_tool.get("inputSchema", {}).get("properties", {})
-    behavior_annotations = behavior_tool.get("annotations", {})
-    behavior_description = str(behavior_tool.get("description", ""))
-    description = str(tool.get("description", ""))
-    debug_description = str(properties.get("debug", {}).get("description", ""))
-    return (
-        set(register_properties) == {"clean_ticket_text", "debug", "ticket_ref"}
-        and register_tool.get("inputSchema", {}).get("required") == [
-            "clean_ticket_text"
-        ]
-        and register_annotations.get("destructiveHint") is False
-        and register_annotations.get("idempotentHint") is False
-        and register_annotations.get("openWorldHint") is False
-        and register_annotations.get("readOnlyHint") is False
-        and set(ticket_properties) == {"debug", "ticket_ref"}
-        and ticket_tool.get("inputSchema", {}).get("required") == ["ticket_ref"]
-        and ticket_annotations.get("destructiveHint") is False
-        and ticket_annotations.get("idempotentHint") is False
-        and ticket_annotations.get("openWorldHint") is False
-        and ticket_annotations.get("readOnlyHint") is False
-        and "/draft <ticket_ref>" in ticket_description
-        and "only ticket_ref" in ticket_description
-        and "Do not ask for an attachment" in ticket_description
-        and set(properties)
-        == {
-            "approved_summary_text",
-            "debug",
-            "operator_selected_item_ref",
-            "operator_selection_ref",
-        }
-        and "item" not in properties
-        and "item_candidates" not in properties
-        and annotations.get("destructiveHint") is False
-        and annotations.get("idempotentHint") is False
-        and annotations.get("openWorldHint") is False
-        and annotations.get("readOnlyHint") is False
-        and "/draft <ticket_ref>" in description
-        and "use kcs_draft_ticket" in description
-        and "raw comments" not in description
-        and "internal notes" not in description
-        and "reviewer-only Zendesk HTML" in debug_description
-        and set(prepare_properties) == {"semantic_review_ref"}
-        and prepare_tool.get("inputSchema", {}).get("required") == [
-            "semantic_review_ref"
-        ]
-        and prepare_annotations.get("destructiveHint") is False
-        and prepare_annotations.get("idempotentHint") is True
-        and prepare_annotations.get("openWorldHint") is False
-        and prepare_annotations.get("readOnlyHint") is True
-        and "semantic_review_required" in prepare_description
-        and "bounded excerpts" in prepare_description
-        and set(submit_properties)
-        == {"candidate_semantic_extraction", "semantic_review_ref"}
-        and submit_tool.get("inputSchema", {}).get("required")
-        == ["semantic_review_ref", "candidate_semantic_extraction"]
-        and submit_annotations.get("destructiveHint") is False
-        and submit_annotations.get("idempotentHint") is False
-        and submit_annotations.get("openWorldHint") is False
-        and submit_annotations.get("readOnlyHint") is False
-        and "candidate_semantic_extraction_v1" in submit_description
-        and "No article draft" in submit_description
-        and set(behavior_properties) == set()
-        and behavior_tool.get("inputSchema", {}).get("required") == []
-        and behavior_annotations.get("destructiveHint") is False
-        and behavior_annotations.get("idempotentHint") is True
-        and behavior_annotations.get("openWorldHint") is False
-        and behavior_annotations.get("readOnlyHint") is True
-        and "Legacy compatibility helper" in behavior_description
-        and "continue /draft" in behavior_description
-    )
+    if not _text_has_expected_terms(
+        description,
+        includes=spec.description_includes,
+        excludes=spec.description_excludes,
+    ):
+        return False
+    if spec.debug_description_includes:
+        debug_description = str(properties.get("debug", {}).get("description", ""))
+        return all(
+            text in debug_description
+            for text in spec.debug_description_includes
+        )
+    return True
 
 
 def _no_candidates_ok(response: dict[str, Any]) -> bool:

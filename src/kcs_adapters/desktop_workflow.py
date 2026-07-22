@@ -374,16 +374,7 @@ class DesktopDraftWorkflow:
     def prepared_semantic_review_packet(self, semantic_review_ref: object) -> JsonDict:
         """Return a pending semantic-review packet or raise a controlled error."""
 
-        pending = self._pending_semantic_review
-        if pending is None:
-            raise SemanticReviewUnavailableError
-        if not isinstance(semantic_review_ref, str):
-            raise SemanticReviewInvalidError
-        if semantic_review_ref != pending.semantic_review_ref:
-            raise SemanticReviewInvalidError
-        if pending.expires_at <= time.monotonic():
-            self._pending_semantic_review = None
-            raise SemanticReviewExpiredError
+        pending = self._pending_semantic_review_for_ref(semantic_review_ref)
         if pending.packet_prepared:
             raise SemanticReviewUnavailableError
         self._pending_semantic_review = prepared_pending_semantic_review(pending)
@@ -433,6 +424,15 @@ class DesktopDraftWorkflow:
         self,
         semantic_review_ref: object,
     ) -> PendingSemanticReview:
+        pending = self._pending_semantic_review_for_ref(semantic_review_ref)
+        if not pending.packet_prepared:
+            raise SemanticReviewUnavailableError
+        return pending
+
+    def _pending_semantic_review_for_ref(
+        self,
+        semantic_review_ref: object,
+    ) -> PendingSemanticReview:
         pending = self._pending_semantic_review
         if pending is None:
             raise SemanticReviewUnavailableError
@@ -443,8 +443,6 @@ class DesktopDraftWorkflow:
         if pending.expires_at <= time.monotonic():
             self._pending_semantic_review = None
             raise SemanticReviewExpiredError
-        if not pending.packet_prepared:
-            raise SemanticReviewUnavailableError
         return pending
 
     def selected_candidate(
@@ -502,13 +500,14 @@ def _minimal_environment_from_text(text: str) -> JsonDict:
     }
 
 
-def _platform_type_from_text(text: str) -> str:  # noqa: C901
-    return _PLATFORM_TYPE_BY_MATCH_FLAGS.get(
-        (
-            bool(_WINDOWS_ENVIRONMENT_RE.search(text)),
-            bool(_LINUX_ENVIRONMENT_RE.search(text)),
-        ),
-        "",
+def _platform_type_from_text(text: str) -> str:
+    return _PLATFORM_TYPE_BY_MATCH_FLAGS.get(_platform_match_flags(text), "")
+
+
+def _platform_match_flags(text: str) -> tuple[bool, bool]:
+    return (
+        bool(_WINDOWS_ENVIRONMENT_RE.search(text)),
+        bool(_LINUX_ENVIRONMENT_RE.search(text)),
     )
 
 

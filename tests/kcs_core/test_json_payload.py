@@ -50,6 +50,30 @@ def test_dump_json_dict_rejects_nan_values() -> None:
         dump_json_dict(_TestPayload({"confidence": float("nan")}))  # type: ignore[arg-type]
 
 
+def test_dump_json_dict_accepts_strict_json_scalar_values() -> None:
+    payload = dump_json_dict(
+        _TestPayload(
+            {
+                "none": None,
+                "text": "value",
+                "enabled": True,
+                "count": 3,
+                "ratio": 0.5,
+                "items": [None, "value", False, 7, 1.25],
+            }
+        )  # type: ignore[arg-type]
+    )
+
+    assert payload == {
+        "none": None,
+        "text": "value",
+        "enabled": True,
+        "count": 3,
+        "ratio": 0.5,
+        "items": [None, "value", False, 7, 1.25],
+    }
+
+
 def test_dumps_payload_rejects_non_serializable_values() -> None:
     with pytest.raises(ContractValidationError):
         dumps_payload(_TestPayload({"bad": object()}))  # type: ignore[arg-type]

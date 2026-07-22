@@ -33,6 +33,93 @@ EXPECTED_STATIC_BUNDLE_FILES = {
     "server/index.js",
 }
 NODE_COMMAND = shutil.which("node")
+MCPB_MANIFEST_LONG_DESCRIPTION_INCLUDES = (
+    "Use kcs_draft_ticket for /draft <ticket_ref>",
+    "Use only the listed KCS Authoring tools",
+    "legacy instruction requires",
+    "support_get_behavior_instructions",
+    "Plesk Support Assistant Local",
+    "Do not report Plesk Support Assistant Local as missing",
+    "kcs_prepare_semantic_review",
+    "kcs_submit_semantic_review",
+    "Claude CLI/Code",
+    "API key",
+)
+MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES = {
+    "kcs_register_clean_ticket": (
+        "sanitized ticket text is visible",
+        "no ticket_ref exists",
+        "clean_ticket_text",
+        "next_arguments",
+    ),
+    "kcs_draft_ticket": (
+        "Use immediately",
+        "/draft <ticket_ref>",
+        "only ticket_ref",
+        "Do not ask for an attachment",
+    ),
+    "kcs_draft_article": (
+        "short approved_summary_text",
+        "For /draft <ticket_ref>, use kcs_draft_ticket",
+    ),
+    "kcs_prepare_semantic_review": (
+        "semantic_review_required",
+        "bounded excerpts",
+    ),
+    "kcs_submit_semantic_review": (
+        "candidate_semantic_extraction_v1",
+        "No article draft",
+    ),
+    "support_get_behavior_instructions": (
+        "Legacy compatibility helper",
+        "continue /draft",
+    ),
+}
+MCPB_DRAFT_TOOL_DESCRIPTION_EXCLUDES = (
+    "raw comments",
+    "internal notes",
+    "copy the tool content verbatim",
+    "Do not rewrite it into a Markdown article",
+    "let me know if you want adjustments",
+    "structured item",
+    "break-fix",
+)
+MCPB_NODE_WRAPPER_TEXT_INCLUDES = (
+    "KCS_AUTHORING_MVP_REPO_ROOT",
+    "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT",
+    "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT",
+    "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF",
+    "defaultCleanTicketStoreRoot",
+    "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT:\n"
+    "    process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT ||\n"
+    "    defaultCleanTicketStoreRoot",
+    "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT",
+    "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_HINT",
+    "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_REF",
+    "KCS_AUTHORING_MVP_UV_COMMAND",
+    "KCS_AUTHORING_MVP_PYTHON_COMMAND",
+    "KCS_AUTHORING_MVP_RUNTIME",
+    "bundledRoot",
+    '"python"',
+    '"python3.11"',
+    "PYTHONPATH",
+    "sourceRoot",
+    'name = "kcs-authoring-mvp"',
+    "src\", \"kcs_adapters\", \"mcp_desktop.py",
+    '"--project"',
+    '"kcs-desktop-mcp"',
+    '"claude_desktop_aliases"',
+    "process.stdin.pipe(child.stdin)",
+    "child.stdout",
+    "USERPROFILE",
+    "APPDATA",
+    "Application Support",
+    "Documents",
+    "KCS Authoring",
+    "TMPDIR",
+)
+MCPB_NODE_WRAPPER_TEXT_EXCLUDES = ("/Users/",)
+MCPB_NODE_WRAPPER_CASEFOLD_EXCLUDES = ("plesk",)
 
 
 def _load_build_module():
@@ -90,12 +177,36 @@ def _copy_mcpb_source(tmp_path: Path) -> Path:
     return source
 
 
+def _tools_by_name(manifest: dict) -> dict[str, dict]:
+    return {tool["name"]: tool for tool in manifest["tools"]}
+
+
+def _assert_text_contains_all(text: str, expected: tuple[str, ...]) -> None:
+    for term in expected:
+        assert term in text
+
+
+def _assert_text_excludes_all(text: str, forbidden: tuple[str, ...]) -> None:
+    for term in forbidden:
+        assert term not in text
+
+
+def _assert_casefold_text_excludes_all(
+    text: str,
+    forbidden: tuple[str, ...],
+) -> None:
+    casefolded = text.casefold()
+    for term in forbidden:
+        assert term not in casefolded
+
+
 def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     manifest = json.loads((MCPB_SOURCE / "manifest.json").read_text(encoding="utf-8"))
     expected_tool_names = {
         CLAUDE_DESKTOP_TOOL_ALIASES[tool_name]
         for tool_name in DESKTOP_OPERATOR_TOOLS
     }
+    tools_by_name = _tools_by_name(manifest)
 
     assert manifest["manifest_version"] == "0.3"
     assert manifest["name"] == "kcs-authoring-mvp-validator-control"
@@ -103,78 +214,24 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert manifest["server"]["entry_point"] == "server/index.js"
     assert manifest["server"]["mcp_config"]["command"] == "node"
     assert {tool["name"] for tool in manifest["tools"]} == expected_tool_names
-    assert "Use kcs_draft_ticket for /draft <ticket_ref>" in (
-        manifest["long_description"]
+    _assert_text_contains_all(
+        manifest["long_description"],
+        MCPB_MANIFEST_LONG_DESCRIPTION_INCLUDES,
     )
-    assert "Use only the listed KCS Authoring tools" in (
-        manifest["long_description"]
-    )
-    assert "legacy instruction requires" in manifest["long_description"]
-    assert "support_get_behavior_instructions" in manifest["long_description"]
-    assert "Plesk Support Assistant Local" in manifest["long_description"]
-    assert "Do not report Plesk Support Assistant Local as missing" in (
-        manifest["long_description"]
-    )
-    assert "kcs_prepare_semantic_review" in manifest["long_description"]
-    assert "kcs_submit_semantic_review" in manifest["long_description"]
-    assert "Claude CLI/Code" in manifest["long_description"]
-    assert "API key" in manifest["long_description"]
     assert all(
         not tool["name"].startswith("kcs_validate_")
         for tool in manifest["tools"]
     )
     assert all("." not in tool["name"] for tool in manifest["tools"])
-    register_tool = next(
-        tool
-        for tool in manifest["tools"]
-        if tool["name"] == "kcs_register_clean_ticket"
+    for tool_name, expected_terms in MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES.items():
+        _assert_text_contains_all(
+            tools_by_name[tool_name]["description"],
+            expected_terms,
+        )
+    _assert_text_excludes_all(
+        tools_by_name["kcs_draft_article"]["description"],
+        MCPB_DRAFT_TOOL_DESCRIPTION_EXCLUDES,
     )
-    assert "sanitized ticket text is visible" in register_tool["description"]
-    assert "no ticket_ref exists" in register_tool["description"]
-    assert "clean_ticket_text" in register_tool["description"]
-    assert "next_arguments" in register_tool["description"]
-    draft_ticket_tool = next(
-        tool for tool in manifest["tools"] if tool["name"] == "kcs_draft_ticket"
-    )
-    assert "Use immediately" in draft_ticket_tool["description"]
-    assert "/draft <ticket_ref>" in draft_ticket_tool["description"]
-    assert "only ticket_ref" in draft_ticket_tool["description"]
-    assert "Do not ask for an attachment" in draft_ticket_tool["description"]
-    draft_tool = next(
-        tool for tool in manifest["tools"] if tool["name"] == "kcs_draft_article"
-    )
-    assert "short approved_summary_text" in draft_tool["description"]
-    assert "For /draft <ticket_ref>, use kcs_draft_ticket" in draft_tool[
-        "description"
-    ]
-    assert "raw comments" not in draft_tool["description"]
-    assert "internal notes" not in draft_tool["description"]
-    prepare_tool = next(
-        tool
-        for tool in manifest["tools"]
-        if tool["name"] == "kcs_prepare_semantic_review"
-    )
-    assert "semantic_review_required" in prepare_tool["description"]
-    assert "bounded excerpts" in prepare_tool["description"]
-    submit_tool = next(
-        tool
-        for tool in manifest["tools"]
-        if tool["name"] == "kcs_submit_semantic_review"
-    )
-    assert "candidate_semantic_extraction_v1" in submit_tool["description"]
-    assert "No article draft" in submit_tool["description"]
-    behavior_tool = next(
-        tool
-        for tool in manifest["tools"]
-        if tool["name"] == "support_get_behavior_instructions"
-    )
-    assert "Legacy compatibility helper" in behavior_tool["description"]
-    assert "continue /draft" in behavior_tool["description"]
-    assert "copy the tool content verbatim" not in draft_tool["description"]
-    assert "Do not rewrite it into a Markdown article" not in draft_tool["description"]
-    assert "let me know if you want adjustments" not in draft_tool["description"]
-    assert "structured item" not in draft_tool["description"]
-    assert "break-fix" not in draft_tool["description"]
     assert manifest["prompts_generated"] is False
     assert manifest["tools_generated"] is False
 
@@ -198,42 +255,12 @@ def test_mcpb_manifest_requires_no_user_config_or_secrets() -> None:
 def test_mcpb_node_wrapper_launches_bundled_or_source_stdio_server() -> None:
     text = (MCPB_SOURCE / "server" / "index.js").read_text(encoding="utf-8")
 
-    assert "KCS_AUTHORING_MVP_REPO_ROOT" in text
-    assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT" in text
-    assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_HINT" in text
-    assert "KCS_AUTHORING_MVP_APPROVED_TICKET_STORAGE_REF" in text
-    assert "defaultCleanTicketStoreRoot" in text
-    assert (
-        "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT:\n"
-        "    process.env.KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT ||\n"
-        "    defaultCleanTicketStoreRoot"
-    ) in text
-    assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_ROOT" in text
-    assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_HINT" in text
-    assert "KCS_AUTHORING_MVP_REVIEWER_BUNDLE_STORAGE_REF" in text
-    assert "KCS_AUTHORING_MVP_UV_COMMAND" in text
-    assert "KCS_AUTHORING_MVP_PYTHON_COMMAND" in text
-    assert "KCS_AUTHORING_MVP_RUNTIME" in text
-    assert "bundledRoot" in text
-    assert '"python"' in text
-    assert '"python3.11"' in text
-    assert "PYTHONPATH" in text
-    assert "sourceRoot" in text
-    assert 'name = "kcs-authoring-mvp"' in text
-    assert "src\", \"kcs_adapters\", \"mcp_desktop.py" in text
-    assert '"--project"' in text
-    assert '"kcs-desktop-mcp"' in text
-    assert '"claude_desktop_aliases"' in text
-    assert "/Users/" not in text
-    assert "plesk" not in text.casefold()
-    assert "process.stdin.pipe(child.stdin)" in text
-    assert "child.stdout" in text
-    assert "USERPROFILE" in text
-    assert "APPDATA" in text
-    assert "Application Support" in text
-    assert "Documents" in text
-    assert "KCS Authoring" in text
-    assert "TMPDIR" in text
+    _assert_text_contains_all(text, MCPB_NODE_WRAPPER_TEXT_INCLUDES)
+    _assert_text_excludes_all(text, MCPB_NODE_WRAPPER_TEXT_EXCLUDES)
+    _assert_casefold_text_excludes_all(
+        text,
+        MCPB_NODE_WRAPPER_CASEFOLD_EXCLUDES,
+    )
 
 
 def test_stdio_smoke_checks_persisted_clean_ticket_file(

@@ -59,6 +59,19 @@ def test_desktop_payload_normalizes_aliases_and_applicable_to() -> None:
     assert candidate["symptoms"] == ["Monitoring graphs show no data."]
 
 
+def test_desktop_payload_uses_first_alias_for_canonical_field() -> None:
+    arguments = _payload_args()
+    assert isinstance(arguments["item"], dict)
+    arguments["item"]["root_cause"] = "First alias wins for supported cause."
+    arguments["item"]["cause"] = "Later alias must not replace supported cause."
+
+    payload = approved_summary_pipeline_payload(arguments)
+
+    candidate = payload["issue_candidates"][0]
+    assert candidate["supported_cause"] == "First alias wins for supported cause."
+    assert payload["supported_cause"] == "First alias wins for supported cause."
+
+
 def test_desktop_payload_rejects_unknown_item_field_as_argument_shape() -> None:
     arguments = _payload_args()
     assert isinstance(arguments["item"], dict)

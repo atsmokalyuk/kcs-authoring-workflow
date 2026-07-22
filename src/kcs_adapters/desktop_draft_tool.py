@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,54 @@ _LIKELY_KCS_MATERIAL_RE = re.compile(
     r")\b",
     re.I,
 )
+_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS = claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE)
+
+
+@dataclass(frozen=True)
+class _DraftArticlePrimaryCallShape:
+    has_summary: bool
+    has_selection_ref: bool
+    has_selected_item_ref: bool
+    has_ticket_ref: bool
+
+    @classmethod
+    def from_arguments(
+        cls,
+        arguments: Mapping[str, Any],
+    ) -> _DraftArticlePrimaryCallShape:
+        return cls(
+            has_summary=bool(arguments.get("approved_summary_text")),
+            has_selection_ref=bool(arguments.get("operator_selection_ref")),
+            has_selected_item_ref=bool(arguments.get("operator_selected_item_ref")),
+            has_ticket_ref=bool(arguments.get("ticket_ref")),
+        )
+
+    @property
+    def is_summary_authoring(self) -> bool:
+        return (
+            self.has_summary
+            and not self.has_selection_ref
+            and not self.has_selected_item_ref
+            and not self.has_ticket_ref
+        )
+
+    @property
+    def is_ticket_ref_authoring(self) -> bool:
+        return (
+            self.has_ticket_ref
+            and not self.has_summary
+            and not self.has_selection_ref
+            and not self.has_selected_item_ref
+        )
+
+    @property
+    def is_operator_selection_authoring(self) -> bool:
+        return (
+            self.has_selection_ref
+            and self.has_selected_item_ref
+            and not self.has_summary
+            and not self.has_ticket_ref
+        )
 
 
 class DesktopDraftArticleTool:
@@ -134,26 +183,12 @@ class DesktopDraftArticleTool:
             result["review_summary"]["semantic_item_outcomes"] = semantic_item_outcomes
             return result
         if len(candidates) > 1:
-            result = _desktop_draft_arguments.draft_article_split_required_result(
-                {"item_candidates": candidates},
-                schema_version=self._schema_version,
-            )
-            if result is None:  # pragma: no cover - defensive invariant
-                return _author_failure_result(
-                    failure_stage="semantic_extraction",
-                    debug_code="semantic_review_submission_invalid",
-                    schema_version=self._schema_version,
-                )
-            pending_selection = self._new_pending_draft_selection(
+            result = self._split_required_selection_result(
                 candidates,
                 approved_summary_text=approved_summary_text,
                 approved_summary_source_kind=approved_summary_source_kind,
                 semantic_item_outcomes=semantic_item_outcomes,
-            )
-            attach_pending_selection(
-                result,
-                pending_selection,
-                submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+                invalid_debug_code="semantic_review_submission_invalid",
             )
             result["approved_summary_source"] = "semantic_review"
             result["reviewer_bundle_written"] = False
@@ -198,32 +233,14 @@ class DesktopDraftArticleTool:
             _desktop_draft_arguments.DRAFT_ARTICLE_DESKTOP_PRIMARY_ARGS
         ):
             return None
-        has_summary = bool(arguments.get("approved_summary_text"))
-        has_selection_ref = bool(arguments.get("operator_selection_ref"))
-        has_selected_item_ref = bool(arguments.get("operator_selected_item_ref"))
-        has_ticket_ref = bool(arguments.get("ticket_ref"))
-        if (
-            has_summary
-            and not has_selection_ref
-            and not has_selected_item_ref
-            and not has_ticket_ref
-        ):
+        call_shape = _DraftArticlePrimaryCallShape.from_arguments(arguments)
+        if call_shape.is_summary_authoring:
             self._draft_workflow.clear_pending_semantic_review()
             return self._draft_article_from_primary_summary(arguments)
-        if (
-            has_ticket_ref
-            and not has_summary
-            and not has_selection_ref
-            and not has_selected_item_ref
-        ):
+        if call_shape.is_ticket_ref_authoring:
             self._draft_workflow.clear_pending_semantic_review()
             return self._draft_article_from_primary_ticket_ref(arguments)
-        if (
-            has_selection_ref
-            and has_selected_item_ref
-            and not has_summary
-            and not has_ticket_ref
-        ):
+        if call_shape.is_operator_selection_authoring:
             self._draft_workflow.clear_pending_semantic_review()
             return self._draft_article_from_primary_selection(arguments)
         return _author_failure_result(
@@ -271,27 +288,12 @@ class DesktopDraftArticleTool:
                 ticket_ref=ticket_ref_for_semantic_review,
             )
         if len(candidates) > 1:
-            result = _desktop_draft_arguments.draft_article_split_required_result(
-                {"item_candidates": candidates},
-                schema_version=self._schema_version,
-            )
-            if result is None:  # pragma: no cover - defensive invariant
-                return _author_failure_result(
-                    failure_stage="semantic_extraction",
-                    debug_code="semantic_extraction_output_invalid",
-                    schema_version=self._schema_version,
-                )
-            pending_selection = self._new_pending_draft_selection(
+            return self._split_required_selection_result(
                 candidates,
                 approved_summary_text=approved_summary_text,
                 approved_summary_source_kind=semantic_source_kind,
+                invalid_debug_code="semantic_extraction_output_invalid",
             )
-            attach_pending_selection(
-                result,
-                pending_selection,
-                submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
-            )
-            return result
         return self._draft_article_primary_author_result(
             _desktop_draft_arguments.draft_article_authoring_args_from_candidate(
                 approved_summary_text=approved_summary_text,
@@ -431,7 +433,7 @@ class DesktopDraftArticleTool:
                 arguments,
                 pending_selection,
                 schema_version=self._schema_version,
-                submit_tool=claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+                submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
             )
         result = self._draft_article_primary_author_result(
             _desktop_draft_arguments.draft_article_authoring_args_from_candidate(
@@ -459,9 +461,7 @@ class DesktopDraftArticleTool:
                 result.update(
                     remaining_operator_choice_status(
                         remaining_selection,
-                        submit_tool=claude_desktop_tool_alias(
-                            TOOL_DRAFT_ARTICLE,
-                        ),
+                        submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
                     )
                 )
         return result
@@ -477,6 +477,38 @@ class DesktopDraftArticleTool:
             include_reviewer_only_html=arguments.get("debug") is True,
             schema_version=self._schema_version,
         )
+
+    def _split_required_selection_result(
+        self,
+        candidates: list[JsonDict],
+        *,
+        approved_summary_text: str,
+        approved_summary_source_kind: str | None,
+        invalid_debug_code: str,
+        semantic_item_outcomes: list[JsonDict] | None = None,
+    ) -> JsonDict:
+        result = _desktop_draft_arguments.draft_article_split_required_result(
+            {"item_candidates": candidates},
+            schema_version=self._schema_version,
+        )
+        if result is None:  # pragma: no cover - defensive invariant
+            return _author_failure_result(
+                failure_stage="semantic_extraction",
+                debug_code=invalid_debug_code,
+                schema_version=self._schema_version,
+            )
+        pending_selection = self._new_pending_draft_selection(
+            candidates,
+            approved_summary_text=approved_summary_text,
+            approved_summary_source_kind=approved_summary_source_kind,
+            semantic_item_outcomes=semantic_item_outcomes,
+        )
+        attach_pending_selection(
+            result,
+            pending_selection,
+            submit_tool=_DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS,
+        )
+        return result
 
 
 def _author_failure_result(

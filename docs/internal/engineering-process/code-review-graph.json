@@ -1,0 +1,946 @@
+{
+  "schema_version": "kcs_code_review_graph_v1",
+  "status": "advisory_orientation_snapshot",
+  "generated_for_commit": "a263492",
+  "path_root": "repository-relative",
+  "purpose": "Orient development agents and reviewers before KCS-14 refactor work by mapping ownership areas, contract edges, risky files, and related tests. This graph is not a replacement for reading touched files and direct dependencies.",
+  "rules": {
+    "valid_until_changed": true,
+    "no_raw_private_artifacts": true,
+    "do_not_paste_ticket_text_or_reviewer_bundle_bodies": true,
+    "use_before_coding": "task intent -> affected graph nodes -> files, contracts, tests, and review questions",
+    "use_after_coding": "changed files -> affected graph nodes -> boundary risks, unchanged contracts, and validation"
+  },
+  "nodes": [
+    {
+      "id": "desktop_tool_surface",
+      "label": "Desktop MCP Tool Surface",
+      "risk": "high",
+      "owns": [
+        "Desktop MCP tool registration",
+        "Desktop-visible input schemas",
+        "Desktop protocol result shaping"
+      ],
+      "must_not_own": [
+        "KCS action decisions",
+        "semantic candidate validation policy",
+        "article rendering policy",
+        "reviewer bundle persistence"
+      ],
+      "must_preserve": [
+        "Desktop remains a control surface, not the owner of KCS decisions",
+        "tool schemas do not introduce publish, Zendesk write, or customer reply paths",
+        "manual/freehand drafting remains blocked unless explicitly approved"
+      ],
+      "contract_edges": [
+        "desktop_draft_workflow",
+        "desktop_protocol_transport",
+        "semantic_review_fallback",
+        "clean_ticket_storage",
+        "reviewer_bundle_output"
+      ],
+      "risk_areas": [
+        "schema drift can change Desktop behavior",
+        "result-shape drift can confuse Claude Desktop and external reviewers"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_adapters/mcp_desktop.py",
+          "file_hash": "82d02d81e9f421d085b3ed21a332231a313d49a8832a998a5ce6bc434e4a45fc",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_tool_schemas.py",
+          "file_hash": "6b1f3df30688cb4dc778e31f4399214b6a1494a3c0b09bf7eac3a0894457a2ee",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_tool_results.py",
+          "file_hash": "fd287d96f687fcdfa531b0684acba8b5ba67dd6400c2bbba3b1052c5b7723d9e",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_mcp_adapter.py",
+          "file_hash": "546c753d25b69c349416eb9435e7615876af1f92a2ca8b79777e5fc120d0d77b",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_authoring_tools.py",
+          "file_hash": "3debf411f76c497ad0a61fddc7b3bb904dafe739236f35478a4a80a55fabc178",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_control_tools.py",
+          "file_hash": "88ce2254c892b3285475a8945d18fef7d8be366e674c17b3600d8117988dc52d",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_tool_descriptors.py",
+          "file_hash": "fbc8d712430b62d710222531447b74e306290fe8b0707e32d0cb73073f200c84",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_tool_names.py",
+          "file_hash": "549c3374dca8a8b1c722d1b582f841c34d99a64af3ca3867391e52a98a877069",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_adapters/test_mcp_desktop.py",
+        "tests/kcs_adapters/test_desktop_mcp_adapter.py",
+        "tests/kcs_adapters/test_desktop_protocol_results.py",
+        "tests/kcs_adapters/test_desktop_authoring_tools.py",
+        "tests/kcs_adapters/test_desktop_control_tools.py"
+      ]
+    },
+    {
+      "id": "desktop_protocol_transport",
+      "label": "Desktop Protocol And Transport",
+      "risk": "medium",
+      "owns": [
+        "Desktop JSON-RPC framing",
+        "stdio transport",
+        "protocol payload conversion",
+        "MCP result envelope helpers"
+      ],
+      "must_not_own": [
+        "KCS workflow decisions",
+        "tool schema business rules",
+        "semantic-review validation",
+        "provider calls"
+      ],
+      "must_preserve": [
+        "transport remains a protocol boundary",
+        "payload helpers do not expose raw ticket or provider payload bodies",
+        "protocol changes do not alter KCS decisions"
+      ],
+      "contract_edges": [
+        "desktop_tool_surface",
+        "desktop_draft_workflow"
+      ],
+      "risk_areas": [
+        "transport helpers can become pass-through layers with hidden behavior",
+        "protocol envelope changes can look like internal cleanup while changing Desktop behavior"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_adapters/desktop_jsonrpc.py",
+          "file_hash": "5e666474fcf78881344453eaa734906650f4a09636b056c040e9403266aa0f7c",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_protocol.py",
+          "file_hash": "014f0920ac53fe54c8a9823b4bf42b0d1a16afaa3be29326260558ce7a013a86",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_stdio_transport.py",
+          "file_hash": "2c668bb2e913fe65c9f1c56baeed1a23c5c0ede2a65ba1a286a45b20036faf9f",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_payload.py",
+          "file_hash": "9425e04f68eec9e8af378371f433f39a02bc387bff2b89e354798b4059aa46eb",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_mcp_results.py",
+          "file_hash": "abdd59af2ab8d260d88f587c89abfb85d28d3025597f0d38cea072a80332e174",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_adapters/test_desktop_stdio_transport.py",
+        "tests/kcs_adapters/test_desktop_payload.py",
+        "tests/kcs_adapters/test_desktop_protocol_results.py",
+        "tests/kcs_adapters/test_mcp_desktop.py"
+      ]
+    },
+    {
+      "id": "clean_ticket_storage",
+      "label": "Clean Ticket Storage",
+      "risk": "high",
+      "owns": [
+        "ticket_ref lookup and validation",
+        "approved clean-ticket metadata",
+        "safe local clean-ticket store access"
+      ],
+      "must_not_own": [
+        "semantic extraction decisions",
+        "article rendering",
+        "reviewer bundle writing",
+        "provider credential or endpoint material"
+      ],
+      "must_preserve": [
+        "ticket_ref remains the primary local clean-ticket path",
+        "raw or incomplete ticket text is rejected",
+        "path traversal, symlink escape, and private artifact exposure stay blocked"
+      ],
+      "contract_edges": [
+        "desktop_tool_surface",
+        "desktop_draft_workflow",
+        "semantic_review_fallback"
+      ],
+      "risk_areas": [
+        "safe-ref validation drift can expose local files",
+        "metadata drift can make local fixtures or reviewer packets non-portable"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_adapters/desktop_ticket_ref.py",
+          "file_hash": "4dc7ed05d29511b8337d6a378b79d7a746284fbedd213699f3876127bd4b8af2",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_clean_ticket_metadata.py",
+          "file_hash": "a5370d886820aa8599f25fc10d7d876cd622ed7ca1eea406eb89af9b5df03742",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_adapters/test_desktop_ticket_ref.py",
+        "tests/kcs_adapters/test_mcp_desktop.py"
+      ]
+    },
+    {
+      "id": "provider_handoff_boundary",
+      "label": "Provider And Handoff Boundary",
+      "risk": "high",
+      "owns": [
+        "Claude provider adapter boundary",
+        "approved-summary semantic extraction adapter",
+        "draft and handoff packet helper surfaces"
+      ],
+      "must_not_own": [
+        "trusted KCS decisions",
+        "packet acceptance",
+        "publication behavior",
+        "Desktop transport"
+      ],
+      "must_preserve": [
+        "provider output remains untrusted data",
+        "Python validators own packet acceptance",
+        "provider credentials and runtime endpoints stay out of serializable packets"
+      ],
+      "contract_edges": [
+        "semantic_review_fallback",
+        "packet_validation_decision",
+        "desktop_draft_workflow"
+      ],
+      "risk_areas": [
+        "provider convenience helpers can accidentally become decision owners",
+        "handoff payload helpers can leak private or runtime-only material"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_adapters/claude_provider.py",
+          "file_hash": "1465e1911bd13b9b9e7a1da1ba7f489e237fed9f5cc2f39d75f8749d24f9983a",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/approved_summary_semantic.py",
+          "file_hash": "f8d77e725b69ed882385e264b67cfd650f156473a42364d9d4440e5e49f09f4d",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/claude_draft.py",
+          "file_hash": "9bcbf16f4fe315fa41c3eb80bb3378c4083a7faaf73ed20a20303d2c536094b1",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/claude_handoff.py",
+          "file_hash": "06e643cec1cbbd12f1d3bee4a49c5b9189d3d79db2867bb3cf37f8a153b65612",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_adapters/test_approved_summary_semantic.py",
+        "tests/kcs_adapters/test_claude_provider.py",
+        "tests/kcs_core/test_claude_draft.py",
+        "tests/kcs_core/test_claude_handoff.py",
+        "tests/kcs_core/test_semantic_extraction.py",
+        "tests/kcs_core/test_validation.py"
+      ]
+    },
+    {
+      "id": "semantic_review_fallback",
+      "label": "Controlled Semantic Review Fallback",
+      "risk": "high",
+      "owns": [
+        "bounded semantic-review packet",
+        "pending semantic-review state",
+        "candidate_semantic_extraction_v1 submit validation",
+        "allowed source_ref rules"
+      ],
+      "must_not_own": [
+        "drafted article bodies",
+        "final KCS action decisions",
+        "reviewer bundle writing",
+        "provider trust"
+      ],
+      "must_preserve": [
+        "Claude/provider output remains untrusted until Python validation",
+        "selected excerpts stay bounded and are not pasted into review packets",
+        "unknown source_refs, article HTML, Markdown drafts, and local paths are rejected"
+      ],
+      "contract_edges": [
+        "desktop_tool_surface",
+        "desktop_draft_workflow",
+        "provider_handoff_boundary",
+        "packet_validation_decision"
+      ],
+      "risk_areas": [
+        "temporal prepare/submit/continue splits can leak schema knowledge",
+        "provider output can bypass validators if ownership is unclear"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_adapters/desktop_semantic_review.py",
+          "file_hash": "ce62e2001fb0f6d439f43e3b03b276cd038974a976c8b522d720db9bf001b206",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_semantic_review_submission.py",
+          "file_hash": "3767bb52d64c3ff809ed7d4dd915fea88f737f441bd066ea25c59f8bdfec9837",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_semantic_candidates.py",
+          "file_hash": "ca1dbf7b01055f0d7a3c5795a0570b1afa3e366eec1ef45b40c82dc252b38446",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_semantic_providers.py",
+          "file_hash": "79fc93aa770fe938e145c971956fef08fbee611bb6f64fec5c947193cd919fd4",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/semantic_extraction.py",
+          "file_hash": "b02537c07c62c1192a8355785dd2d43d7ed536786752fde9b4cc26b4c178262c",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_adapters/test_desktop_semantic_candidates.py",
+        "tests/kcs_adapters/test_approved_summary_semantic.py",
+        "tests/kcs_core/test_semantic_extraction.py",
+        "tests/kcs_adapters/test_mcp_desktop.py"
+      ]
+    },
+    {
+      "id": "desktop_draft_workflow",
+      "label": "Desktop Draft Workflow",
+      "risk": "high",
+      "owns": [
+        "Desktop draft orchestration",
+        "operator selection state",
+        "semantic provider handoff",
+        "workflow status and compact results"
+      ],
+      "must_not_own": [
+        "clean-ticket storage rules",
+        "semantic-review schema internals",
+        "core KCS decision rules",
+        "Zendesk publication"
+      ],
+      "must_preserve": [
+        "Python owns workflow state and validated decisions",
+        "split/single/block decisions stay deterministic",
+        "reviewer bundle writing only happens after validated packet decisions allow it"
+      ],
+      "contract_edges": [
+        "desktop_tool_surface",
+        "desktop_protocol_transport",
+        "clean_ticket_storage",
+        "semantic_review_fallback",
+        "provider_handoff_boundary",
+        "packet_validation_decision",
+        "reviewer_bundle_output"
+      ],
+      "risk_areas": [
+        "orchestration can accidentally take ownership of rules owned by deeper modules",
+        "operator selection changes can affect multi-item ticket behavior"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_adapters/desktop_draft_tool.py",
+          "file_hash": "153d25aaeba7e8e91f691b56128fca45ca84bba7293055288956d291128056d2",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_workflow.py",
+          "file_hash": "27932e83a4cd04ec4d05032c71136ae92659f0f56e47f33725f757153cebe7f2",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_operator_selection.py",
+          "file_hash": "a21750ab889dab67a25c168b439beb2a028a0f5339550aa5a9703e601014ed8c",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_authoring_pipeline.py",
+          "file_hash": "335223c6d5e61b50e3c8dbb6e4922502f22f6315b1fee3b4217b01e2eea64291",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_draft_arguments.py",
+          "file_hash": "6c73a881436658d643515bb53833c6b4c507fc9888848fd6c7c40da63709797e",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_draft_output.py",
+          "file_hash": "a7c0b056f6dcb18e7a9f6234796b490990faf47fea5a8381bbe25deecc316bfb",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_workflow_results.py",
+          "file_hash": "2250b74f832eeb9403480fe4891381f09f2b054576db81533944a9af1ca20d1f",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_workflow_status.py",
+          "file_hash": "1829c0e75fa489a327c0ec8540949179a8b0dfc77f29a3c429129374669f9782",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_adapters/test_desktop_draft_tool.py",
+        "tests/kcs_adapters/test_desktop_workflow.py",
+        "tests/kcs_adapters/test_desktop_operator_selection.py",
+        "tests/kcs_adapters/test_desktop_draft_output.py",
+        "tests/kcs_adapters/test_desktop_workflow_results.py",
+        "tests/kcs_adapters/test_desktop_workflow_status.py",
+        "tests/kcs_adapters/test_mcp_desktop.py"
+      ]
+    },
+    {
+      "id": "packet_validation_decision",
+      "label": "Packet Validation And KCS Decisions",
+      "risk": "high",
+      "owns": [
+        "KCS packet models",
+        "packet validation",
+        "data safety checks",
+        "deterministic action recommendation and blocker codes"
+      ],
+      "must_not_own": [
+        "Desktop transport",
+        "provider calls",
+        "renderer presentation details",
+        "local reviewer-bundle paths"
+      ],
+      "must_preserve": [
+        "auto_publish_allowed remains false",
+        "privacy and evidence boundaries remain fail-closed",
+        "manual/freehand drafting remains blocked",
+        "provider output cannot decide, render, publish, or write artifacts"
+      ],
+      "contract_edges": [
+        "cli_ingest_readiness",
+        "desktop_draft_workflow",
+        "semantic_review_fallback",
+        "provider_handoff_boundary",
+        "renderer_style_gates",
+        "reviewer_bundle_output"
+      ],
+      "risk_areas": [
+        "decision/blocker drift can silently change runtime behavior",
+        "validation drift can weaken privacy or fail-closed behavior"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_core/models.py",
+          "file_hash": "5f94a71bc07d7f90818ffcf9437e66fe256e8bd1c0afac810240c346d6fd617c",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/validation.py",
+          "file_hash": "9a7391ba4edcadf744bc624ec3a93914477e4efc303a1167d788d6471df04bcb",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/safety.py",
+          "file_hash": "dfa8ca65bb197d94800034f48f4f2e599374a94871b6ae60640a4c2e09cb13b0",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/decision.py",
+          "file_hash": "5beabd2829f7eb3c3f0b0dce51f274b2bdedd22960d43e78a76d633ce1a48ce3",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/evidence_builder.py",
+          "file_hash": "379ad02f2ba102baa1a186512afa475c5a40675f017bbf077c0db977f9f11899",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/sanitizer.py",
+          "file_hash": "07dbd6535100c0b3bcf196fb6387857490c81281c32c10152655682da0bdfe87",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_core/test_models.py",
+        "tests/kcs_core/test_validation.py",
+        "tests/kcs_core/test_safety.py",
+        "tests/kcs_core/test_decision.py",
+        "tests/kcs_core/test_evidence_builder.py",
+        "tests/kcs_core/test_fixture_contracts.py",
+        "tests/kcs_core/test_cli.py"
+      ]
+    },
+    {
+      "id": "cli_ingest_readiness",
+      "label": "CLI, Ingest, And Readiness",
+      "risk": "medium",
+      "owns": [
+        "CLI entrypoint behavior",
+        "JSON payload loading",
+        "Zendesk ingest helpers",
+        "readiness checks and safe error surfaces"
+      ],
+      "must_not_own": [
+        "Desktop-specific state",
+        "provider trust decisions",
+        "renderer presentation policy",
+        "reviewer bundle writing"
+      ],
+      "must_preserve": [
+        "CLI errors remain value-safe",
+        "input loading does not bypass packet validation",
+        "readiness checks do not become runtime publication approval"
+      ],
+      "contract_edges": [
+        "packet_validation_decision",
+        "renderer_style_gates"
+      ],
+      "risk_areas": [
+        "CLI and ingest helpers can bypass the same validators used by Desktop",
+        "readiness checks can be mistaken for approval to publish"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_core/cli.py",
+          "file_hash": "8d23f186a270366258836e87b69380537f93fc8fbe85cb4dd57708c2f92f6535",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/json_payload.py",
+          "file_hash": "6182c29ad602cfc706226d8259293e0b7e8d93990d180c64974db0f5663cff31",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/zendesk_ingest.py",
+          "file_hash": "d3f04fc99827eecb198227c9604a3dd298fe5c46f06af74cce1b8db2abdd92f5",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/readiness.py",
+          "file_hash": "52ec2222360ceb4fb86a94fbb97ff6a14ec9e30eb6311a17dfcb44cba2502834",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/errors.py",
+          "file_hash": "20b695a504669fd518fe1ae1e3abc7eeb8328c05666950f9d95d3119b3bd47e9",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_core/test_cli.py",
+        "tests/kcs_core/test_json_payload.py",
+        "tests/kcs_core/test_readiness.py",
+        "tests/kcs_core/test_zendesk_ingest.py",
+        "tests/kcs_core/test_validation.py",
+        "tests/kcs_core/test_safety.py"
+      ]
+    },
+    {
+      "id": "renderer_style_gates",
+      "label": "Renderer And Current Style Gates",
+      "risk": "high",
+      "owns": [
+        "reviewer packet rendering",
+        "Zendesk HTML rendering",
+        "current markup-quality checks"
+      ],
+      "must_not_own": [
+        "KCS-15 style/markup parity expansion",
+        "KCS action decisions",
+        "semantic-review candidate validation",
+        "Desktop transport"
+      ],
+      "must_preserve": [
+        "current renderer behavior remains stable during KCS-14 refactor",
+        "KCS-15 source-doc style parity remains deferred",
+        "renderer does not invent resolution details"
+      ],
+      "contract_edges": [
+        "packet_validation_decision",
+        "reviewer_bundle_output"
+      ],
+      "risk_areas": [
+        "formatting refactor can accidentally become KCS-15 behavior work",
+        "presentation helpers can leak decision or validation knowledge"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_core/renderer.py",
+          "file_hash": "9d95c75480cdc4d18ab077dc5f27ec48ec053ffd2207346618484d54dfdbe893",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/zendesk_markup_quality.py",
+          "file_hash": "5cbcf6c420a6e5f10c0f1909c80edd42bb73708b9e66a961ccbf9e85d66297d6",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/kcs_markup_patterns.py",
+          "file_hash": "d5ad567b3292a466ae6665fd37a9e1bd05496cd55a9f0e4aba604132228ecce3",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/kcs_article_style_refs.py",
+          "file_hash": "7f61be8f30795db34bcc5b8f4032d7e83c5c9acc9bd80308db63b76be0a61d94",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_core/test_renderer.py",
+        "tests/kcs_adapters/test_zendesk_markup_quality.py",
+        "tests/kcs_adapters/test_kcs_markup_patterns.py",
+        "tests/kcs_adapters/test_kcs_article_style_refs.py"
+      ]
+    },
+    {
+      "id": "reviewer_bundle_output",
+      "label": "Reviewer Bundle Output",
+      "risk": "high",
+      "owns": [
+        "local reviewer bundle writing",
+        "bundle manifest shape",
+        "relative artifact references and hashes"
+      ],
+      "must_not_own": [
+        "KCS decisions",
+        "Desktop tool schema",
+        "Zendesk publish/write behavior",
+        "provider output trust"
+      ],
+      "must_preserve": [
+        "bundles are local artifacts only",
+        "returned paths remain relative/value-safe",
+        "auto_publish_allowed and public_output_approved remain false",
+        "bundle writing does not generate customer replies"
+      ],
+      "contract_edges": [
+        "desktop_draft_workflow",
+        "packet_validation_decision",
+        "renderer_style_gates"
+      ],
+      "risk_areas": [
+        "path or manifest drift can expose private local details",
+        "bundle writing can accidentally become publication behavior"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_adapters/desktop_reviewer_bundle.py",
+          "file_hash": "22b32f600ca4808d06ebe170a53c1e5a4114d4a751cfe475d1774dee76515b25",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/reviewer_bundle.py",
+          "file_hash": "d80b2cf40d9a25331e6e7845d4bb1dd2932610bea9d0bf8884e83cedac166c05",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_reviewer_preview.py",
+          "file_hash": "fbed8752b60f1044b3e5aa7e951c3818b5100c9ed5320a8a2f656bcd918565c4",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_core/test_reviewer_bundle.py",
+        "tests/kcs_adapters/test_desktop_reviewer_preview.py",
+        "tests/kcs_adapters/test_mcp_desktop.py"
+      ]
+    },
+    {
+      "id": "smoke_log_tooling",
+      "label": "Smoke And Log Tooling",
+      "risk": "medium",
+      "owns": [
+        "value-safe smoke accounting",
+        "Desktop log check entrypoints",
+        "MCPB stdio smoke scripts"
+      ],
+      "must_not_own": [
+        "runtime KCS decisions",
+        "provider output validation",
+        "reviewer bundle content",
+        "raw transcript storage"
+      ],
+      "must_preserve": [
+        "log tooling reports compact value-safe metrics only",
+        "manual/Desktop checks remain classified as manual or local-runtime checks",
+        "smoke scripts do not become architecture-planning harnesses"
+      ],
+      "contract_edges": [
+        "desktop_tool_surface",
+        "desktop_protocol_transport"
+      ],
+      "risk_areas": [
+        "tooling can accidentally make local Desktop state look deterministic",
+        "log parsing can pull private transcripts into review context"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_adapters/smoke_accounting.py",
+          "file_hash": "7edb08c91db9dbb818be9e40a24335673353e0df079afeb7875e0bf1db4bbb3b",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_contract_smoke.py",
+          "file_hash": "886509b65f71b1c8e3ead3743178d8ff8470e08f975de9ad4e4be2b673232ab7",
+          "valid_until_changed": true
+        },
+        {
+          "path": "scripts/check_claude_kcs_desktop_log.py",
+          "file_hash": "b94ed235b31934ad47fa897bdaa7d9e41e0c6015463be1694a26143b179af74b",
+          "valid_until_changed": true
+        },
+        {
+          "path": "scripts/smoke_kcs_mcpb_stdio.py",
+          "file_hash": "38178f61bbc8ba62790fb60ee84af6659f36d011be0b2ba1592e71159a3375ad",
+          "valid_until_changed": true
+        },
+        {
+          "path": "scripts/smoke_claude_desktop_ui_prompt.py",
+          "file_hash": "c9e9a264f4fc2ff8d8d4e3613875bed682aff660124f4fedd387bb36544f8d7b",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_adapters/test_smoke_accounting.py",
+        "tests/kcs_adapters/test_mcpb_package.py"
+      ]
+    },
+    {
+      "id": "packaging_and_install_tooling",
+      "label": "Packaging And Install Tooling",
+      "risk": "medium",
+      "owns": [
+        "Claude Desktop MCPB package source",
+        "Cowork plugin package source",
+        "package build scripts",
+        "install-time package validation"
+      ],
+      "must_not_own": [
+        "runtime KCS decisions",
+        "Desktop workflow state",
+        "provider output validation",
+        "article rendering policy"
+      ],
+      "must_preserve": [
+        "packaging does not add credential or secret requirements",
+        "packaged tool surface matches the supported Desktop control surface",
+        "install tooling validates package shape before local side effects"
+      ],
+      "contract_edges": [
+        "desktop_tool_surface",
+        "desktop_protocol_transport",
+        "smoke_log_tooling"
+      ],
+      "risk_areas": [
+        "packaging changes can alter shipped tool behavior without touching src",
+        "install helpers can create local side effects outside deterministic tests",
+        "plugin skill text can drift from repo-approved tool entrypoints"
+      ],
+      "files": [
+        {
+          "path": "scripts/build_kcs_mcpb.py",
+          "file_hash": "3a66dfbbe61b79966fe6bec7858877150cf7c15336a8d3c4ca980e76cc51992c",
+          "valid_until_changed": true
+        },
+        {
+          "path": "scripts/install_kcs_mcpb.py",
+          "file_hash": "ccda6c133d8553903a39ec59dabc01deef1e249e0debbe3c90ecd5c41c8b1ce8",
+          "valid_until_changed": true
+        },
+        {
+          "path": "scripts/build_kcs_cowork_plugin.py",
+          "file_hash": "93af9abb8b34249b7363e94f539a47f223190c14fea6688947d2283d6dd5474b",
+          "valid_until_changed": true
+        },
+        {
+          "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/README.md",
+          "file_hash": "7be3b4c02c5e06b8ee263644c6a2e2b8ee79c588f50463f1dbdced481edbc0da",
+          "valid_until_changed": true
+        },
+        {
+          "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/manifest.json",
+          "file_hash": "6719cbaa2d6660b044ae31766eb69b86de730779755cd4c6b6bba2a34ef4843c",
+          "valid_until_changed": true
+        },
+        {
+          "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/server/index.js",
+          "file_hash": "ee824932ef3dddfd0dcdc95eec921f1444ce29274f7561f9d1fbfdadd2fd9eba",
+          "valid_until_changed": true
+        },
+        {
+          "path": "packaging/cowork/kcs-authoring/.claude-plugin/plugin.json",
+          "file_hash": "cc628a930dfcdc14bfb66b0f3e5f6e13f165587787769593bf79f43111233d53",
+          "valid_until_changed": true
+        },
+        {
+          "path": "packaging/cowork/kcs-authoring/.mcp.json",
+          "file_hash": "4c746045b1cc7e8106db00564f5f35864a019fcf428d3c4e44831e14d6aec226",
+          "valid_until_changed": true
+        },
+        {
+          "path": "packaging/cowork/kcs-authoring/README.md",
+          "file_hash": "52c1f61bd065350e34ab84589d579a091da92740e53760b32063c7d0adb4b3ba",
+          "valid_until_changed": true
+        },
+        {
+          "path": "packaging/cowork/kcs-authoring/skills/kcs-authoring-control/SKILL.md",
+          "file_hash": "74462d1990f07e91ab9e50a11d5775b96dd3d46ce19bfe28fded29ac41b1150b",
+          "valid_until_changed": true
+        },
+        {
+          "path": "packaging/cowork/kcs-authoring/skills/kcs-authoring-control/references/tool-surface.md",
+          "file_hash": "af906d43bc1d9fea1e3ae28088b98f8de426ab7fd367545f3a2722a7d256cf9c",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_adapters/test_mcpb_package.py",
+        "tests/kcs_adapters/test_cowork_plugin_package.py",
+        "tests/policy/test_tool_entrypoints.py"
+      ]
+    },
+    {
+      "id": "package_surface",
+      "label": "Package Import Surface",
+      "risk": "low",
+      "owns": [
+        "package import markers",
+        "package-level public import expectations"
+      ],
+      "must_not_own": [
+        "runtime behavior",
+        "KCS decisions",
+        "Desktop behavior",
+        "provider behavior"
+      ],
+      "must_preserve": [
+        "package imports remain side-effect light",
+        "package markers do not hide runtime contract changes"
+      ],
+      "contract_edges": [
+        "desktop_tool_surface",
+        "packet_validation_decision"
+      ],
+      "risk_areas": [
+        "package-level exports can create implicit coupling"
+      ],
+      "files": [
+        {
+          "path": "src/kcs_adapters/__init__.py",
+          "file_hash": "96d82f764f3c35a1b0e26707969657c6751d0d9f9d920ff28c30b185af96ea5c",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/__init__.py",
+          "file_hash": "ca8fee2e58cc36ff43cecd9bd2e5d57a362b77f50f37efc833f37edc29a8ea3d",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/kcs_adapters/test_desktop_mcp_adapter.py",
+        "tests/kcs_adapters/test_cowork_plugin_package.py",
+        "tests/kcs_core/test_cli.py"
+      ]
+    },
+    {
+      "id": "engineering_policy_tests",
+      "label": "Engineering Policy Tests",
+      "risk": "medium",
+      "owns": [
+        "KCS-14 deterministic policy checks",
+        "documentation and process guardrail tests",
+        "code-review graph coverage checks"
+      ],
+      "must_not_own": [
+        "runtime KCS behavior",
+        "Desktop behavior",
+        "packet schemas",
+        "provider behavior"
+      ],
+      "must_preserve": [
+        "policy tests remain deterministic and local",
+        "policy tests check durable contracts, not incidental wording",
+        "policy tests do not require private local artifacts"
+      ],
+      "contract_edges": [
+        "package_surface",
+        "desktop_tool_surface",
+        "packet_validation_decision"
+      ],
+      "risk_areas": [
+        "policy checks can become brittle wording tests",
+        "process tests can be mistaken for runtime validation"
+      ],
+      "files": [
+        {
+          "path": "scripts/measure_complexity.py",
+          "file_hash": "ee5c080119444ab0ef9ed6c3a3ebabd7e6e141957cb4f0ec7f29494900f15770",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_code_review_graph_policy.py",
+          "file_hash": "b085e2e2d739874ffcd1322e6418f3c5d4887ed5d2cfa93a3f90039c2ce11cb4",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_complexity_measurement.py",
+          "file_hash": "0563b9d9d59d8b71c0081dc1624567d9ee64186ddac7577caf3f900a31bb33d2",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_functional_test_policy.py",
+          "file_hash": "1caabc5264c470efac8f1da875edcf8b9d97dc3a3b00f92f2770af0555d873ba",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_kcs14_docs_policy.py",
+          "file_hash": "3e0c795fe61ca660604bbe260d5ae143ffb3e3e750251c12db7406d4fafcd31e",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_kcs14_freeze_snapshots.py",
+          "file_hash": "a4d627d2dd983069e6de1b21932e28cd02882e7bbd4e037c337032cbf118abf7",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_review_context_policy.py",
+          "file_hash": "41cd63b65a1508c3fcbc769e7a138d75db234078a3ff9a1e10b4d7ce07d0b529",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_tool_entrypoints.py",
+          "file_hash": "0dae49e16442781b69a4af66351b59633f1680e7c1ff7e4253bec0459ae0c330",
+          "valid_until_changed": true
+        }
+      ],
+      "related_tests": [
+        "tests/policy/test_code_review_graph_policy.py",
+        "tests/policy/test_complexity_measurement.py",
+        "tests/policy/test_functional_test_policy.py",
+        "tests/policy/test_kcs14_docs_policy.py",
+        "tests/policy/test_kcs14_freeze_snapshots.py",
+        "tests/policy/test_review_context_policy.py",
+        "tests/policy/test_tool_entrypoints.py"
+      ]
+    }
+  ]
+}

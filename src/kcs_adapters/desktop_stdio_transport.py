@@ -44,6 +44,11 @@ class _MethodNotFound:
 
 
 _METHOD_NOT_FOUND = _MethodNotFound()
+_READY_BEFORE_INITIALIZED_METHODS = frozenset({"initialize", "ping"})
+_SUPPORTED_TOOL_NAME_STYLES = frozenset(
+    {TOOL_NAME_STYLE_DESKTOP_ALIASES, TOOL_NAME_STYLE_CANONICAL}
+)
+_TOOL_CALL_PARAM_KEYS = frozenset({"arguments", "name"})
 
 
 class McpStdioTransport:
@@ -56,10 +61,7 @@ class McpStdioTransport:
         adapter_factory: Callable[[set[str] | None], McpAdapterProtocol] | None = None,
         tool_name_style: str = TOOL_NAME_STYLE_DESKTOP_ALIASES,
     ) -> None:
-        if tool_name_style not in {
-            TOOL_NAME_STYLE_DESKTOP_ALIASES,
-            TOOL_NAME_STYLE_CANONICAL,
-        }:
+        if tool_name_style not in _SUPPORTED_TOOL_NAME_STYLES:
             raise ValueError("Unsupported MCP tool name style.")
         visible_tools = (
             DESKTOP_OPERATOR_TOOLS
@@ -93,7 +95,7 @@ class McpStdioTransport:
         is_notification = parsed.is_notification
         if is_notification:
             return self._handle_notification(method)
-        if not self._ready and method not in {"initialize", "ping"}:
+        if not self._ready and method not in _READY_BEFORE_INITIALIZED_METHODS:
             return _desktop_jsonrpc.error_response(
                 request_id,
                 _desktop_jsonrpc.SERVER_NOT_INITIALIZED,
@@ -181,7 +183,7 @@ class McpStdioTransport:
 
     def _call_tool(self, params: object) -> JsonDict:
         params_obj = _desktop_jsonrpc.require_object_params(params)
-        if any(key not in {"arguments", "name"} for key in params_obj):
+        if any(key not in _TOOL_CALL_PARAM_KEYS for key in params_obj):
             raise McpArgumentError("Unexpected tool call parameter.")
         name = params_obj.get("name")
         if not isinstance(name, str) or not name:

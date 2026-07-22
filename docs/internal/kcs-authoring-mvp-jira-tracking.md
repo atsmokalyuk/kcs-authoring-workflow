@@ -3,8 +3,16 @@
 ## Purpose
 This page links the product and architecture documents to the Jira implementation work.
 
-## Parent Work Item
-- Parent PAUX: [PAUX-7083 - Implement KCS Core Pipeline Prototype for KCS Authoring MVP](https://webpros.atlassian.net/browse/PAUX-7083)
+## Parent Work Items
+
+- Historical parent PAUX: [PAUX-7083 - Implement KCS Core Pipeline Prototype for KCS Authoring MVP](https://webpros.atlassian.net/browse/PAUX-7083)
+  owns the completed KCS-0..KCS-13 local pipeline/prototype history.
+- Current hardening umbrella: PAUX-7103, pending/subject to external tracker
+  confirmation, owns KCS-14 engineering and codebase design hardening.
+
+External Jira and Confluence records require operator or maintainer action.
+When external rollout is postponed, this repository records the local mapping
+instead of implying that external tracking was updated.
 
 ## Implementation Subtasks
 - KCS-0 Data handling baseline and implementation scope
@@ -25,9 +33,14 @@ This page links the product and architecture documents to the Jira implementatio
 - KCS-12 Claude Desktop MCP validator/control adapter and MCPB package
 - KCS-13 Controlled semantic review fallback for complex/noisy approved clean
   tickets
-- KCS-14 KCS style and markup parity with source KCS Style Guide, Article
+- KCS-14 Engineering and Codebase Design Hardening: documentation ownership,
+  spec-first process baseline, local tool entrypoints, functional test
+  conventions, compact review protocol, minimal code map, behavior-preserving
+  codebase refactor, and review/agent tooling after the manual protocol is
+  stable
+- KCS-15 KCS style and markup parity with source KCS Style Guide, Article
   Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules
+  `plesk_support` rules; deferred runtime hardening, not current KCS-14 scope
 - Future deployment slice: intranet remote MCP service deployment for managed operator
   use, connected from Claude Desktop through a custom remote connector URL
   rather than the local MCPB stdio wrapper
@@ -38,6 +51,8 @@ This page links the product and architecture documents to the Jira implementatio
 - Architecture and contracts: [KCS Core Pipeline - Architecture and Contracts](https://webpros.atlassian.net/wiki/spaces/~atsmokalyuk/pages/6683918381/KCS+Core+Pipeline+-+Architecture+and+Contracts)
 - Technical design: `docs/internal/kcs-core-pipeline-technical-design.md`
 - Feature engineering approach: `docs/internal/kcs-authoring-mvp-feature-engineering.md`
+- KCS-14 planning decisions:
+  `docs/internal/engineering-process/kcs-14-planning-decisions.md`
 
 ## Rule
 Confluence pages define product goal, data handling, and architecture. Jira tracks execution, subtasks, PR scope, and acceptance criteria.

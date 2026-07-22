@@ -124,8 +124,7 @@ def operator_choice_submit_options(
             },
             "value": candidate["item_ref"],
         }
-        for candidate in pending_selection.item_candidate_cards
-        if candidate["item_ref"] not in pending_selection.selected_candidate_refs
+        for candidate in _remaining_candidate_cards(pending_selection)
     ]
 
 
@@ -228,11 +227,7 @@ def remaining_operator_choice_status(
 ) -> JsonDict:
     """Return compact next-choice metadata for remaining candidates."""
 
-    remaining_candidates = [
-        candidate
-        for candidate in pending_selection.item_candidate_cards
-        if candidate["item_ref"] not in pending_selection.selected_candidate_refs
-    ]
+    remaining_candidates = _remaining_candidate_cards(pending_selection)
     choice_request = operator_choice_request(
         pending_selection,
         submit_tool=submit_tool,
@@ -250,6 +245,16 @@ def remaining_operator_choice_status(
         status["next_arguments"] = choice_request["options"][0]["submit_arguments"]
     ensure_safe_sanitized_payload(status)
     return status
+
+
+def _remaining_candidate_cards(
+    pending_selection: PendingDraftSelection,
+) -> list[JsonDict]:
+    return [
+        candidate
+        for candidate in pending_selection.item_candidate_cards
+        if candidate["item_ref"] not in pending_selection.selected_candidate_refs
+    ]
 
 
 def _safe_choice_text(value: object, *, fallback: str) -> str:

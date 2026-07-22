@@ -91,9 +91,39 @@ Recommended slice order:
 - KCS-12: Claude Desktop MCP validator/control adapter and MCPB package;
 - KCS-13: controlled semantic review fallback for complex/noisy approved
   clean tickets;
-- KCS-14: KCS style and markup parity with source KCS Style Guide, Article
+- KCS-14: engineering and codebase design hardening. This slice owns
+  documentation ownership cleanup, spec-first process baseline, local tool
+  entrypoints, functional test conventions, compact review context protocol,
+  minimal code map, behavior-preserving codebase design refactor, and
+  review/agent tooling after the manual protocol is stable;
+- KCS-15: KCS style and markup parity with source KCS Style Guide, Article
   Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules;
+  `plesk_support` rules. This is deferred runtime hardening, not part of
+  KCS-14 engineering/process hardening;
+- Future harness-portable agent engineering support: git-aware code-review
+  graph, compact agent context, official local tool entrypoints, and review
+  handoffs for Codex, ChatGPT Pro review, Fable 5 review, or future internal
+  runner. The source of truth remains repo-local docs, specs, scripts, tests,
+  and graph artifacts;
+- Post-KCS-15 process retrospective: decide whether the KCS-14 engineering
+  process stayed stable through both a refactor-heavy slice and the KCS-15
+  feature-heavy style/markup slice;
+- KCS-16a: engineering process stabilization, only if the retrospective shows
+  unstable specs, weak acceptance tests, poor review packets, unclear tool
+  entrypoints, or recurring agent/review failures;
+- KCS-16b: reusable engineering infrastructure extraction, only after the
+  process is stable and a second project or independent subsystem confirms
+  portability. This slice is not automatic: it starts only if the
+  retrospective shows that the same templates, review packets, tool
+  entrypoints, and gates worked across both refactor-heavy and feature-heavy
+  slices with less manual correction. Extract only generic design/spec
+  workflow pieces; KCS-specific contracts, ticket policy, privacy rules, and
+  article standards stay in this repository;
+- KCS-17 or separate downstream project: personal agentic engineering kit
+  packaging, only after reusable extraction is stable and useful outside the
+  immediate KCS workflow. This is a future packaging decision, not a committed
+  architecture; choose the implementation after KCS-14/KCS-15 field results
+  and a current review of agentic-engineering tooling;
 - Future deployment slice: intranet remote MCP service for managed
   operator use. Claude Desktop would connect through a custom remote MCP
   connector URL to an internal service endpoint, not through the local MCPB

@@ -2,17 +2,19 @@
 
 Local workflow for runtime-independent KCS Authoring.
 
-Status: project goal reached for now. The KCS branch has delivered the
-production-shaped local workflow, the controlled semantic-review fallback, and
-the reviewer-packet showcase artifacts. Further development is frozen unless a
-new explicitly approved slice reopens the project. Enterprise/PAUX rollout is
-postponed; this repository now tracks the local product workflow. Some package
-IDs, environment variables, paths, and historical docs still use
-`kcs-authoring-mvp` for compatibility, but the implemented workflow has moved
-beyond a minimal MVP. The original MVP boundary remains the safety floor:
-reviewer-only output, no Zendesk writes, no Help Center publication, no
-auto-publish, compact default MCP output, and Python-owned validation,
-decision, rendering, and bundle writing.
+Status: the local reviewer-only workflow through KCS-13 is implemented, and
+KCS-14 engineering and codebase design hardening is complete. KCS-14 added a
+tracked engineering process, deterministic policy checks, a complete review
+graph, behavior-preserving refactors, and a maintainability pass over the
+Desktop characterization suite; it did not change the runtime product
+contract. Further runtime development remains frozen until a separately
+approved slice reopens it. Enterprise/PAUX rollout is postponed; this
+repository tracks the local product workflow. Some package IDs, environment
+variables, paths, and historical docs still use `kcs-authoring-mvp` for
+compatibility. The original safety boundary remains active: reviewer-only
+output, no Zendesk writes, no Help Center publication, no auto-publish,
+compact default MCP output, and Python-owned validation, decision, rendering,
+and bundle writing.
 
 Python baseline: 3.11. CI is deferred until the local command set is stable.
 
@@ -72,7 +74,8 @@ Claude-owned KCS decision.
 
 ## Current Scope
 
-The implemented local workflow follows the KCS-0..KCS-13 roadmap tracked in
+The implemented local workflow and engineering baseline follow the
+KCS-0..KCS-14 roadmap tracked in
 `docs/internal/kcs-authoring-mvp-jira-tracking.md` and
 `docs/internal/kcs-desktop-authoring-refactor-plan.md`.
 
@@ -86,9 +89,15 @@ output, and local reviewer bundles. `KCS-13` added the controlled fallback for
 complex/noisy clean tickets when deterministic Python item identification is
 low-confidence.
 
-The current project goal is reached for now. Further development is frozen.
-`KCS-14` style/markup parity, managed deployment, production rollout, and any
-additional integrations are deferred future work, not active scope.
+KCS-14 engineering/process/codebase hardening is closed. It preserved the
+implemented runtime workflow while reducing ambiguity for future AI-assisted
+engineering. The post-closeout test-suite maintainability batches changed only
+the Desktop characterization safety net and its tracked closeout records; they
+did not change source, packaging, tool schemas, or runtime behavior.
+
+Runtime feature work, managed deployment, production rollout, additional
+integrations, and `KCS-15` style/markup parity remain deferred until a new
+explicitly approved slice reopens them.
 
 Resolution steps must remain evidence-grounded. If the ticket gives the
 resolution outcome or a high-level resolution description but does not include
@@ -115,6 +124,7 @@ KCS-10: local reviewer bundle writer for audit/debug artifacts
 KCS-11: live-capable Claude/provider adapter for bounded smoke tests
 KCS-12: Claude Desktop MCP validator/control adapter and MCPB package
 KCS-13: controlled semantic-review fallback for complex/noisy clean tickets
+KCS-14: engineering process and codebase design hardening
 ```
 
 KCS-2 is implemented as local `safety.py` and `validation.py` gates. It returns
@@ -273,7 +283,7 @@ and bounded smoke layer only. KCS-12 introduces the Claude Desktop MCP
 validator/control surface and installable local MCPB package only. KCS-13
 introduces the controlled semantic-review fallback only. Real-ticket smoke,
 production transport rollout, remote MCP/internal service implementation,
-broad adapter/client integration, and KCS-14 style/markup parity are frozen
+broad adapter/client integration, and KCS-15 style/markup parity are frozen
 deferred work unless a future approved slice reopens development.
 
 ## Non-goals
@@ -577,10 +587,15 @@ tools are not loaded into the active chat.
 
 - Maintainer / implementation lead: Alex Tsmokalyuk
 - Historical parent Jira item: PAUX-7083
-- Last completed implementation slice: KCS-13 Controlled Semantic Review
-  Fallback
-- Current implementation slice: KCS-14 KCS Style and Markup Parity
-- Current implementation subtask: planning / checkpoint definition
+- Current hardening umbrella: PAUX-7103, pending/subject to external tracker
+  confirmation
+- Last completed runtime slice: KCS-13 Controlled Semantic Review Fallback
+- Last completed engineering slice: KCS-14 Engineering and Codebase Design
+  Hardening, including the post-closeout characterization-suite
+  maintainability pass
+- Deferred runtime hardening slice: KCS-15 KCS Style and Markup Parity
+- Current implementation subtask: none; runtime expansion is frozen pending a
+  separately approved slice
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

@@ -7,7 +7,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 DEFAULT_LOG_PATH = (
     Path.home() / "Library" / "Logs" / "Claude" / "mcp-server-KCS Authoring.log"
@@ -15,6 +15,11 @@ DEFAULT_LOG_PATH = (
 SCHEMA_VERSION = "kcs_claude_desktop_log_check_v1"
 _TIMESTAMP_LEN = 24
 _MAX_LOG_BYTES = 1024 * 1024
+
+
+class _ExpectedTool(NamedTuple):
+    properties: frozenset[str]
+    read_only: bool
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -139,13 +144,7 @@ def _tool_surface_checks(line: str) -> dict[str, bool]:
         "draft_schema_exact": _tool_properties_exact(
             tools,
             "kcs_draft_article",
-            {
-                "approved_summary_text",
-                "debug",
-                "operator_selected_item_ref",
-                "operator_selection_ref",
-                "ticket_ref",
-            },
+            _EXPECTED_TOOLS["kcs_draft_article"].properties,
         ),
         "old_item_schema_absent": _old_schema_absent(line, "item"),
         "old_item_candidates_schema_absent": _old_schema_absent(
@@ -159,19 +158,19 @@ def _tool_surface_checks(line: str) -> dict[str, bool]:
         "prepare_schema_exact": _tool_properties_exact(
             tools,
             "kcs_prepare_semantic_review",
-            {"semantic_review_ref"},
+            _EXPECTED_TOOLS["kcs_prepare_semantic_review"].properties,
         ),
         "register_schema_exact": _tool_properties_exact(
             tools,
             "kcs_register_clean_ticket",
-            {"clean_ticket_text", "debug", "ticket_ref"},
+            _EXPECTED_TOOLS["kcs_register_clean_ticket"].properties,
         ),
         "submit_schema_exact": _tool_properties_exact(
             tools,
             "kcs_submit_semantic_review",
-            {"candidate_semantic_extraction", "semantic_review_ref"},
+            _EXPECTED_TOOLS["kcs_submit_semantic_review"].properties,
         ),
-        "tool_names_exact": set(tools) == _EXPECTED_TOOL_NAMES,
+        "tool_names_exact": set(tools) == set(_EXPECTED_TOOLS),
     }
 
 
@@ -212,26 +211,34 @@ def _truncated_draft_schema_visible(line: str) -> bool:
     return "chars truncated" in line
 
 
-_EXPECTED_TOOL_NAMES = frozenset(
-    {
-        "kcs_draft_article",
-        "kcs_prepare_semantic_review",
-        "kcs_register_clean_ticket",
-        "kcs_submit_semantic_review",
-    }
-)
-_MUTATING_TOOLS = frozenset(
-    {
-        "kcs_draft_article",
-        "kcs_register_clean_ticket",
-        "kcs_submit_semantic_review",
-    }
-)
-_READ_ONLY_TOOLS = frozenset(
-    {
-        "kcs_prepare_semantic_review",
-    }
-)
+_EXPECTED_TOOLS = {
+    "kcs_draft_article": _ExpectedTool(
+        properties=frozenset(
+            {
+                "approved_summary_text",
+                "debug",
+                "operator_selected_item_ref",
+                "operator_selection_ref",
+                "ticket_ref",
+            }
+        ),
+        read_only=False,
+    ),
+    "kcs_prepare_semantic_review": _ExpectedTool(
+        properties=frozenset({"semantic_review_ref"}),
+        read_only=True,
+    ),
+    "kcs_register_clean_ticket": _ExpectedTool(
+        properties=frozenset({"clean_ticket_text", "debug", "ticket_ref"}),
+        read_only=False,
+    ),
+    "kcs_submit_semantic_review": _ExpectedTool(
+        properties=frozenset(
+            {"candidate_semantic_extraction", "semantic_review_ref"}
+        ),
+        read_only=False,
+    ),
+}
 
 
 def _tool_surface_tools(line: str) -> dict[str, dict[str, Any]]:
@@ -262,7 +269,7 @@ def _line_json_payload(line: str) -> dict[str, Any]:
 def _tool_properties_exact(
     tools: dict[str, dict[str, Any]],
     tool_name: str,
-    expected: set[str],
+    expected: frozenset[str],
 ) -> bool:
     tool = tools.get(tool_name)
     if not isinstance(tool, dict):
@@ -272,13 +279,10 @@ def _tool_properties_exact(
 
 
 def _tool_annotations_exact(tools: dict[str, dict[str, Any]]) -> bool:
-    if set(tools) != _EXPECTED_TOOL_NAMES:
+    if set(tools) != set(_EXPECTED_TOOLS):
         return False
-    for name in _MUTATING_TOOLS:
-        if not _annotations_match(tools.get(name), read_only=False):
-            return False
-    for name in _READ_ONLY_TOOLS:
-        if not _annotations_match(tools.get(name), read_only=True):
+    for name, expected in _EXPECTED_TOOLS.items():
+        if not _annotations_match(tools.get(name), read_only=expected.read_only):
             return False
     return True
 

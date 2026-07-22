@@ -70,13 +70,15 @@ def _ensure_strict_json_value(value: object) -> None:
         for item in value:
             _ensure_strict_json_value(item)
         return
-    if value is None or isinstance(value, str | bool | int):
+    if _is_strict_json_scalar(value):
         return
-    if isinstance(value, float):
-        if math.isfinite(value):
-            return
-        raise ContractValidationError("payload must be strict JSON-serializable")
     raise ContractValidationError("payload must be strict JSON-serializable")
+
+
+def _is_strict_json_scalar(value: object) -> bool:
+    if value is None or isinstance(value, str | bool | int):
+        return True
+    return isinstance(value, float) and math.isfinite(value)
 
 
 def _ensure_strict_json_object(value: Mapping[object, object]) -> None:

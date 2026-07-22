@@ -357,16 +357,10 @@ def _reviewer_packet_base_blockers(
 def _renderer_blockers(
     reviewer_packet: KcsReviewerPacket, decision: KcsActionDecisionPacket
 ) -> list[str]:
-    blockers, blockers_invalid = _renderer_report_codes(
-        reviewer_packet.validation_report, "blockers"
+    blockers, report_invalid = _renderer_report_blockers(
+        reviewer_packet.validation_report
     )
-    _, checks_invalid = _renderer_report_codes(
-        reviewer_packet.validation_report, "checks"
-    )
-    _, warnings_invalid = _renderer_report_codes(
-        reviewer_packet.validation_report, "warnings"
-    )
-    if blockers_invalid or checks_invalid or warnings_invalid:
+    if report_invalid:
         return blockers + ["renderer_validation_report_invalid"]
     if decision.recommended_action == RecommendedAction.NO_ARTICLE.value:
         safe_blockers = _safe_codes(blockers, "blockers")
@@ -375,6 +369,13 @@ def _renderer_blockers(
         expected_reasons = set(decision.blockers) & _NO_ARTICLE_REASON_CODES
         return [blocker for blocker in blockers if blocker not in expected_reasons]
     return blockers
+
+
+def _renderer_report_blockers(report: dict[str, object]) -> tuple[list[str], bool]:
+    blockers, blockers_invalid = _renderer_report_codes(report, "blockers")
+    _, checks_invalid = _renderer_report_codes(report, "checks")
+    _, warnings_invalid = _renderer_report_codes(report, "warnings")
+    return blockers, blockers_invalid or checks_invalid or warnings_invalid
 
 
 def _draft_required(

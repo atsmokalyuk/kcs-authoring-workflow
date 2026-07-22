@@ -388,24 +388,15 @@ def _config_file_resolution_steps(
     lowered_text: str,
 ) -> list[str]:
     steps: list[str] = []
-    if "not owned by any package" in lowered_text or "rpm -qf" in lowered_text:
+    if _mentions_unowned_package_check(lowered_text):
         steps.append(
             f"Run rpm -qf {config_path} to verify that the file is not owned "
             "by any package."
         )
-    if "datadir" in lowered_text or f"cat {config_path}".casefold() in lowered_text:
+    if _mentions_config_content_review(config_path, lowered_text):
         detail = "DataDir setting" if "datadir" in lowered_text else "file content"
         steps.append(f"Run cat {config_path} to review the {detail}.")
-    if (
-        "backed up and disabled" in lowered_text
-        or "backed up and removed" in lowered_text
-        or "backed up" in lowered_text
-        or "backup" in lowered_text
-        or "back up" in lowered_text
-        or "config file was backed up" in lowered_text
-        or f"cp -a {config_path}".casefold() in lowered_text
-        or f"mv {config_path}".casefold() in lowered_text
-    ):
+    if _mentions_config_backup_or_disable(config_path, lowered_text):
         backup_dir = _backup_dir_from_text(original_text) or "/root/kcs-case-backup"
         steps.extend(
             [
@@ -423,28 +414,59 @@ def _config_file_resolution_steps(
     service_name = _restarted_service_from_text(original_text)
     if service_name:
         steps.append(f"Run systemctl restart {service_name}.")
-    if (
-        "graphs have started displaying data" in lowered_text
-        or "graphs started displaying data" in lowered_text
-        or "confirm" in lowered_text
-        and "graphs" in lowered_text
-        and "data" in lowered_text
-    ):
+    if _mentions_graphs_displaying_data(lowered_text):
         steps.append(
             "Open the Monitoring page in Plesk and confirm graphs start "
             "displaying data."
         )
-    if (
-        "historical" in lowered_text
-        or "before the fix" in lowered_text
-        or "repopulate" in lowered_text
-        or steps
-    ):
+    if _mentions_repopulate_context(lowered_text) or steps:
         steps.append(
             "Wait for graphs to repopulate with newly collected metrics; "
             "historical data from before the correction may not be visible."
         )
     return steps
+
+
+def _mentions_unowned_package_check(lowered_text: str) -> bool:
+    return "not owned by any package" in lowered_text or "rpm -qf" in lowered_text
+
+
+def _mentions_config_content_review(config_path: str, lowered_text: str) -> bool:
+    return "datadir" in lowered_text or f"cat {config_path}".casefold() in lowered_text
+
+
+def _mentions_config_backup_or_disable(config_path: str, lowered_text: str) -> bool:
+    markers = (
+        "backed up and disabled",
+        "backed up and removed",
+        "backed up",
+        "backup",
+        "back up",
+        "config file was backed up",
+        f"cp -a {config_path}".casefold(),
+        f"mv {config_path}".casefold(),
+    )
+    return any(marker in lowered_text for marker in markers)
+
+
+def _mentions_graphs_displaying_data(lowered_text: str) -> bool:
+    return (
+        "graphs have started displaying data" in lowered_text
+        or "graphs started displaying data" in lowered_text
+        or (
+            "confirm" in lowered_text
+            and "graphs" in lowered_text
+            and "data" in lowered_text
+        )
+    )
+
+
+def _mentions_repopulate_context(lowered_text: str) -> bool:
+    return (
+        "historical" in lowered_text
+        or "before the fix" in lowered_text
+        or "repopulate" in lowered_text
+    )
 
 
 def _backup_dir_from_text(text: str) -> str:

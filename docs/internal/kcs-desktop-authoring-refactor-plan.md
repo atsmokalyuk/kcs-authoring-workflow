@@ -8,6 +8,11 @@ registration, `ticket_ref` drafting, compact default output, and local reviewer
 bundles. Claude Desktop MCPB is the current local operator adapter, not a core
 product dependency.
 
+Status note, 2026-07-04: active forward-looking docs use `KCS-14` for
+Engineering and Codebase Design Hardening and `KCS-15` for deferred KCS Style
+and Markup Parity. Style/markup parity references in this historical refactor
+plan have been renumbered to KCS-15 where they describe future work.
+
 ## Summary
 
 The Desktop drafting workflow must be tool-owned, not Claude-owned.
@@ -417,7 +422,7 @@ Implement this as small reviewable slices, not as one large commit:
   - update tool names, descriptors, manifest, README, stdio smoke, installed
     wrapper smoke, and Desktop log checks;
   - keep bounded selected excerpts only and defer browsing/chunk tools.
-- `KCS-14: KCS style and markup parity`
+- `KCS-15: KCS style and markup parity`
   - bring renderer, Zendesk HTML quality gates, and style checks closer to the
     mature `plesk_support` KCS article workflow;
   - enforce source-document-backed KCS content standards for titles, symptoms,
@@ -489,7 +494,7 @@ Current review checkpoint artifact:
   - status: complete after `gpt-5.3-codex-spark` review;
   - lighter review after source/installed smoke and log checks pass;
   - focus on Desktop-visible schema wording and no manual fallback.
-- `KCS-14: KCS style and markup parity`
+- `KCS-15: KCS style and markup parity`
   - external/code review required before marking complete;
   - focus on parity with source KCS Style Guide, Article Quality criteria, KCS
     practices, and portable `plesk_support` rules;
@@ -599,7 +604,7 @@ Current branch status:
   - KCS-13d raises the bounded semantic-review budget to 144,000 total
     selected-excerpt bytes and the generic MCP tool-result cap to 256 KB while
     keeping forbidden-key checks and no-full-ticket output.
-- `KCS-14` is the next hardening slice for KCS article style and markup parity:
+- `KCS-15` is the deferred hardening slice for KCS article style and markup parity:
   - use the attached/source-of-truth KCS Style Guide, Article Quality criteria,
     KCS practices, and approved article examples as requirements;
   - target result-level parity with mature `plesk_support` KCS behavior, not
@@ -681,7 +686,7 @@ are detected.
     through the existing draft/split pipeline.
 13. Implement `KCS-13d`: MCPB manifest, docs, stdio smoke, installed smoke, and
     Desktop log checker alignment for the new tools.
-14. Implement `KCS-14`: style and markup parity hardening:
+14. Implement `KCS-15`: style and markup parity hardening:
     title, symptoms, cause, resolution completeness, language style,
     command/config formatting, Zendesk trigger markup, and blocker/warning
     taxonomy.
@@ -734,7 +739,7 @@ Unit and regression coverage must verify:
 - valid semantic-review submissions either continue to normal draft output or
   return the existing split-required operator-selection flow;
 - simple deterministic tickets bypass semantic review and still draft normally.
-- KCS-14 renderer/style tests verify:
+- KCS-15 renderer/style tests verify:
   - titles describe the customer-visible issue and, when available, append the
     error/cause clue after a colon instead of including solution wording;
   - Symptoms start with the customer's observable issue and include only

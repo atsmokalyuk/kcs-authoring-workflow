@@ -68,6 +68,18 @@ _EXPLICIT_EXISTING_ARTICLE_CONTEXT_RE = re.compile(
     r"refer(?:ence|red)?|open|apply|follow)\b",
     re.I,
 )
+_EXPLICIT_EXISTING_ARTICLE_TEXT_FIELDS = (
+    "summary",
+    "supported_cause",
+    "supported_resolution_or_workaround",
+    "supported_answer",
+)
+_EXPLICIT_EXISTING_ARTICLE_LIST_FIELDS = (
+    "confirmed_facts",
+    "resolution_steps",
+    "answer_steps",
+    "symptoms",
+)
 
 
 class DesktopAuthoringArgumentError(ValueError):
@@ -540,18 +552,25 @@ def _approved_summary_reuse_results(
     return ReuseSearchResultsPacket(
         search_run_ref=_approved_summary_reuse_search_run_ref(arguments),
         searched=True,
-        search_source=(
-            "operator_explicit_existing_article_reference"
-            if explicit_match is not None
-            else (
-            "operator_approved_summary"
-            if reuse_checked
-            else "operator_approved_summary_reuse_skipped"
-            )
+        search_source=_approved_summary_reuse_search_source(
+            explicit_match=explicit_match,
+            reuse_checked=reuse_checked,
         ),
         matches=[explicit_match] if explicit_match is not None else [],
         blockers=[],
     )
+
+
+def _approved_summary_reuse_search_source(
+    *,
+    explicit_match: Mapping[str, Any] | None,
+    reuse_checked: bool,
+) -> str:
+    if explicit_match is not None:
+        return "operator_explicit_existing_article_reference"
+    if reuse_checked:
+        return "operator_approved_summary"
+    return "operator_approved_summary_reuse_skipped"
 
 
 def _existing_article_review_summary(
@@ -661,16 +680,11 @@ def _explicit_existing_article_match(
 
 def _explicit_existing_article_text(item: Mapping[str, Any]) -> str:
     values: list[str] = []
-    for key in (
-        "summary",
-        "supported_cause",
-        "supported_resolution_or_workaround",
-        "supported_answer",
-    ):
+    for key in _EXPLICIT_EXISTING_ARTICLE_TEXT_FIELDS:
         value = item.get(key)
         if isinstance(value, str):
             values.append(value)
-    for key in ("confirmed_facts", "resolution_steps", "answer_steps", "symptoms"):
+    for key in _EXPLICIT_EXISTING_ARTICLE_LIST_FIELDS:
         value = item.get(key)
         if isinstance(value, list):
             values.extend(part for part in value if isinstance(part, str))

@@ -11,7 +11,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 SCHEMA_VERSION = "kcs_claude_desktop_ui_prompt_smoke_v1"
 DEFAULT_LOG_PATH = (
@@ -95,6 +95,19 @@ _WEB_COMPLETION_ERROR_RE = re.compile(
     r"\[COMPLETION\] Request failed|\[COMPLETION\] Not retryable error",
     re.I,
 )
+
+
+class _UiLogObservations(NamedTuple):
+    client_call_text: str
+    tool_result_summary: dict[str, list[str]]
+    web_diagnostics: dict[str, bool]
+    timeout_or_disconnect_observed: bool
+    draft_result_observed: bool
+    provider_unavailable_result_observed: bool
+    terminal_result_observed: bool
+    post_success_disconnect_observed: bool
+    manual_fallback_observed: bool
+    tool_result_observed: bool
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -563,51 +576,35 @@ def _report_from_log(
     web_text: str = "",
     web_log_path: Path = DEFAULT_WEB_LOG_PATH,
 ) -> dict[str, Any]:
-    client_call_text = _client_tool_call_text(text)
-    tool_activity_text = _tool_activity_text(text)
-    tool_result_summary = _tool_result_summary(text)
-    web_diagnostics = _web_diagnostics(web_text)
-    manual_fallback_text = f"{text}\n{web_text}"
-    timeout_or_disconnect_observed = (
-        _TIMEOUT_OR_DISCONNECT_RE.search(tool_activity_text) is not None
-    )
-    draft_result_observed = _DRAFT_RE.search(text) is not None
-    provider_unavailable_result_observed = (
-        _PROVIDER_UNAVAILABLE_RE.search(text) is not None
-    )
-    terminal_result_observed = (
-        draft_result_observed or provider_unavailable_result_observed
-    )
-    post_success_disconnect_observed = _post_success_disconnect_observed(
+    observations = _ui_log_observations(
         text=text,
+        web_text=web_text,
         prompt_kind=prompt_kind,
-        draft_result_observed=draft_result_observed,
     )
     checks = {
         "prompt_sent": sent,
-        "claude_completion_error_absent": not web_diagnostics[
+        "claude_completion_error_absent": not observations.web_diagnostics[
             "completion_error_observed"
         ],
-        "claude_completion_rate_limit_absent": not web_diagnostics[
+        "claude_completion_rate_limit_absent": not observations.web_diagnostics[
             "completion_rate_limit_observed"
         ],
-        "tool_call_observed": bool(client_call_text),
-        "tool_result_observed": _TOOL_RESULT_RE.search(text) is not None,
+        "tool_call_observed": bool(observations.client_call_text),
+        "tool_result_observed": observations.tool_result_observed,
         "approved_summary_text_argument_observed": (
-            _SUMMARY_ARG_RE.search(client_call_text) is not None
+            _SUMMARY_ARG_RE.search(observations.client_call_text) is not None
         ),
         "old_structured_arguments_absent": (
-            _OLD_ARG_RE.search(client_call_text) is None
+            _OLD_ARG_RE.search(observations.client_call_text) is None
         ),
-        "manual_fallback_absent": (
-            _MANUAL_FALLBACK_RE.search(manual_fallback_text) is None
-        ),
+        "manual_fallback_absent": not observations.manual_fallback_observed,
         "timeout_or_disconnect_absent": (
-            not timeout_or_disconnect_observed or post_success_disconnect_observed
+            not observations.timeout_or_disconnect_observed
+            or observations.post_success_disconnect_observed
         ),
         "semantic_no_candidates_absent": (
             "semantic_extraction_no_candidates"
-            not in tool_result_summary["debug_codes"]
+            not in observations.tool_result_summary["debug_codes"]
         ),
     }
     if prompt_kind == "split":
@@ -623,20 +620,24 @@ def _report_from_log(
                 and _SUMMARY_ARG_RE.search(selected_call_text) is None
                 and _OLD_ARG_RE.search(selected_call_text) is None
             )
-            checks["selected_draft_result_observed"] = draft_result_observed
+            checks["selected_draft_result_observed"] = (
+                observations.draft_result_observed
+            )
     else:
-        checks["terminal_result_observed"] = terminal_result_observed
+        checks["terminal_result_observed"] = observations.terminal_result_observed
     ok = all(checks.values())
     failure_stage = _failure_stage(
         checks,
-        web_diagnostics,
+        observations.web_diagnostics,
         prompt_kind=prompt_kind,
     )
     return {
         "attention": _attention(
             ok=ok,
             failure_stage=failure_stage,
-            post_success_disconnect_observed=post_success_disconnect_observed,
+            post_success_disconnect_observed=(
+                observations.post_success_disconnect_observed
+            ),
         ),
         "checks": checks,
         "failed_checks": _failed_check_names(checks),
@@ -647,21 +648,69 @@ def _report_from_log(
         "next_steps": _next_steps(
             ok=ok,
             failure_stage=failure_stage,
-            post_success_disconnect_observed=post_success_disconnect_observed,
+            post_success_disconnect_observed=(
+                observations.post_success_disconnect_observed
+            ),
         ),
         "ok": ok,
-        "post_success_disconnect_observed": post_success_disconnect_observed,
+        "post_success_disconnect_observed": (
+            observations.post_success_disconnect_observed
+        ),
         "prompt_kind": prompt_kind,
-        "draft_result_observed": draft_result_observed,
-        "provider_unavailable_result_observed": provider_unavailable_result_observed,
+        "draft_result_observed": observations.draft_result_observed,
+        "provider_unavailable_result_observed": (
+            observations.provider_unavailable_result_observed
+        ),
         "schema_version": SCHEMA_VERSION,
         "since": since.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
-        "mcp_result_debug_codes": tool_result_summary["debug_codes"],
-        "mcp_result_failure_stages": tool_result_summary["failure_stages"],
-        "mcp_result_recommended_actions": tool_result_summary["recommended_actions"],
-        "web_diagnostics": web_diagnostics,
+        "mcp_result_debug_codes": observations.tool_result_summary["debug_codes"],
+        "mcp_result_failure_stages": observations.tool_result_summary[
+            "failure_stages"
+        ],
+        "mcp_result_recommended_actions": observations.tool_result_summary[
+            "recommended_actions"
+        ],
+        "web_diagnostics": observations.web_diagnostics,
         "web_log_file": web_log_path.name,
     }
+
+
+def _ui_log_observations(
+    *,
+    text: str,
+    web_text: str,
+    prompt_kind: str,
+) -> _UiLogObservations:
+    client_call_text = _client_tool_call_text(text)
+    tool_activity_text = _tool_activity_text(text)
+    tool_result_summary = _tool_result_summary(text)
+    web_diagnostics = _web_diagnostics(web_text)
+    draft_result_observed = _DRAFT_RE.search(text) is not None
+    provider_unavailable_result_observed = (
+        _PROVIDER_UNAVAILABLE_RE.search(text) is not None
+    )
+    return _UiLogObservations(
+        client_call_text=client_call_text,
+        tool_result_summary=tool_result_summary,
+        web_diagnostics=web_diagnostics,
+        timeout_or_disconnect_observed=(
+            _TIMEOUT_OR_DISCONNECT_RE.search(tool_activity_text) is not None
+        ),
+        draft_result_observed=draft_result_observed,
+        provider_unavailable_result_observed=provider_unavailable_result_observed,
+        terminal_result_observed=(
+            draft_result_observed or provider_unavailable_result_observed
+        ),
+        post_success_disconnect_observed=_post_success_disconnect_observed(
+            text=text,
+            prompt_kind=prompt_kind,
+            draft_result_observed=draft_result_observed,
+        ),
+        manual_fallback_observed=(
+            _MANUAL_FALLBACK_RE.search(f"{text}\n{web_text}") is not None
+        ),
+        tool_result_observed=_TOOL_RESULT_RE.search(text) is not None,
+    )
 
 
 def _fresh_log_text(*, log_path: Path, since: datetime) -> str:

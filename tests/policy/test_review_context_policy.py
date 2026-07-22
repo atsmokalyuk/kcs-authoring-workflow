@@ -1,0 +1,206 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+REVIEW_PROTOCOL = (
+    ROOT / "docs" / "internal" / "engineering-process" / "review-context-protocol.md"
+)
+PROMOTION_CANDIDATES = (
+    ROOT / "docs" / "internal" / "engineering-process" / "promotion-candidates.md"
+)
+FINAL_CLOSEOUT = (
+    ROOT
+    / "docs"
+    / "internal"
+    / "engineering-process"
+    / "slice-plans"
+    / "kcs-14-final-closeout.md"
+)
+PROMOTION_CODE_RE = re.compile(r"\bKCS14-PROMO-\d{3}\b")
+
+REQUIRED_PACKET_SECTIONS = (
+    "Review Task",
+    "Slice Intent",
+    "Changed Files",
+    "Affected Contracts",
+    "Relevant Tests",
+    "Validation",
+    "Known Deferred Risks",
+    "Must Not Change",
+    "Stale Context To Ignore",
+    "Promotion Candidates",
+    "Questions For Reviewer",
+)
+
+REQUIRED_PROMOTION_FIELDS = (
+    "Finding code",
+    "Rule / finding",
+    "Seen in",
+    "Evidence",
+    "Trigger",
+    "Manual correction needed",
+    "Can be checked mechanically",
+    "False-positive risk",
+    "KCS-specific or generic",
+    "Promotion target",
+    "Target layer",
+    "Decision",
+    "Owner slice",
+    "Scope",
+    "Validation",
+    "Approval",
+    "Status",
+)
+REQUIRED_COMPLEXITY_FIELDS = (
+    "functions_total",
+    "cc_average",
+    "max_cc",
+    "high_complexity_functions",
+    "mi_average",
+    "import_edges",
+    "public_defs",
+    "all_exports",
+)
+
+def test_review_context_protocol_defines_required_packet_sections() -> None:
+    text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
+
+    missing = [section for section in REQUIRED_PACKET_SECTIONS if section not in text]
+
+    assert not missing, "\n".join(missing)
+
+def test_review_context_protocol_defines_forbidden_content_and_output_budget() -> None:
+    text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
+
+    required = (
+        "Forbidden Content",
+        "Output Budget",
+        "raw ticket text",
+        "selected semantic-review excerpt text",
+        "reviewer bundle bodies",
+        "provider payloads",
+        "private filesystem",
+        "full logs or full HTML",
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_promotion_candidate_registry_defines_required_fields() -> None:
+    text = PROMOTION_CANDIDATES.read_text(encoding="utf-8")
+
+    missing = [field for field in REQUIRED_PROMOTION_FIELDS if field not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_promotion_protocol_keeps_automation_after_stability() -> None:
+    text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
+
+    required = (
+        "Once = note.",
+        "Twice = review checklist item.",
+        "Three times = candidate for test/tool/check.",
+        "Stable across KCS-14 and KCS-15 = reusable infrastructure candidate.",
+        "Do not automate design judgment with blocking regex checks.",
+        "Agent Promotion Responsibility",
+        "Promotion discovery is automatic.",
+        "Promotion implementation is approval-gated.",
+        "operator should not need to remember",
+        "development agent must surface a promotion candidate",
+        "Promotion implementation should be its own small scoped",
+        "action or commit",
+        "Promotion Checkpoints",
+        "before starting a refactor target",
+        "during staged-diff review",
+        "during slice closeout before commit",
+        "after repeated validation or review failure with the same cause",
+        "Promotion candidates: none",
+        "Counts must come from",
+        "The agent must not rely on chat memory",
+        "report that it checked these durable sources",
+        "stable value-safe finding codes",
+        "Promotion Readiness Gates",
+        "Implicit approval is allowed only when",
+        "model output never grants",
+        "implicit approval",
+        "Probation And Demotion",
+        "false positive must be demoted to advisory",
+        "expire after three completed slices without new evidence",
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_promotion_registry_uses_unique_finding_codes() -> None:
+    text = PROMOTION_CANDIDATES.read_text(encoding="utf-8")
+
+    codes = PROMOTION_CODE_RE.findall(text)
+
+    assert codes
+    assert len(codes) == len(set(codes))
+
+
+def test_review_protocol_requires_full_complexity_delta_block() -> None:
+    text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
+
+    required = (
+        "If a refactor closeout cites the complexity sensor",
+        "full summary/delta block",
+        *REQUIRED_COMPLEXITY_FIELDS,
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_review_protocol_requires_behavior_drift_mapping_evidence() -> None:
+    text = REVIEW_PROTOCOL.read_text(encoding="utf-8")
+
+    required = (
+        "Behavior Drift Check",
+        "Reviewed drift risks",
+        "<old behavior element -> new location -> evidence>",
+        "<new element -> old source or intentional-change note -> evidence>",
+        "every removed behavior element maps to a new location",
+        "every new field, branch, condition, or helper maps back to old behavior",
+        "no drift found by listed checks; residual risks listed above",
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_final_closeout_records_full_complexity_summary() -> None:
+    text = FINAL_CLOSEOUT.read_text(encoding="utf-8")
+
+    required = (
+        "Final Full-Repo Sensor Snapshot",
+        *REQUIRED_COMPLEXITY_FIELDS,
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_promotion_registry_records_contract_term_table_guidance() -> None:
+    text = PROMOTION_CANDIDATES.read_text(encoding="utf-8")
+
+    required = (
+        "Contract-term/spec-table extraction",
+        "all-quantified checks",
+        "not a blanket instruction",
+        "checklist-item",
+        "Behavior Drift Mapping Support",
+        "Full Complexity Delta Closeout",
+        "KCS14-PROMO-006",
+        "KCS14-PROMO-007",
+        "KCS14-PROMO-008",
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
