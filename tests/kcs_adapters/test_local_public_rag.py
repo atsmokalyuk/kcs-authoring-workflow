@@ -163,7 +163,7 @@ def test_local_public_rag_config_rejects_unsafe_endpoint(base_url: str) -> None:
 def test_local_public_rag_config_accepts_explicit_loopback_hosts() -> None:
     assert LocalPublicRagConfig().base_url == "http://127.0.0.1:8768"
     assert LocalPublicRagConfig(base_url="http://localhost:8768").top_k == 5
-    assert LocalPublicRagConfig(base_url="http://[::1]:8768").timeout_seconds == 5
+    assert LocalPublicRagConfig(base_url="http://[::1]:8768").timeout_seconds == 30
 
 
 def test_local_public_rag_transport_disables_redirects(

@@ -17,6 +17,8 @@ public-safe symptom text.
   search endpoints over an operator-managed public Plesk corpus.
 - RAG results contain ranked public article/chunk metadata. They do not prove
   cause-resolution or question-answer identity.
+- A live warmed-runtime search can take about 14 seconds on the current local
+  corpus, so the adapter uses a bounded 30-second default timeout.
 
 ## Target behavior
 
