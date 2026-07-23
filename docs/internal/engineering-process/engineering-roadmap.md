@@ -11,7 +11,7 @@ Completed KCS-15 prerequisite: KCS-15.0 Style Source And Governance Baseline
 Completed KCS-15 behavior slice: KCS-15.1 PLESK_INFO Trigger Parity
 Completed KCS-15 enabling slice: KCS-15.2a Local Public RAG Adapter
 Completed KCS-15 enabling slice: KCS-15.2b1 Bounded Public Comparison Evidence
-Authorized KCS-15.2b2 phase: Phase A Exact Public Article Context
+Completed KCS-15.2b2 phase: Phase A Exact Public Article Context
 KCS-15.2b2 Phase B Delivery state: locked; target UX selection is not authorization
 ```
 
@@ -119,7 +119,7 @@ evidence directly.
   - KCS-15.2b1 provider-neutral bounded public comparison evidence is complete;
     it did not change Desktop or decision behavior;
   - KCS-15.2b2 operator-confirmed comparison target UX is selected; Phase A
-    exact public-article context is authorized, while Phase B
+    exact public-article context is complete, while Phase B
     Desktop/model/operator integration Delivery remains locked;
   - KCS-15.2b3 repeated comparison trials remain separately gated;
   - deterministic style/structure parity continues in KCS-15.3 and approved
@@ -145,7 +145,7 @@ KCS-15.2a local-public RAG adapter is complete as bounded enabling work.
 KCS-15.2b1 is complete only for the provider-neutral public comparison
 evidence contract, common acceptance gate, and local `/api/snippets`
 projection. The target UX for KCS-15.2b2 is selected. Phase A exact
-public-article context is authorized, while Phase B Desktop/model/operator
+public-article context is complete, while Phase B Desktop/model/operator
 integration remains Delivery-locked. KCS-15.2 does not block independent
 KCS-15.3 style-parity work.
 

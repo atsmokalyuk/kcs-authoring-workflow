@@ -27,6 +27,8 @@ class FakeTransport:
         self.post_calls: list[dict[str, object]] = []
         self.get_error: Exception | None = None
         self.post_error: Exception | None = None
+        self.post_results_by_url: dict[str, object] = {}
+        self.post_errors_by_url: dict[str, Exception] = {}
 
     def get_json(
         self,
@@ -62,9 +64,11 @@ class FakeTransport:
                 "max_response_bytes": max_response_bytes,
             }
         )
+        if url in self.post_errors_by_url:
+            raise self.post_errors_by_url[url]
         if self.post_error is not None:
             raise self.post_error
-        return self.search_result
+        return self.post_results_by_url.get(url, self.search_result)
 
 
 class FakeHttpResponse:
@@ -216,6 +220,86 @@ def _snippets_result(
         "markdown": "SECRET_RENDERED_MARKDOWN",
         "retrieval_run_id": "SECRET_RUNTIME_RUN_ID",
         "raw_query": "SECRET_QUERY_TAIL",
+    }
+    result.update(overrides)
+    return {"ok": True, "result": result}
+
+
+def _exact_snippets_result(
+    *,
+    source_doc_id: str = "plesk-support://222222",
+    canonical_url: str = (
+        "https://support.plesk.com/hc/en-us/articles/222222-Explicit"
+    ),
+    snippets: list[object] | None = None,
+    **overrides: object,
+) -> dict[str, object]:
+    selected = (
+        [
+            {
+                **_snippet(
+                    rank=1,
+                    candidate_rank=1,
+                    source_doc_id=source_doc_id,
+                    canonical_url=canonical_url,
+                    title="Ticket resolution article",
+                    section_path="Symptoms",
+                    text="The affected login returns HTTP 500.",
+                    token_count=6,
+                ),
+            },
+            {
+                **_snippet(
+                    rank=2,
+                    candidate_rank=1,
+                    source_doc_id=source_doc_id,
+                    canonical_url=canonical_url,
+                    title="Ticket resolution article",
+                    section_path="Cause",
+                    text="The service configuration is stale.",
+                    token_count=5,
+                ),
+            },
+            {
+                **_snippet(
+                    rank=3,
+                    candidate_rank=1,
+                    source_doc_id=source_doc_id,
+                    canonical_url=canonical_url,
+                    title="Ticket resolution article",
+                    section_path="Resolution",
+                    text="Refresh the configuration and restart the service.",
+                    token_count=7,
+                ),
+            },
+        ]
+        if snippets is None
+        else snippets
+    )
+    for rank, item in enumerate(selected, start=1):
+        if isinstance(item, dict):
+            item.pop("candidate_rank", None)
+            item.pop("chunk_id", None)
+            item["rank"] = rank
+    result: dict[str, object] = {
+        "schema_version": "knowledge-exact-article-snippets-v1",
+        "source_doc_id": source_doc_id,
+        "canonical_url": canonical_url,
+        "title": "Ticket resolution article",
+        "article_status": "active",
+        "updated_at": "2026-06-10",
+        "updated_ts": 1781059200,
+        "max_snippets": 6,
+        "max_tokens": 600,
+        "available_chunk_count": len(selected),
+        "selected_count": len(selected),
+        "total_token_count": sum(
+            int(item.get("token_count", 0))
+            for item in selected
+            if isinstance(item, Mapping)
+        ),
+        "snippets": selected,
+        "markdown": "SECRET_EXACT_MARKDOWN",
     }
     result.update(overrides)
     return {"ok": True, "result": result}
@@ -607,8 +691,16 @@ def test_explicit_resolution_article_is_prioritized_over_rag_rank() -> None:
     ]
     transport = FakeTransport(
         readiness=_readiness_result(),
-        search=_snippets_result(snippets=snippets),
+        search=_snippets_result(
+            snippets=snippets,
+            max_snippets=4,
+            max_tokens=600,
+            per_article_cap=1,
+        ),
     )
+    transport.post_results_by_url[
+        "http://127.0.0.1:8768/api/article-snippets"
+    ] = _exact_snippets_result()
     request = ReuseComparisonEvidenceRequest(
         ("Plesk login returns HTTP 500.",),
         PublicArticleReference(
@@ -628,13 +720,40 @@ def test_explicit_resolution_article_is_prioritized_over_rag_rank() -> None:
     assert result.candidates[0].rank == 1
     assert result.candidates[0].origin == "explicit_resolution_reference"
     assert result.candidates[1].origin == "search_result"
+    assert len(result.candidates[0].excerpts) == 2
+    assert "HTTP 500" in result.candidates[0].excerpts[0].text
+    assert "stale" in result.candidates[0].excerpts[0].text
+    assert "restart the service" in result.candidates[0].excerpts[1].text
+    assert transport.post_calls[0] == {
+        "url": "http://127.0.0.1:8768/api/article-snippets",
+        "payload": {
+            "canonical_url": (
+                "https://support.plesk.com/hc/en-us/articles/222222-Older-Slug"
+            ),
+            "max_snippets": 6,
+            "max_tokens": 600,
+        },
+        "timeout_seconds": 30,
+        "max_response_bytes": 128 * 1024,
+    }
+    assert transport.post_calls[1]["url"].endswith("/api/snippets")
+    assert transport.post_calls[1]["payload"]["max_snippets"] == 4
+    assert transport.post_calls[1]["payload"]["max_tokens"] == 600
+    assert transport.post_calls[1]["payload"]["per_article_cap"] == 1
 
 
 def test_missing_explicit_article_context_blocks_silent_rag_substitution() -> None:
     transport = FakeTransport(
         readiness=_readiness_result(),
-        search=_snippets_result(),
+        search=_snippets_result(
+            max_snippets=4,
+            max_tokens=600,
+            per_article_cap=1,
+        ),
     )
+    transport.post_errors_by_url[
+        "http://127.0.0.1:8768/api/article-snippets"
+    ] = LocalPublicRagTransportError()
     request = ReuseComparisonEvidenceRequest(
         ("Plesk login returns HTTP 500.",),
         PublicArticleReference(
@@ -794,8 +913,16 @@ def test_conflicting_explicit_article_identifiers_do_not_prioritize_wrong_hit() 
     ]
     transport = FakeTransport(
         readiness=_readiness_result(),
-        search=_snippets_result(snippets=snippets),
+        search=_snippets_result(
+            snippets=snippets,
+            max_snippets=4,
+            max_tokens=600,
+            per_article_cap=1,
+        ),
     )
+    transport.post_errors_by_url[
+        "http://127.0.0.1:8768/api/article-snippets"
+    ] = LocalPublicRagTransportError()
     request = ReuseComparisonEvidenceRequest(
         ("Plesk login fails.",),
         PublicArticleReference(
@@ -811,3 +938,99 @@ def test_conflicting_explicit_article_identifiers_do_not_prioritize_wrong_hit() 
     assert result.status == "explicit_article_context_missing"
     assert result.explicit_reference_status == "context_missing"
     assert all(candidate.origin == "search_result" for candidate in result.candidates)
+
+
+def test_exact_article_evidence_survives_optional_semantic_transport_failure() -> None:
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(),
+    )
+    transport.post_results_by_url[
+        "http://127.0.0.1:8768/api/article-snippets"
+    ] = _exact_snippets_result()
+    transport.post_errors_by_url[
+        "http://127.0.0.1:8768/api/snippets"
+    ] = LocalPublicRagTransportError()
+    request = ReuseComparisonEvidenceRequest(
+        ("Plesk login fails.",),
+        PublicArticleReference(
+            "https://support.plesk.com/hc/en-us/articles/222222-Explicit"
+        ),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        request
+    )
+
+    assert result.status == "comparison_evidence_ready"
+    assert result.explicit_reference_status == "context_ready"
+    assert len(result.candidates) == 1
+    assert result.candidates[0].origin == "explicit_resolution_reference"
+
+
+@pytest.mark.parametrize(
+    "exact_payload",
+    [
+        _exact_snippets_result(schema_version="wrong"),
+        _exact_snippets_result(selected_count=99),
+        _exact_snippets_result(available_chunk_count=0),
+        _exact_snippets_result(total_token_count=999),
+        _exact_snippets_result(
+            canonical_url="https://example.com/articles/222222-Explicit"
+        ),
+        _exact_snippets_result(
+            snippets=[
+                {
+                    **_snippet(
+                        source_doc_id="plesk-support://222222",
+                        canonical_url=(
+                            "https://support.plesk.com/hc/en-us/articles/"
+                            "222222-Explicit"
+                        ),
+                        title="Ticket resolution article",
+                    ),
+                    "article_status": "stale_suspect",
+                }
+            ],
+            article_status="stale_suspect",
+        ),
+        _exact_snippets_result(
+            snippets=[
+                _snippet(
+                    source_doc_id="plesk-support://222222",
+                    canonical_url=(
+                        "https://support.plesk.com/hc/en-us/articles/"
+                        "222222-Explicit"
+                    ),
+                    title="Ticket resolution article",
+                    text="api_key=SECRET",
+                    token_count=1,
+                )
+            ]
+        ),
+    ],
+)
+def test_invalid_exact_article_response_blocks_before_semantic_substitution(
+    exact_payload: object,
+) -> None:
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(),
+    )
+    transport.post_results_by_url[
+        "http://127.0.0.1:8768/api/article-snippets"
+    ] = exact_payload
+    request = ReuseComparisonEvidenceRequest(
+        ("Plesk login fails.",),
+        PublicArticleReference(
+            "https://support.plesk.com/hc/en-us/articles/222222-Explicit"
+        ),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        request
+    )
+
+    assert result.status == "comparison_provider_invalid_response"
+    assert result.searched is False
+    assert len(transport.post_calls) == 1

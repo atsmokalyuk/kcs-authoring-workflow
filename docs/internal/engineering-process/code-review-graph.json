@@ -576,7 +576,7 @@
         },
         {
           "path": "src/kcs_adapters/local_public_rag.py",
-          "file_hash": "26bc88afc832a5c732c85ca1b0d948a4437a6b82e08d159d73ed18453d996b86",
+          "file_hash": "0fc84775e7cc12758d26ff5e75ce2f669bd21c9cfbb8545d4d61b1b0f2760bd9",
           "valid_until_changed": true
         }
       ],
@@ -991,7 +991,7 @@
         },
         {
           "path": "tests/policy/test_kcs15_source_pack_policy.py",
-          "file_hash": "35d7c4657b9b3109d2a916945eda55c0c0fb978880f1b90502aa15f8ac984dcc",
+          "file_hash": "f78e9aaed27768fb2cc4a5508271f2254127b6ea2debc18eae031a7b5f934fe1",
           "valid_until_changed": true
         },
         {

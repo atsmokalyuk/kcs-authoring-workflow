@@ -1,7 +1,7 @@
 # KCS-15.2b2 Operator-Confirmed Comparison Workflow
 
-Status: parent outcome and target UX selected; Phase A Delivery authorized on
-2026-07-23; Phase B Desktop/model/operator Delivery remains locked.
+Status: parent outcome and target UX selected; Phase A Delivery and independent
+review complete. Phase B Desktop/model/operator Delivery remains locked.
 
 ## Requested outcome
 
@@ -162,8 +162,8 @@ For a public article, `update` maps to the existing reviewer-controlled
 
 ### Design-process correction applied before Phase A
 
-Status: Delivery authorized by direct operator request on 2026-07-23 and
-implemented as a documentation/policy batch; pending commit review.
+Status: Delivery complete in committed documentation/policy batch `40d10b2`;
+acceptance and review gates passed.
 
 During KCS-15.2b2 Design, the detailed plan would have remained in chat until
 the operator explicitly requested a tracked artifact. The operator then
@@ -203,7 +203,7 @@ Unchanged contracts for this sub-scope:
 
 ### Phase A: exact public article context
 
-Status: Delivery authorized.
+Status: Delivery and independent review complete.
 
 Requested outcome:
 
@@ -244,6 +244,48 @@ The exact `plesk_support` endpoint shape is intentionally not prescribed here.
 It must be selected after reading that repository's current policy and runtime
 contracts. The required capability and safety behavior are fixed; the
 provider-specific API shape remains local to its adapter.
+
+Resolved provider design on 2026-07-23:
+
+- `plesk_support` owns a dedicated loopback
+  `POST /api/article-snippets` endpoint with
+  `knowledge-exact-article-snippets-v1`;
+- exact selection is structural rather than semantic:
+  `Symptoms`/`Question`, `Cause`, `Resolution`/`Answer`, contiguous solution
+  detail, then remaining document order;
+- when an approved explicit article is present, the KCS adapter requests at
+  most six exact chunks/600 tokens and four semantic chunks/600 tokens;
+- the explicit-path semantic request uses one excerpt per article so repeated
+  chunks cannot consume the alternative-candidate budget;
+- the adapter projects exact chunks into at most two provider-neutral excerpts:
+  issue/cause context and resolution/step context;
+- the existing core maximums remain unchanged: three candidates, six excerpts
+  total, two excerpts per article, and 1200 tokens total;
+- without an explicit article, the KCS-15.2b1 semantic request remains six
+  excerpts/1200 tokens with its existing per-article cap;
+- an exact lookup failure cannot be replaced silently by a semantic hit;
+  successful exact evidence remains usable when optional semantic candidates
+  are unavailable.
+
+Known safe operational limitation:
+
+- the current adapter maps both an unavailable exact endpoint and an unavailable
+  exact article to `explicit_article_context_missing` when semantic search still
+  succeeds;
+- both cases fail closed and cannot authorize reuse, but Phase B diagnostics may
+  later distinguish capability deployment from corpus/article absence without
+  changing the Phase A core evidence contract.
+
+Live Phase A feasibility on 2026-07-23:
+
+- the corrected exact endpoint returned six structural chunks/137 tokens for
+  one real active public article under the final 600-token exact bound;
+- the KCS adapter collapsed them into two provider-neutral excerpts and added
+  two distinct one-excerpt semantic candidates;
+- the final evidence contained three candidates, four excerpts, and 172 tokens;
+- exact article identity, first position, public origins, and the existing
+  3-candidate/6-excerpt/1200-token core bounds all passed;
+- this is `N=1` feasibility evidence only, not Phase B model/operator stability.
 
 ### Phase B: Desktop/operator comparison state
 
@@ -366,12 +408,79 @@ Stop condition: first invariant breach or one successful feasibility run.
 - Reviewer-only, no-customer-reply, no-write, no-publication, and
   `auto_publish_allowed=false` boundaries remain unchanged.
 
-## Unknown inventory
+## Resolved Phase A design facts
 
-- The smallest exact-reference API shape inside `plesk_support`; resolve from
-  that repository before Phase A implementation.
-- Whether exact context should be served by a dedicated endpoint or a strict
-  filter on an existing endpoint; provider-local design decision.
+- The provider uses dedicated `POST /api/article-snippets`, not a search filter.
+- Exact identity is derived from the allowlisted canonical URL/source ID and
+  remains stable across support-article slug changes.
+- Exact chunks are structurally selected and projected into the unchanged core
+  comparison bounds.
+- The final provider and adapter live smoke passed `N=1`.
+
+## Phase A Delivery closeout
+
+Status: Delivery and independent review complete.
+
+Changed behavior:
+
+- the `plesk_support` provider exposes one strict, loopback-only exact public
+  article endpoint;
+- the KCS local-public-RAG adapter combines approved exact evidence with bounded
+  semantic alternatives while keeping the explicit article first;
+- explicit exact-context absence fails closed and cannot be replaced silently
+  by a semantic hit.
+
+Validation:
+
+- provider focused endpoint/snippet suite: 90 passed, 5 subtests passed;
+- provider local-knowledge regression suite: 482 passed, 1 skipped, 91
+  subtests passed;
+- KCS adapter suite: 70 passed;
+- full KCS suite: 1516 passed, 1 skipped;
+- KCS Ruff, configured C901, code-review-graph policy, graph hash, and
+  `git diff --check`: passed;
+- measured adapter complexity: maximum CC 7, zero functions above the
+  configured threshold;
+- real-corpus exact provider plus KCS projection smoke: passed at `N=1`
+  feasibility only.
+
+Behavior drift verdict:
+
+- intended additive provider endpoint and explicit-reference adapter path;
+- semantic-only KCS-15.2b1 requests and provider semantic endpoints remain
+  backward compatible;
+- no Desktop, Claude, operator state, KCS action, persistence, renderer,
+  reviewer-bundle, publication, or observability behavior changed.
+
+Ousterhout closeout:
+
+- Trigger: new provider API plus a cross-repository adapter path for a material
+  public-evidence boundary.
+- exact identity, structural selection, validation, and provider schema remain
+  hidden behind the adapter boundary;
+- the provider endpoint and adapter calls are narrow and use existing runtime
+  and core contracts;
+- complexity was reduced to the repository threshold without adding a new
+  framework, hierarchy, service, persistence layer, or observability layer;
+- Phase B can consume provider-neutral comparison evidence without learning
+  whether RAG is local or later hosted behind another adapter.
+- Residual design risk: exact endpoint unavailability and exact article absence
+  share one fail-closed KCS status, and provider normalization may leave a
+  bounded footer tail after a solution section. Both are documented and
+  deferred because neither can authorize reuse or expose private data.
+- Verdict: `pass`; no redesign or decomposition is required before Phase A
+  closeout.
+
+Review:
+
+- first independent review returned five blockers: request-field allowlisting,
+  internal ID exposure, split-solution ordering, old-slug regression coverage,
+  and adapter complexity;
+- all five corrections are implemented and deterministically covered;
+- final independent re-review verdict: `confirmed`; no blockers remain.
+
+## Remaining unknown inventory
+
 - Final Phase B submit tool name and schema.
 - Exact Phase B pending-state composition with existing semantic and batch
   state.
@@ -380,8 +489,8 @@ Stop condition: first invariant breach or one successful feasibility run.
 - Retrieval and recommendation stability across representative tickets.
 - Operator comfort and correction overhead during repeated use.
 
-Only the first two unknowns can block Phase A. The remaining unknowns are
-retained for the Phase B/b3 gates and must not expand Phase A.
+These unknowns are retained for the Phase B/b3 gates and must not expand
+Phase A.
 
 ## Approval ledger
 
@@ -394,7 +503,7 @@ URL-only priority or partial match: rejected
 KCS-15.2b1 Delivery and closeout: complete
 Tracked material Design gate correction: Delivery authorized 2026-07-23
 Active Slice Plan review linkage: Delivery authorized 2026-07-23
-KCS-15.2b2 Phase A exact public context Delivery: authorized 2026-07-23
+KCS-15.2b2 Phase A exact public context Delivery: complete; independent review confirmed
 KCS-15.2b2 Phase B Desktop/model/operator Delivery: locked
 KCS-15.2b3 repeated trial: locked
 ```
