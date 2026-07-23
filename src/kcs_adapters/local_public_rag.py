@@ -16,8 +16,17 @@ from urllib.parse import ParseResult, urlparse
 
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
+from kcs_core.reuse_comparison import (
+    PublicArticleReference,
+    ReuseComparisonCandidate,
+    ReuseComparisonEvidence,
+    ReuseComparisonEvidenceRequest,
+    ReuseComparisonExcerpt,
+    ensure_valid_reuse_comparison_evidence,
+)
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
 
+LOCAL_PUBLIC_RAG_SNIPPETS_SCHEMA_VERSION = "knowledge-cited-snippets-v1"
 LOCAL_PUBLIC_RAG_STATUS_SCHEMA_VERSION = "knowledge-runtime-status-v1"
 LOCAL_PUBLIC_RAG_SEARCH_SCHEMA_VERSION = "knowledge-hybrid-search-v1"
 
@@ -29,6 +38,12 @@ _MAX_TIMEOUT_SECONDS = 30
 _MAX_TOP_K = 5
 _MAX_QUERY_CHARS = 512
 _MAX_SYMPTOMS = 5
+_COMPARISON_MAX_CANDIDATES = 3
+_COMPARISON_MAX_EXCERPTS = 6
+_COMPARISON_MAX_TOKENS = 1200
+_COMPARISON_PER_ARTICLE_CAP = 2
+_MAX_EXCERPT_CHARS = 6000
+_MAX_TOTAL_EXCERPT_CHARS = 24_000
 _PUBLIC_SOURCE_TYPES = {
     "kb.plesk.com": "kb",
     "support.plesk.com": "support",
@@ -38,6 +53,23 @@ _ARTICLE_STATUSES = frozenset({"active", "stale_suspect", "deleted_from_site"})
 _MATCHED_RETRIEVERS = frozenset({"keyword", "vector"})
 _WHITESPACE_RE = re.compile(r"\s+")
 _SOURCE_DOC_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}")
+_PRIVATE_EXCERPT_RE = re.compile(
+    r"(?:/Users/|/home/|C:\\Users\\|\.knowledge(?:/|\\)|\.private(?:/|\\))",
+    re.I,
+)
+_SECRET_ASSIGNMENT_RE = re.compile(
+    r"(?:\bauthorization\s*:\s*(?:bearer|basic)\s+\S+|"
+    r"\b(?:password|passwd|api[_-]?key|token|secret)\s*[:=-]\s*\S+)",
+    re.I,
+)
+_COMPARISON_FAILURE_STATUSES = {
+    "rag_runtime_unavailable": "comparison_provider_unavailable",
+    "rag_runtime_invalid_response": "comparison_provider_invalid_response",
+    "rag_runtime_cold": "comparison_provider_not_ready",
+    "rag_runtime_stale": "comparison_provider_not_ready",
+    "rag_runtime_hybrid_not_ready": "comparison_provider_not_ready",
+    "rag_comparison_invalid_response": "comparison_provider_invalid_response",
+}
 
 
 class LocalPublicRagTransportError(RuntimeError):
@@ -152,6 +184,19 @@ class LocalPublicRagSearchResult:
         }
 
 
+@dataclass(frozen=True)
+class _ParsedComparisonExcerpt:
+    candidate_rank: int
+    source_doc_id: str
+    source_type: str
+    title: str
+    public_url: str
+    section_path: str
+    article_status: str
+    updated_at: str | None
+    excerpt: ReuseComparisonExcerpt
+
+
 class LocalPublicRagAdapter:
     """Check readiness and run bounded metadata-only local public search."""
 
@@ -194,6 +239,57 @@ class LocalPublicRagAdapter:
             return LocalPublicRagSearchResult(False, "rag_runtime_unavailable", "")
         except ContractValidationError:
             return LocalPublicRagSearchResult(False, "rag_search_invalid_response", "")
+
+    def collect_comparison_evidence(
+        self,
+        request: ReuseComparisonEvidenceRequest,
+    ) -> ReuseComparisonEvidence:
+        """Return bounded public excerpts without assigning article identity."""
+
+        query = build_local_public_rag_query(request.symptoms)
+        explicit_article = _validated_explicit_article(request.explicit_article)
+        readiness = self.check_readiness()
+        if not readiness.ready:
+            return _comparison_failure(
+                readiness.status,
+                explicit_article=explicit_article,
+            )
+        max_excerpts = min(
+            _COMPARISON_MAX_EXCERPTS,
+            self._config.top_k * _COMPARISON_PER_ARTICLE_CAP,
+        )
+        try:
+            payload = self._transport.post_json(
+                url=f"{self._config.base_url.rstrip('/')}/api/snippets",
+                payload={
+                    "query": query,
+                    "query_source": "final_clean_ticket",
+                    "retrieval_mode": "hybrid",
+                    "top_k": self._config.top_k,
+                    "keyword_k": 30,
+                    "vector_k": 30,
+                    "max_snippets": max_excerpts,
+                    "max_tokens": _COMPARISON_MAX_TOKENS,
+                    "per_article_cap": _COMPARISON_PER_ARTICLE_CAP,
+                },
+                timeout_seconds=self._config.timeout_seconds,
+                max_response_bytes=self._config.max_response_bytes,
+            )
+            return _parse_comparison_evidence(
+                payload,
+                explicit_article=explicit_article,
+                max_excerpts=max_excerpts,
+            )
+        except LocalPublicRagTransportError:
+            return _comparison_failure(
+                "rag_runtime_unavailable",
+                explicit_article=explicit_article,
+            )
+        except ContractValidationError:
+            return _comparison_failure(
+                "rag_comparison_invalid_response",
+                explicit_article=explicit_article,
+            )
 
 
 class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -358,6 +454,277 @@ def _parse_search_result(payload: object, *, top_k: int) -> LocalPublicRagSearch
     )
 
 
+def _comparison_failure(
+    status: str,
+    *,
+    explicit_article: PublicArticleReference | None,
+) -> ReuseComparisonEvidence:
+    projected_status = _COMPARISON_FAILURE_STATUSES[status]
+    evidence = ReuseComparisonEvidence(
+        searched=False,
+        status=projected_status,
+        search_run_ref="",
+        explicit_reference_status=(
+            "not_checked" if explicit_article is not None else "not_provided"
+        ),
+        explicit_article=explicit_article,
+        blockers=(projected_status,),
+    )
+    ensure_valid_reuse_comparison_evidence(evidence)
+    return evidence
+
+
+def _parse_comparison_evidence(
+    payload: object,
+    *,
+    explicit_article: PublicArticleReference | None,
+    max_excerpts: int,
+) -> ReuseComparisonEvidence:
+    result = _wrapped_result(payload)
+    raw_excerpts = _comparison_raw_excerpts(result, max_excerpts=max_excerpts)
+    parsed = tuple(_parse_comparison_excerpt(value) for value in raw_excerpts)
+    _validate_comparison_totals(result, parsed)
+    candidates, explicit_status = _comparison_candidates(
+        parsed,
+        explicit_article=explicit_article,
+    )
+    status, blockers = _comparison_status(
+        candidates,
+        explicit_article=explicit_article,
+        explicit_status=explicit_status,
+    )
+    projected = [candidate.to_json_dict() for candidate in candidates]
+    result_hash = sha256(
+        json.dumps(projected, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()[:20]
+    evidence = ReuseComparisonEvidence(
+        searched=True,
+        status=status,
+        search_run_ref=f"comparison-{result_hash}",
+        explicit_reference_status=explicit_status,
+        explicit_article=explicit_article,
+        candidates=candidates,
+        blockers=blockers,
+    )
+    ensure_valid_reuse_comparison_evidence(evidence)
+    return evidence
+
+
+def _comparison_raw_excerpts(
+    result: Mapping[str, Any],
+    *,
+    max_excerpts: int,
+) -> list[object]:
+    actual_contract = (
+        result.get("schema_version"),
+        result.get("query_source"),
+        result.get("retriever"),
+        result.get("max_snippets"),
+        result.get("max_tokens"),
+        result.get("per_article_cap"),
+    )
+    expected_contract = (
+        LOCAL_PUBLIC_RAG_SNIPPETS_SCHEMA_VERSION,
+        "final_clean_ticket",
+        "hybrid",
+        max_excerpts,
+        _COMPARISON_MAX_TOKENS,
+        _COMPARISON_PER_ARTICLE_CAP,
+    )
+    if actual_contract != expected_contract:
+        raise ContractValidationError("local public RAG comparison response invalid")
+    raw_excerpts = result.get("snippets")
+    if not isinstance(raw_excerpts, list) or len(raw_excerpts) > max_excerpts:
+        raise ContractValidationError("local public RAG comparison response invalid")
+    if result.get("selected_count") != len(raw_excerpts):
+        raise ContractValidationError("local public RAG comparison response invalid")
+    _nonnegative_int(result.get("candidate_count"))
+    return raw_excerpts
+
+
+def _validate_comparison_totals(
+    result: Mapping[str, Any],
+    parsed: tuple[_ParsedComparisonExcerpt, ...],
+) -> None:
+    total_chars = sum(len(item.excerpt.text) for item in parsed)
+    if total_chars > _MAX_TOTAL_EXCERPT_CHARS:
+        raise ContractValidationError("local public RAG comparison response invalid")
+    total_token_count = _nonnegative_int(result.get("total_token_count"))
+    projected_tokens = sum(item.excerpt.token_count for item in parsed)
+    if total_token_count != projected_tokens:
+        raise ContractValidationError("local public RAG comparison response invalid")
+    if total_token_count > _COMPARISON_MAX_TOKENS:
+        raise ContractValidationError("local public RAG comparison response invalid")
+
+
+def _parse_comparison_excerpt(value: object) -> _ParsedComparisonExcerpt:
+    if not isinstance(value, Mapping):
+        raise ContractValidationError("local public RAG comparison excerpt invalid")
+    public_url = _public_url(value.get("canonical_url"))
+    source_doc_id = _source_doc_id(value.get("source_doc_id"))
+    title = _bounded_public_metadata_string(value.get("title"), max_chars=300)
+    section_path = _bounded_public_metadata_string(
+        value.get("section_path"), max_chars=300
+    )
+    text = _public_excerpt_text(value.get("text"))
+    token_count = _positive_int(value.get("token_count"))
+    excerpt_hash = sha256(
+        f"{source_doc_id}\n{section_path}\n{text}".encode("utf-8")
+    ).hexdigest()[:20]
+    return _ParsedComparisonExcerpt(
+        candidate_rank=_positive_int(value.get("candidate_rank")),
+        source_doc_id=source_doc_id,
+        source_type=_PUBLIC_SOURCE_TYPES[urlparse(public_url).hostname or ""],
+        title=title,
+        public_url=public_url,
+        section_path=section_path,
+        article_status=_choice(value.get("article_status"), _ARTICLE_STATUSES),
+        updated_at=_optional_public_metadata_string(
+            value.get("updated_at"), max_chars=64
+        ),
+        excerpt=ReuseComparisonExcerpt(
+            excerpt_ref=f"public-excerpt-{excerpt_hash}",
+            section_path=section_path,
+            citation=f"{title} — {section_path} — {public_url}",
+            text=text,
+            token_count=token_count,
+        ),
+    )
+
+
+def _comparison_candidates(
+    excerpts: tuple[_ParsedComparisonExcerpt, ...],
+    *,
+    explicit_article: PublicArticleReference | None,
+) -> tuple[tuple[ReuseComparisonCandidate, ...], str]:
+    groups = _comparison_article_groups(excerpts)
+    explicit_group = _explicit_article_group(groups, explicit_article)
+    ordered = ([explicit_group] if explicit_group is not None else []) + [
+        values for values in groups if values is not explicit_group
+    ]
+    selected = ordered[:_COMPARISON_MAX_CANDIDATES]
+    candidates = tuple(
+        _comparison_candidate(
+            values,
+            rank=index,
+            explicit=values is explicit_group,
+        )
+        for index, values in enumerate(selected, start=1)
+    )
+    explicit_status = _explicit_reference_status(explicit_article, explicit_group)
+    return candidates, explicit_status
+
+
+def _comparison_article_groups(
+    excerpts: tuple[_ParsedComparisonExcerpt, ...],
+) -> list[list[_ParsedComparisonExcerpt]]:
+    grouped: dict[str, list[_ParsedComparisonExcerpt]] = {}
+    for excerpt in excerpts:
+        grouped.setdefault(excerpt.source_doc_id, []).append(excerpt)
+    groups = sorted(grouped.values(), key=lambda values: values[0].candidate_rank)
+    for values in groups:
+        _validate_comparison_article_group(values)
+    return groups
+
+
+def _explicit_reference_status(
+    explicit_article: PublicArticleReference | None,
+    explicit_group: list[_ParsedComparisonExcerpt] | None,
+) -> str:
+    if explicit_article is None:
+        return "not_provided"
+    if explicit_group is not None:
+        return "context_ready"
+    return "context_missing"
+
+
+def _validate_comparison_article_group(
+    values: list[_ParsedComparisonExcerpt],
+) -> None:
+    if not values or len(values) > _COMPARISON_PER_ARTICLE_CAP:
+        raise ContractValidationError("local public RAG comparison response invalid")
+    first = values[0]
+    expected = (
+        first.candidate_rank,
+        first.source_type,
+        first.title,
+        first.public_url,
+        first.article_status,
+        first.updated_at,
+    )
+    if any(
+        (
+            value.candidate_rank,
+            value.source_type,
+            value.title,
+            value.public_url,
+            value.article_status,
+            value.updated_at,
+        )
+        != expected
+        for value in values[1:]
+    ):
+        raise ContractValidationError("local public RAG comparison response invalid")
+
+
+def _explicit_article_group(
+    groups: list[list[_ParsedComparisonExcerpt]],
+    explicit_article: PublicArticleReference | None,
+) -> list[_ParsedComparisonExcerpt] | None:
+    if explicit_article is None:
+        return None
+    for values in groups:
+        first = values[0]
+        if _matches_explicit_article(first, explicit_article):
+            return values
+    return None
+
+
+def _matches_explicit_article(
+    candidate: _ParsedComparisonExcerpt,
+    explicit_article: PublicArticleReference,
+) -> bool:
+    url_matches = _public_article_key(candidate.public_url) == _public_article_key(
+        explicit_article.public_url
+    )
+    if explicit_article.source_doc_id is None:
+        return url_matches
+    return url_matches and candidate.source_doc_id == explicit_article.source_doc_id
+
+
+def _comparison_candidate(
+    values: list[_ParsedComparisonExcerpt],
+    *,
+    rank: int,
+    explicit: bool,
+) -> ReuseComparisonCandidate:
+    first = values[0]
+    return ReuseComparisonCandidate(
+        rank=rank,
+        source_doc_id=first.source_doc_id,
+        source_type=first.source_type,
+        title=first.title,
+        public_url=first.public_url,
+        article_status=first.article_status,
+        updated_at=first.updated_at,
+        origin="explicit_resolution_reference" if explicit else "search_result",
+        excerpts=tuple(value.excerpt for value in values),
+    )
+
+
+def _comparison_status(
+    candidates: tuple[ReuseComparisonCandidate, ...],
+    *,
+    explicit_article: PublicArticleReference | None,
+    explicit_status: str,
+) -> tuple[str, tuple[str, ...]]:
+    if explicit_article is not None and explicit_status == "context_missing":
+        return "explicit_article_context_missing", ("explicit_article_context_missing",)
+    if not candidates:
+        return "comparison_no_evidence", ("comparison_no_evidence",)
+    return "comparison_evidence_ready", ()
+
+
 def _parse_candidate(value: object) -> LocalPublicRagCandidate:
     if not isinstance(value, Mapping):
         raise ContractValidationError("local public RAG candidate invalid")
@@ -419,6 +786,33 @@ def _public_url(value: object) -> str:
     return text
 
 
+def _validated_explicit_article(
+    value: PublicArticleReference | None,
+) -> PublicArticleReference | None:
+    if value is None:
+        return None
+    public_url = _public_url(value.public_url)
+    source_doc_id = (
+        _source_doc_id(value.source_doc_id) if value.source_doc_id is not None else None
+    )
+    return PublicArticleReference(
+        public_url=public_url,
+        source_doc_id=source_doc_id,
+    )
+
+
+def _public_article_key(value: str) -> str:
+    parsed = urlparse(value)
+    path = parsed.path.rstrip("/")
+    if parsed.hostname == "support.plesk.com" and "/articles/" in path:
+        article_part = path.split("/articles/", 1)[1].split("/", 1)[0]
+        return f"support.plesk.com/articles/{article_part.split('-', 1)[0]}"
+    if parsed.hostname == "kb.plesk.com":
+        article_part = path.strip("/").split("/", 1)[0]
+        return f"kb.plesk.com/{article_part}"
+    return f"{parsed.hostname}{path}"
+
+
 def _bounded_public_url_string(value: object) -> str:
     if not isinstance(value, str):
         raise ContractValidationError("local public RAG candidate invalid")
@@ -477,9 +871,7 @@ def _bounded_public_metadata_string(value: object, *, max_chars: int) -> str:
     return normalized
 
 
-def _optional_public_metadata_string(
-    value: object, *, max_chars: int
-) -> str | None:
+def _optional_public_metadata_string(value: object, *, max_chars: int) -> str | None:
     if value is None:
         return None
     if not isinstance(value, str):
@@ -488,6 +880,23 @@ def _optional_public_metadata_string(
     if not normalized:
         return None
     return _bounded_public_metadata_string(normalized, max_chars=max_chars)
+
+
+def _public_excerpt_text(value: object) -> str:
+    if not isinstance(value, str):
+        raise ContractValidationError("local public RAG comparison excerpt invalid")
+    text = value.strip()
+    if not text or len(text) > _MAX_EXCERPT_CHARS:
+        raise ContractValidationError("local public RAG comparison excerpt invalid")
+    if _has_forbidden_control_character(text):
+        raise ContractValidationError("local public RAG comparison excerpt invalid")
+    if _PRIVATE_EXCERPT_RE.search(text) or _SECRET_ASSIGNMENT_RE.search(text):
+        raise ContractValidationError("local public RAG comparison excerpt invalid")
+    return text
+
+
+def _has_forbidden_control_character(text: str) -> bool:
+    return any(ord(character) < 32 and character not in "\n\r\t" for character in text)
 
 
 def _source_doc_id(value: object) -> str:
@@ -537,6 +946,7 @@ def _finite_number(value: object) -> float:
 
 __all__ = [
     "LOCAL_PUBLIC_RAG_SEARCH_SCHEMA_VERSION",
+    "LOCAL_PUBLIC_RAG_SNIPPETS_SCHEMA_VERSION",
     "LOCAL_PUBLIC_RAG_STATUS_SCHEMA_VERSION",
     "LocalPublicRagAdapter",
     "LocalPublicRagCandidate",

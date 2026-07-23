@@ -46,8 +46,13 @@ instead of implying that external tracking was updated.
   - KCS-15.2 RAG-assisted reuse
     - KCS-15.2a Local Public RAG Adapter: complete; loopback readiness and
       metadata-only candidate retrieval only
-    - KCS-15.2b Operator-Facing Reuse Comparison: design-open and
-      Delivery-locked; Desktop/pipeline integration and identity UX unapproved
+    - KCS-15.2b1 Bounded Public Comparison Evidence: complete;
+      provider-neutral contract, common acceptance gate, and local
+      `/api/snippets` projection only
+    - KCS-15.2b2 Operator-Confirmed Comparison Workflow: target UX selected,
+      but Desktop/model/operator integration Delivery remains locked
+    - KCS-15.2b3 Repeated Comparison Trial: planned after b2 with a separately
+      approved fixture/trial contract
   - KCS-15.3 Deterministic structure/title/entrypoint/safety/naming parity:
     planned, independently approvable from KCS-15.2b
   - KCS-15.4 Approved examples and bounded model-mediated quality trials:

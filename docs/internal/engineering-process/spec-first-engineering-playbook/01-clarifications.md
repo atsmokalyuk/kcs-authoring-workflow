@@ -101,6 +101,19 @@ Choose the lightest sufficient method: repository analysis, reference research,
 cognitive walkthrough, low-fidelity comparison, bounded operator trial,
 isolated feasibility slice, or predeclared repeated model/RAG trial.
 
+When a design depends on an existing runtime, service, tool, or API, identify
+the exact endpoint, mode, request, response shape, and operating condition that
+the slice needs. Before finalizing the dependent design or starting substantial
+implementation, either cite fresh tracked evidence for that exact path or run
+one bounded safe operational smoke. A fixture, documented schema, SDK type,
+adjacent endpoint, or earlier smoke under different conditions is nominal
+evidence, not operational proof.
+
+Predeclare the smoke's feasibility claim, safe input, fixed bounds, expected
+shape/invariants, allowed side effects, failure handling, and stop condition.
+One successful smoke proves only that bounded path is feasible. Stability,
+quality, and production readiness require their own acceptance gates.
+
 Stop evidence work when the operator has enough information for the material
 decision, the next unknown is operator-owned, the evidence budget is exhausted,
 repeated trials add no decision-relevant information, a non-negotiable blocker

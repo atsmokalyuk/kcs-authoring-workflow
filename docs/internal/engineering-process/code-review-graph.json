@@ -511,13 +511,14 @@
     },
     {
       "id": "cli_ingest_readiness",
-      "label": "CLI, Ingest, Local Public Search, And Readiness",
+      "label": "CLI, Ingest, Local Public Evidence, And Readiness",
       "risk": "medium",
       "owns": [
         "CLI entrypoint behavior",
         "JSON payload loading",
         "Zendesk ingest helpers",
-        "loopback-only local public RAG metadata adapter",
+        "provider-neutral bounded public comparison evidence contract and acceptance gate",
+        "loopback-only local public RAG evidence adapter",
         "readiness checks and safe error surfaces"
       ],
       "must_not_own": [
@@ -530,7 +531,7 @@
       "must_preserve": [
         "CLI errors remain value-safe",
         "input loading does not bypass packet validation",
-        "RAG hits remain unclassified search candidates",
+        "RAG hits and excerpts remain unclassified comparison evidence",
         "readiness checks do not become runtime publication approval"
       ],
       "contract_edges": [
@@ -539,7 +540,7 @@
       ],
       "risk_areas": [
         "CLI and ingest helpers can bypass the same validators used by Desktop",
-        "RAG metadata can be mistaken for confirmed cause-resolution identity",
+        "RAG metadata or excerpts can be mistaken for confirmed KCS identity",
         "readiness checks can be mistaken for approval to publish"
       ],
       "files": [
@@ -569,8 +570,13 @@
           "valid_until_changed": true
         },
         {
+          "path": "src/kcs_core/reuse_comparison.py",
+          "file_hash": "a781eb72819c078d4c35cd9d32af739e718fe8ec76418ebfac4e0f34c570d502",
+          "valid_until_changed": true
+        },
+        {
           "path": "src/kcs_adapters/local_public_rag.py",
-          "file_hash": "26c7e1fabcb4f74a7632430718f7587aa5f4bdb3ce9b8a6c20b307d9d33f7c78",
+          "file_hash": "26bc88afc832a5c732c85ca1b0d948a4437a6b82e08d159d73ed18453d996b86",
           "valid_until_changed": true
         }
       ],
@@ -581,6 +587,7 @@
         "tests/kcs_core/test_zendesk_ingest.py",
         "tests/kcs_core/test_validation.py",
         "tests/kcs_core/test_safety.py",
+        "tests/kcs_core/test_reuse_comparison.py",
         "tests/kcs_adapters/test_local_public_rag.py"
       ]
     },
@@ -902,7 +909,7 @@
         },
         {
           "path": "src/kcs_core/__init__.py",
-          "file_hash": "ca8fee2e58cc36ff43cecd9bd2e5d57a362b77f50f37efc833f37edc29a8ea3d",
+          "file_hash": "98c1762c5cb0c9916dc73cb65f66e8cd43da88c3874c1a4da2067658a9bc2d8b",
           "valid_until_changed": true
         }
       ],
@@ -964,7 +971,7 @@
         },
         {
           "path": "tests/policy/test_engineering_process_docs_policy.py",
-          "file_hash": "f365fe55561138817662ee7a44a0b5889b51c8f2c7798328d0655b2d2aee99df",
+          "file_hash": "503f03b25e3f4067d4f93d1224f521fece58657192e0ede41d2c777d40233b0a",
           "valid_until_changed": true
         },
         {
@@ -984,7 +991,7 @@
         },
         {
           "path": "tests/policy/test_kcs15_source_pack_policy.py",
-          "file_hash": "9bb997fd8b7982acaf7c2e0ef17098483d24ecdd099cb949ac21c4c00666ec59",
+          "file_hash": "a2e08566c757417c609536141b7dc283f0bc44c2ac1fd50f7e7d615a7604bc2a",
           "valid_until_changed": true
         },
         {

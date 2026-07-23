@@ -276,6 +276,50 @@ reuse_search_results_packet_v1 {
 }
 ```
 
+KCS-15.2b1 also defines a separate provider-neutral evidence contract for the
+future pre-draft operator comparison:
+
+```text
+reuse_comparison_evidence_v1 {
+  searched
+  status
+  search_run_ref
+  explicit_reference_status
+  explicit_article
+  candidates[1..3] {
+    rank
+    public article metadata
+    origin
+    excerpts[1..2] {
+      excerpt_ref
+      section_path
+      citation
+      bounded public text
+      token_count
+    }
+  }
+  blockers
+}
+```
+
+`ReuseComparisonEvidenceProvider` hides where the approved public evidence is
+hosted. The initial implementation projects the existing loopback
+`/api/snippets` response. A future remote provider may implement the same port
+only after its own data/security/readiness approval.
+
+Provider output is untrusted. `validate_reuse_comparison_evidence()` and
+`ensure_valid_reuse_comparison_evidence()` own common acceptance for public
+origins, request/result states, explicit-reference consistency, candidate and
+excerpt counts, citations, forbidden values, character limits, and independently
+recomputed whitespace-token limits. A future provider cannot replace this gate
+with adapter-local parsing.
+
+This evidence contract is not `ReuseSearchResultsPacket` and is not input to
+the current KCS action decision. It carries no article type, cause-resolution
+or question-answer identity, content-status decision, recommended action,
+draft, renderer state, or publication flag. KCS-15.2b1 does not connect it to
+Desktop or Claude; that requires the separately approved KCS-15.2b2 workflow.
+
 ```text
 kcs_action_decision_packet_v1 {
   schema_version

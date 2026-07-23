@@ -7,6 +7,8 @@ closed and report a safe, actionable reason.
 
 - Proposed solution or architecture precedes confirmed target behavior.
 - Nominal behavior is treated as demonstrated operational behavior.
+- A fixture, documented schema, or neighboring endpoint is treated as proof
+  that the exact runtime/API path required by the design is operational.
 - Unknown or missing evidence is treated as a default, permission, or success.
 - Feature scope requires an excessive material question batch.
 - Acceptance criterion has no deterministic, bounded-model, or named
@@ -52,6 +54,8 @@ smallest missing decision:
 - narrow the slice when the question batch exceeds five;
 - complete the acceptance-to-gate mapping;
 - define or revise the bounded trial contract.
+- run the bounded safe exact-path smoke before substantial implementation, or
+  cite fresh tracked operational evidence for the same endpoint and mode;
 - classify unknowns by evidence owner and resolve autonomous ones first;
 - prepare the Operator Decision Readiness packet;
 - restore the independent approval ledger and keep Delivery locked;

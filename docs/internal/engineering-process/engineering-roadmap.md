@@ -10,8 +10,9 @@ Last completed engineering/process slice: KCS-14.5 Runtime Incident Closeout
 Completed KCS-15 prerequisite: KCS-15.0 Style Source And Governance Baseline
 Completed KCS-15 behavior slice: KCS-15.1 PLESK_INFO Trigger Parity
 Completed KCS-15 enabling slice: KCS-15.2a Local Public RAG Adapter
-Current design slice: KCS-15.2b Operator-Facing Reuse Comparison
-Current Delivery state: locked pending decision-ready UX evidence and selection
+Completed KCS-15 enabling slice: KCS-15.2b1 Bounded Public Comparison Evidence
+Next gated slice: KCS-15.2b2 Operator-Confirmed Comparison Workflow
+KCS-15.2b2 Delivery state: locked; target UX selection is not authorization
 ```
 
 Historical KCS-1 guidance remains useful only as an early-slice boundary:
@@ -115,8 +116,11 @@ evidence directly.
   - KCS-15.1 PLESK_INFO trigger parity is complete;
   - KCS-15.2a loopback-only local public RAG adapter is complete as an enabling
     slice with fail-closed readiness and metadata-only candidates;
-  - KCS-15.2b operator-facing reuse comparison is design-open and
-    Delivery-locked. Adapter feasibility does not approve its UX or integration;
+  - KCS-15.2b1 provider-neutral bounded public comparison evidence is complete;
+    it did not change Desktop or decision behavior;
+  - KCS-15.2b2 operator-confirmed comparison target UX is selected, while its
+    Desktop/model/operator integration Delivery remains locked;
+  - KCS-15.2b3 repeated comparison trials remain separately gated;
   - deterministic style/structure parity continues in KCS-15.3 and approved
     examples/model-mediated quality continue in KCS-15.4.
 - Future deployment slice: optional managed internal service version of the
@@ -136,10 +140,13 @@ explicitly changes them.
 
 KCS-15 authoring quality is active through independently approved,
 source-backed behavior slices. KCS-15.1 PLESK_INFO trigger parity is complete.
-KCS-15.2a local-public RAG adapter is complete as bounded enabling work. It
-does not select the KCS-15.2b operator experience, authorize Desktop/pipeline
-integration, or block independent KCS-15.3 style-parity work. KCS-15.2b remains
-in Design with Delivery locked.
+KCS-15.2a local-public RAG adapter is complete as bounded enabling work.
+KCS-15.2b1 is complete only for the provider-neutral public comparison
+evidence contract, common acceptance gate, and local `/api/snippets`
+projection. The target UX for
+KCS-15.2b2 is selected, but Desktop/model/operator integration remains
+Delivery-locked. KCS-15.2 does not block independent KCS-15.3 style-parity
+work.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening
 

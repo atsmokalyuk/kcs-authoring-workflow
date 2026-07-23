@@ -13,6 +13,7 @@ Use this sequence for every implementation slice:
 ```text
 requested outcome and operational baseline
   -> target UX and design evidence
+  -> exact integration operational feasibility when applicable
   -> Operator Decision Readiness
   -> design selection
   -> separate Delivery authorization
@@ -25,6 +26,12 @@ requested outcome and operational baseline
 ```
 
 Do not start from a broad end-to-end workflow unless the earlier contracts and gates already exist.
+
+If a slice reuses an existing runtime/API capability, check the exact endpoint,
+mode, request, response shape, and required operating condition before
+substantial implementation. Use fresh evidence or one bounded safe smoke with
+a declared claim and stop condition. Fixtures remain required for deterministic
+contract coverage, but they do not establish live operational compatibility.
 
 ## Approval And Enabling-Slice Containment
 
@@ -105,8 +112,10 @@ Each PR should map to one Jira slice:
   Quality criteria, KCS practices, approved examples, assisted reuse, and
   portable `plesk_support` rules. This was deferred during KCS-14 and is now active
   through independently approved behavior slices. KCS-15.1 trigger parity and
-  KCS-15.2a adapter feasibility are complete; KCS-15.2b operator comparison is
-  design-open and Delivery-locked. It remains outside KCS-14 scope;
+  KCS-15.2a adapter feasibility is complete; KCS-15.2b1 bounded public
+  comparison evidence is complete; KCS-15.2b2
+  Desktop/model/operator integration remains Delivery-locked. It remains
+  outside KCS-14 scope;
 - Future deployment slice: optional managed internal service version of the
   current local Claude Desktop workflow.
 

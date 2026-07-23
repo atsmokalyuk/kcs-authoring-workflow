@@ -39,6 +39,10 @@ Required behavior:
   independently before changing runtime behavior, data handling, privacy
   boundaries, schemas/contracts, persistence, integrations, or public/reviewer
   output. Design selection does not authorize Delivery.
+- If the proposed design relies on an existing runtime or API, resolve the
+  exact endpoint/mode/response-shape feasibility before substantial
+  implementation. Use fresh tracked operational evidence or a bounded safe
+  smoke; docs, fixtures, or a neighboring endpoint prove only nominal behavior.
 
 ### Builder / Implementation Mode
 

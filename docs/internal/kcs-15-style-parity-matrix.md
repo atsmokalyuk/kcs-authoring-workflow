@@ -107,18 +107,24 @@ Observed at `4acb0b320b692a281abfe56b5e27f61d8f3d`:
 ## RAG placement decision
 
 KCS-15.2 owns RAG-assisted reuse because search/reuse is part of producing a
-good KCS outcome before drafting. It remains outside KCS core and does not
-block independent style-parity work.
+good KCS outcome before drafting. Provider integration and operator UX remain
+outside the KCS decision core; only the runtime-independent evidence contract
+is exported from `kcs_core`. KCS-15.2 does not block independent style-parity
+work.
 
 KCS-15.2 is split by the decision each slice can prove:
 
 1. `KCS-15.2a` — the completed loopback adapter proves bounded public-metadata
    readiness and search feasibility. Search hits do not prove cause-resolution,
    question-answer identity, article fit, or actuality.
-2. `KCS-15.2b` — the operator-facing comparison must determine what ticket
-   context, candidate/article information, alternatives, and consequences are
-   visible at the correct workflow moment. Its design is open and Delivery is
-   locked.
+2. `KCS-15.2b1` — bounded public comparison evidence is complete. It defines a
+   provider-neutral contract, common acceptance gate, and local
+   `/api/snippets` projection without changing Desktop or KCS decisions.
+3. `KCS-15.2b2` — the selected operator-confirmed comparison UX will align
+   relevant ticket facts with one to three public article links, cited
+   evidence, and reuse/update guidance before drafting. Its Delivery is locked.
+4. `KCS-15.2b3` — repeated retrieval/model/operator trials remain separately
+   gated and cannot be inferred from one successful smoke.
 
 This placement keeps style parity independent while ensuring later
 reuse-aware drafting or article-actuality decisions do not rely on a workflow
@@ -135,16 +141,21 @@ that never searched reusable public knowledge.
 3. `KCS-15.2a` — safe loopback metadata-only RAG adapter and readiness boundary,
    now complete. Operator benefit: the system can obtain bounded public reuse
    candidates without letting search own identity.
-4. `KCS-15.2b` — operator-facing reuse comparison, only after decision-ready UX
-   evidence shows the relevant ticket context together with enough candidate or
-   article information to judge reuse/update/create. Delivery remains locked.
-5. `KCS-15.3` — deterministic structure, title, entrypoint, safety, and naming
+4. `KCS-15.2b1` — provider-neutral bounded public comparison evidence and the
+   local `/api/snippets` projection. Operator benefit: the later workflow can
+   show enough cited article context without coupling itself to one RAG host.
+5. `KCS-15.2b2` — operator-confirmed comparison workflow. Target UX is
+   selected; Desktop/model/operator integration Delivery remains locked.
+6. `KCS-15.2b3` — repeated comparison trial after its fixtures, `N`, conditions,
+   thresholds, permitted corrections, overhead, false-positive, and stop
+   contracts are approved.
+7. `KCS-15.3` — deterministic structure, title, entrypoint, safety, and naming
    parity after resolving the Cause/Symptoms decisions. Operator benefit:
    fewer mechanical corrections in reviewer handoff.
-6. `KCS-15.4` — approved public golden examples and bounded model trials for
+8. `KCS-15.4` — approved public golden examples and bounded model trials for
    semantic completeness, language, and relevance. Operator benefit: measured
    drafting quality instead of growing regex heuristics.
-7. Optional operator-confirmed drafting scopes substage only after its own UX
+9. Optional operator-confirmed drafting scopes substage only after its own UX
    approval. Operator benefit must exceed the cognitive cost of another
    confirmation step; it is not the definition of KCS-15.
 

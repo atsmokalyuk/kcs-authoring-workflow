@@ -298,6 +298,38 @@ Status:
 | KCS14-PROMO-011 | Durable review notes must not record absolute local artifact paths; use an opaque basename plus value-safe hash/count/verdict | M3 aggregate closeout review, 13 repeated paths | review-context policy test | KCS-14.5 M3 closeout | implemented |
 | KCS14-PROMO-013 | M3 canaries must run in fail-closed order: legacy baseline, medium, continuation, then complex only after the first two stages are stable | M2 closeout and M3 staged canary gate | ordered documentation policy test | KCS-14.5 M2 closeout | implemented |
 | KCS14-PROMO-014 | Material implementation, refactor, deployment, or integration closeout needs a compact Ousterhout review record or a concrete leaf-change `not triggered` reason | KCS-14 design-review usage and KCS-15.2a closeout audit | review gate plus deterministic record-shape anchor | KCS-15 process hardening | implemented |
+| KCS14-PROMO-015 | An existing runtime/API dependency needs exact endpoint/mode/response-shape operational evidence before substantial implementation; fixtures and adjacent endpoints are insufficient | KCS-15.2b1 `/api/snippets` pre-implementation correction | clarification/playbook/review gate plus policy anchor | KCS-15.2b1 | implemented |
+
+## Exact Integration Feasibility Promotion Detail
+
+Finding code:
+
+- see the exact-integration feasibility row above.
+
+Rule / finding:
+
+- KCS-15.2a had proven local RAG readiness and metadata search, while the new
+  KCS-15.2b1 design depended on the distinct `/api/snippets` endpoint and its
+  wrapper, bounds, and public-excerpt shape.
+- The first implementation plan placed the live check near validation. The
+  operator correction moved it before substantial adapter work.
+- The bounded smoke confirmed the live schema and bounds and exposed two
+  nominal/operational differences: supported status CLI arguments and the
+  top-level result wrapper.
+
+Can be checked mechanically:
+
+- presence of the exact-path gate in tracked process docs: yes;
+- whether a particular smoke is safe, fresh, and decision-relevant: reviewer-owned.
+
+Decision:
+
+- embed the gate in the existing clarification, feature, and review paths;
+- do not add a new workflow layer or treat one smoke as stability evidence.
+
+Status:
+
+- implemented.
 
 ## Compact Ousterhout Closeout Promotion Detail
 

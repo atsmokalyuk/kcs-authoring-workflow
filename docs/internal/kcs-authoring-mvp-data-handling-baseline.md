@@ -199,6 +199,49 @@ If internal comments are needed for evidence, the Python/runtime layer must firs
 - Reviewer-ready draft packets may use sanitized facts from approved evidence sources: source-ticket evidence, public search results, public KB articles, and internal-only knowledge when relevant. Internal-only facts must be traceable in reviewer notes and separated from public-ready article content until KCS reviewer/publisher approval.
 - Publication/evolve-loop promotion is outside MVP and requires separate KCS reviewer/publisher approval.
 
+### Bounded Public Reuse-Comparison Evidence
+
+KCS-15.2b has an explicitly approved public-excerpt lane for a future
+operator-confirmed comparison before drafting. KCS-15.2b1 defines and validates
+the lane but does not connect it to Claude Desktop or the active authoring
+workflow.
+
+The lane may contain only:
+
+- already sanitized bounded symptom text used as the retrieval query;
+- one optional ticket-explicit public article reference;
+- one to three articles from the approved public Plesk corpus;
+- public article ID, source type, title, HTTPS URL, lifecycle/status,
+  last-updated metadata when available, and explicit-vs-search origin;
+- no more than two cited excerpts per article, six excerpts total, 1,200
+  whitespace-delimited tokens, 6,000 characters per excerpt, and 24,000
+  excerpt characters total; Python recomputes the token count instead of
+  trusting a provider-declared value;
+- value-safe status, blocker, schema, count, and opaque hash reference fields.
+
+Only HTTPS content from `support.plesk.com`, `kb.plesk.com`, and
+`docs.plesk.com` is admissible. Runtime queries, raw-query tails, index paths,
+vectors, chunk IDs, runtime citations, rendered Markdown, retrieval IDs, full
+articles, and other payload tails are not projected. Query and excerpt text
+must not be persisted or logged by this repository.
+
+Public excerpts are untrusted evidence. They may support a later bounded
+Claude/operator comparison, but they do not establish article identity,
+actuality, content status, KCS action, draft readiness, or publication
+readiness. An article explicitly referenced as the ticket resolution has
+comparison priority; if its public context is missing, RAG hits must not
+silently replace it.
+
+Every local or future approved remote provider output must pass the core-owned
+`reuse_comparison_evidence_v1` acceptance gate. Adapter-specific parsing is not
+a substitute for this common gate. Known credential assignments,
+`Authorization: Bearer/Basic` values, private local paths, unsupported public
+origins, false token counts, conflicting explicit identifiers, and invalid
+state/count combinations fail closed before projection.
+
+Desktop output, model prompting, operator state, recommendation behavior, and
+draft integration require the separate KCS-15.2b2 Delivery gate.
+
 ### Source Ticket Quotes
 - Reviewer packets may include short sanitized quotes from the source ticket only when the exact wording is needed to preserve context, customer intent, visible error text, technical precision, or the nuance of the reported issue for KCS review.
 - Source-ticket quotes must be relevant to the KCS decision, evidence basis, draft wording, blocker, or reviewer question. Do not include quotes for general summarization, convenience, or traceability when a sanitized paraphrase is sufficient.

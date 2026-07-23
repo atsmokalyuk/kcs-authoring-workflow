@@ -69,7 +69,11 @@ Use the smallest mode that fits the operator request:
   integration, or reviewer-output changes, independently record that the
   outcome is agreed, the design is selected from decision-ready evidence, and
   Delivery is explicitly authorized. Design selection does not authorize
-  Delivery. If the operator asks to persist the plan, write it under
+  Delivery. When the design depends on an existing runtime or API capability,
+  verify the exact endpoint, mode, and response shape with fresh tracked
+  evidence or a bounded safe operational smoke before substantial
+  implementation. Similar endpoints and fixtures are not operational proof.
+  If the operator asks to persist the plan, write it under
   `docs/internal/engineering-process/slice-plans/`. Do not mutate playbook
   templates unless the operator explicitly asks to change the planning process
   itself.

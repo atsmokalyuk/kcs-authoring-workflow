@@ -145,9 +145,7 @@ def test_agent_workflow_is_tracked_authoritative_process() -> None:
 
 def test_engineering_rule_portability_registry_structure_and_links() -> None:
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    registry_path = (
-        "docs/internal/engineering-process/engineering-rule-portability.md"
-    )
+    registry_path = "docs/internal/engineering-process/engineering-rule-portability.md"
     registry = (ROOT / registry_path).read_text(encoding="utf-8")
     promotions = (
         ROOT / "docs/internal/engineering-process/promotion-candidates.md"
@@ -218,9 +216,7 @@ def test_ousterhout_material_review_gate_anchors_are_tracked() -> None:
     review_protocol = (process_root / "review-context-protocol.md").read_text(
         encoding="utf-8"
     )
-    promotions = (process_root / "promotion-candidates.md").read_text(
-        encoding="utf-8"
-    )
+    promotions = (process_root / "promotion-candidates.md").read_text(encoding="utf-8")
     portability = (process_root / "engineering-rule-portability.md").read_text(
         encoding="utf-8"
     )
@@ -234,8 +230,7 @@ def test_ousterhout_material_review_gate_anchors_are_tracked() -> None:
     assert "Not-triggered reason:" in checklist
     assert "A large internal change is reviewed" in checklist
     assert (
-        "For a small leaf change, use only the short exception form"
-        in review_protocol
+        "For a small leaf change, use only the short exception form" in review_protocol
     )
     assert "Not-triggered reason:" in review_protocol
 
@@ -256,3 +251,33 @@ def test_ousterhout_material_review_gate_anchors_are_tracked() -> None:
     assert "must not claim to judge module depth or design quality" in checklist
     assert "KCS14-PROMO-014" in promotions
     assert "ENG-PORT-DES-009" in portability
+
+
+def test_exact_integration_feasibility_gate_is_tracked() -> None:
+    process_root = ROOT / "docs/internal/engineering-process"
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    instructions = (process_root / "codex-agent-instructions.md").read_text(
+        encoding="utf-8"
+    )
+    clarifications = (
+        process_root / "spec-first-engineering-playbook/01-clarifications.md"
+    ).read_text(encoding="utf-8")
+    checklist = (
+        process_root / "spec-first-engineering-playbook/06-review-checklist.md"
+    ).read_text(encoding="utf-8")
+    feature_playbook = (process_root / "feature-engineering-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    promotions = (process_root / "promotion-candidates.md").read_text(encoding="utf-8")
+    portability = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+
+    for text in (agents, instructions, clarifications, checklist, feature_playbook):
+        assert "exact endpoint" in text
+        assert "bounded" in text
+    assert "nominal" in clarifications
+    assert "operational proof" in clarifications
+    assert "One successful smoke proves only" in clarifications
+    assert "KCS14-PROMO-015" in promotions
+    assert "ENG-PORT-DISC-006" in portability

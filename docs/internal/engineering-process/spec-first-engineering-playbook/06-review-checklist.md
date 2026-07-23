@@ -13,6 +13,9 @@ Use this checklist for code, docs, contracts, and demo artifacts.
 - Was only the smallest material question batch presented to the operator?
 - Did the agent resolve repository-, research-, and feasibility-owned unknowns
   before asking the operator to diagnose uncertainty?
+- If an existing runtime/API is required, was its exact endpoint, mode,
+  response shape, and operating condition proven by fresh evidence or a
+  bounded pre-implementation smoke rather than a fixture or adjacent endpoint?
 - Are outcome agreement, design selection, and Delivery authorization recorded
   independently?
 - If an operator decision was requested, were the exact decision, visible
@@ -84,6 +87,8 @@ Blockers:
   unconfirmed;
 - design selection was treated as Delivery authorization;
 - an enabling-slice success was treated as parent UX or integration approval;
+- substantial implementation started before an unproved exact runtime/API
+  dependency received its bounded operational feasibility check;
 - an operator decision was requested without the context needed to judge fit;
 - a triggered Ousterhout review is missing or has an unresolved `revise` /
   `reject` verdict.

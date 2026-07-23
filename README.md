@@ -615,8 +615,10 @@ tools are not loaded into the active chat.
 - Active authoring-quality umbrella: KCS-15 source parity and assisted reuse
 - Last completed KCS-15 behavior slice: KCS-15.1 `PLESK_INFO` trigger parity
 - Completed KCS-15 enabling slice: KCS-15.2a loopback local-public RAG adapter
-- Current design subtask: KCS-15.2b operator-facing reuse comparison;
-  design selection remains open and Delivery is locked
+- Completed KCS-15 enabling slice: KCS-15.2b1 provider-neutral bounded public
+  comparison evidence; Desktop/model/operator behavior stayed unchanged
+- Next gated subtask: KCS-15.2b2 operator-confirmed comparison workflow;
+  target UX is selected but Delivery remains locked
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

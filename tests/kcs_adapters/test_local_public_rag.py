@@ -13,6 +13,10 @@ from kcs_adapters.local_public_rag import (
     build_local_public_rag_query,
 )
 from kcs_core.errors import ContractValidationError
+from kcs_core.reuse_comparison import (
+    PublicArticleReference,
+    ReuseComparisonEvidenceRequest,
+)
 
 
 class FakeTransport:
@@ -141,6 +145,80 @@ def _search_result(*, candidates: list[object] | None = None) -> dict[str, objec
             "raw_query": "SECRET_QUERY_TAIL",
         },
     }
+
+
+def _snippet(
+    *,
+    rank: int = 1,
+    candidate_rank: int = 1,
+    source_doc_id: str = "plesk-support://123456",
+    canonical_url: str = ("https://support.plesk.com/hc/en-us/articles/123456-Example"),
+    title: str = "Unable to open Plesk",
+    section_path: str = "Resolution",
+    text: str = "Restart the affected service and verify access.",
+    token_count: int = 7,
+) -> dict[str, object]:
+    return {
+        "rank": rank,
+        "candidate_rank": candidate_rank,
+        "chunk_id": f"chunk-{rank}-not-projected",
+        "source_doc_id": source_doc_id,
+        "canonical_url": canonical_url,
+        "title": title,
+        "section_path": section_path,
+        "article_status": "active",
+        "updated_at": "2026-06-10",
+        "score": 0.75,
+        "bm25_score": 2.0,
+        "vector_score": 0.9,
+        "final_score": 0.75,
+        "token_count": token_count,
+        "truncated": False,
+        "citation": "UNTRUSTED_RUNTIME_CITATION",
+        "text": text,
+    }
+
+
+def _snippets_result(
+    *,
+    snippets: list[object] | None = None,
+    **overrides: object,
+) -> dict[str, object]:
+    selected = [_snippet()] if snippets is None else snippets
+    result: dict[str, object] = {
+        "schema_version": "knowledge-cited-snippets-v1",
+        "query_source": "final_clean_ticket",
+        "retriever": "hybrid",
+        "keyword_index_ref": "SECRET_LOCAL_INDEX_PATH",
+        "top_k": 5,
+        "bm25_k1": 1.5,
+        "bm25_b": 0.75,
+        "keyword_k": 30,
+        "vector_k": 30,
+        "rrf_k": 60,
+        "max_snippets": 6,
+        "max_tokens": 1200,
+        "per_article_cap": 2,
+        "candidate_count": len(
+            {
+                item.get("source_doc_id")
+                for item in selected
+                if isinstance(item, Mapping)
+            }
+        ),
+        "selected_count": len(selected),
+        "total_token_count": sum(
+            int(item.get("token_count", 0))
+            for item in selected
+            if isinstance(item, Mapping)
+        ),
+        "snippets": selected,
+        "markdown": "SECRET_RENDERED_MARKDOWN",
+        "retrieval_run_id": "SECRET_RUNTIME_RUN_ID",
+        "raw_query": "SECRET_QUERY_TAIL",
+    }
+    result.update(overrides)
+    return {"ok": True, "result": result}
 
 
 @pytest.mark.parametrize(
@@ -455,3 +533,281 @@ def test_local_public_rag_search_normalizes_transport_failure() -> None:
 
     assert result.status == "rag_runtime_unavailable"
     assert "SECRET" not in str(result.to_json_dict())
+
+
+def test_comparison_evidence_posts_bounded_request_and_projects_public_data() -> None:
+    snippets = [
+        _snippet(),
+        _snippet(
+            rank=2,
+            candidate_rank=2,
+            source_doc_id="plesk-kb://654321",
+            canonical_url="https://kb.plesk.com/654321",
+            title="Repair Plesk access",
+            section_path="Symptoms",
+            text="Plesk returns an internal server error after login.",
+            token_count=8,
+        ),
+    ]
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(snippets=snippets),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Plesk login returns HTTP 500.",))
+    )
+
+    assert result.searched is True
+    assert result.status == "comparison_evidence_ready"
+    assert result.explicit_reference_status == "not_provided"
+    assert len(result.candidates) == 2
+    assert transport.post_calls == [
+        {
+            "url": "http://127.0.0.1:8768/api/snippets",
+            "payload": {
+                "query": "Plesk login returns HTTP 500.",
+                "query_source": "final_clean_ticket",
+                "retrieval_mode": "hybrid",
+                "top_k": 5,
+                "keyword_k": 30,
+                "vector_k": 30,
+                "max_snippets": 6,
+                "max_tokens": 1200,
+                "per_article_cap": 2,
+            },
+            "timeout_seconds": 30,
+            "max_response_bytes": 128 * 1024,
+        }
+    ]
+    projected = str(result.to_json_dict())
+    assert "Restart the affected service" in projected
+    assert "SECRET_LOCAL_INDEX_PATH" not in projected
+    assert "SECRET_RENDERED_MARKDOWN" not in projected
+    assert "SECRET_RUNTIME_RUN_ID" not in projected
+    assert "SECRET_QUERY_TAIL" not in projected
+    assert "UNTRUSTED_RUNTIME_CITATION" not in projected
+    assert "chunk-not-projected" not in projected
+
+
+def test_explicit_resolution_article_is_prioritized_over_rag_rank() -> None:
+    snippets = [
+        _snippet(
+            source_doc_id="plesk-support://111111",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/111111-First",
+            title="First RAG result",
+        ),
+        _snippet(
+            rank=2,
+            candidate_rank=2,
+            source_doc_id="plesk-support://222222",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/222222-Explicit",
+            title="Ticket resolution article",
+        ),
+    ]
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(snippets=snippets),
+    )
+    request = ReuseComparisonEvidenceRequest(
+        ("Plesk login returns HTTP 500.",),
+        PublicArticleReference(
+            "https://support.plesk.com/hc/en-us/articles/222222-Older-Slug"
+        ),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        request
+    )
+
+    assert result.explicit_reference_status == "context_ready"
+    assert [candidate.source_doc_id for candidate in result.candidates] == [
+        "plesk-support://222222",
+        "plesk-support://111111",
+    ]
+    assert result.candidates[0].rank == 1
+    assert result.candidates[0].origin == "explicit_resolution_reference"
+    assert result.candidates[1].origin == "search_result"
+
+
+def test_missing_explicit_article_context_blocks_silent_rag_substitution() -> None:
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(),
+    )
+    request = ReuseComparisonEvidenceRequest(
+        ("Plesk login returns HTTP 500.",),
+        PublicArticleReference(
+            "https://support.plesk.com/hc/en-us/articles/999999-Referenced"
+        ),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        request
+    )
+
+    assert result.searched is True
+    assert result.status == "explicit_article_context_missing"
+    assert result.explicit_reference_status == "context_missing"
+    assert result.blockers == ("explicit_article_context_missing",)
+    assert result.candidates[0].origin == "search_result"
+
+
+def test_comparison_evidence_does_not_post_when_runtime_is_not_ready() -> None:
+    transport = FakeTransport(
+        readiness=_readiness_result(cache_current=False, cache_state="stale"),
+        search=_snippets_result(),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Plesk login fails.",))
+    )
+
+    assert result.to_json_dict() == {
+        "schema_version": "reuse_comparison_evidence_v1",
+        "searched": False,
+        "status": "comparison_provider_not_ready",
+        "search_run_ref": "",
+        "explicit_reference_status": "not_provided",
+        "explicit_article": None,
+        "candidates": [],
+        "blockers": ["comparison_provider_not_ready"],
+    }
+    assert transport.post_calls == []
+
+
+@pytest.mark.parametrize(
+    "snippets_payload",
+    [
+        _snippets_result(schema_version="wrong"),
+        _snippets_result(query_source="manual_public"),
+        _snippets_result(retriever="keyword"),
+        _snippets_result(max_snippets=5),
+        _snippets_result(max_tokens=1199),
+        _snippets_result(per_article_cap=1),
+        _snippets_result(selected_count=2),
+        _snippets_result(total_token_count=8),
+        _snippets_result(snippets=[_snippet(canonical_url="https://example.com/x")]),
+        _snippets_result(snippets=[_snippet(text="Read /Users/example/private.txt")]),
+        _snippets_result(snippets=[_snippet(text="api_key=SECRET_VALUE")]),
+        _snippets_result(
+            snippets=[_snippet(text="Authorization: Bearer SECRET", token_count=3)]
+        ),
+        _snippets_result(
+            snippets=[_snippet(text=" ".join(["x"] * 2000), token_count=1)]
+        ),
+        _snippets_result(snippets=[_snippet(text="x" * 6001)]),
+        _snippets_result(snippets=[_snippet(token_count=1201)]),
+        _snippets_result(
+            snippets=[
+                _snippet(),
+                _snippet(rank=2, title="Conflicting title"),
+            ]
+        ),
+        _snippets_result(
+            snippets=[
+                _snippet(),
+                _snippet(rank=2),
+                _snippet(rank=3),
+            ]
+        ),
+        _snippets_result(
+            snippets=[
+                _snippet(rank=index, candidate_rank=index) for index in range(1, 8)
+            ]
+        ),
+    ],
+)
+def test_comparison_evidence_rejects_invalid_or_unbounded_response(
+    snippets_payload: object,
+) -> None:
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=snippets_payload,
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Plesk login fails.",))
+    )
+
+    assert result.status == "comparison_provider_invalid_response"
+    assert result.searched is False
+    assert result.candidates == ()
+
+
+def test_comparison_evidence_reports_no_public_evidence() -> None:
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(snippets=[]),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Plesk login fails.",))
+    )
+
+    assert result.searched is True
+    assert result.status == "comparison_no_evidence"
+    assert result.blockers == ("comparison_no_evidence",)
+
+
+def test_comparison_evidence_normalizes_transport_failure() -> None:
+    transport = FakeTransport(readiness=_readiness_result(), search=None)
+    transport.post_error = LocalPublicRagTransportError("SECRET upstream detail")
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Plesk login fails.",))
+    )
+
+    assert result.status == "comparison_provider_unavailable"
+    assert result.searched is False
+    assert "SECRET" not in str(result.to_json_dict())
+
+
+def test_comparison_evidence_rejects_unsafe_explicit_article_before_io() -> None:
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(),
+    )
+    with pytest.raises(ContractValidationError):
+        request = ReuseComparisonEvidenceRequest(
+            ("Plesk login fails.",),
+            PublicArticleReference("https://customer.example/private"),
+        )
+        LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(request)
+
+    assert transport.get_calls == []
+    assert transport.post_calls == []
+
+
+def test_conflicting_explicit_article_identifiers_do_not_prioritize_wrong_hit() -> None:
+    snippets = [
+        _snippet(
+            source_doc_id="plesk-support://111111",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/111111-First",
+        ),
+        _snippet(
+            rank=2,
+            candidate_rank=2,
+            source_doc_id="plesk-support://222222",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/222222-Second",
+        ),
+    ]
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(snippets=snippets),
+    )
+    request = ReuseComparisonEvidenceRequest(
+        ("Plesk login fails.",),
+        PublicArticleReference(
+            "https://support.plesk.com/hc/en-us/articles/222222-Second",
+            source_doc_id="plesk-support://111111",
+        ),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        request
+    )
+
+    assert result.status == "explicit_article_context_missing"
+    assert result.explicit_reference_status == "context_missing"
+    assert all(candidate.origin == "search_result" for candidate in result.candidates)
