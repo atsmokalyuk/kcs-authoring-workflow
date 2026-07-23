@@ -971,7 +971,7 @@
         },
         {
           "path": "tests/policy/test_engineering_process_docs_policy.py",
-          "file_hash": "503f03b25e3f4067d4f93d1224f521fece58657192e0ede41d2c777d40233b0a",
+          "file_hash": "e96a59900fa75129e887c895661a124442b636bae3d47732ff28fa7da3e1f88c",
           "valid_until_changed": true
         },
         {
@@ -991,12 +991,12 @@
         },
         {
           "path": "tests/policy/test_kcs15_source_pack_policy.py",
-          "file_hash": "a2e08566c757417c609536141b7dc283f0bc44c2ac1fd50f7e7d615a7604bc2a",
+          "file_hash": "35d7c4657b9b3109d2a916945eda55c0c0fb978880f1b90502aa15f8ac984dcc",
           "valid_until_changed": true
         },
         {
           "path": "tests/policy/test_review_context_policy.py",
-          "file_hash": "7fbe1c247c7f0c33310036ffd40d570c5f40ca8e55f5112746dcb8f4e52f2734",
+          "file_hash": "633716962b469c7cc8b79ff6eae37e7d27b0f4d9e0b46ad19388c75d07c99ee8",
           "valid_until_changed": true
         },
         {

@@ -101,9 +101,9 @@ Recommended slice order:
   portable `plesk_support` rules. This was deferred during KCS-14 and is now active
   through independently approved behavior slices. KCS-15.1 trigger parity and
   KCS-15.2a adapter feasibility is complete; KCS-15.2b1 bounded public
-  comparison evidence is complete; KCS-15.2b2
-  Desktop/model/operator integration remains Delivery-locked. It remains
-  outside KCS-14 scope;
+  comparison evidence is complete; KCS-15.2b2 Phase A exact public-article
+  context is authorized, while Phase B Desktop/model/operator integration
+  remains Delivery-locked. It remains outside KCS-14 scope;
 - Future harness-portable agent engineering support: git-aware code-review
   graph, compact agent context, official local tool entrypoints, and review
   handoffs for Codex, ChatGPT Pro review, Fable 5 review, or future internal

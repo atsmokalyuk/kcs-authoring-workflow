@@ -64,19 +64,24 @@ Use the smallest mode that fits the operator request:
   `create implementation plan`, `создай план реализации фичи`, or equivalent
   feature/slice planning requests. Do not code immediately. Use
   `docs/internal/engineering-process/spec-first-engineering-playbook/` and
-  `docs/internal/engineering-process/feature-engineering-playbook.md`. Draft the
-  slice plan in chat by default. Before behavior, privacy, schema, persistence,
-  integration, or reviewer-output changes, independently record that the
-  outcome is agreed, the design is selected from decision-ready evidence, and
-  Delivery is explicitly authorized. Design selection does not authorize
-  Delivery. When the design depends on an existing runtime or API capability,
-  verify the exact endpoint, mode, and response shape with fresh tracked
-  evidence or a bounded safe operational smoke before substantial
+  `docs/internal/engineering-process/feature-engineering-playbook.md`. For every
+  material feature or slice, create or update its tracked design artifact under
+  `docs/internal/engineering-process/slice-plans/` before requesting or acting
+  on Delivery authorization. Chat may summarize the plan but is not its
+  authoritative home. Before behavior, privacy, schema, persistence,
+  integration, or reviewer-output changes, independently record in that
+  artifact that the outcome is agreed, the design is selected from
+  decision-ready evidence, and Delivery is explicitly authorized.
+  Design selection does not authorize Delivery. If authorization arrives
+  before the artifact is written, persist the selected boundary and
+  authorization before implementation. When the design depends on an existing
+  runtime or API
+  capability, verify the exact endpoint, mode, and response shape with fresh
+  tracked evidence or a bounded safe operational smoke before substantial
   implementation. Similar endpoints and fixtures are not operational proof.
-  If the operator asks to persist the plan, write it under
-  `docs/internal/engineering-process/slice-plans/`. Do not mutate playbook
-  templates unless the operator explicitly asks to change the planning process
-  itself.
+  A small mechanical edit or bounded leaf bugfix may use an existing tracked
+  contract without creating a new slice plan. Do not mutate playbook templates
+  for each slice.
 - Builder / implementation mode: implement the smallest agreed safe slice.
   Preserve existing contracts unless explicitly authorized, follow existing
   style and naming, add or update tests/fixtures for behavior changes, and
@@ -118,6 +123,10 @@ Detailed mode behavior lives in
   safety and data boundaries, docs/README consistency, behavior drift, and the
   compact Ousterhout gate when a material implementation, refactor, deployment,
   or integration trigger applies.
+- Every material review packet must name its tracked Active Slice Plan. The
+  reviewer must verify that the diff matches the selected and authorized phase
+  and does not touch still-locked phases before reviewing implementation
+  details.
 - For security-sensitive, privacy-sensitive, hosted/local-boundary, or
   cross-module architecture changes, require a deeper review pass focused on
   policy, privacy, data boundaries, and architecture drift.

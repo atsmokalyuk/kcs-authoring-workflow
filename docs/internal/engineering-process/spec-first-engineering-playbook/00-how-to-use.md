@@ -21,7 +21,9 @@ create implementation plan
    before proposing architecture.
 4. Record material facts as `confirmed`, `provisional`, `unknown`, or
    `rejected`. Absence of evidence does not establish a default value.
-5. Draft or update the slice spec before implementation.
+5. For a material feature or slice, create or update its tracked slice spec
+   under `docs/internal/engineering-process/slice-plans/` before requesting or
+   acting on Delivery authorization.
 6. Keep the complete inventory of material unknowns in the slice spec, but ask
    the operator only the smallest question batch needed for the next decision.
 7. Record outcome agreement, design selection, and Delivery authorization as
@@ -83,17 +85,19 @@ themselves select a new design or authorize a new behavior-changing slice.
 
 ## Slice Planning Location
 
-By default, slice plans are drafted in chat and confirmed by the operator before
-implementation.
-
-Use this playbook as the planning template, but do not overwrite the playbook
-files for every slice.
-
-If a slice plan needs to persist across sessions, save it under:
+For a material feature or slice, the authoritative plan must be a tracked
+artifact under:
 
 ```text
 docs/internal/engineering-process/slice-plans/
 ```
+
+Create or update it before requesting or acting on Delivery authorization.
+Chat should present the compact decision-ready view, but chat memory is not the
+authoritative design record.
+
+Use this playbook as the planning template, but do not overwrite the playbook
+files for every slice.
 
 Example:
 
@@ -102,7 +106,23 @@ docs/internal/engineering-process/slice-plans/
   kcs-14-style-markup-parity.md
 ```
 
-Persistent slice plans are engineering artifacts. Commit them when they become
+The tracked plan must record the requested outcome, operational baseline,
+target UX, fact/unknown inventory, approval ledger, selected boundary,
+acceptance-to-gate mapping, unchanged contracts, and stop conditions relevant
+to the slice. If the operator corrects or narrows a selected design, update the
+artifact before implementation continues.
+
+An operator may select and authorize a material slice before the file exists.
+In that case, persist the selected design and exact authorization first, then
+enter Delivery. Authorization is not invalidated; implementation is gated on
+capturing it in the tracked artifact.
+
+A small mechanical edit or bounded leaf bugfix may rely on an existing tracked
+contract, issue, or test without creating a new slice-plan file when it changes
+no material behavior, privacy, schema, persistence, integration, deployment,
+or public/reviewer-output boundary.
+
+Tracked slice plans are engineering artifacts. Commit them when they become
 authoritative planning inputs for a reviewable slice; keep temporary personal
 notes in `local-docs/`.
 

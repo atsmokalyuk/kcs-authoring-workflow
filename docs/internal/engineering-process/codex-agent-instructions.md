@@ -30,6 +30,14 @@ Required behavior:
   - tests / evals;
   - acceptance criteria;
   - review checklist.
+- For a material feature or slice, create or update the authoritative tracked
+  plan under `docs/internal/engineering-process/slice-plans/` before requesting
+  or acting on Delivery authorization. Chat is a compact decision surface, not
+  the authoritative design record.
+- If the operator selects or authorizes a material slice before the tracked
+  plan is written, record the selected boundary and exact authorization in the
+  plan before implementation. Apply later operator corrections to the plan
+  before continuing Delivery.
 - Ask concise questions for material unknowns.
 - Use the role-neutral Design Uncertainty and Decision Readiness protocol when
   the operator is unsure or lacks enough visible evidence. The operator steers
@@ -51,7 +59,9 @@ implementation request with clear scope.
 
 - Before a behavior-changing batch, confirm that the outcome is agreed, the
   design is selected, the Operator Decision Readiness packet is complete, and
-  Delivery is explicitly authorized. Otherwise return to Architect mode.
+  Delivery is explicitly authorized. For a material slice, also confirm that
+  these facts, acceptance gates, unchanged contracts, and stop conditions are
+  present in its tracked slice plan. Otherwise return to Architect mode.
 - Interpret `go next`, `continue`, `looks good`, and similar positive wording
   only inside the already selected and authorized slice. Do not use them as
   approval for a new behavior, UX, integration, or contract change.
@@ -99,6 +109,12 @@ The review must distinguish blockers from warnings.
 Blockers include behavior regressions, unsafe data handling, broken contracts,
 missing tests for changed behavior, private artifact touches, and README/docs
 claims that contradict actual behavior.
+
+For every material implementation review, resolve the `Active Slice Plan`
+named in the review packet before reviewing source details. Treat a missing
+plan, nonexistent path, unauthorized changed phase, locked-phase touch, or
+material plan/diff mismatch as a blocker. The reviewer owns semantic alignment;
+policy tests may enforce only the packet and plan-reference shape.
 
 Warnings include naming cleanup, small doc clarity issues, low-risk test gaps,
 or follow-up hardening that does not block the current slice.
@@ -177,6 +193,8 @@ Use `gpt-5.3-codex-spark` as the default reviewer before commits.
 
 The review must check at minimum:
 
+- Active Slice Plan path, authorized phase, locked phases, and plan/diff
+  alignment for a material change;
 - diff sanity and unintended file touches;
 - missing or insufficient tests;
 - naming and import cleanup;

@@ -1,6 +1,7 @@
 # KCS-15.2b1 Bounded Public Comparison Evidence
 
-Status: completed on 2026-07-22; KCS-15.2b2 remains Delivery-locked.
+Status: completed on 2026-07-22; KCS-15.2b2 Phase A was subsequently
+authorized on 2026-07-23, while Phase B remains Delivery-locked.
 
 ## Requested outcome
 
@@ -44,9 +45,12 @@ evidence contract and one local provider adapter needed by the later workflow.
   `docs.plesk.com` HTTPS URLs are accepted.
 - Query input is bounded already sanitized symptom text and is sent with
   `query_source=final_clean_ticket`.
-- A ticket-explicit article is moved ahead of RAG-ranked candidates when its
-  public context is returned. If its context is absent, the result carries a
-  blocker and must not silently substitute a search hit.
+- A priority-bearing explicit article is moved ahead of RAG-ranked candidates
+  when its public context is returned. The caller may supply that reference
+  only after accepted ticket evidence establishes that the article helped,
+  resolved, or partially helped. URL-only or unconfirmed mentions do not carry
+  priority. If the requested context is absent, the result carries a blocker
+  and must not silently substitute a search hit.
 - Excerpts remain untrusted comparison evidence. They do not establish KCS
   identity, content status, recommended action, or article actuality.
 - Runtime query tails, index paths, chunk IDs, runtime citations, rendered
@@ -126,7 +130,7 @@ second success confirms implemented compatibility, still not stability.
 | The local adapter sends the exact bounded `/api/snippets` request using `final_clean_ticket` query provenance. | deterministic transport fixture plus exact-path operational smoke |
 | Only one to three allowlisted public articles and bounded cited excerpts are projected. | deterministic positive, bounds, and forbidden-field tests |
 | Provider-declared token counts match independently recomputed whitespace-token counts. | deterministic under-reporting and aggregate-bound tests |
-| A ticket-explicit article outranks RAG-only candidates; absent explicit context blocks silent substitution. | deterministic priority and missing-context tests |
+| An accepted helpful/partially-helpful priority reference outranks RAG-only candidates; absent explicit context blocks silent substitution. | deterministic priority and missing-context tests plus caller-prerequisite review |
 | When explicit URL and source ID are both present, both identify the same returned article. | deterministic conflicting-identifier test |
 | Cold, stale, unavailable, malformed, unsafe, or oversized responses fail closed with value-safe statuses. | deterministic negative matrix |
 | Existing search, packet, Desktop, decision, rendering, persistence, and publication behavior does not change. | focused/full regression suite and behavior-drift review |
@@ -155,7 +159,8 @@ Parent target UX: selected
 Controlled bounded-public-excerpt boundary: approved
 KCS-15.2b1 Delivery: authorized
 KCS-15.2b1 closeout: completed
-KCS-15.2b2 Desktop/operator workflow Delivery: locked
+KCS-15.2b2 Phase A exact public context Delivery: authorized 2026-07-23
+KCS-15.2b2 Phase B Desktop/operator workflow Delivery: locked
 KCS-15.2b3 repeated model/operator trial: locked
 ```
 

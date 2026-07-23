@@ -16,6 +16,7 @@ requested outcome and operational baseline
   -> exact integration operational feasibility when applicable
   -> Operator Decision Readiness
   -> design selection
+  -> tracked material slice plan
   -> separate Delivery authorization
   -> boundary and contract
   -> smallest safe implementation
@@ -61,6 +62,37 @@ Enabling-slice success proves feasibility only. It does not approve the parent
 UX, select the parent design, authorize integration, or widen the next slice.
 The parent Delivery state remains locked until the parent decision is ready,
 selected, and separately authorized.
+
+## Tracked Material Design Gate
+
+Before requesting or acting on Delivery authorization for a material feature
+or slice, create or update its authoritative plan under
+`docs/internal/engineering-process/slice-plans/`.
+
+The plan must contain enough current evidence for a later agent or reviewer to
+continue without reconstructing the design from chat:
+
+- requested outcome and operational baseline;
+- intended entrypoint, target UX, and selected design boundary;
+- confirmed, provisional, unknown, and rejected material facts;
+- complete unknown inventory and relevant stop conditions;
+- Operator Decision Readiness evidence and approval ledger;
+- changed and unchanged contracts;
+- acceptance-to-gate mapping and model/experiment contract when applicable;
+- authorized and still-locked Delivery phases.
+
+Chat should show only the compact decision-relevant projection. It does not
+replace the tracked plan.
+
+If the operator selects or authorizes the slice before the plan is written,
+record the selected boundary and exact authorization before implementation.
+If later evidence or an operator correction changes the selected design, update
+the plan before continuing Delivery.
+
+A small mechanical edit or bounded leaf bugfix may rely on an existing tracked
+contract and tests instead of creating a new slice plan when no material
+behavior, privacy, schema, persistence, integration, deployment, or
+public/reviewer-output boundary changes.
 
 ## Material Design Review At Closeout
 
@@ -113,9 +145,9 @@ Each PR should map to one Jira slice:
   portable `plesk_support` rules. This was deferred during KCS-14 and is now active
   through independently approved behavior slices. KCS-15.1 trigger parity and
   KCS-15.2a adapter feasibility is complete; KCS-15.2b1 bounded public
-  comparison evidence is complete; KCS-15.2b2
-  Desktop/model/operator integration remains Delivery-locked. It remains
-  outside KCS-14 scope;
+  comparison evidence is complete; KCS-15.2b2 Phase A exact public-article
+  context is authorized, while Phase B Desktop/model/operator integration
+  remains Delivery-locked. It remains outside KCS-14 scope;
 - Future deployment slice: optional managed internal service version of the
   current local Claude Desktop workflow.
 

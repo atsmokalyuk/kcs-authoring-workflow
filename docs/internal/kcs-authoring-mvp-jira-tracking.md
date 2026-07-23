@@ -49,8 +49,9 @@ instead of implying that external tracking was updated.
     - KCS-15.2b1 Bounded Public Comparison Evidence: complete;
       provider-neutral contract, common acceptance gate, and local
       `/api/snippets` projection only
-    - KCS-15.2b2 Operator-Confirmed Comparison Workflow: target UX selected,
-      but Desktop/model/operator integration Delivery remains locked
+    - KCS-15.2b2 Operator-Confirmed Comparison Workflow: target UX selected;
+      Phase A exact public-article context is authorized, while Phase B
+      Desktop/model/operator integration Delivery remains locked
     - KCS-15.2b3 Repeated Comparison Trial: planned after b2 with a separately
       approved fixture/trial contract
   - KCS-15.3 Deterministic structure/title/entrypoint/safety/naming parity:

@@ -175,7 +175,8 @@ def test_kcs15_tracking_separates_rag_enabling_from_parent_delivery() -> None:
 
     assert "Completed KCS-15 enabling slice: KCS-15.2a" in roadmap
     assert "Completed KCS-15 enabling slice: KCS-15.2b1" in roadmap
-    assert "KCS-15.2b2 Delivery state: locked" in roadmap
+    assert "Authorized KCS-15.2b2 phase: Phase A" in roadmap
+    assert "KCS-15.2b2 Phase B Delivery state: locked" in roadmap
     assert "target UX selection is not authorization" in roadmap
     assert "`KCS-15.3`" in matrix
     assert "`KCS-15.4`" in matrix
@@ -188,3 +189,37 @@ def test_kcs15_tracking_separates_rag_enabling_from_parent_delivery() -> None:
     assert "ENG-PORT-DES-008" in registry
     assert "ENG-PORT-DEL-008" in registry
     assert "KCS-14.5 is closed" in practices
+
+
+def test_kcs15_explicit_article_priority_requires_helpful_ticket_evidence() -> None:
+    internal = ROOT / "docs" / "internal"
+    process = internal / "engineering-process"
+    anchors = (
+        (
+            internal / "kcs-core-pipeline-architecture-and-contracts.md",
+            "The caller may populate the priority-bearing "
+            "`explicit_article` field only",
+            "URL presence, a neutral mention",
+        ),
+        (
+            internal / "kcs-core-pipeline-technical-design.md",
+            "accepted, source-grounded ticket evidence says the article helped",
+            "A URL-only, merely mentioned, unconfirmed, or confirmed-not-helpful",
+        ),
+        (
+            internal / "kcs-authoring-mvp-data-handling-baseline.md",
+            "accepted source-grounded ticket evidence says the article helped",
+            "A URL-only, merely mentioned, unconfirmed, or confirmed-not-helpful",
+        ),
+        (
+            process
+            / "slice-plans/kcs-15-2b2-operator-confirmed-comparison-workflow.md",
+            "`confirmed_partially_helpful`",
+            "URL-only priority or partial match: rejected",
+        ),
+    )
+
+    for path, helpful_anchor, rejection_anchor in anchors:
+        text = " ".join(path.read_text(encoding="utf-8").split())
+        assert helpful_anchor in text, path.name
+        assert rejection_anchor in text, path.name

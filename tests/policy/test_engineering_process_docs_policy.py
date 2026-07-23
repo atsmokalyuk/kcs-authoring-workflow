@@ -204,6 +204,56 @@ def test_design_uncertainty_protocol_required_anchors() -> None:
     assert "does not define a Designer role" in clarifications
 
 
+def test_material_slice_design_is_tracked_before_delivery() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    process_root = ROOT / "docs/internal/engineering-process"
+    how_to = (
+        process_root / "spec-first-engineering-playbook/00-how-to-use.md"
+    ).read_text(encoding="utf-8")
+    clarifications = (
+        process_root / "spec-first-engineering-playbook/01-clarifications.md"
+    ).read_text(encoding="utf-8")
+    feature_playbook = (process_root / "feature-engineering-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    instructions = (process_root / "codex-agent-instructions.md").read_text(
+        encoding="utf-8"
+    )
+    workflow = (process_root / "agent-operable-engineering-workflow.md").read_text(
+        encoding="utf-8"
+    )
+    review_protocol = (process_root / "review-context-protocol.md").read_text(
+        encoding="utf-8"
+    )
+    review_checklist = (
+        process_root / "spec-first-engineering-playbook/06-review-checklist.md"
+    ).read_text(encoding="utf-8")
+    portability = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+
+    for text in (
+        agents,
+        how_to,
+        clarifications,
+        feature_playbook,
+        instructions,
+        workflow,
+    ):
+        assert "tracked" in text
+        assert "slice-plans/" in text
+        assert "Delivery" in text
+
+    assert "Chat-only design is not a Delivery-ready record" in clarifications
+    assert "Chat is a compact decision surface" in instructions
+    assert "## Tracked Material Design Gate" in feature_playbook
+    assert "## Active Slice Plan Gate" in review_protocol
+    assert "Plan/diff alignment: pass | revise | blocked" in review_protocol
+    assert "still-locked" in review_checklist
+    assert "Active Slice Plan path" in workflow
+    assert "ENG-PORT-DES-010" in portability
+
+
 def test_ousterhout_material_review_gate_anchors_are_tracked() -> None:
     process_root = ROOT / "docs/internal/engineering-process"
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")

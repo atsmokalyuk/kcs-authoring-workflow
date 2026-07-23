@@ -30,16 +30,20 @@ turning chat history into a source of truth.
 
 ## Packet Location
 
-Use the pull-request description as the default durable review packet. Create
-a tracked design or decision document only when the content remains
-authoritative after the PR closes. Do not create a separate Markdown file for
-each batch, review pass, or transient checkpoint.
+Use the pull-request description as the default durable review packet. Every
+material feature/slice separately keeps its authoritative design under
+`docs/internal/engineering-process/slice-plans/`; the review packet links that
+plan and does not duplicate it. Other tracked design or decision documents are
+created only when their content remains authoritative after the PR closes. Do
+not create a separate Markdown file for each batch, review pass, or transient
+checkpoint.
 
 ## Required Sections
 
-Each material review packet should include:
+Each material review packet must include:
 
 - `Review Task`;
+- `Active Slice Plan`;
 - `Slice Intent`;
 - `Changed Files`;
 - `Affected Contracts`;
@@ -50,6 +54,36 @@ Each material review packet should include:
 - `Stale Context To Ignore`;
 - `Promotion Candidates`;
 - `Questions For Reviewer`.
+
+## Active Slice Plan Gate
+
+`Active Slice Plan` is the autonomous handoff from Design into Delivery and
+review. Use this compact shape:
+
+```text
+Active Slice Plan:
+Path: docs/internal/engineering-process/slice-plans/<plan>.md
+Authorized Delivery phase:
+Still locked:
+Plan/diff alignment: pass | revise | blocked
+```
+
+Before reviewing implementation details, the reviewer must resolve the
+repo-relative path and verify:
+
+- the file is already tracked or is included in the intended/staged diff;
+- the requested outcome and selected boundary cover the implementation diff;
+- the exact changed phase is recorded as Delivery-authorized;
+- still-locked phases, contracts, and data boundaries are untouched;
+- acceptance gates and unchanged contracts cover the changed behavior;
+- later operator corrections are reflected in the tracked plan;
+- the plan does not use feasibility evidence as stability or parent-integration
+  approval.
+
+A missing plan, nonexistent path, locked changed phase, or material plan/diff
+mismatch is a review blocker. `Plan/diff alignment: pass` is a named human-review
+verdict; a policy test may enforce field presence but must not claim to judge
+semantic alignment.
 
 `Affected Contracts` may start as a manual list. After Slice 5, review packets
 should reference affected code-map nodes from
@@ -80,6 +114,7 @@ repo-relative paths instead.
 Keep review packets compact:
 
 - summarize intent in one short paragraph;
+- link the active slice plan and state only the authorized/locked phases;
 - list changed files by repo-relative path;
 - include only relevant validation commands and results;
 - include links or paths to artifacts instead of pasting artifact bodies;

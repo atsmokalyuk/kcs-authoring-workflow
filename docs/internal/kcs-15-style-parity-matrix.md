@@ -122,7 +122,8 @@ KCS-15.2 is split by the decision each slice can prove:
    `/api/snippets` projection without changing Desktop or KCS decisions.
 3. `KCS-15.2b2` — the selected operator-confirmed comparison UX will align
    relevant ticket facts with one to three public article links, cited
-   evidence, and reuse/update guidance before drafting. Its Delivery is locked.
+   evidence, and reuse/update guidance before drafting. Phase A exact
+   public-article context is authorized; Phase B Desktop integration is locked.
 4. `KCS-15.2b3` — repeated retrieval/model/operator trials remain separately
    gated and cannot be inferred from one successful smoke.
 
@@ -145,7 +146,8 @@ that never searched reusable public knowledge.
    local `/api/snippets` projection. Operator benefit: the later workflow can
    show enough cited article context without coupling itself to one RAG host.
 5. `KCS-15.2b2` — operator-confirmed comparison workflow. Target UX is
-   selected; Desktop/model/operator integration Delivery remains locked.
+   selected; Phase A exact public-article context is authorized, while Phase B
+   Desktop/model/operator integration Delivery remains locked.
 6. `KCS-15.2b3` — repeated comparison trial after its fixtures, `N`, conditions,
    thresholds, permitted corrections, overhead, false-positive, and stop
    contracts are approved.

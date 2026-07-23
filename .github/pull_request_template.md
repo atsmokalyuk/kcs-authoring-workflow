@@ -2,7 +2,27 @@
 
 - PAUX-
 
-## Scope
+## Review Task
+
+What the reviewer should decide:
+
+-
+
+## Active Slice Plan
+
+Path: `docs/internal/engineering-process/slice-plans/<plan>.md`
+
+Authorized Delivery phase:
+
+Still locked:
+
+Plan/diff alignment:
+
+- [ ] pass
+- [ ] revise
+- [ ] blocked
+
+## Slice Intent
 
 What this PR changes:
 
@@ -12,11 +32,19 @@ Out of scope:
 
 -
 
-## Changed files
+## Changed Files
 
 -
 
-## Unchanged contracts
+## Affected Contracts
+
+### Changed contracts
+
+- [ ] No packet/architecture/data-handling contract changes
+- [ ] Contract changes are documented in `docs/internal/`
+- [ ] Not applicable
+
+### Unchanged contracts
 
 - [ ] no Zendesk writes
 - [ ] no Help Center publish
@@ -26,12 +54,6 @@ Out of scope:
 - [ ] no Claude-owned KCS decision logic
 - [ ] no new adapter/client integration
 
-## Changed contracts
-
-- [ ] No packet/architecture/data-handling contract changes
-- [ ] Contract changes are documented in `docs/internal/`
-- [ ] Not applicable
-
 ## Data/security notes
 
 - [ ] No raw Zendesk data, ticket comments, customer identifiers, secrets, internal chunks, vector values, or runtime artifacts added
@@ -39,13 +61,37 @@ Out of scope:
 - [ ] Claude-visible data remains bounded and sanitized where relevant
 - [ ] Not applicable
 
-## Validation run
+## Relevant Tests
+
+-
+
+## Validation
 
 Commands/results:
 
 ```text
 
 ```
+
+## Known Deferred Risks
+
+-
+
+## Must Not Change
+
+-
+
+## Stale Context To Ignore
+
+-
+
+## Promotion Candidates
+
+- none
+
+## Questions For Reviewer
+
+-
 
 ## Documentation
 
@@ -60,7 +106,3 @@ Commands/results:
 - [ ] Preserves deterministic gates.
 - [ ] Does not add publish/write behavior.
 - [ ] Keeps implementation/maintenance cost low.
-
-## Open risks / deferred items
-
--

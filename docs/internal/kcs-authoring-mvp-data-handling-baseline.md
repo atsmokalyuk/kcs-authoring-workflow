@@ -209,7 +209,9 @@ workflow.
 The lane may contain only:
 
 - already sanitized bounded symptom text used as the retrieval query;
-- one optional ticket-explicit public article reference;
+- one optional priority-bearing public article reference, allowed only when
+  accepted source-grounded ticket evidence says the article helped, resolved,
+  or partially helped with the issue;
 - one to three articles from the approved public Plesk corpus;
 - public article ID, source type, title, HTTPS URL, lifecycle/status,
   last-updated metadata when available, and explicit-vs-search origin;
@@ -228,9 +230,11 @@ must not be persisted or logged by this repository.
 Public excerpts are untrusted evidence. They may support a later bounded
 Claude/operator comparison, but they do not establish article identity,
 actuality, content status, KCS action, draft readiness, or publication
-readiness. An article explicitly referenced as the ticket resolution has
-comparison priority; if its public context is missing, RAG hits must not
-silently replace it.
+readiness. An article supported by accepted ticket evidence as helpful,
+resolving, or partially helpful has comparison priority; if its public context
+is missing, RAG hits must not silently replace it. A URL-only, merely
+mentioned, unconfirmed, or confirmed-not-helpful article does not receive that
+priority.
 
 Every local or future approved remote provider output must pass the core-owned
 `reuse_comparison_evidence_v1` acceptance gate. Adapter-specific parsing is not

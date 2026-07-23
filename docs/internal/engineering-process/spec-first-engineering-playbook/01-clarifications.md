@@ -76,7 +76,10 @@ No value implies another. In particular:
 
 Delivery may start only when the outcome is `agreed`, the design is `selected`,
 Delivery is `authorized`, the Operator Decision Readiness packet is complete,
-and no material blocker remains.
+no material blocker remains, and a material slice's selected design,
+authorization, acceptance gates, unchanged contracts, and stop conditions are
+recorded in its tracked `slice-plans/` artifact.
+Chat-only design is not a Delivery-ready record.
 
 ### Operator Decision Readiness Packet
 

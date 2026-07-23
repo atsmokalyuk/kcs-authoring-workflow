@@ -21,8 +21,9 @@ Forward-looking repository documents should use this numbering:
   examples, and assisted reuse, active through independently approved slices.
   KCS-15.1 PLESK_INFO trigger parity is complete. KCS-15.2 owns
   RAG-assisted reuse: KCS-15.2a adapter/readiness is complete, KCS-15.2b1
-  bounded public comparison evidence is complete, and
-  KCS-15.2b2 Desktop/model/operator integration remains Delivery-locked.
+  bounded public comparison evidence is complete, KCS-15.2b2 Phase A exact
+  public-article context is authorized, and Phase B Desktop/model/operator
+  integration remains Delivery-locked.
   KCS-15.3 and KCS-15.4 retain the remaining deterministic and model-mediated
   style/quality inventory.
 

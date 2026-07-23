@@ -5,6 +5,10 @@ Use this checklist for code, docs, contracts, and demo artifacts.
 ## General Review
 
 - Does the diff match the stated slice?
+- Does the material review packet name an `Active Slice Plan` under
+  `docs/internal/engineering-process/slice-plans/`?
+- Does the plan authorize the exact changed Delivery phase, cover the diff and
+  acceptance gates, and leave every listed locked phase untouched?
 - Was the requested outcome separated from the proposed solution before
   architecture was selected?
 - Does the plan distinguish nominal behavior from demonstrated operational
@@ -76,6 +80,9 @@ Classify findings as blockers or warnings.
 
 Blockers:
 
+- missing or nonexistent Active Slice Plan for a material change;
+- implementation outside the selected boundary or inside a still-locked
+  Delivery phase;
 - behavior regression;
 - broken or unstable contract;
 - missing test or fixture for changed behavior;

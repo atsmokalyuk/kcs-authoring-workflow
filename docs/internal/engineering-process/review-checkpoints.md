@@ -25,6 +25,11 @@ refactor proceeds.
 
 ## During Staged-Diff Review
 
+Resolve the `Active Slice Plan` named by the material review packet before
+reviewing source details. Confirm that the exact changed phase is
+Delivery-authorized, the diff stays inside the selected boundary, and locked
+phases remain untouched.
+
 Map every staged source file to one or more graph nodes.
 
 Check:
@@ -55,7 +60,8 @@ Affected code-map nodes:
 ```
 
 The packet must still include changed files, affected contracts, validation,
-and what must not change. The graph node list is an index, not evidence by
+and what must not change. It must also name the Active Slice Plan and the exact
+authorized and locked phases. The graph node list is an index, not evidence by
 itself.
 
 ## Staleness Handling

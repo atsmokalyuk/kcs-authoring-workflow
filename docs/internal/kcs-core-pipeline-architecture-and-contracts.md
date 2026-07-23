@@ -307,6 +307,13 @@ hosted. The initial implementation projects the existing loopback
 `/api/snippets` response. A future remote provider may implement the same port
 only after its own data/security/readiness approval.
 
+The caller may populate the priority-bearing `explicit_article` field only
+when accepted source-grounded ticket evidence states that the article helped,
+resolved, or partially helped with the issue. URL presence, a neutral mention,
+an unknown outcome, or a confirmed failed attempt does not establish priority.
+The provider validates and retrieves the requested public identity; it does not
+infer this ticket/article relation.
+
 Provider output is untrusted. `validate_reuse_comparison_evidence()` and
 `ensure_valid_reuse_comparison_evidence()` own common acceptance for public
 origins, request/result states, explicit-reference consistency, candidate and

@@ -158,6 +158,13 @@ Ask concise questions only for material ambiguity that cannot be resolved from
 repo docs or code. Do not code while a boundary, privacy, schema, persistence,
 integration, or reviewer-output ambiguity remains material.
 
+For a material feature or slice, clarification and design must produce or
+update an authoritative tracked plan under
+`docs/internal/engineering-process/slice-plans/`. The plan, not chat memory,
+must contain the selected boundary, approval ledger, acceptance gates,
+unchanged contracts, and stop conditions before Delivery begins. If approval
+arrives first, capture it in the plan before implementation.
+
 ## Slice-Run Discipline
 
 Work in narrow slice runs.
@@ -308,6 +315,8 @@ Detailed file-based packet rules live in
 
 A review packet should include:
 
+- Active Slice Plan path, authorized phase, locked phases, and plan/diff
+  alignment verdict;
 - slice intent;
 - changed files;
 - affected contracts;

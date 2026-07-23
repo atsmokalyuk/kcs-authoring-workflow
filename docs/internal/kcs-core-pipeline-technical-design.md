@@ -451,8 +451,12 @@ question-answer identity is the same.
 
 The pre-draft comparison uses a provider-neutral
 `ReuseComparisonEvidenceProvider` port. It accepts already validated bounded
-symptoms plus an optional public article explicitly referenced by the ticket.
-It returns only allowlisted public article metadata and bounded cited excerpts.
+symptoms plus an optional priority-bearing public article reference. The caller
+may set that priority-bearing reference only when accepted, source-grounded
+ticket evidence says the article helped, resolved, or partially helped with the
+issue. A URL-only, merely mentioned, unconfirmed, or confirmed-not-helpful
+article is not promoted. The provider returns only allowlisted public article
+metadata and bounded cited excerpts.
 
 The initial local adapter translates the existing loopback `/api/snippets`
 schema into `reuse_comparison_evidence_v1`. Runtime wrapper fields, local index
@@ -467,12 +471,13 @@ known credential/private-path patterns, and independently recomputed
 whitespace-token counts. Provider-declared counts and adapter-local checks are
 not trusted by themselves.
 
-If the explicit ticket article is present in returned evidence, it is ordered
-before search-only candidates. If its context is missing, the evidence result
-blocks silent substitution by another hit. The provider and adapter do not
-decide whether an article is identical, complete, outdated, reusable, or ready
-to update. They must not know Desktop state, Claude prompts, drafting,
-rendering, persistence, or publication.
+If the accepted helpful or partially helpful ticket article is present in
+returned evidence, it is ordered before search-only candidates. If its context
+is missing, the evidence result blocks silent substitution by another hit. The
+provider and adapter do not infer the ticket/article relation or decide whether
+an article is identical, complete, outdated, reusable, or ready to update. They
+must not know Desktop state, Claude prompts, drafting, rendering, persistence,
+or publication.
 
 KCS-15.2b1 defines this evidence boundary only. KCS-15.2b2 must separately
 integrate the operator-confirmed comparison UX before any evidence is used by
