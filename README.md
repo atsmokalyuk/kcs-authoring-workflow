@@ -612,10 +612,11 @@ tools are not loaded into the active chat.
 - Last completed engineering slice: KCS-14 Engineering and Codebase Design
   Hardening, including the post-closeout characterization-suite
   maintainability pass
-- Active runtime hardening slice: KCS-15 KCS Style and Markup Parity
-- Last completed KCS-15 slice: KCS-15.1 `PLESK_INFO` trigger parity
-- Current implementation subtask: RAG-1 loopback local-public search adapter;
-  Desktop integration, article identity, and semantic expansion remain frozen
+- Active authoring-quality umbrella: KCS-15 source parity and assisted reuse
+- Last completed KCS-15 behavior slice: KCS-15.1 `PLESK_INFO` trigger parity
+- Completed KCS-15 enabling slice: KCS-15.2a loopback local-public RAG adapter
+- Current design subtask: KCS-15.2b operator-facing reuse comparison;
+  design selection remains open and Delivery is locked
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

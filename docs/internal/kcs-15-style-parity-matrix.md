@@ -106,23 +106,23 @@ Observed at `4acb0b320b692a281abfe56b5e27f61d8f3d`:
 
 ## RAG placement decision
 
-Tracked documents define KCS-15 as style/markup/quality hardening. They define
-local public RAG as a separate adapter outside the core, not as part of the
-KCS-15 definition. The `plesk_support` implementation makes a thin metadata
-search adapter relatively small, but search hits do not prove cause-resolution
-or question-answer identity.
+KCS-15.2 owns RAG-assisted reuse because search/reuse is part of producing a
+good KCS outcome before drafting. It remains outside KCS core and does not
+block independent style-parity work.
 
-Recommended timing:
+KCS-15.2 is split by the decision each slice can prove:
 
-1. finish this source/parity baseline;
-2. implement the first deterministic source-parity corrections;
-3. approve a separate local-public-RAG adapter/data/security/readiness slice;
-4. integrate that adapter before reuse-aware model-mediated drafting or article
-   actuality decisions depend on it.
+1. `KCS-15.2a` — the completed loopback adapter proves bounded public-metadata
+   readiness and search feasibility. Search hits do not prove cause-resolution,
+   question-answer identity, article fit, or actuality.
+2. `KCS-15.2b` — the operator-facing comparison must determine what ticket
+   context, candidate/article information, alternatives, and consequences are
+   visible at the correct workflow moment. Its design is open and Delivery is
+   locked.
 
-This timing keeps RAG from blocking style parity while avoiding later model
-trials against a workflow that has not actually searched for reusable public
-knowledge.
+This placement keeps style parity independent while ensuring later
+reuse-aware drafting or article-actuality decisions do not rely on a workflow
+that never searched reusable public knowledge.
 
 ## Proposed KCS-15 slice order
 
@@ -132,21 +132,23 @@ knowledge.
 2. `KCS-15.1` — deterministic trigger/markup parity, starting with
    `PLESK_INFO` meaning and missing source-backed trigger fixtures. Operator
    benefit: removes known false blockers and makes source HTML more predictable.
-3. Separate RAG adapter slice — safe metadata-only search integration and
-   explicit searched/not-searched state. Operator benefit: reuse candidates
-   appear at the correct workflow moment without letting search own identity.
-4. `KCS-15.2` — deterministic structure, title, entrypoint, safety, and naming
+3. `KCS-15.2a` — safe loopback metadata-only RAG adapter and readiness boundary,
+   now complete. Operator benefit: the system can obtain bounded public reuse
+   candidates without letting search own identity.
+4. `KCS-15.2b` — operator-facing reuse comparison, only after decision-ready UX
+   evidence shows the relevant ticket context together with enough candidate or
+   article information to judge reuse/update/create. Delivery remains locked.
+5. `KCS-15.3` — deterministic structure, title, entrypoint, safety, and naming
    parity after resolving the Cause/Symptoms decisions. Operator benefit:
    fewer mechanical corrections in reviewer handoff.
-5. `KCS-15.3` — approved public golden examples and bounded model trials for
+6. `KCS-15.4` — approved public golden examples and bounded model trials for
    semantic completeness, language, and relevance. Operator benefit: measured
    drafting quality instead of growing regex heuristics.
-6. Optional operator-confirmed drafting scopes substage only after its own UX
+7. Optional operator-confirmed drafting scopes substage only after its own UX
    approval. Operator benefit must exceed the cognitive cost of another
    confirmation step; it is not the definition of KCS-15.
 
-The retained KCS-14.5 M4 gate remains active for semantic ownership,
-provider/evaluation, and incident control-surface changes. The operator narrowed
-it on 2026-07-22: an independently approved KCS-15 style/markup slice may
-proceed only when its diff leaves those surfaces and their safety contracts
-unchanged.
+KCS-14.5 is closed. Its retained semantic ownership, provider/evaluation, and
+incident control-surface contracts remain frozen. Reopening those surfaces
+requires a separate behavior-change design; independently approved KCS-15 work
+may proceed when it leaves those surfaces and their safety contracts unchanged.

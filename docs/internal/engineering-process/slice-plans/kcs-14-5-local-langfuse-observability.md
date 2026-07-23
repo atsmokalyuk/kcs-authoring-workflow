@@ -110,9 +110,10 @@ comparison. It does not block ordinary authoring.
   artifact data. Blind log ingestion is not an acceptable integration.
 - The useful existing seams are synthetic Desktop/MCP smoke entrypoints,
   `KcsDesktopMcpAdapter.call_tool`, and approved-summary pipeline hooks.
-- Current runtime-incident changes overlap Desktop adapter files. Future
-  integration work must use a separate clean worktree and must not be mixed
-  into the active incident/test-maintainability diff.
+- At the time of this pre-closeout finding, runtime-incident changes overlapped
+  Desktop adapter files. KCS-14.5 is now closed; any future integration work
+  must still use a separate clean worktree and leave retained control-surface
+  contracts unchanged.
 
 ### Local Deployment Prerequisites
 
@@ -506,7 +507,8 @@ Potential narrow existing seams:
 - approved-summary pipeline hooks for explicit high-level stage observations;
 - `src/kcs_adapters/mcp_desktop.py` only for optional configuration wiring.
 
-Do not initially touch `desktop_draft_tool.py` or other active incident files.
+Do not initially touch `desktop_draft_tool.py` or other retained KCS-14.5
+control-surface files.
 Do not touch `src/kcs_core`.
 
 ## Behavior And Failure-Mode Specification

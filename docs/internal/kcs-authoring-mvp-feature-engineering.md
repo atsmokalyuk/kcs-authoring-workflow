@@ -96,11 +96,12 @@ Recommended slice order:
   entrypoints, functional test conventions, compact review context protocol,
   minimal code map, behavior-preserving codebase design refactor, and
   review/agent tooling after the manual protocol is stable;
-- KCS-15: KCS style and markup parity with source KCS Style Guide, Article
-  Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules. This was deferred during KCS-14 and is now active
-  through independently approved behavior slices, starting with KCS-15.1
-  PLESK_INFO trigger parity. It remains outside KCS-14 scope;
+- KCS-15: KCS authoring quality through source style/markup parity, Article
+  Quality criteria, KCS practices, approved examples, assisted reuse, and
+  portable `plesk_support` rules. This was deferred during KCS-14 and is now active
+  through independently approved behavior slices. KCS-15.1 trigger parity and
+  KCS-15.2a adapter feasibility are complete; KCS-15.2b operator comparison is
+  design-open and Delivery-locked. It remains outside KCS-14 scope;
 - Future harness-portable agent engineering support: git-aware code-review
   graph, compact agent context, official local tool entrypoints, and review
   handoffs for Codex, ChatGPT Pro review, Fable 5 review, or future internal

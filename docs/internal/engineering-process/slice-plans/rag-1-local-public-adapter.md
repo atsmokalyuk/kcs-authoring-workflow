@@ -1,6 +1,9 @@
-# RAG-1 Local Public Search Adapter
+# KCS-15.2a Local Public RAG Adapter
 
-Status: approved for implementation on 2026-07-22.
+Status: completed on 2026-07-22 at commits `0e14e95` and `2fabe43`.
+
+The historical filename is retained for Git traceability. Canonical tracking
+is KCS-15.2a under the KCS-15.2 RAG-assisted reuse umbrella.
 
 ## Requested outcome
 
@@ -85,3 +88,64 @@ not retrieval quality or semantic identity.
 Stop and return to design if implementation requires Desktop changes, article
 identity inference, snippets/chunks, a non-loopback endpoint, credentials,
 runtime artifact writes, or changes to the retained KCS-14.5 control surface.
+
+## Closeout And Parent Boundary
+
+This enabling slice proves that the repository can validate a ready loopback
+public RAG runtime and retrieve bounded metadata-only candidates through a
+fail-closed adapter. It does not prove retrieval quality, article fit,
+cause-resolution or question-answer identity, operator usability, or workflow
+integration stability.
+
+Parent KCS-15.2 state:
+
+```text
+Outcome agreement: agreed
+Design selection: open
+Delivery authorization: locked
+```
+
+The agreed outcome is to surface reusable public knowledge at the right moment
+and avoid drafting in vain. KCS-15.2b must still establish a decision-ready
+operator experience that presents relevant ticket context together with enough
+candidate/article information to judge reuse, update, or create. Adapter
+completion does not select that UX or authorize Desktop/pipeline integration.
+
+Combined post-integration validation passed 91 focused adapter and policy
+checks. Ruff on the adapter, its tests, and the KCS-15 policy test also passed.
+The full repository suite passed 1,465 tests with one expected skip.
+
+## KCS-15.2b Decision-Readiness Gate
+
+The current metadata-only adapter cannot by itself make an article-fit decision
+ready. Before asking the operator to select a UX, autonomous Design work must
+determine:
+
+- which relevant ticket facts and missing knowledge the operator needs to see;
+- what article evidence is sufficient to judge reuse, update, or create;
+- whether that evidence comes from a public page, an existing approved article
+  context, or another separately reviewed read path;
+- how to align the ticket and article evidence without showing two long raw
+  documents or increasing cognitive load;
+- how absent, stale, ambiguous, or conflicting evidence fails safely;
+- which existing privacy, packet, Desktop, persistence, and identity contracts
+  remain unchanged.
+
+Record safe process evidence for the next material decision:
+
+```text
+uncertainty trigger
+repository/research/feasibility/operator ownership classification
+autonomous resolutions
+operator-only questions
+visible evidence and sufficiency limits
+alternatives and consequences
+early versus late corrections
+false-positive protocol activation
+approval ledger and authorization state
+```
+
+If model- or RAG-mediated quality becomes part of acceptance, the KCS-15.2b
+plan must predeclare fixtures, `N`, fixed conditions, invariants, threshold,
+permitted corrections, operator overhead, false positives, and stop conditions.
+A successful adapter call remains feasibility evidence, not stability evidence.

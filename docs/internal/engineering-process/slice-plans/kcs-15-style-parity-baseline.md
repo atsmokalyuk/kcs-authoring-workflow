@@ -123,8 +123,9 @@ No bounded model trial is appropriate for this documentation-only slice.
 - Initial operator-approved public golden example set and permitted uses.
 - Whether security-alert article type is needed by this product.
 - Which operator-practice candidates become individually confirmed.
-- Exact local RAG integration slice boundary, data source configuration,
-  freshness/readiness evidence, and identity-review UX.
+- KCS-15.2a resolved the local RAG adapter, loopback data-source, and
+  freshness/readiness boundary. KCS-15.2b retains the unknown operator
+  comparison and identity-review UX; Delivery remains locked.
 - Whether optional drafting-scope confirmation reduces or increases operator
   cognitive load in the actual Desktop entrypoint.
 

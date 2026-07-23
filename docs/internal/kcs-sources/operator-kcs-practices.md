@@ -13,7 +13,7 @@ until individually approved or independently confirmed by a canonical source.
 | `OP-SOURCE-003` | Article Quality Criteria outrank the Article Simplification Guide; the latter is supporting polish guidance. | confirmed |
 | `OP-RAG-001` | The local public RAG implementation in `plesk_support` is mature enough to reuse through a proper adapter. Its integration timing is separate from style parity and does not block it. | confirmed |
 | `OP-AUTH-001` | Operator practices are a separate high-authority KCS rule set. Material conflicts are surfaced to the operator rather than silently resolved. | confirmed |
-| `OP-GATE-001` | The retained M4 gate remains active only for KCS-14.5 semantic/control-surface work. Independently approved work outside those surfaces may proceed when it leaves them unchanged. | confirmed |
+| `OP-GATE-001` | KCS-14.5 is closed. Its retained semantic/control-surface contracts remain frozen and require a separate behavior-change design to reopen. Independently approved work outside those surfaces may proceed when it leaves them unchanged. | confirmed |
 
 ## Portable practice candidates
 

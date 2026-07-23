@@ -38,12 +38,20 @@ instead of implying that external tracking was updated.
   conventions, compact review protocol, minimal code map, behavior-preserving
   codebase refactor, and review/agent tooling after the manual protocol is
   stable
-- KCS-15 KCS style and markup parity with source KCS Style Guide, Article
-  Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules; active through independently approved behavior slices,
-  with KCS-15.1 PLESK_INFO trigger parity complete; remains outside KCS-14 scope
-- RAG-1 Local Public Search Adapter: loopback readiness and metadata-only
-  candidate retrieval; Desktop integration and identity confirmation deferred
+- KCS-15 KCS Authoring Quality through source style/markup parity, Article
+  Quality criteria, KCS practices, approved examples, assisted reuse, and
+  portable `plesk_support` rules; active through independently approved
+  behavior slices and remains outside KCS-14 scope
+  - KCS-15.1 PLESK_INFO trigger parity: complete
+  - KCS-15.2 RAG-assisted reuse
+    - KCS-15.2a Local Public RAG Adapter: complete; loopback readiness and
+      metadata-only candidate retrieval only
+    - KCS-15.2b Operator-Facing Reuse Comparison: design-open and
+      Delivery-locked; Desktop/pipeline integration and identity UX unapproved
+  - KCS-15.3 Deterministic structure/title/entrypoint/safety/naming parity:
+    planned, independently approvable from KCS-15.2b
+  - KCS-15.4 Approved examples and bounded model-mediated quality trials:
+    planned after its fixtures and trial contract are approved
 - Future deployment slice: intranet remote MCP service deployment for managed operator
   use, connected from Claude Desktop through a custom remote connector URL
   rather than the local MCPB stdio wrapper

@@ -9,7 +9,9 @@ tracking document:
 Last completed engineering/process slice: KCS-14.5 Runtime Incident Closeout
 Completed KCS-15 prerequisite: KCS-15.0 Style Source And Governance Baseline
 Completed KCS-15 behavior slice: KCS-15.1 PLESK_INFO Trigger Parity
-Current approved supporting slice: RAG-1 Local Public Search Adapter
+Completed KCS-15 enabling slice: KCS-15.2a Local Public RAG Adapter
+Current design slice: KCS-15.2b Operator-Facing Reuse Comparison
+Current Delivery state: locked pending decision-ready UX evidence and selection
 ```
 
 Historical KCS-1 guidance remains useful only as an early-slice boundary:
@@ -106,13 +108,17 @@ evidence directly.
   process, harness-portable review support, local tool entrypoints, code-review
   graph, compact agent context, and behavior-preserving codebase design
   refactor.
-- KCS-15: KCS style and markup parity with the source KCS Style Guide, Article
-  Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules. KCS-15 is active through independently approved
-  behavior slices; KCS-15.1 PLESK_INFO trigger parity is complete.
-- RAG-1: loopback-only local public search adapter with fail-closed readiness
-  and metadata-only candidates. Desktop integration and identity confirmation
-  remain later decisions.
+- KCS-15: KCS authoring quality through source style/markup parity, Article
+  Quality criteria, KCS practices, approved examples, assisted reuse, and
+  portable `plesk_support` rules. KCS-15 is active through independently approved
+  behavior slices:
+  - KCS-15.1 PLESK_INFO trigger parity is complete;
+  - KCS-15.2a loopback-only local public RAG adapter is complete as an enabling
+    slice with fail-closed readiness and metadata-only candidates;
+  - KCS-15.2b operator-facing reuse comparison is design-open and
+    Delivery-locked. Adapter feasibility does not approve its UX or integration;
+  - deterministic style/structure parity continues in KCS-15.3 and approved
+    examples/model-mediated quality continue in KCS-15.4.
 - Future deployment slice: optional managed internal service version of the
   current local Claude Desktop workflow.
 
@@ -126,12 +132,14 @@ This roadmap does not duplicate completed runtime slice contracts. Future work
 must preserve those active contracts unless an approved behavior-change slice
 explicitly changes them.
 
-## Active Runtime Hardening
+## Active KCS-15 Authoring Quality
 
-KCS-15 style and markup parity is active through independently approved,
+KCS-15 authoring quality is active through independently approved,
 source-backed behavior slices. KCS-15.1 PLESK_INFO trigger parity is complete.
-Its approval does not approve the remaining KCS-15 inventory. RAG-1 is a
-separate supporting adapter slice, not part of KCS-15 style behavior.
+KCS-15.2a local-public RAG adapter is complete as bounded enabling work. It
+does not select the KCS-15.2b operator experience, authorize Desktop/pipeline
+integration, or block independent KCS-15.3 style-parity work. KCS-15.2b remains
+in Design with Delivery locked.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening
 

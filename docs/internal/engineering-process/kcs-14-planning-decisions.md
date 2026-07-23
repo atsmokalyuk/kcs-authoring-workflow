@@ -17,10 +17,13 @@ or reviewer-bundle behavior.
 Forward-looking repository documents should use this numbering:
 
 - KCS-14: Engineering and Codebase Design Hardening.
-- KCS-15: KCS Style and Markup Parity, active through independently approved
-  slices; KCS-15.1 PLESK_INFO trigger parity is complete.
-- RAG-1: separate approved local-public adapter/readiness slice. It does not
-  reopen Desktop, semantic ownership, or article-identity behavior.
+- KCS-15: KCS Authoring Quality through source style/markup parity, approved
+  examples, and assisted reuse, active through independently approved slices.
+  KCS-15.1 PLESK_INFO trigger parity is complete. KCS-15.2 owns
+  RAG-assisted reuse: KCS-15.2a adapter/readiness is complete, while KCS-15.2b
+  operator comparison remains design-open and Delivery-locked. KCS-15.3 and
+  KCS-15.4 retain the remaining deterministic and model-mediated style/quality
+  inventory.
 
 Historical files may mention the older KCS-14 style/markup framing only when
 the text is clearly historical. Active README, roadmap, Jira-tracking,
@@ -481,12 +484,12 @@ was restored. This closes schema rearrangement as a recovery strategy: a future
 semantic design must introduce a new authority source rather than another
 model interpretation of the same bounded excerpts.
 
-The retained legacy provider/evaluation M4 blocker remains active for the
-KCS-14.5 semantic/control-surface workstream. The operator narrowed the gate on
-2026-07-22 so that independently approved KCS-15 style/markup slices may
-proceed when they do not touch that workstream.
+KCS-14.5 is closed. Its retained legacy provider/evaluation and semantic
+control-surface boundary remains frozen. Reopening requires a separate
+behavior-change design. Independently approved KCS-15 slices may proceed when
+they leave that boundary and its safety contracts unchanged.
 
-While the scoped blocker remains active:
+While the retained boundary remains frozen:
 
 - do not commit new runtime incident candidates as refactor-only;
 - do not mix runtime incident changes into the test-suite-maintainability
@@ -495,7 +498,7 @@ While the scoped blocker remains active:
   contracts from a KCS-15 style/markup slice;
 - require a separate behavior-change design to reopen semantic ownership,
   provider, evaluation, or candidate-scope behavior;
-- allow an explicitly approved KCS-15 style/markup slice only after its diff
+- allow an explicitly approved KCS-15 slice only after its diff
   proves that the scoped incident surfaces remain untouched.
 
 ## Review Routing

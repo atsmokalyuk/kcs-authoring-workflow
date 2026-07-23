@@ -153,3 +153,37 @@ def test_kcs15_example_deck_is_supporting_and_superseded_advice_is_explicit() ->
     assert "Authority ID: `AUTH-EXAMPLES`" in text
     assert "Lifecycle in source: `beta`" in text
     assert "`AUTH-AQ` source-control rule" in text
+
+
+def test_kcs15_tracking_separates_rag_enabling_from_parent_delivery() -> None:
+    internal = ROOT / "docs" / "internal"
+    process = internal / "engineering-process"
+    matrix = MATRIX_PATH.read_text(encoding="utf-8")
+    roadmap = (process / "engineering-roadmap.md").read_text(encoding="utf-8")
+    adapter_plan = (
+        process / "slice-plans/rag-1-local-public-adapter.md"
+    ).read_text(encoding="utf-8")
+    kcs15_1_plan = (
+        process / "slice-plans/kcs-15-1-plesk-info-trigger-parity.md"
+    ).read_text(encoding="utf-8")
+    registry = (process / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+    practices = (SOURCE_DIR / "operator-kcs-practices.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Completed KCS-15 enabling slice: KCS-15.2a" in roadmap
+    assert "Current design slice: KCS-15.2b" in roadmap
+    assert "Current Delivery state: locked" in roadmap
+    assert "`KCS-15.3`" in matrix
+    assert "`KCS-15.4`" in matrix
+    assert "Status: completed" in adapter_plan
+    assert "Outcome agreement: agreed" in adapter_plan
+    assert "Design selection: open" in adapter_plan
+    assert "Delivery authorization: locked" in adapter_plan
+    assert "Status: completed" in kcs15_1_plan
+    assert "ENG-PORT-DES-007" in registry
+    assert "ENG-PORT-DES-008" in registry
+    assert "ENG-PORT-DEL-008" in registry
+    assert "KCS-14.5 is closed" in practices
