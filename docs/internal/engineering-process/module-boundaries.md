@@ -117,7 +117,8 @@ schema and blocker rules across multiple files.
 ### Desktop Draft Workflow
 
 Owns orchestration from Desktop request to validated workflow result, including
-operator selection state and semantic provider handoff.
+operator selection state, bounded operator-confirmed reuse-comparison state,
+and semantic provider handoff.
 
 Must not own clean-ticket storage rules, semantic-review schema internals, core
 decision rules, renderer policy, or publication.
@@ -126,6 +127,7 @@ Review when touching:
 
 - `src/kcs_adapters/desktop_draft_tool.py`
 - `src/kcs_adapters/desktop_workflow.py`
+- `src/kcs_adapters/desktop_reuse_comparison.py`
 - `src/kcs_adapters/desktop_operator_selection.py`
 - `src/kcs_adapters/desktop_authoring_pipeline.py`
 - `src/kcs_adapters/desktop_draft_arguments.py`

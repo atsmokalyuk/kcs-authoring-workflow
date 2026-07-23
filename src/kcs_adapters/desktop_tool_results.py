@@ -176,9 +176,70 @@ def tool_result_text(structured: Mapping[str, Any]) -> str:
 
 
 def _initial_tool_result_text(structured: Mapping[str, Any]) -> str | None:
+    if structured.get("result_kind") == "reuse_comparison_required":
+        return _reuse_comparison_required_tool_result_text(structured)
+    if structured.get("result_kind") in {
+        "reuse_comparison_blocked",
+        "reuse_comparison_completed",
+        "reuse_comparison_submit_failed",
+    }:
+        return _reuse_comparison_terminal_tool_result_text(structured)
     if structured.get("result_kind") == "draft_article_batch":
         return _draft_article_batch_tool_result_text(structured)
     return _pre_draft_tool_result_text(structured)
+
+
+def _reuse_comparison_required_tool_result_text(
+    structured: Mapping[str, Any],
+) -> str:
+    context = {
+        "accepted_ticket_facts": structured.get("accepted_ticket_facts"),
+        "comparison_candidates": structured.get("comparison_candidates"),
+        "comparison_outcomes": structured.get("comparison_outcomes"),
+        "comparison_ref": structured.get("comparison_ref"),
+        "submit_tool": structured.get("submit_tool"),
+    }
+    return (
+        "A bounded public-article comparison is required before drafting. "
+        "Compare only accepted_ticket_facts with the cited candidate excerpts. "
+        "Present one concise recommendation that states what is covered and "
+        "what relevant knowledge is missing, then ask exactly one operator "
+        "question using only reuse, update, none_fit, or need_more_evidence. "
+        "Do not call the submit tool until the operator answers.\n\n"
+        "After the answer, call submit_tool with comparison_ref and outcome "
+        "exactly. For reuse or update, also copy one displayed candidate_ref. "
+        "For none_fit or need_more_evidence, omit candidate_ref. Do not submit "
+        "ticket facts, excerpts, URLs, recommendations, or free-form text.\n\n"
+        "Comparison context:\n"
+        "```json\n"
+        f"{_compact_json(context)}\n"
+        "```"
+    )
+
+
+def _reuse_comparison_terminal_tool_result_text(
+    structured: Mapping[str, Any],
+) -> str:
+    status = {
+        "blockers": structured.get("blockers"),
+        "comparison_outcome": structured.get("comparison_outcome"),
+        "debug_code": structured.get("debug_code"),
+        "draft_generated": structured.get("draft_generated"),
+        "next_required_action": structured.get("next_required_action"),
+        "recommended_action": structured.get("recommended_action"),
+        "result_kind": structured.get("result_kind"),
+        "selected_reuse_match": structured.get("selected_reuse_match"),
+    }
+    return (
+        "The operator-confirmed comparison step is complete or has stopped "
+        "fail-closed. Follow only the returned recommended_action or "
+        "next_required_action. Do not draft manually, infer another outcome, "
+        "or replay the comparison reference.\n\n"
+        "Compact status:\n"
+        "```json\n"
+        f"{_compact_json(status)}\n"
+        "```"
+    )
 
 
 def _draft_article_batch_tool_result_text(
@@ -1011,6 +1072,18 @@ def _tool_result_payload_for_generic_safety(value: object) -> object:
     if isinstance(value, Mapping):
         return {
             key: (
+                "accepted-public-comparison-evidence"
+                if (
+                    (
+                        key == "comparison_candidates"
+                        and value.get("result_kind") == "reuse_comparison_required"
+                    )
+                    or (
+                        key == "selected_reuse_match"
+                        and value.get("result_kind") == "reuse_comparison_completed"
+                    )
+                )
+                else
                 _mask_local_tool_ref(item)
                 if key in _TOOL_RESULT_LOCAL_REF_FIELDS and isinstance(item, str)
                 else _mask_approved_tool_html_urls(item)

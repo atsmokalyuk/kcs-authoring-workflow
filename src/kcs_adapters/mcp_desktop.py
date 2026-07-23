@@ -17,6 +17,7 @@ from kcs_adapters.desktop_tool_names import (
     DESKTOP_OPERATOR_TOOLS,
     TOOL_AUTHOR_APPROVED_SUMMARY,
     TOOL_AUTHOR_TICKET,
+    TOOL_CONFIRM_REUSE_COMPARISON,
     TOOL_DRAFT_ARTICLE,
     TOOL_DRAFT_TICKET,
     TOOL_GET_MCP_READINESS,
@@ -36,6 +37,7 @@ from kcs_adapters.desktop_tool_names import (
     canonical_tool_name_from_claude_desktop_alias,
     claude_desktop_tool_alias,
 )
+from kcs_adapters.local_public_rag import LocalPublicRagAdapter
 
 MCP_PROTOCOL_VERSION = _desktop_protocol.MCP_PROTOCOL_VERSION
 MCP_SUPPORTED_PROTOCOL_VERSIONS = _desktop_protocol.MCP_SUPPORTED_PROTOCOL_VERSIONS
@@ -65,7 +67,8 @@ class McpStdioTransport(_desktop_stdio_transport.McpStdioTransport):
         super().__init__(
             adapter=adapter,
             adapter_factory=lambda visible_tools: KcsDesktopMcpAdapter(
-                visible_tools=visible_tools
+                visible_tools=visible_tools,
+                reuse_comparison_provider=LocalPublicRagAdapter(),
             ),
             tool_name_style=tool_name_style,
         )
@@ -81,7 +84,8 @@ def serve_stdio(
 
     _desktop_stdio_transport.serve_stdio(
         adapter_factory=lambda visible_tools: KcsDesktopMcpAdapter(
-            visible_tools=visible_tools
+            visible_tools=visible_tools,
+            reuse_comparison_provider=LocalPublicRagAdapter(),
         ),
         input_stream=input_stream,
         output_stream=output_stream,
@@ -126,6 +130,7 @@ __all__ = [
     "KcsDesktopMcpAdapter",
     "TOOL_AUTHOR_APPROVED_SUMMARY",
     "TOOL_AUTHOR_TICKET",
+    "TOOL_CONFIRM_REUSE_COMPARISON",
     "TOOL_DRAFT_ARTICLE",
     "TOOL_DRAFT_TICKET",
     "TOOL_GET_MCP_READINESS",

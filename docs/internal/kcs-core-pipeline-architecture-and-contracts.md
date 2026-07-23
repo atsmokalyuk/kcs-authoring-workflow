@@ -321,11 +321,13 @@ excerpt counts, citations, forbidden values, character limits, and independently
 recomputed whitespace-token limits. A future provider cannot replace this gate
 with adapter-local parsing.
 
-This evidence contract is not `ReuseSearchResultsPacket` and is not input to
-the current KCS action decision. It carries no article type, cause-resolution
+This evidence contract is not `ReuseSearchResultsPacket` and does not assign
+the KCS action. It carries no article type, cause-resolution
 or question-answer identity, content-status decision, recommended action,
-draft, renderer state, or publication flag. KCS-15.2b1 does not connect it to
-Desktop or Claude; that requires the separately approved KCS-15.2b2 workflow.
+draft, renderer state, or publication flag. KCS-15.2b1 alone does not connect
+it to Desktop or Claude; the separately authorized KCS-15.2b2 Phase B workflow
+adds a bounded operator-confirmed pre-draft gate without widening this core
+evidence contract.
 
 ```text
 kcs_action_decision_packet_v1 {

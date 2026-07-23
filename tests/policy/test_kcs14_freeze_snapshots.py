@@ -120,6 +120,14 @@ DESKTOP_TOOL_SNAPSHOT = (
         False,
     ),
     (
+        "kcs.confirm_reuse_comparison",
+        "kcs_confirm_reuse_comparison",
+        ("candidate_ref", "comparison_ref", "outcome"),
+        ("comparison_ref", "outcome"),
+        False,
+        False,
+    ),
+    (
         "kcs.prepare_semantic_review",
         "kcs_prepare_semantic_review",
         ("semantic_review_ref",),
@@ -236,6 +244,7 @@ REJECTED_ACTIVE_SEMANTIC_SCHEMA_TERMS = (
 )
 
 TOOL_OUTPUT_SUCCESS_KEYS = (
+    "accepted_ticket_facts",
     "allowed_source_refs",
     "approved_summary_source",
     "article_type",
@@ -259,6 +268,11 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "clean_ticket_storage_hint",
     "clean_ticket_storage_ref",
     "clean_ticket_store_ref",
+    "comparison_candidates",
+    "comparison_outcome",
+    "comparison_outcomes",
+    "comparison_ref",
+    "comparison_sequence_outcomes",
     "completed_count",
     "coverage_record_field_names",
     "customer_replies",

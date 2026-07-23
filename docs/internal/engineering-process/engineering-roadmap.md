@@ -12,7 +12,8 @@ Completed KCS-15 behavior slice: KCS-15.1 PLESK_INFO Trigger Parity
 Completed KCS-15 enabling slice: KCS-15.2a Local Public RAG Adapter
 Completed KCS-15 enabling slice: KCS-15.2b1 Bounded Public Comparison Evidence
 Completed KCS-15.2b2 phase: Phase A Exact Public Article Context
-KCS-15.2b2 Phase B Delivery state: locked; target UX selection is not authorization
+KCS-15.2b2 Phase B Delivery state: authorized; deterministic implementation
+and the installed Desktop/model feasibility smoke remain before closeout
 ```
 
 Historical KCS-1 guidance remains useful only as an early-slice boundary:
@@ -119,8 +120,8 @@ evidence directly.
   - KCS-15.2b1 provider-neutral bounded public comparison evidence is complete;
     it did not change Desktop or decision behavior;
   - KCS-15.2b2 operator-confirmed comparison target UX is selected; Phase A
-    exact public-article context is complete, while Phase B
-    Desktop/model/operator integration Delivery remains locked;
+    exact public-article context is complete, while Phase B Desktop/operator
+    Delivery is authorized and its implementation/smoke closeout is active;
   - KCS-15.2b3 repeated comparison trials remain separately gated;
   - deterministic style/structure parity continues in KCS-15.3 and approved
     examples/model-mediated quality continue in KCS-15.4.
@@ -145,8 +146,9 @@ KCS-15.2a local-public RAG adapter is complete as bounded enabling work.
 KCS-15.2b1 is complete only for the provider-neutral public comparison
 evidence contract, common acceptance gate, and local `/api/snippets`
 projection. The target UX for KCS-15.2b2 is selected. Phase A exact
-public-article context is complete, while Phase B Desktop/model/operator
-integration remains Delivery-locked. KCS-15.2 does not block independent
+public-article context is complete, while Phase B Desktop/operator Delivery is
+authorized and its deterministic implementation plus installed model smoke
+remain before closeout. KCS-15.2 does not block independent
 KCS-15.3 style-parity work.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening

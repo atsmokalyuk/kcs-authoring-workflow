@@ -11,9 +11,10 @@ bundles.
 
 The extension starts the bundled `kcs-desktop-mcp` stdio server through an
 autodetected local runtime: `uv` first, then `python3.11` / `python3` fallback.
-Installing the MCPB is the only required Claude Desktop setup step for the
-default local workflow; the operator does not configure a repository path,
-Claude CLI/Code, an API key, or a semantic provider. In Claude Desktop it
+The operator does not configure a KCS repository path, Claude CLI/Code, an API
+key, or a semantic-provider schema in Desktop. KCS-15.2b2 additionally requires
+the existing loopback-only `plesk_support` public RAG runtime to be running and
+ready on `127.0.0.1:8768`. In Claude Desktop the extension
 exposes one primary non-destructive operator tool for reviewer-only KCS article
 drafting from approved sanitized summaries. Successful primary drafts may write
 reviewer-only bundle files under `local-data/reviewer-bundles/`.
@@ -44,6 +45,32 @@ dist/kcs-authoring-mvp-validator-control.mcpb
 
 Install the generated MCPB in Claude Desktop, enable the extension, then start a
 new Claude Desktop chat.
+
+Before drafting, start or verify the existing public RAG runtime from its
+`plesk_support` checkout:
+
+```bash
+.venv/bin/plesk-knowledge runtime up \
+  --knowledge-root .knowledge \
+  --host 127.0.0.1 \
+  --port 8768 \
+  --operator-ui-host 127.0.0.1 \
+  --operator-ui-port 8767 \
+  --json
+
+.venv/bin/plesk-knowledge runtime smoke \
+  --host 127.0.0.1 \
+  --port 8768 \
+  --warm-if-cold \
+  --reload-stale \
+  --json
+```
+
+The smoke must report the runtime, vector index, and keyword index ready.
+`reuse_comparison_blocked` with
+`comparison_provider_not_ready`, `comparison_provider_unavailable`, or
+`comparison_provider_invalid_response` is a fail-closed readiness result:
+restore the public runtime and restart comparison; do not draft manually.
 
 For normal operator prompts such as "draft an article", "draft me an article",
 or "write a KB article" with a pasted or attached approved sanitized summary,
@@ -104,6 +131,19 @@ refs. Do not submit article prose, HTML, `recommended_action`, `item`,
 multiple candidates pass Python validation, wait for the native candidate
 selection and submit only its exact `submit_arguments`. Unassigned evidence
 remains in the outcome ledger and never creates a separate operator checkpoint.
+
+If a draft entrypoint returns `result_kind=reuse_comparison_required`, no draft
+or reviewer bundle has been created. Claude Desktop must compare only the
+returned accepted ticket facts and bounded cited public excerpts, present one
+concise coverage/gap recommendation, and ask exactly one operator question
+using the returned `reuse`, `update`, `none_fit`, and `need_more_evidence`
+outcomes. Only after the operator answers may it call
+`kcs_confirm_reuse_comparison`. That call contains only `comparison_ref`,
+`outcome`, and one displayed `candidate_ref` for `reuse` or `update`;
+`none_fit` and `need_more_evidence` omit the candidate ref. Evidence, URLs,
+recommendations, drafts, HTML, and free-form text are forbidden submit fields.
+Multi-item selections repeat this gate sequentially for at most five
+operator-selected issues.
 
 It must not pass uploaded filenames, local paths, Claude upload paths,
 structured `item`, `item_candidates`, reference article bodies, or field

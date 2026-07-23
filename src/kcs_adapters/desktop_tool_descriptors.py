@@ -9,6 +9,7 @@ from kcs_adapters.desktop_protocol import SEMANTIC_CONTROL_GUIDANCE
 from kcs_adapters.desktop_tool_names import (
     TOOL_AUTHOR_APPROVED_SUMMARY,
     TOOL_AUTHOR_TICKET,
+    TOOL_CONFIRM_REUSE_COMPARISON,
     TOOL_DRAFT_ARTICLE,
     TOOL_DRAFT_TICKET,
     TOOL_GET_MCP_READINESS,
@@ -43,6 +44,7 @@ def tool_descriptors() -> tuple[McpToolDescriptor, ...]:
         _draft_ticket_descriptor(),
         _register_clean_ticket_descriptor(),
         _draft_article_descriptor(),
+        _confirm_reuse_comparison_descriptor(),
         _prepare_semantic_review_descriptor(),
         _submit_semantic_review_descriptor(),
         _support_get_behavior_instructions_descriptor(),
@@ -219,6 +221,24 @@ def _draft_ticket_descriptor() -> McpToolDescriptor:
             "for an attachment."
         ),
         input_schema=_desktop_tool_schemas.draft_ticket_input_schema(),
+    )
+    descriptor.annotations["idempotentHint"] = False
+    descriptor.annotations["readOnlyHint"] = False
+    return descriptor
+
+
+def _confirm_reuse_comparison_descriptor() -> McpToolDescriptor:
+    descriptor = _descriptor(
+        name=TOOL_CONFIRM_REUSE_COMPARISON,
+        description=(
+            "Submit only the operator-confirmed outcome for the pending public "
+            "article comparison. Copy comparison_ref exactly. For reuse or "
+            "update also copy one displayed candidate_ref. Do not include "
+            "ticket facts, excerpts, URLs, recommendations, or free-form text."
+        ),
+        input_schema=(
+            _desktop_tool_schemas.confirm_reuse_comparison_input_schema()
+        ),
     )
     descriptor.annotations["idempotentHint"] = False
     descriptor.annotations["readOnlyHint"] = False

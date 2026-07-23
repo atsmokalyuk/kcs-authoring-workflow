@@ -9,12 +9,16 @@ from typing import Any
 from kcs_adapters import desktop_authoring_pipeline as _desktop_authoring_pipeline
 from kcs_adapters import desktop_draft_tool as _desktop_draft_tool
 from kcs_adapters import desktop_payload as _desktop_payload
+from kcs_adapters import desktop_reuse_comparison as _desktop_reuse_comparison
 from kcs_adapters import desktop_ticket_ref as _desktop_ticket_ref
 from kcs_adapters import desktop_workflow_results as _desktop_workflow_results
 from kcs_adapters.desktop_stdio_transport import McpArgumentError
 from kcs_adapters.desktop_workflow import (
     ApprovedSummaryPipelineStageError,
     DesktopDraftWorkflow,
+    ReuseComparisonExpiredError,
+    ReuseComparisonInvalidError,
+    ReuseComparisonUnavailableError,
     SemanticReviewBoundaryAmbiguousError,
     SemanticReviewExpiredError,
     SemanticReviewInvalidError,
@@ -156,6 +160,31 @@ class DesktopAuthoringTools:
         if "debug" in arguments:
             draft_arguments["debug"] = arguments["debug"]
         return self._draft_article_tool.draft_article(draft_arguments)
+
+    def confirm_reuse_comparison(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        try:
+            _require_args(
+                arguments,
+                frozenset({"candidate_ref", "comparison_ref", "outcome"}),
+                required=frozenset({"comparison_ref", "outcome"}),
+            )
+            return self._draft_article_tool.confirm_reuse_comparison(arguments)
+        except ReuseComparisonExpiredError:
+            debug_code = "reuse_comparison_expired"
+        except ReuseComparisonUnavailableError:
+            debug_code = "reuse_comparison_unavailable"
+        except ReuseComparisonInvalidError:
+            debug_code = "reuse_comparison_invalid"
+        except McpArgumentError:
+            self._draft_workflow.clear_pending_reuse_comparison()
+            debug_code = "reuse_comparison_invalid"
+        return _desktop_reuse_comparison.reuse_comparison_submit_failure_result(
+            debug_code=debug_code,
+            schema_version=self._schema_version,
+        )
 
     def prepare_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
         try:

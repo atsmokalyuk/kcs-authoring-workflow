@@ -479,9 +479,10 @@ an article is identical, complete, outdated, reusable, or ready to update. They
 must not know Desktop state, Claude prompts, drafting, rendering, persistence,
 or publication.
 
-KCS-15.2b1 defines this evidence boundary only. KCS-15.2b2 must separately
-integrate the operator-confirmed comparison UX before any evidence is used by
-the active decision or drafting flow.
+KCS-15.2b1 defines this evidence boundary only. The separately authorized
+KCS-15.2b2 Phase B Desktop workflow consumes it through an opaque,
+operator-confirmed pre-draft comparison state; the evidence packet itself
+still cannot assign KCS identity or action.
 
 ## KCS Action Decision
 

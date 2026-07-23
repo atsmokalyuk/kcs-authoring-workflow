@@ -244,7 +244,8 @@ origins, false token counts, conflicting explicit identifiers, and invalid
 state/count combinations fail closed before projection.
 
 Desktop output, model prompting, operator state, recommendation behavior, and
-draft integration require the separate KCS-15.2b2 Delivery gate.
+draft integration are allowed only inside the separately authorized
+KCS-15.2b2 Phase B contract and its bounded public-excerpt rules.
 
 ### Source Ticket Quotes
 - Reviewer packets may include short sanitized quotes from the source ticket only when the exact wording is needed to preserve context, customer intent, visible error text, technical precision, or the nuance of the reported issue for KCS review.

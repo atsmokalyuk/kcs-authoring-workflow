@@ -617,8 +617,10 @@ tools are not loaded into the active chat.
 - Completed KCS-15 enabling slice: KCS-15.2a loopback local-public RAG adapter
 - Completed KCS-15 enabling slice: KCS-15.2b1 provider-neutral bounded public
   comparison evidence; Desktop/model/operator behavior stayed unchanged
-- Authorized KCS-15.2b2 phase: Phase A exact public-article context;
-  Phase B Desktop/model/operator Delivery remains locked
+- Completed KCS-15.2b2 phase: Phase A exact public-article context
+- Authorized KCS-15.2b2 phase: Phase B Desktop/operator Delivery;
+  deterministic implementation is in progress and the installed Desktop/model
+  feasibility smoke remains a closeout gate
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

@@ -1,7 +1,8 @@
 # KCS-15.2b1 Bounded Public Comparison Evidence
 
-Status: completed on 2026-07-22; KCS-15.2b2 Phase A was subsequently
-authorized on 2026-07-23, while Phase B remains Delivery-locked.
+Status: completed on 2026-07-22. KCS-15.2b2 Phase A was subsequently completed,
+and Phase B Delivery was separately authorized on 2026-07-23 under its own
+tracked plan.
 
 ## Requested outcome
 
@@ -160,7 +161,8 @@ Controlled bounded-public-excerpt boundary: approved
 KCS-15.2b1 Delivery: authorized
 KCS-15.2b1 closeout: completed
 KCS-15.2b2 Phase A exact public context Delivery: authorized 2026-07-23
-KCS-15.2b2 Phase B Desktop/operator workflow Delivery: locked
+KCS-15.2b2 Phase B Desktop/operator workflow Delivery: subsequently authorized
+under the KCS-15.2b2 plan
 KCS-15.2b3 repeated model/operator trial: locked
 ```
 

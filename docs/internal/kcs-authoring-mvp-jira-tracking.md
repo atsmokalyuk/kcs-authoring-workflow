@@ -50,8 +50,9 @@ instead of implying that external tracking was updated.
       provider-neutral contract, common acceptance gate, and local
       `/api/snippets` projection only
     - KCS-15.2b2 Operator-Confirmed Comparison Workflow: target UX selected;
-      Phase A exact public-article context is complete, while Phase B
-      Desktop/model/operator integration Delivery remains locked
+      Phase A exact public-article context is complete; Phase B
+      Desktop/operator Delivery is authorized, with deterministic
+      implementation and installed-model smoke closeout active
     - KCS-15.2b3 Repeated Comparison Trial: planned after b2 with a separately
       approved fixture/trial contract
   - KCS-15.3 Deterministic structure/title/entrypoint/safety/naming parity:

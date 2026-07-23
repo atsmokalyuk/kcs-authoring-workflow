@@ -146,8 +146,9 @@ Each PR should map to one Jira slice:
   through independently approved behavior slices. KCS-15.1 trigger parity and
   KCS-15.2a adapter feasibility is complete; KCS-15.2b1 bounded public
   comparison evidence is complete; KCS-15.2b2 Phase A exact public-article
-  context is authorized, while Phase B Desktop/model/operator integration
-  remains Delivery-locked. It remains outside KCS-14 scope;
+  context is complete, while Phase B Desktop/operator Delivery is authorized
+  and its implementation/installed-model smoke closeout remains active. It
+  remains outside KCS-14 scope;
 - Future deployment slice: optional managed internal service version of the
   current local Claude Desktop workflow.
 

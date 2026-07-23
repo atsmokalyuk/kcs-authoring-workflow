@@ -652,6 +652,9 @@ def _assert_desktop_initialize_instructions(instructions: str) -> None:
             "item/item_candidates",
             "kcs_prepare_semantic_review",
             "kcs_submit_semantic_review",
+            "reuse_comparison_required",
+            "kcs_confirm_reuse_comparison",
+            "exactly one operator question",
             "do not normalize or strip it",
         ),
     )
@@ -839,6 +842,7 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
         "kcs_register_clean_ticket",
         "kcs_draft_ticket",
         "kcs_draft_article",
+        "kcs_confirm_reuse_comparison",
         "kcs_prepare_semantic_review",
         "kcs_submit_semantic_review",
         "support_get_behavior_instructions",
@@ -848,13 +852,16 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
         "kcs_register_clean_ticket",
         "kcs_draft_article",
     ]
-    assert len(tools) == 6
+    assert len(tools) == 7
     for tool in tools:
         _assert_desktop_tool_contract(tool)
 
     tools_by_name = _tools_by_name(tools)
     _assert_register_clean_ticket_tool(tools_by_name["kcs_register_clean_ticket"])
     _assert_draft_article_tool(tools_by_name["kcs_draft_article"])
+    _assert_confirm_reuse_comparison_tool(
+        tools_by_name["kcs_confirm_reuse_comparison"]
+    )
     _assert_prepare_semantic_review_tool(
         tools_by_name["kcs_prepare_semantic_review"]
     )
@@ -1000,6 +1007,30 @@ def _assert_prepare_semantic_review_tool(tool: Mapping[str, Any]) -> None:
         "semantic_review_ref"
     ]["description"]
     _assert_tool_annotations(tool, read_only=True, idempotent=True)
+
+
+def _assert_confirm_reuse_comparison_tool(tool: Mapping[str, Any]) -> None:
+    _assert_text_includes(
+        tool["description"],
+        (
+            "operator-confirmed outcome",
+            "Copy comparison_ref exactly",
+            "Do not include ticket facts",
+        ),
+    )
+    schema = tool["inputSchema"]
+    _assert_schema_shape(
+        schema,
+        properties={"candidate_ref", "comparison_ref", "outcome"},
+        required=["comparison_ref", "outcome"],
+    )
+    assert schema["properties"]["outcome"]["enum"] == [
+        "reuse",
+        "update",
+        "none_fit",
+        "need_more_evidence",
+    ]
+    _assert_tool_annotations(tool, read_only=False, idempotent=False)
 
 
 def _assert_draft_ticket_tool(tool: Mapping[str, Any]) -> None:

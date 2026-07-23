@@ -19,6 +19,7 @@ from kcs_adapters.desktop_tool_descriptors import (
 from kcs_adapters.desktop_tool_names import (
     TOOL_AUTHOR_APPROVED_SUMMARY,
     TOOL_AUTHOR_TICKET,
+    TOOL_CONFIRM_REUSE_COMPARISON,
     TOOL_DRAFT_ARTICLE,
     TOOL_DRAFT_TICKET,
     TOOL_GET_MCP_READINESS,
@@ -40,6 +41,7 @@ from kcs_adapters.desktop_workflow import (
 )
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
+from kcs_core.reuse_comparison import ReuseComparisonEvidenceProvider
 from kcs_core.semantic_extraction import SemanticExtractionProvider
 
 MCP_TOOL_RESULT_SCHEMA_VERSION = "kcs_mcp_tool_result_v1"
@@ -65,6 +67,7 @@ class KcsDesktopMcpAdapter:
         semantic_extraction_provider: DraftArticleSemanticExtractionProvider
         | None
         | object = _DEFAULT_SEMANTIC_EXTRACTION_PROVIDER,
+        reuse_comparison_provider: ReuseComparisonEvidenceProvider | None = None,
         selection_ttl_seconds: float = _DRAFT_SELECTION_TTL_SECONDS,
         visible_tools: Iterable[str] | None = None,
     ) -> None:
@@ -82,6 +85,7 @@ class KcsDesktopMcpAdapter:
         self._draft_workflow = DesktopDraftWorkflow(
             provider=semantic_provider,
             selection_ttl_seconds=selection_ttl_seconds,
+            reuse_comparison_provider=reuse_comparison_provider,
         )
         self._authoring_tools = _desktop_authoring_tools.DesktopAuthoringTools(
             draft_workflow=self._draft_workflow,
@@ -109,6 +113,9 @@ class KcsDesktopMcpAdapter:
             ),
             TOOL_DRAFT_TICKET: self._authoring_tools.draft_ticket,
             TOOL_DRAFT_ARTICLE: self._authoring_tools.draft_article,
+            TOOL_CONFIRM_REUSE_COMPARISON: (
+                self._authoring_tools.confirm_reuse_comparison
+            ),
             TOOL_PREPARE_SEMANTIC_REVIEW: (
                 self._authoring_tools.prepare_semantic_review
             ),

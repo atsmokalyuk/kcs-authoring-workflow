@@ -42,6 +42,7 @@ MCPB_MANIFEST_LONG_DESCRIPTION_INCLUDES = (
     "Do not report Plesk Support Assistant Local as missing",
     "kcs_prepare_semantic_review",
     "kcs_submit_semantic_review",
+    "kcs_confirm_reuse_comparison",
     "Claude CLI/Code",
     "API key",
 )
@@ -61,6 +62,11 @@ MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES = {
     "kcs_draft_article": (
         "short approved_summary_text",
         "For /draft <ticket_ref>, use kcs_draft_ticket",
+    ),
+    "kcs_confirm_reuse_comparison": (
+        "operator-confirmed outcome",
+        "comparison_ref exactly",
+        "Do not include ticket facts",
     ),
     "kcs_prepare_semantic_review": (
         "semantic_review_required",
@@ -493,10 +499,31 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                                 "operator_selected_item_refs": {},
                                 "operator_selection_ref": {},
                         }
+                        },
+                        "name": "kcs_draft_article",
                     },
-                    "name": "kcs_draft_article",
-                },
-                {
+                    {
+                        "annotations": {
+                            "destructiveHint": False,
+                            "idempotentHint": False,
+                            "openWorldHint": False,
+                            "readOnlyHint": False,
+                        },
+                        "description": (
+                            "Submit only the operator-confirmed outcome. Copy "
+                            "comparison_ref exactly. Do not include ticket facts."
+                        ),
+                        "inputSchema": {
+                            "properties": {
+                                "candidate_ref": {},
+                                "comparison_ref": {},
+                                "outcome": {},
+                            },
+                            "required": ["comparison_ref", "outcome"],
+                        },
+                        "name": "kcs_confirm_reuse_comparison",
+                    },
+                    {
                     "annotations": {
                         "destructiveHint": False,
                         "idempotentHint": True,
@@ -639,26 +666,34 @@ def test_mcpb_stdio_smoke_result_checks_controlled_statuses(tmp_path: Path) -> N
         "result": {
             "content": [
                 {
-                    "text": "```html\n"
-                    f"{html}\n"
-                    "```\n\n"
-                    "```json\n"
-                    '{"html_path":"local-data/reviewer-bundles/run/item/'
-                    'reviewer_only.html"}\n'
-                    "```",
+                    "text": (
+                        "A bounded public-article comparison is required before "
+                        "drafting."
+                    ),
                     "type": "text",
                 },
             ],
             "isError": False,
             "structuredContent": {
-                "debug_code": "draft_only_reuse_search_missing",
-                "draft_generated": True,
-                "html_path": html_path,
-                "html_sha256": module.sha256(html.encode("utf-8")).hexdigest(),
-                "recommended_action": "draft_only",
-                "reuse_search_status": "skipped",
-                "reviewer_bundle_written": True,
-                "writes_files": True,
+                "accepted_ticket_facts": ["Monitoring graphs show no data."],
+                "comparison_candidates": [
+                    {
+                        "candidate_ref": "comparison-candidate-001",
+                    }
+                ],
+                "comparison_outcomes": [
+                    "reuse",
+                    "update",
+                    "none_fit",
+                    "need_more_evidence",
+                ],
+                "comparison_ref": "reuse-comparison-abc",
+                "draft_generated": False,
+                "next_tool": "kcs_confirm_reuse_comparison",
+                "result_kind": "reuse_comparison_required",
+                "reviewer_bundle_written": False,
+                "submit_tool": "kcs_confirm_reuse_comparison",
+                "writes_files": False,
             },
         }
     }
@@ -755,68 +790,31 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
         "result": {
             "content": [
                 {
-                    "text": (
-                        "Present the Python-owned ordered candidate summary below.\n\n"
-                        "Operator result summary:\n"
-                        "1. **Synthetic item candidate-001 (candidate-001)**\n"
-                        "   - **Draft generated, not KCS-ready** - Review needed.\n"
-                        "   - Reviewer bundle: `run-synthetic/candidate-001`\n"
-                        "   - Reviewer HTML: `local-data/reviewer-bundles/"
-                        "candidate-001/reviewer_only.html`\n"
-                        "2. **Synthetic item candidate-002 (candidate-002)**\n"
-                        "   - **Draft generated, not KCS-ready** - Review needed.\n"
-                        "   - Reviewer bundle: `run-synthetic/candidate-002`\n"
-                        "   - Reviewer HTML: `local-data/reviewer-bundles/"
-                        "candidate-002/reviewer_only.html`"
-                    ),
+                    "text": "A bounded public-article comparison is required.",
                     "type": "text",
                 },
             ],
+            "isError": False,
             "structuredContent": {
-                "batch_status": "batch_completed",
-                "candidate_outcomes": [
+                "accepted_ticket_facts": ["Monitoring graphs show no data."],
+                "comparison_candidates": [
                     {
-                        "html_path": html_paths[item_ref],
-                        "html_sha256": module.sha256(
-                            html.encode("utf-8")
-                        ).hexdigest(),
-                        "item_ref": item_ref,
-                        "outcome": "completed_draft",
+                        "candidate_ref": "comparison-candidate-001",
                     }
-                    for item_ref in ("candidate-001", "candidate-002")
                 ],
-                "draft_generated_count": 2,
-                "operator_followup": {
-                    "allow_leave_blocked": False,
-                    "completed_not_ready_candidates": [
-                        {
-                            "item_ref": item_ref,
-                            "label": f"Synthetic item {item_ref}",
-                        }
-                        for item_ref in ("candidate-001", "candidate-002")
-                    ],
-                    "kind": "none",
-                    "not_attempted_candidates": [],
-                    "prompt": "No operator follow-up is required.",
-                    "retryable_candidates": [],
-                    "reviewer_ready_candidates": [],
-                    "summary_candidates": [
-                        {
-                            "bundle_ref": f"run-synthetic/{item_ref}",
-                            "html_path": html_paths[item_ref],
-                            "item_ref": item_ref,
-                            "label": f"Synthetic item {item_ref}",
-                            "presentation_status": (
-                                "draft_generated_not_kcs_ready"
-                            ),
-                        }
-                        for item_ref in ("candidate-001", "candidate-002")
-                    ],
-                    "tool_review_candidates": [],
-                },
-                "result_kind": "draft_article_batch",
-                "reviewer_bundle_written": True,
-                "writes_files": True,
+                "comparison_outcomes": [
+                    "reuse",
+                    "update",
+                    "none_fit",
+                    "need_more_evidence",
+                ],
+                "comparison_ref": "reuse-comparison-abc",
+                "draft_generated": False,
+                "next_tool": "kcs_confirm_reuse_comparison",
+                "result_kind": "reuse_comparison_required",
+                "reviewer_bundle_written": False,
+                "submit_tool": "kcs_confirm_reuse_comparison",
+                "writes_files": False,
             }
         }
     }
@@ -831,12 +829,7 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
         }
         assert module._split_choice_ok({"batch": batch, "split": split}) is True
 
-        html_without_resolution = "<h1>Synthetic article</h1><p>No list.</p>"
-        first_bundle = tmp_path / html_paths["candidate-001"]
-        first_bundle.write_text(html_without_resolution, encoding="utf-8")
-        batch["result"]["structuredContent"]["candidate_outcomes"][0][
-            "html_sha256"
-        ] = module.sha256(html_without_resolution.encode("utf-8")).hexdigest()
+        batch["result"]["structuredContent"]["comparison_candidates"] = []
         assert module._split_choice_ok({"batch": batch, "split": split}) is False
     finally:
         module.REPO_ROOT = old_repo_root

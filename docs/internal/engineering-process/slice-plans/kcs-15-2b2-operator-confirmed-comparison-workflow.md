@@ -1,7 +1,8 @@
 # KCS-15.2b2 Operator-Confirmed Comparison Workflow
 
 Status: parent outcome and target UX selected; Phase A Delivery and independent
-review complete. Phase B Desktop/model/operator Delivery remains locked.
+review complete. Phase B Desktop/operator contract and Delivery authorized by
+the operator on 2026-07-23. KCS-15.2b3 remains locked.
 
 ## Requested outcome
 
@@ -100,8 +101,10 @@ Python owns:
 - provider readiness, exact-reference request, and evidence acceptance;
 - candidate bounds, origin, ordering, and opaque pending state;
 - validation of the operator's selected action and candidate;
-- construction of `ReuseSearchResultsPacket`;
-- final KCS identity/action decision;
+- deterministic mapping of a validated operator outcome into the existing
+  action vocabulary;
+- re-entry into the existing decision/drafting pipeline only when the operator
+  confirms that none of the candidates fit;
 - fail-closed, expiry, retry, rendering, and write behavior.
 
 Claude may:
@@ -148,15 +151,24 @@ operator confirms one allowed outcome
         v
 Python validates ref + candidate + outcome
         |
-        v
-ReuseSearchResultsPacket -> existing KCS decision pipeline
+        +--> reuse -> reuse_existing, no draft
         |
-        v
-reuse / flag existing / create candidate / blocked
+        +--> update -> flag_existing, no draft
+        |
+        +--> none_fit -> mark bounded reuse search checked
+        |                -> existing decision/drafting pipeline
+        |
+        +--> need_more_evidence -> blocked, no draft
 ```
 
 For a public article, `update` maps to the existing reviewer-controlled
 `flag_existing` action. It does not authorize automatic article modification.
+Phase B does not synthesize a `ReuseSearchResultsPacket`: the provider-neutral
+comparison evidence plus the validated operator confirmation are sufficient for
+the terminal `reuse`, `update`, and `need_more_evidence` outcomes. Only
+`none_fit` re-enters the existing pipeline, carrying the bounded search-run
+reference so that the pipeline does not degrade the result to “reuse search
+skipped”.
 
 ## Delivery phases
 
@@ -289,7 +301,7 @@ Live Phase A feasibility on 2026-07-23:
 
 ### Phase B: Desktop/operator comparison state
 
-Status: Delivery locked.
+Status: final contract selected and Delivery authorized on 2026-07-23.
 
 Phase B may start only after Phase A closeout and a separate operator approval
 of its final Desktop contract.
@@ -300,7 +312,7 @@ The current recommended design is:
   draft is generated;
 - the result contains accepted ticket facts, one to three comparison candidates,
   an opaque `comparison_ref`, and exact allowed outcomes;
-- a dedicated narrow submit tool, provisionally named
+- a dedicated narrow submit tool
   `kcs_confirm_reuse_comparison`, accepts the opaque ref, operator outcome, and
   candidate ref when required;
 - evidence bodies are retained only in bounded in-memory state and are not
@@ -310,8 +322,48 @@ The current recommended design is:
 - existing batch selections proceed one item at a time and cannot bypass the
   comparison gate.
 
-The dedicated submit tool is provisional until the Phase B design gate. Phase A
-does not change the Desktop tool count or approve this name/schema.
+Resolved Phase B contract:
+
+- canonical tool name: `kcs.confirm_reuse_comparison`; Claude Desktop alias:
+  `kcs_confirm_reuse_comparison`;
+- submit arguments are exactly `comparison_ref`, `outcome`, and optional
+  `candidate_ref`; `reuse` and `update` require one displayed opaque candidate
+  ref, while `none_fit` and `need_more_evidence` forbid it;
+- allowed outcomes map deterministically to `reuse_existing`, `flag_existing`,
+  normal draft continuation, and `blocked`, respectively;
+- the initial result contains bounded accepted issue facts, one to three public
+  candidate cards with cited excerpts, one opaque ref, the four allowed
+  outcomes, and instructions to present one concise coverage/gap recommendation
+  and one operator question;
+- the submit call never accepts ticket facts, excerpts, URLs, recommendations,
+  drafts, HTML, or free-form operator text;
+- `PendingReuseComparison` is in-memory only, uses the existing 15-minute TTL,
+  and binds the opaque ref to one issue candidate, bounded comparison evidence,
+  and any selected batch queue;
+- valid submit consumes state once; expired, replayed, mismatched, unknown, or
+  tampered input fails closed and requires restarting comparison;
+- a comparison bound to an operator selection validates the same live
+  `selection_ref`, current item, and selection TTL before any selection state
+  is consumed or mutated;
+- a multi-item selection stores at most five already operator-selected item
+  refs and advances one comparison at a time;
+- exact-first priority requires an allowlisted public URL plus explicit
+  positive or partially-positive outcome in accepted issue evidence. The
+  relation-bearing statement must be present verbatim in the approved source
+  text and match a direct article-outcome grammar; semantic candidate prose
+  cannot introduce or paraphrase the relation. Neutral mentions, referrals,
+  unrelated later fixes, other-scope outcomes, negated/failed outcomes, and
+  ambiguous wording do not receive priority;
+- `none_fit` is authoritative for the displayed candidates: legacy URL
+  inference is suppressed and contradictory public-article delegation steps
+  are removed before normal draft continuation;
+- provider not-ready, unavailable, invalid, empty, or missing approved-exact
+  context blocks drafting instead of treating absence as permission;
+- the production Desktop stdio entrypoint owns the initial local provider
+  binding; the workflow depends only on `ReuseComparisonEvidenceProvider`.
+
+The operator confirmation on 2026-07-23 approves this exact contract and Phase
+B Delivery. It does not approve the b3 repeated trial or a hosted provider.
 
 ### KCS-15.2b3: repeated comparison trial
 
@@ -345,8 +397,10 @@ usability.
 
 ## Preliminary Phase B model feasibility smoke
 
-This contract is recorded now so model-mediated behavior is not added without
-an explicit gate. It must be rechecked immediately before Phase B Delivery.
+This contract is recorded so model-mediated behavior is not added without an
+explicit gate. It was rechecked at Phase B authorization. The deterministic
+tool/state contract is implemented first; the installed Desktop/model `N=1`
+smoke remains a blocking closeout gate rather than being simulated by fixtures.
 
 ```text
 Fixtures and provenance: one synthetic sanitized atomic issue with a
@@ -380,7 +434,7 @@ Stop condition: first invariant breach or one successful feasibility run.
 | Phase A introduces no Desktop/model/operator or KCS-action behavior. | tool-surface snapshots, policy tests, and architecture/privacy review |
 | Provider-specific complexity remains behind the adapter. | compact Ousterhout closeout and architecture review |
 
-### Phase B, not yet authorized
+### Phase B
 
 | Acceptance criterion | Gate |
 | --- | --- |
@@ -407,6 +461,20 @@ Stop condition: first invariant breach or one successful feasibility run.
   runtime artifact is persisted in the KCS repository.
 - Reviewer-only, no-customer-reply, no-write, no-publication, and
   `auto_publish_allowed=false` boundaries remain unchanged.
+
+## Unchanged contracts during Phase B
+
+- KCS core remains independent of Claude Desktop and local/remote RAG hosting.
+- The provider-neutral `reuse_comparison_evidence_v1` bounds and validation
+  remain unchanged.
+- Existing semantic issue-selection and reviewer-only authoring schemas remain
+  unchanged except for the additive pre-draft comparison state/tool surface.
+- Claude cannot choose KCS actions; it presents bounded evidence and submits
+  only the operator-selected closed-enum outcome.
+- No ticket, excerpt, recommendation, prompt, or pending-state body is persisted
+  or logged.
+- No article write, Zendesk write, publication, auto-publish, customer reply,
+  or hosted/private source behavior is added.
 
 ## Resolved Phase A design facts
 
@@ -479,11 +547,73 @@ Review:
 - all five corrections are implemented and deterministically covered;
 - final independent re-review verdict: `confirmed`; no blockers remain.
 
+## Phase B Delivery checkpoint
+
+Status: deterministic implementation and independent review complete; installed
+Desktop/model `N=1` feasibility smoke still blocks Phase B closeout.
+
+Changed behavior:
+
+- every production Desktop draft entrypoint now stops at bounded public-article
+  comparison before drafting;
+- a narrow single-use submit tool accepts only the opaque ref, closed-enum
+  outcome, and candidate ref when required;
+- `reuse`, `update`, and `need_more_evidence` are no-draft terminal outcomes;
+  `none_fit` suppresses legacy URL inference and returns to normal drafting with
+  reuse search marked checked;
+- batch selections advance one live, ref-bound comparison at a time;
+- public RAG unavailable, not-ready, invalid, or contract-incompatible states
+  fail closed.
+
+Deterministic validation:
+
+- full repository suite excluding the intentionally pre-commit frozen-path
+  check: 1550 passed, 1 skipped, 1 deselected;
+- final reuse-comparison regression matrix: 35 passed;
+- source MCPB stdio/RAG smoke: all 18 checks passed, including bounded
+  comparison, `none_fit` continuation, sequential batch gate, and fail-closed
+  provider response;
+- Ruff, configured C901, code-review-graph policy/hash, package build,
+  `git diff --check`, and independent deep review: passed.
+
+Behavior drift verdict:
+
+- intended additive Desktop tool/state and pre-draft comparison behavior;
+- KCS action ownership remains in Python and operator confirmation remains the
+  only authority for article fit;
+- core evidence bounds, provider-neutral interface, semantic issue selection,
+  renderer, reviewer-only output, publication, Zendesk, and persistence
+  boundaries remain unchanged;
+- KCS-15.2b3 repeated recommendation/stability trials remain locked.
+
+Ousterhout closeout:
+
+- Trigger: new pending state, operator tool, provider boundary, and
+  cross-entrypoint pre-draft gate.
+- the local/hosted provider distinction, public evidence validation, opaque
+  refs, TTL, batch sequencing, and action mapping are hidden behind the
+  provider/workflow adapters;
+- callers see one comparison result and one narrow submit contract; they do not
+  learn provider schemas or mutate KCS decisions;
+- review found and removed three complexity leaks: legacy URL inference after
+  `none_fit`, prose-derived priority without source grounding, and parallel
+  selection state mutation without identity validation;
+- no new service, persistence layer, framework, or observability layer was
+  added; startup/readiness remains owned by the existing loopback public RAG
+  runtime;
+- Verdict: `pass` for deterministic implementation. Phase B is not closed until
+  the installed Desktop/model feasibility smoke passes.
+
+Independent review:
+
+- initial verdict `revise` identified the three blockers above;
+- source-grounded relation and scope/contrast regressions, production
+  `none_fit` action regression, and selection interleaving regression were
+  added;
+- final targeted re-review verdict: `confirmed`; no blocking finding remains.
+
 ## Remaining unknown inventory
 
-- Final Phase B submit tool name and schema.
-- Exact Phase B pending-state composition with existing semantic and batch
-  state.
 - Whether the installed Desktop client reliably presents the comparison as one
   question under the final tool schema.
 - Retrieval and recommendation stability across representative tickets.
@@ -504,7 +634,7 @@ KCS-15.2b1 Delivery and closeout: complete
 Tracked material Design gate correction: Delivery authorized 2026-07-23
 Active Slice Plan review linkage: Delivery authorized 2026-07-23
 KCS-15.2b2 Phase A exact public context Delivery: complete; independent review confirmed
-KCS-15.2b2 Phase B Desktop/model/operator Delivery: locked
+KCS-15.2b2 Phase B Desktop/operator Delivery: authorized 2026-07-23
 KCS-15.2b3 repeated trial: locked
 ```
 
@@ -521,3 +651,15 @@ Stop Phase A and return to Design if it requires:
 - semantic rank being treated as an exact-reference guarantee;
 - a new persistence or observability layer beyond existing value-safe runtime
   events.
+
+Stop Phase B and return to Design if it requires:
+
+- raw/private ticket or internal article egress;
+- a free-form, evidence-bearing, URL-bearing, or recommendation-bearing submit
+  argument;
+- Claude-owned KCS action or candidate identity;
+- bypassing comparison for a direct, selected, or batch draft path;
+- silently replacing a missing approved exact article with semantic results;
+- persistence, logging, publication, customer reply, or article-write behavior;
+- changing core comparison bounds or depending on a local-provider schema;
+- touching KCS-15.2b3 repeated-trial behavior.

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from kcs_adapters import desktop_operator_selection as _desktop_operator_selection
+from kcs_adapters import desktop_reuse_comparison as _desktop_reuse_comparison
 from kcs_adapters import desktop_reviewer_preview as _desktop_reviewer_preview
 from kcs_adapters import desktop_semantic_providers as _desktop_semantic_providers
 from kcs_adapters import desktop_workflow_results as _desktop_workflow_results
@@ -57,6 +58,10 @@ from kcs_core.models import (
     KcsReviewerPacket,
     KcsValidationReportPacket,
     NormalizedTicketEvidencePacket,
+)
+from kcs_core.reuse_comparison import (
+    ReuseComparisonEvidence,
+    ReuseComparisonEvidenceProvider,
 )
 from kcs_core.safety import SafetyGateResult
 from kcs_core.sanitizer import (
@@ -103,6 +108,13 @@ semantic_provider_from_environment = (
 )
 
 PendingDraftSelection = _desktop_operator_selection.PendingDraftSelection
+PendingReuseComparison = _desktop_reuse_comparison.PendingReuseComparison
+ReuseComparisonExpiredError = _desktop_reuse_comparison.ReuseComparisonExpiredError
+ReuseComparisonInvalidError = _desktop_reuse_comparison.ReuseComparisonInvalidError
+ReuseComparisonSubmission = _desktop_reuse_comparison.ReuseComparisonSubmission
+ReuseComparisonUnavailableError = (
+    _desktop_reuse_comparison.ReuseComparisonUnavailableError
+)
 attach_pending_selection = _desktop_operator_selection.attach_pending_selection
 new_pending_draft_selection = _desktop_operator_selection.new_pending_draft_selection
 operator_choice_request = _desktop_operator_selection.operator_choice_request
@@ -322,10 +334,13 @@ class DesktopDraftWorkflow:
         *,
         provider: SemanticExtractionProvider | None | object,
         selection_ttl_seconds: float,
+        reuse_comparison_provider: ReuseComparisonEvidenceProvider | None = None,
     ) -> None:
         self._provider = provider
         self._selection_ttl_seconds = selection_ttl_seconds
+        self._reuse_comparison_provider = reuse_comparison_provider
         self._pending_selection: PendingDraftSelection | None = None
+        self._pending_reuse_comparison: PendingReuseComparison | None = None
         self._pending_semantic_review: PendingSemanticReview | None = None
 
     @property
@@ -343,6 +358,100 @@ class DesktopDraftWorkflow:
         """Clear pending semantic-review state after use or superseding flow."""
 
         self._pending_semantic_review = None
+
+    @property
+    def reuse_comparison_enabled(self) -> bool:
+        """Return whether this workflow has an approved comparison provider."""
+
+        return self._reuse_comparison_provider is not None
+
+    @property
+    def pending_reuse_comparison(self) -> PendingReuseComparison | None:
+        """Return current pending reuse-comparison state, if any."""
+
+        return self._pending_reuse_comparison
+
+    def clear_pending_reuse_comparison(self) -> None:
+        """Clear pending comparison after use or controlled restart."""
+
+        self._pending_reuse_comparison = None
+
+    def start_pending_reuse_comparison(
+        self,
+        *,
+        issue_candidate: Mapping[str, object],
+        approved_summary_text: str,
+        approved_summary_source_kind: str | None,
+        selected_item_refs: list[str],
+        current_index: int,
+        selection_ref: str | None,
+        debug: bool,
+        completed_outcomes: list[Mapping[str, object]] | None = None,
+    ) -> PendingReuseComparison | ReuseComparisonEvidence:
+        """Collect bounded evidence and retain it only when comparison is ready."""
+
+        provider = self._reuse_comparison_provider
+        if provider is None:
+            raise ReuseComparisonUnavailableError
+        result = _desktop_reuse_comparison.collect_pending_reuse_comparison(
+            provider=provider,
+            issue_candidate=issue_candidate,
+            approved_summary_text=approved_summary_text,
+            approved_summary_source_kind=approved_summary_source_kind,
+            selected_item_refs=selected_item_refs,
+            current_index=current_index,
+            selection_ref=selection_ref,
+            debug=debug,
+            completed_outcomes=completed_outcomes or (),
+            ttl_seconds=self._selection_ttl_seconds,
+        )
+        self._pending_reuse_comparison = (
+            result if isinstance(result, PendingReuseComparison) else None
+        )
+        return result
+
+    def submitted_reuse_comparison(
+        self,
+        *,
+        comparison_ref: object,
+        outcome: object,
+        candidate_ref: object = None,
+    ) -> ReuseComparisonSubmission:
+        """Consume one pending comparison or fail closed and require restart."""
+
+        pending = self._pending_reuse_comparison
+        if pending is None:
+            raise ReuseComparisonUnavailableError
+        if time.monotonic() > pending.expires_at:
+            self._pending_reuse_comparison = None
+            raise ReuseComparisonExpiredError
+        if pending.selection_ref is not None:
+            try:
+                self.selected_candidate(
+                    selection_ref=pending.selection_ref,
+                    selected_item_ref=(
+                        pending.selected_item_refs[pending.current_index]
+                    ),
+                )
+            except (
+                OperatorSelectionExpiredError,
+                OperatorSelectionInvalidError,
+                OperatorSelectionUnavailableError,
+            ):
+                self._pending_reuse_comparison = None
+                raise ReuseComparisonInvalidError from None
+        try:
+            submission = _desktop_reuse_comparison.validate_reuse_comparison_submit(
+                pending,
+                comparison_ref=comparison_ref,
+                outcome=outcome,
+                candidate_ref=candidate_ref,
+            )
+        except ReuseComparisonInvalidError:
+            self._pending_reuse_comparison = None
+            raise
+        self._pending_reuse_comparison = None
+        return submission
 
     @property
     def pending_semantic_review(self) -> PendingSemanticReview | None:
