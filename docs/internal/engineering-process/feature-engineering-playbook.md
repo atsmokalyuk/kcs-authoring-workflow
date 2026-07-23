@@ -55,6 +55,25 @@ UX, select the parent design, authorize integration, or widen the next slice.
 The parent Delivery state remains locked until the parent decision is ready,
 selected, and separately authorized.
 
+## Material Design Review At Closeout
+
+Before closing a material implementation, refactor, deployment, or integration
+slice, apply the compact Ousterhout gate in
+`docs/internal/engineering-process/spec-first-engineering-playbook/06-review-checklist.md`.
+
+The gate is triggered by a material ownership, interface, dependency,
+persistence, failure, integration, abstraction, deployment-boundary, or
+internal algorithm/control-flow complexity change. It is not triggered merely
+because a file is under `src/` or because a small leaf implementation changed.
+A non-triggered closeout records only the gate status and a concrete reason.
+A large internal change is reviewed even when its external interface remains
+stable.
+
+The closeout record is a design review, not an implementation tutorial. It
+must say what complexity the slice hides, who owns it, what callers no longer
+need to know, whether leakage or change amplification grew, whether complexity
+was removed or moved, the residual risk, and the reviewer verdict.
+
 ## Slice Discipline
 
 Each PR should map to one Jira slice:

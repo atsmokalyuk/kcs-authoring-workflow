@@ -113,6 +113,42 @@ Do not automate design judgment with blocking regex checks. Deep module
 quality, ownership-vs-time decomposition, classitis, and information leakage
 remain review-gated unless a narrow mechanically decidable rule emerges.
 
+## Compact Ousterhout Closeout Record
+
+Material implementation, refactor, deployment, and integration review packets
+must include the compact Ousterhout record defined in the spec-first review
+checklist. This applies when the change creates or moves a module/service,
+ownership boundary, interface, dependency, persistence/failure boundary,
+deployment topology, material abstraction, or material internal
+algorithm/control-flow complexity.
+
+Required `reviewed` shape:
+
+```text
+Ousterhout gate: reviewed
+Trigger:
+Complexity hidden:
+Owner and what it must not know:
+Interface depth and caller cognitive load:
+Information leakage and change amplification:
+Complexity removed, moved, or added:
+Residual design risk:
+Verdict: pass | revise | reject
+```
+
+For a small leaf change, use only the short exception form:
+
+```text
+Ousterhout gate: not triggered
+Not-triggered reason: small leaf change; no material boundary, abstraction,
+  algorithm, control-flow, or internal-complexity change
+```
+
+A large internal change is reviewed even when its external interface remains
+stable. Deterministic policy may check that the applicable shape exists; the
+reviewer owns the design judgment. Missing triggered evidence or an unresolved
+`revise` / `reject` verdict blocks closeout.
+
 ## Agent Promotion Responsibility
 
 Promotion discovery is automatic at aggregate closeout and after a repeated

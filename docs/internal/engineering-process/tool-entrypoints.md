@@ -35,7 +35,7 @@ Use these before commits when relevant to the touched files.
 
 | Task | Command | Classification | Notes |
 | --- | --- | --- | --- |
-| Policy docs check | `uv run pytest tests/policy/test_kcs14_docs_policy.py -q` | deterministic | Required for KCS-14 process/doc changes. |
+| Engineering process docs check | `uv run pytest tests/policy/test_engineering_process_docs_policy.py -q` | deterministic | Required for tracked engineering-process and policy-document changes. |
 | Review protocol and promotion check | `uv run pytest tests/policy/test_review_context_policy.py -q` | deterministic | Required for KCS-14 review, promotion, closeout-shape, or review-packet protocol changes. |
 | Code-review graph policy check | `uv run pytest tests/policy/test_code_review_graph_policy.py -q` | deterministic | Required for code-map, graph hash, ownership-node, or refactor-boundary changes. |
 | KCS-14 freeze/snapshot check | `uv run pytest tests/policy/test_kcs14_freeze_snapshots.py -q` | deterministic | Required before and after Slice 6 refactor batches. |

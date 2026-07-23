@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TOOL_DOC = ROOT / "docs" / "internal" / "engineering-process" / "tool-entrypoints.md"
 
 REQUIRED_COMMANDS = (
-    "uv run pytest tests/policy/test_kcs14_docs_policy.py -q",
+    "uv run pytest tests/policy/test_engineering_process_docs_policy.py -q",
     "uv run pytest tests/policy/test_review_context_policy.py -q",
     "uv run pytest tests/policy/test_code_review_graph_policy.py -q",
     "uv run pytest tests/policy/test_kcs14_freeze_snapshots.py -q",

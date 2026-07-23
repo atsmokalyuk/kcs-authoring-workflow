@@ -115,6 +115,33 @@ Combined post-integration validation passed 91 focused adapter and policy
 checks. Ruff on the adapter, its tests, and the KCS-15 policy test also passed.
 The full repository suite passed 1,465 tests with one expected skip.
 
+### Compact Ousterhout review
+
+```text
+Ousterhout gate: reviewed
+Trigger: new adapter, loopback HTTP, readiness,
+  response-projection, and privacy boundaries
+Complexity hidden: endpoint validation, redirect suppression, bounded
+  transport, readiness/schema parsing, and metadata allowlisting
+Owner and what it must not know: LocalPublicRagAdapter owns the local-public
+  search boundary; it must not know KCS identity, drafting, Desktop,
+  persistence, publication, or reviewer decisions
+Interface depth and caller cognitive load: callers provide bounded symptoms
+  and configuration and receive typed readiness/search results; callers do not
+  handle runtime payload variants, snippets, chunks, or transport failures
+Information leakage and change amplification: query text, snippets, chunks,
+  vectors, local paths, and payload tails remain behind the adapter; runtime
+  API variation is localized to one adapter and its tests
+Complexity removed, moved, or added: necessary external-API variability is
+  pulled down into the adapter; article-identity complexity was not moved into it
+Residual design risk: retrieval quality, sufficient article evidence,
+  operator UX, and Desktop/pipeline integration remain unproved in KCS-15.2b
+Verdict: pass
+```
+
+This verdict applies only to the KCS-15.2a adapter boundary. It does not approve
+the parent design or authorize integration.
+
 ## KCS-15.2b Decision-Readiness Gate
 
 The current metadata-only adapter cannot by itself make an article-fit decision

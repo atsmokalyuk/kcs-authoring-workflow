@@ -62,6 +62,11 @@ implementation request with clear scope.
   validation, decisions, rendering, persistence, and failure behavior.
 - Avoid unrelated cleanup, broad refactors, dependency churn, or prompt
   framework additions.
+- Before closeout, apply the compact Ousterhout gate to material
+  implementation, refactor, deployment, and integration slices. Record
+  `not triggered` only for a small leaf change with no ownership, interface,
+  dependency, persistence, failure, deployment-boundary, or material internal
+  complexity change.
 
 ### Bugfix / Forensic Mode
 
@@ -183,6 +188,11 @@ For documentation changes, also check:
 - whether the changed document is still current;
 - whether related docs or README references need updates;
 - whether terminology and scope match the active product/engineering plan.
+
+For a triggered Ousterhout review, record the trigger, complexity hidden,
+ownership and what the module must not know, interface depth/caller cognitive
+load, information leakage/change amplification, whether complexity was removed
+or only moved, residual risk, and `pass` / `revise` / `reject` verdict.
 
 ## AI-Assisted Code Quality Gates
 

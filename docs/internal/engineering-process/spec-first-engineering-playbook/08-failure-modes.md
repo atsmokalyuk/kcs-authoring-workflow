@@ -19,6 +19,8 @@ closed and report a safe, actionable reason.
   gathering.
 - An enabling-slice result is treated as parent UX or integration approval.
 - Positive continuation wording is treated as authorization for a new slice.
+- A material implementation, refactor, deployment, or integration reaches
+  closeout without its compact Ousterhout review record.
 - Missing required input.
 - Unsafe input.
 - Incomplete evidence.
@@ -55,6 +57,8 @@ smallest missing decision:
 - restore the independent approval ledger and keep Delivery locked;
 - close an enabling slice as feasibility evidence without inheriting approval
   into its parent design.
+- run the compact Ousterhout review, revise the design when required, or record
+  a concrete `not triggered` reason for a small leaf change.
 
 For an experimental slice, repeated corrections without movement against the
 predeclared threshold are evidence for `stop`, not authorization to add another

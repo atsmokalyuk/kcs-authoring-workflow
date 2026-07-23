@@ -308,7 +308,7 @@ Review when touching:
 
 - `tests/policy/test_code_review_graph_policy.py`
 - `tests/policy/test_functional_test_policy.py`
-- `tests/policy/test_kcs14_docs_policy.py`
+- `tests/policy/test_engineering_process_docs_policy.py`
 - `tests/policy/test_kcs15_source_pack_policy.py`
 - `tests/policy/test_review_context_policy.py`
 - `tests/policy/test_tool_entrypoints.py`

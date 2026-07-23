@@ -85,7 +85,12 @@ Use the smallest mode that fits the operator request:
   batch, start from a compact current-state frame rather than relying on long
   chat history. General continuation wording such as `go next` applies only
   inside the already selected and authorized slice; it does not authorize a
-  new behavior-changing slice. After each commit or aggregate review, emit a
+  new behavior-changing slice. Before closing a material implementation,
+  refactor, deployment, or integration slice, record a compact Ousterhout
+  design review. A small leaf change may record `not triggered` only with a
+  concrete reason showing that no ownership, interface, dependency,
+  persistence, failure, or deployment boundary and no material internal
+  complexity changed. After each commit or aggregate review, emit a
   visible compact checkpoint before starting the next material batch.
 - Bugfix / forensic mode: reproduce or define the failing case first, gather
   evidence before patching, fix the root cause only, and keep a regression test
@@ -106,7 +111,9 @@ Detailed mode behavior lives in
   `docs/internal/engineering-process/codex-agent-instructions.md` and
   `docs/internal/engineering-process/spec-first-engineering-playbook/06-review-checklist.md`.
 - Reviews must cover diff sanity, unintended file touches, tests/contracts,
-  safety and data boundaries, docs/README consistency, and behavior drift.
+  safety and data boundaries, docs/README consistency, behavior drift, and the
+  compact Ousterhout gate when a material implementation, refactor, deployment,
+  or integration trigger applies.
 - For security-sensitive, privacy-sensitive, hosted/local-boundary, or
   cross-module architecture changes, require a deeper review pass focused on
   policy, privacy, data boundaries, and architecture drift.

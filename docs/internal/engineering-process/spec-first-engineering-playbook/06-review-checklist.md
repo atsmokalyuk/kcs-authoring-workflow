@@ -27,6 +27,46 @@ Use this checklist for code, docs, contracts, and demo artifacts.
 - Does README or related documentation need an update?
 - Does the change avoid unsupported version, model, command, or API claims?
 
+## Compact Ousterhout Review Gate
+
+Trigger this gate before closeout for a material implementation, refactor,
+deployment, or integration change, including a new/moved module or service,
+cross-module dependency, public/internal interface, ownership boundary,
+persistence or failure boundary, deployment topology, material abstraction, or
+material internal algorithm/control-flow complexity.
+
+A small leaf behavior correction may record `not triggered` only when it adds
+or moves none of those boundaries and does not materially change internal
+complexity. File size or a `src/` path alone is a smell, not proof that the gate
+triggered. A large internal change is reviewed even when its external interface
+remains stable.
+
+For `reviewed`, record the full form:
+
+```text
+Ousterhout gate: reviewed
+Trigger:
+Complexity hidden:
+Owner and what it must not know:
+Interface depth and caller cognitive load:
+Information leakage and change amplification:
+Complexity removed, moved, or added:
+Residual design risk:
+Verdict: pass | revise | reject
+```
+
+For a valid leaf exception, record only:
+
+```text
+Ousterhout gate: not triggered
+Not-triggered reason: small leaf change; no material boundary, abstraction,
+  algorithm, control-flow, or internal-complexity change
+```
+
+If triggered, a missing record or unresolved `revise` / `reject` verdict is a
+review blocker. This is a named human-review gate. Policy tests may enforce the
+record shape but must not claim to judge module depth or design quality.
+
 ## Review Severity
 
 Classify findings as blockers or warnings.
@@ -44,7 +84,9 @@ Blockers:
   unconfirmed;
 - design selection was treated as Delivery authorization;
 - an enabling-slice success was treated as parent UX or integration approval;
-- an operator decision was requested without the context needed to judge fit.
+- an operator decision was requested without the context needed to judge fit;
+- a triggered Ousterhout review is missing or has an unresolved `revise` /
+  `reject` verdict.
 
 Warnings:
 
