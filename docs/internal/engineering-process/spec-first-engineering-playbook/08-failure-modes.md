@@ -12,6 +12,13 @@ closed and report a safe, actionable reason.
 - Acceptance criterion has no deterministic, bounded-model, or named
   human-review gate.
 - Model-mediated acceptance has no predeclared trial contract or stop rule.
+- Outcome agreement, design selection, and Delivery authorization are
+  collapsed into one approval.
+- An operator decision is requested without sufficient visible information.
+- The operator is asked to diagnose uncertainty before autonomous evidence
+  gathering.
+- An enabling-slice result is treated as parent UX or integration approval.
+- Positive continuation wording is treated as authorization for a new slice.
 - Missing required input.
 - Unsafe input.
 - Incomplete evidence.
@@ -43,6 +50,11 @@ smallest missing decision:
 - narrow the slice when the question batch exceeds five;
 - complete the acceptance-to-gate mapping;
 - define or revise the bounded trial contract.
+- classify unknowns by evidence owner and resolve autonomous ones first;
+- prepare the Operator Decision Readiness packet;
+- restore the independent approval ledger and keep Delivery locked;
+- close an enabling slice as feasibility evidence without inheriting approval
+  into its parent design.
 
 For an experimental slice, repeated corrections without movement against the
 predeclared threshold are evidence for `stop`, not authorization to add another

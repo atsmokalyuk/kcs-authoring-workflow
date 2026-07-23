@@ -11,8 +11,12 @@ This document is development-time guidance. Product, data-handling, and architec
 Use this sequence for every implementation slice:
 
 ```text
-boundary
-  -> contract
+requested outcome and operational baseline
+  -> target UX and design evidence
+  -> Operator Decision Readiness
+  -> design selection
+  -> separate Delivery authorization
+  -> boundary and contract
   -> smallest safe implementation
   -> validation/tests
   -> safe output/report
@@ -21,6 +25,35 @@ boundary
 ```
 
 Do not start from a broad end-to-end workflow unless the earlier contracts and gates already exist.
+
+## Approval And Enabling-Slice Containment
+
+For a behavior-changing slice, keep these decisions independent:
+
+```text
+outcome agreement
+design selection
+Delivery authorization
+```
+
+An operator may grant two decisions together only by stating both. A plain
+design selection leaves Delivery locked. General continuation wording applies
+only to work already inside the selected and authorized boundary.
+
+An enabling slice such as an isolated adapter, spike, prototype, or bounded
+experiment may have its own explicit design and Delivery authorization. Its
+closeout must state:
+
+- the feasibility question answered;
+- evidence produced and its limits;
+- parent UX/design state;
+- parent integration authorization state;
+- remaining decision-readiness evidence.
+
+Enabling-slice success proves feasibility only. It does not approve the parent
+UX, select the parent design, authorize integration, or widen the next slice.
+The parent Delivery state remains locked until the parent decision is ready,
+selected, and separately authorized.
 
 ## Slice Discipline
 

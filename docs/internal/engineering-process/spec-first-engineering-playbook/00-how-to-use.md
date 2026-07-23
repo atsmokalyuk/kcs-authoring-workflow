@@ -24,12 +24,15 @@ create implementation plan
 5. Draft or update the slice spec before implementation.
 6. Keep the complete inventory of material unknowns in the slice spec, but ask
    the operator only the smallest question batch needed for the next decision.
-7. Wait for confirmation before changing runtime behavior, privacy boundaries,
-   schemas/contracts, persistence, integrations, or public/reviewer output.
-8. Map every observable acceptance criterion to a deterministic gate, a
+7. Record outcome agreement, design selection, and Delivery authorization as
+   independent facts. Do not infer one from another.
+8. Keep Delivery locked before changing runtime behavior, privacy boundaries,
+   schemas/contracts, persistence, integrations, or public/reviewer output
+   until the selected design has separate Delivery authorization.
+9. Map every observable acceptance criterion to a deterministic gate, a
    bounded model trial, or a named human-review gate.
-9. Implement only the agreed slice.
-10. Report changed files, unchanged contracts, validation run, and open risks.
+10. Implement only the selected and authorized slice.
+11. Report changed files, unchanged contracts, validation run, and open risks.
 
 If more than five material questions are required before the next decision,
 narrow the feature boundary before asking them. This is a scope signal, not a
@@ -51,6 +54,32 @@ predeclare:
 A single successful run proves feasibility only. Close the experiment with an
 evidence-based `expand`, `iterate`, or `stop` decision using baseline-to-result,
 correction, overhead, false-positive, and drift evidence.
+
+## Design Uncertainty And Decision Readiness
+
+Use the role-neutral protocol in `01-clarifications.md` when the operator is
+uncertain, the evidence visible to the operator may be insufficient, two
+material options remain viable, or a DDD transition lacks an exact approval
+record.
+
+The stage-transition checkpoint must state:
+
+- current DDD stage;
+- outcome agreement state;
+- design selection state;
+- Delivery authorization state;
+- exact next behavior change proposed;
+- remaining material unknowns;
+- evidence the operator will see for the next decision.
+
+`select` means that a design was selected; it does not authorize Delivery.
+`authorize_delivery` is a separate operator decision. A compound
+`select_and_authorize_delivery` may record both facts only when the operator
+explicitly grants both.
+
+Phrases such as `go next`, `continue`, `looks good`, or agreement with the
+benefit may continue work already inside an approved boundary. They do not by
+themselves select a new design or authorize a new behavior-changing slice.
 
 ## Slice Planning Location
 

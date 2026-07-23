@@ -31,15 +31,28 @@ Required behavior:
   - acceptance criteria;
   - review checklist.
 - Ask concise questions for material unknowns.
-- Wait for operator confirmation before changing runtime behavior, data
-  handling, privacy boundaries, schemas/contracts, persistence, integrations,
-  or public/reviewer output.
+- Use the role-neutral Design Uncertainty and Decision Readiness protocol when
+  the operator is unsure or lacks enough visible evidence. The operator steers
+  or approves the result of autonomous research; the operator does not have to
+  diagnose the uncertainty first.
+- Record outcome agreement, design selection, and Delivery authorization
+  independently before changing runtime behavior, data handling, privacy
+  boundaries, schemas/contracts, persistence, integrations, or public/reviewer
+  output. Design selection does not authorize Delivery.
 
 ### Builder / Implementation Mode
 
 Use this mode after the slice is agreed or when the task is a direct
 implementation request with clear scope.
 
+- Before a behavior-changing batch, confirm that the outcome is agreed, the
+  design is selected, the Operator Decision Readiness packet is complete, and
+  Delivery is explicitly authorized. Otherwise return to Architect mode.
+- Interpret `go next`, `continue`, `looks good`, and similar positive wording
+  only inside the already selected and authorized slice. Do not use them as
+  approval for a new behavior, UX, integration, or contract change.
+- Treat an isolated adapter, prototype, or feasibility success as evidence for
+  the parent design. It does not select the parent UX or authorize integration.
 - Implement the smallest safe slice.
 - Preserve existing contracts unless the operator explicitly authorizes a
   contract change.

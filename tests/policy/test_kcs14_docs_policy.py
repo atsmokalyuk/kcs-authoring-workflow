@@ -164,3 +164,43 @@ def test_engineering_rule_portability_registry_structure_and_links() -> None:
     assert "The separate kit project owns agent roles" in registry
     assert "local enforcement maturity" in promotions
     assert registry_path in promotions
+
+
+def test_design_uncertainty_protocol_required_anchors() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    process_root = ROOT / "docs/internal/engineering-process"
+    playbook_root = process_root / "spec-first-engineering-playbook"
+    clarifications = (playbook_root / "01-clarifications.md").read_text(
+        encoding="utf-8"
+    )
+    how_to = (playbook_root / "00-how-to-use.md").read_text(encoding="utf-8")
+    feature_playbook = (process_root / "feature-engineering-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    agent_instructions = (process_root / "codex-agent-instructions.md").read_text(
+        encoding="utf-8"
+    )
+
+    for approval_state in (
+        "Outcome agreement",
+        "Design selection",
+        "Delivery authorization",
+    ):
+        assert approval_state in clarifications
+
+    for readiness_field in (
+        "Decision",
+        "Visible information",
+        "Sufficiency",
+        "Options",
+        "Consequences",
+        "Uncertainty / failure path",
+    ):
+        assert f"| {readiness_field} |" in clarifications
+
+    assert "Design selection does not authorize Delivery" in agent_instructions
+    assert "Design selection does not authorize" in agents
+    assert "new behavior-changing slice" in agents
+    assert "`select` means that a design was selected" in how_to
+    assert "Enabling-slice success proves feasibility only" in feature_playbook
+    assert "does not define a Designer role" in clarifications

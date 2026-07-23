@@ -29,10 +29,11 @@ policy -> spec -> tests -> implementation -> validation -> review
 The model is not "AI writes code and humans inspect the diff." The model is:
 
 ```text
-human and agent clarify the slice
+human and agent clarify the requested outcome
 agent drafts a bounded spec
-human confirms material assumptions
-agent implements only the agreed slice
+agent prepares decision-ready design evidence
+human selects the design and separately authorizes Delivery
+agent implements only the selected and authorized slice
 tests/evals prove the behavior
 review checks contracts, privacy, failure behavior, and drift
 ```
@@ -117,12 +118,15 @@ Before implementation:
 2. Read the relevant files in `docs/internal/engineering-process/spec-first-engineering-playbook/`.
 3. Draft or update the slice spec.
 4. Ask concise clarifying questions for material unknowns.
-5. Wait for operator confirmation when the slice affects runtime behavior,
-   data handling, privacy boundaries, schemas/contracts, persistence,
-   integrations, or public/reviewer output.
-6. Implement only the agreed slice.
-7. Run targeted validation.
-8. Report changed files, unchanged contracts, validation run, and open risks.
+5. Record outcome agreement, design selection, and Delivery authorization as
+   three independent facts when the slice affects runtime behavior, data
+   handling, privacy boundaries, schemas/contracts, persistence, integrations,
+   or public/reviewer output.
+6. Keep Delivery locked until the operator has sufficient visible evidence,
+   selects the design, and separately authorizes Delivery.
+7. Implement only the selected and authorized slice.
+8. Run targeted validation.
+9. Report changed files, unchanged contracts, validation run, and open risks.
 
 ## Review Questions
 

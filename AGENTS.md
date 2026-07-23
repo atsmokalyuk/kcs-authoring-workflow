@@ -65,9 +65,11 @@ Use the smallest mode that fits the operator request:
   feature/slice planning requests. Do not code immediately. Use
   `docs/internal/engineering-process/spec-first-engineering-playbook/` and
   `docs/internal/engineering-process/feature-engineering-playbook.md`. Draft the
-  slice plan in chat by default and wait for operator confirmation before
-  behavior, privacy, schema, persistence, integration, or reviewer-output
-  changes. If the operator asks to persist the plan, write it under
+  slice plan in chat by default. Before behavior, privacy, schema, persistence,
+  integration, or reviewer-output changes, independently record that the
+  outcome is agreed, the design is selected from decision-ready evidence, and
+  Delivery is explicitly authorized. Design selection does not authorize
+  Delivery. If the operator asks to persist the plan, write it under
   `docs/internal/engineering-process/slice-plans/`. Do not mutate playbook
   templates unless the operator explicitly asks to change the planning process
   itself.
@@ -81,7 +83,9 @@ Use the smallest mode that fits the operator request:
   behavior-preserving work unless changed behavior, stable contracts, tests, and
   review-only drift risks are explicitly accounted for. Before each material
   batch, start from a compact current-state frame rather than relying on long
-  chat history. After each commit or aggregate review, emit a
+  chat history. General continuation wording such as `go next` applies only
+  inside the already selected and authorized slice; it does not authorize a
+  new behavior-changing slice. After each commit or aggregate review, emit a
   visible compact checkpoint before starting the next material batch.
 - Bugfix / forensic mode: reproduce or define the failing case first, gather
   evidence before patching, fix the root cause only, and keep a regression test

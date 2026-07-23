@@ -25,6 +25,91 @@ default. Keep a complete unknown inventory in the slice plan. Ask the operator
 only the smallest batch needed for the next decision. More than five material
 questions before one decision is a signal to narrow the slice boundary.
 
+## Design Uncertainty And Decision Readiness Protocol v0
+
+This is an actor-neutral process contract. It does not define a Designer role,
+runtime state service, prompt, tool registry, or multi-agent orchestration.
+
+Trigger the protocol when:
+
+- the operator says `not sure`, `iterate`, or equivalent;
+- the operator agrees with the outcome but has not selected the behavior;
+- the operator may lack evidence needed for the requested decision;
+- a material UX, behavior, privacy, integration, maintenance, or failure-path
+  unknown remains;
+- an enabling slice succeeds but the parent design is not selected;
+- two materially different options remain viable;
+- new evidence invalidates a prior assumption;
+- a proposed DDD transition has no exact approval record.
+
+The operator is not required to diagnose the uncertainty. The acting agent
+must first classify each unknown as:
+
+- `repository-owned`: resolve from tracked contracts, code, tests, and history;
+- `research-owned`: resolve through permitted external or reference research;
+- `feasibility-owned`: resolve through an isolated, separately authorized
+  experiment with a bounded evidence budget;
+- `operator-owned`: preference, policy, risk, or material product trade-off.
+
+Resolve the first three classes autonomously when permitted. Ask the operator
+only at a material `operator-owned` fork or when the evidence budget reaches a
+stop condition.
+
+### Independent Approval Ledger
+
+Keep three orthogonal state dimensions:
+
+```text
+Outcome agreement: unconfirmed | agreed | reopened | rejected
+Design selection: open | uncertain | evidence_gathering |
+  ready_for_operator_selection | selected | iterate | rejected
+Delivery authorization: locked | authorization_requested | authorized | revoked
+```
+
+No value implies another. In particular:
+
+- outcome agreement does not select a design;
+- design selection does not authorize Delivery;
+- feasibility evidence does not approve parent UX or integration;
+- a recommendation cannot approve itself;
+- silence, positive wording, or elapsed time cannot unlock Delivery.
+
+Delivery may start only when the outcome is `agreed`, the design is `selected`,
+Delivery is `authorized`, the Operator Decision Readiness packet is complete,
+and no material blocker remains.
+
+### Operator Decision Readiness Packet
+
+Before asking the operator to select, iterate, reject, or authorize, show:
+
+| Field | Required content |
+| --- | --- |
+| Decision | Exact decision requested now |
+| Visible information | Evidence the operator will actually see, including relevant context needed to judge fit |
+| Sufficiency | Why that information is enough for this decision and what it does not prove |
+| Options | Materially viable choices, including defer or stop where applicable |
+| Consequences | Operator workflow, cognitive load, behavior, maintenance, safety, and integration trade-offs |
+| Uncertainty / failure path | Remaining unknowns, failed assumptions, and what happens if evidence is insufficient |
+| Recommendation | Evidence-backed agent recommendation; never self-approval |
+
+The agent may propose `ready_for_operator_selection`; only the operator may
+select, iterate, reject, authorize Delivery, or revoke authorization.
+
+### Evidence Methods And Stop Conditions
+
+Choose the lightest sufficient method: repository analysis, reference research,
+cognitive walkthrough, low-fidelity comparison, bounded operator trial,
+isolated feasibility slice, or predeclared repeated model/RAG trial.
+
+Stop evidence work when the operator has enough information for the material
+decision, the next unknown is operator-owned, the evidence budget is exhausted,
+repeated trials add no decision-relevant information, a non-negotiable blocker
+appears, or the operator pauses or rejects the work.
+
+A small reversible implementation choice inside an already authorized slice
+does not require this protocol. State the default and continue when its cost of
+error is low and it cannot change behavior or approved contracts.
+
 ## Slice Template
 
 ```markdown
@@ -53,6 +138,21 @@ What remains unknown, including questions not yet issued to the operator?
 
 ## Next material question batch
 What is the smallest set of questions needed for the next decision?
+
+## Approval ledger
+Outcome agreement: unconfirmed / agreed / reopened / rejected
+Design selection: open / uncertain / evidence_gathering /
+  ready_for_operator_selection / selected / iterate / rejected
+Delivery authorization: locked / authorization_requested / authorized / revoked
+
+## Operator Decision Readiness
+Decision:
+Visible information:
+Sufficiency and limits:
+Options:
+Consequences:
+Uncertainty / failure path:
+Recommendation:
 
 ## User / operator
 Who uses this?

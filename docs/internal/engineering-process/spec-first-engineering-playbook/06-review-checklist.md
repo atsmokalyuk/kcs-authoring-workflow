@@ -11,6 +11,13 @@ Use this checklist for code, docs, contracts, and demo artifacts.
   behavior and identify the intended entrypoint/UX?
 - Are material facts marked as confirmed, provisional, unknown, or rejected?
 - Was only the smallest material question batch presented to the operator?
+- Did the agent resolve repository-, research-, and feasibility-owned unknowns
+  before asking the operator to diagnose uncertainty?
+- Are outcome agreement, design selection, and Delivery authorization recorded
+  independently?
+- If an operator decision was requested, were the exact decision, visible
+  information, sufficiency, options, consequences, and uncertainty/failure path
+  present?
 - Are unrelated files untouched?
 - Are generated/runtime/private artifacts excluded?
 - Are contracts preserved or intentionally changed?
@@ -32,7 +39,12 @@ Blockers:
 - unsafe data handling or unsafe input echo;
 - raw/private/runtime artifact touch;
 - README or docs claim that contradicts actual behavior;
-- architecture drift that moves decisions out of deterministic Python code.
+- architecture drift that moves decisions out of deterministic Python code;
+- Delivery started while outcome, design, readiness, or authorization remained
+  unconfirmed;
+- design selection was treated as Delivery authorization;
+- an enabling-slice success was treated as parent UX or integration approval;
+- an operator decision was requested without the context needed to judge fit.
 
 Warnings:
 
@@ -77,7 +89,11 @@ Treat these as findings requiring the design to return to clarification:
 - an unknown was silently converted into a default or permission;
 - the operator received the complete domain question inventory instead of the
   smallest next decision batch;
-- more than five material questions are needed without narrowing the slice.
+- more than five material questions are needed without narrowing the slice;
+- the operator was asked to diagnose uncertainty that repository analysis,
+  permitted research, or a bounded feasibility check could resolve;
+- `go next`, positive wording, feasibility success, or a recommendation was
+  treated as approval for a new behavior-changing slice.
 
 These are judgment-based review signals. Do not add a deterministic blocker
 that claims to infer them from prose.
