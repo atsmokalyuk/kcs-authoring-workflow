@@ -335,6 +335,33 @@ def test_stdio_smoke_roots_include_approved_ticket_store_override(
     assert tmp_path.resolve() in roots
 
 
+def test_stdio_smoke_requires_traceable_none_fit_sequence_outcome() -> None:
+    smoke = _load_smoke_module()
+    confirmed = {
+        "bundle_ref": "run-example",
+        "html_path": "local-data/reviewer-bundles/run-example/reviewer_only.html",
+        "manifest_path": "local-data/reviewer-bundles/run-example/manifest.json",
+    }
+    confirmed["comparison_sequence_outcomes"] = [
+        {
+            "bundle_ref": confirmed["bundle_ref"],
+            "comparison_outcome": "none_fit",
+            "draft_generated": True,
+            "html_path": confirmed["html_path"],
+            "item_ref": "candidate-001",
+            "manifest_path": confirmed["manifest_path"],
+            "recommended_action": "create_candidate",
+            "reviewer_bundle_written": True,
+        }
+    ]
+
+    assert smoke._single_none_fit_sequence_ok(confirmed) is True
+
+    confirmed["comparison_sequence_outcomes"][0].pop("manifest_path")
+
+    assert smoke._single_none_fit_sequence_ok(confirmed) is False
+
+
 def test_mcpb_node_wrapper_rejects_wrong_explicit_repo_root_without_spawn(
     tmp_path: Path,
 ) -> None:

@@ -775,7 +775,7 @@
         },
         {
           "path": "scripts/smoke_kcs_mcpb_stdio.py",
-          "file_hash": "270b4d0127510f901d43ba5f67d7d72fb2e811607d35194dfffdb089fe11e8e7",
+          "file_hash": "3e75b007b13a299618f3e25a22b300f63da295a7399eca266e5306d0be8d4606",
           "valid_until_changed": true
         },
         {

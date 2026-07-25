@@ -1718,18 +1718,23 @@ def _register_then_draft_ok(responses: dict[str, dict[str, Any]]) -> bool:
         and confirmed.get("reuse_search_status") == "checked"
         and confirmed.get("reviewer_bundle_written") is True
         and confirmed.get("writes_files") is True
-        and confirmed.get("comparison_sequence_outcomes")
-        == [
-            {
-                "bundle_ref": confirmed.get("bundle_ref"),
-                "comparison_outcome": "none_fit",
-                "draft_generated": True,
-                "item_ref": "candidate-001",
-                "recommended_action": "create_candidate",
-                "reviewer_bundle_written": True,
-            }
-        ]
+        and _single_none_fit_sequence_ok(confirmed)
     )
+
+
+def _single_none_fit_sequence_ok(confirmed: dict[str, Any]) -> bool:
+    return confirmed.get("comparison_sequence_outcomes") == [
+        {
+            "bundle_ref": confirmed.get("bundle_ref"),
+            "comparison_outcome": "none_fit",
+            "draft_generated": True,
+            "html_path": confirmed.get("html_path"),
+            "item_ref": "candidate-001",
+            "manifest_path": confirmed.get("manifest_path"),
+            "recommended_action": "create_candidate",
+            "reviewer_bundle_written": True,
+        }
+    ]
 
 
 def _semantic_review_submit_ok(responses: dict[str, dict[str, Any]]) -> bool:
