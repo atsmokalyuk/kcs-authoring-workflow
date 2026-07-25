@@ -102,9 +102,12 @@ Recommended slice order:
   through independently approved behavior slices. KCS-15.1 trigger parity and
   KCS-15.2a adapter feasibility is complete; KCS-15.2b1 bounded public
   comparison evidence is complete; KCS-15.2b2 Phase A exact public-article
-  context is complete, while Phase B Desktop/operator Delivery is authorized
-  and its implementation/installed-model smoke closeout remains active. It
-  remains outside KCS-14 scope;
+  context is complete and the deterministic local controlled-comparison
+  implementation is committed. Operational closeout remains open because the
+  approved sanitized super-noisy canary stopped in upstream semantic
+  submission before comparison. Phase C in-chat UI is host-blocked and
+  deferred pending a host-owned direct launcher. It remains outside KCS-14
+  scope;
 - Future harness-portable agent engineering support: git-aware code-review
   graph, compact agent context, official local tool entrypoints, and review
   handoffs for Codex, ChatGPT Pro review, Fable 5 review, or future internal

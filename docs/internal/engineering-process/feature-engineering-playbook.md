@@ -21,6 +21,7 @@ requested outcome and operational baseline
   -> boundary and contract
   -> smallest safe implementation
   -> validation/tests
+  -> built/installed runtime identity gate when applicable
   -> safe output/report
   -> docs update or explicit no-doc note
   -> next gate decision
@@ -33,6 +34,26 @@ mode, request, response shape, and required operating condition before
 substantial implementation. Use fresh evidence or one bounded safe smoke with
 a declared claim and stop condition. Fixtures remain required for deterministic
 contract coverage, but they do not establish live operational compatibility.
+
+If the target UX relies on an unfamiliar interaction, an unproved host UI
+capability, or a material operator-comfort/cognitive-load judgment, proactively
+offer the smallest safe fixture-only walkthrough or UX smoke before production
+implementation. The smoke must expose the real decision context closely enough
+for the operator to evaluate the interaction, while keeping production
+behavior, data, integration, and persistence locked. Record the decision claim,
+fixture/condition, exercised interaction, simulated limits, permitted
+corrections, evidence budget, and stop condition. A successful UX smoke is
+Design evidence only; it does not select the production design or authorize
+production Delivery.
+
+Use a progressive evidence ladder. Start with a static example, wireframe, or
+clickable fixture that requires no product/runtime installation. Escalate to an
+isolated component/protocol harness, then an installed-host smoke, only for
+unknowns the cheaper level cannot resolve. Packaging, client activation,
+runtime restart, or deployment is justified only when the decision depends on
+the real host's rendering, lifecycle, permissions, navigation, or tool routing.
+Record the unresolved claim that caused each escalation and stop at the first
+level sufficient for the material design decision.
 
 ## Approval And Enabling-Slice Containment
 
@@ -73,6 +94,8 @@ The plan must contain enough current evidence for a later agent or reviewer to
 continue without reconstructing the design from chat:
 
 - requested outcome and operational baseline;
+- every parent or incident-driven operational outcome that this slice claims
+  to resolve, together with the evidence class required to prove it;
 - intended entrypoint, target UX, and selected design boundary;
 - confirmed, provisional, unknown, and rejected material facts;
 - complete unknown inventory and relevant stop conditions;
@@ -93,6 +116,45 @@ A small mechanical edit or bounded leaf bugfix may rely on an existing tracked
 contract and tests instead of creating a new slice plan when no material
 behavior, privacy, schema, persistence, integration, deployment, or
 public/reviewer-output boundary changes.
+
+## End-to-End Enforcement Reachability Gate
+
+Before selecting a design or authorizing Delivery for a claimed safety or
+workflow invariant, map every supported operator/system entrypoint to the first
+deterministic enforcement owner:
+
+```text
+supported entrypoint
+  -> user-, app-, or model-controlled transitions
+  -> first deterministic gate
+  -> allowed terminal outcomes
+  -> bypass paths before or around the gate
+```
+
+Classify control honestly:
+
+- code or an app/controller that directly invokes the gate is deterministic
+  within its declared boundary;
+- a user-selected prompt or command is an explicit entrypoint, but remains
+  model-mediated when the model can answer without invoking the gate;
+- a model-controlled tool call is optional behavior and cannot enforce an
+  invariant that also covers the period before that call;
+- inventory direct model responses and every alternative host tool that can
+  produce the prohibited outcome. A guarded connector does not enforce an
+  end-to-end invariant when the same model can bypass it through a generic file,
+  browser, shell, messaging, or artifact action.
+
+If any supported entrypoint can produce a prohibited outcome before reaching
+the gate, Design is not ready. Choose one:
+
+- move the gate earlier behind a user/app-controlled entrypoint;
+- restrict and document the supported entrypoint;
+- weaken the claim to best-effort behavior and obtain explicit operator
+  approval for that weaker contract.
+
+Tool descriptions, system instructions, fixtures, and one successful model
+run may improve or demonstrate routing. They do not convert model-controlled
+tool selection into deterministic enforcement.
 
 ## Material Design Review At Closeout
 
@@ -232,6 +294,7 @@ design / ADR note
   -> allowed tool surface
   -> implementation slice
   -> unit and contract tests
+  -> build / install / reload identity
   -> preflight / smoke / dry-run
   -> operator readiness
   -> rehearsal
@@ -285,6 +348,38 @@ Before a manual client attempt, verify:
 
 Preflight may prove wiring, but it does not approve real ticket use.
 
+Before any installed-client, model, or operator trial, verify the complete
+runtime identity chain:
+
+```text
+current source
+  -> current built artifact
+  -> installed files, client registry/cache, and explicit enabled/activation state
+  -> reloaded client process
+  -> every dependency service's source revision / process / config-data identity
+  -> exact required capability on those same live instances
+  -> deterministic installed-runtime preflight
+  -> model/operator trial
+```
+
+The agent owns this preparation when local mutation is already authorized. Do
+not give the operator a prompt or ask them to diagnose a trial until the
+installed runtime is proven to match the current source and built artifact.
+Source-only tests, a successful package build, matching version strings, or an
+installed package that matches only a registry entry are insufficient. Verify
+the host's separate enabled/activation state when one exists; discovery,
+allowlisting, or `can_install` success does not prove that the host will launch
+the component. If the client caches tools or schemas, restart/reload it and
+verify the live surface before the trial. For a dependency owned by another
+repository or worktree,
+record the expected revision and the observed running executable/process
+provenance. Evidence from a different worktree, process, deployment, or earlier
+runtime instance does not transfer to the current trial. When a service cannot
+self-report a revision or artifact identity, run the bounded exact capability
+probe required by the slice and keep provenance `provisional`; do not infer
+freshness from a generic health/status endpoint. A stale-identity result is a
+Delivery/preflight failure, not model behavior evidence.
+
 A successful dry-run means only:
 
 - configuration is coherent;
@@ -298,6 +393,58 @@ It does not mean:
 - Claude-visible raw ticket data is approved;
 - customer replies are approved;
 - Help Center publication is approved.
+
+### Duplicate And Re-entrant Continuation Gate
+
+For a stateful or side-effecting tool/API continuation, define retry behavior
+before an installed-client or model trial. Assume the client may submit the
+same logical action twice before receiving the first response.
+
+The contract must state:
+
+- the idempotency or opaque operation/ref owner;
+- whether an exact logical duplicate replays the first result or returns a
+  deterministic no-op;
+- the TTL and memory/persistence bound for replay state;
+- that a duplicate cannot repeat the side effect;
+- that a conflicting replay remains invalid;
+- that a stale or conflicting prior ref cannot consume a newer unrelated
+  pending operation;
+- how equivalent accepted call shapes are normalized;
+- the deterministic test that sends the duplicate while the next workflow
+  state is active.
+
+Prompt instructions such as “call once” are not enforcement. A successful
+single-call fixture or smoke does not prove retry safety.
+
+### Representative Operational Outcome Gate
+
+Before closing a material slice, compare its validation evidence with the
+requested outcome and every parent incident or canary that the slice claims to
+resolve.
+
+Classify each validation result as one of:
+
+- deterministic fixture or contract evidence;
+- synthetic installed/runtime feasibility evidence;
+- approved sanitized representative-case evidence;
+- production-like or real operational evidence.
+
+Synthetic evidence may prove mechanics, safety, wiring, or feasibility. It
+does not prove that a named real-ticket failure, noisy input, deployment
+incident, or parent operational outcome is resolved.
+
+When a material slice is motivated by a named operational failure, its tracked
+plan must name a safe representative case, the supported entrypoint, fixed
+conditions, expected outcome, invariants, permitted corrections, and stop
+condition. Before closeout, run that case at the evidence level required by the
+claim. Use approved sanitized input rather than raw/private data unless a
+separate data-handling decision allows otherwise.
+
+If the representative case is unavailable, unsafe, fails, or is intentionally
+deferred, narrow the completion claim explicitly. Record the mechanism as
+feasible or locally verified and keep the parent outcome open; do not replace
+the missing evidence with additional synthetic successes.
 
 ### Operator Readiness
 
@@ -356,6 +503,30 @@ Record closeout with safe enum/status values only:
 - needs_scope_change.
 
 Do not store raw prompts, raw outputs, ticket data, snippets, chunks, or private identifiers in closeout logs.
+
+### Version-Control And Artifact Closeout Gate
+
+Pre-commit tests, package builds, and installed smokes may be used for
+implementation feedback and feasibility. They do not by themselves complete a
+repository slice.
+
+Before declaring a material slice delivered, promoted, or ready for the next
+material slice:
+
+- isolate the intended diff from unrelated, deferred, and user-owned work;
+- review the staged content against the tracked slice boundary;
+- run the required gates against that isolated content;
+- create the coherent slice commit, or record an explicit operator-approved
+  no-commit/defer disposition;
+- map the built and installed artifact evidence to that commit's content, or
+  rebuild and repeat the required identity/preflight gate from the commit;
+- record the commit, validation, artifact identity, and remaining risks in the
+  closeout.
+
+An installed artifact built from an uncommitted or mixed worktree is
+provisional evidence. It may demonstrate the behavior under test, but the
+slice remains open until its source boundary and Git traceability are closed;
+the accepted artifact must be traceable to the committed content.
 
 ## Documentation Updates
 

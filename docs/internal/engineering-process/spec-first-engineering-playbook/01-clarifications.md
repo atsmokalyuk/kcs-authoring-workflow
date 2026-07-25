@@ -103,6 +103,48 @@ select, iterate, reject, authorize Delivery, or revoke authorization.
 Choose the lightest sufficient method: repository analysis, reference research,
 cognitive walkthrough, low-fidelity comparison, bounded operator trial,
 isolated feasibility slice, or predeclared repeated model/RAG trial.
+Escalate evidence fidelity only for an unknown the cheaper method cannot
+resolve:
+
+```text
+static example or wireframe
+  -> clickable fixture without product/runtime installation
+  -> isolated component or protocol harness
+  -> installed-host smoke
+  -> production-like trial
+```
+
+Do not choose an installed extension, packaged client, service deployment, or
+runtime restart merely to evaluate labels, layout, information density, or
+decision flow. Use that heavier level only when the remaining decision depends
+on the real host's rendering, lifecycle, permissions, navigation, or tool
+routing. Record why each escalation is necessary and stop once the material
+decision is ready.
+
+When a material design depends on an unfamiliar interaction, an unproved host
+UI capability, or an operator-comfort/cognitive-load judgment, the acting agent
+must proactively offer the smallest safe pre-implementation UX evidence method.
+Do not wait for the operator to request a prototype after production
+implementation has started.
+
+Use a fixture-only walkthrough, wireframe, click-through, or isolated UX smoke
+when it can expose the real decision context and interaction at materially
+lower cost than production implementation. Predeclare:
+
+- the UX decision the operator will be able to make;
+- the representative safe fixture and host/runtime condition;
+- which interaction and information-density claims are exercised;
+- what remains simulated or unproved;
+- permitted presentation corrections and the evidence/time bound;
+- the stop condition.
+
+The operator evaluates fit, comfort, and trade-offs from the evidence; the
+operator is not required to invent the test method. A successful UX smoke may
+move Design to selection or iteration. It does not select the production
+design, authorize production Delivery, or prove repeated-use comfort. Record a
+skip only when the interaction is materially unchanged and already proven, or
+when the choice is small, familiar, reversible, and has no meaningful
+cognitive-load or host-capability uncertainty.
 
 When a design depends on an existing runtime, service, tool, or API, identify
 the exact endpoint, mode, request, response shape, and operating condition that

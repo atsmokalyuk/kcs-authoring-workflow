@@ -331,3 +331,156 @@ def test_exact_integration_feasibility_gate_is_tracked() -> None:
     assert "One successful smoke proves only" in clarifications
     assert "KCS14-PROMO-015" in promotions
     assert "ENG-PORT-DISC-006" in portability
+
+
+def test_installed_runtime_identity_gate_is_tracked() -> None:
+    process_root = ROOT / "docs/internal/engineering-process"
+    checklist = (
+        process_root / "spec-first-engineering-playbook/06-review-checklist.md"
+    ).read_text(encoding="utf-8")
+    feature_playbook = (process_root / "feature-engineering-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    entrypoints = (process_root / "tool-entrypoints.md").read_text(encoding="utf-8")
+    portability = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+
+    for text in (checklist, feature_playbook):
+        assert "installed-client" in text
+        assert "operator trial" in text
+        assert "built artifact" in text
+        assert "installed files" in text
+        assert "registry/cache" in text or "cache/registry" in text
+        assert "activation state" in text
+        assert "deterministic installed-runtime preflight" in text
+        assert "dependency" in text
+        assert "exact" in text
+        assert "generic health" in text
+    assert "installed-artifact identity" in entrypoints
+    assert "installed_artifact_identity_stale" in entrypoints
+    assert "live_runtime_preflight_failed" in entrypoints
+    assert "Static artifact identity is not" in entrypoints
+    assert "ENG-PORT-DEL-009" in portability
+    assert "another worktree/process/deployment does not transfer" in portability
+
+
+def test_duplicate_continuation_gate_is_tracked() -> None:
+    process_root = ROOT / "docs/internal/engineering-process"
+    checklist = (
+        process_root / "spec-first-engineering-playbook/06-review-checklist.md"
+    ).read_text(encoding="utf-8")
+    feature_playbook = (process_root / "feature-engineering-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    portability = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+
+    for text in (checklist, feature_playbook, portability):
+        assert "side-effecting" in text
+        assert "duplicate" in text
+        assert "replay" in text
+        assert "newer" in text
+        assert "pending" in text
+    assert "## Duplicate And Re-entrant Continuation Gate" in feature_playbook
+    assert "Prompt instructions" in feature_playbook
+    assert "ENG-PORT-DEL-010" in portability
+
+
+def test_end_to_end_enforcement_reachability_gate_is_tracked() -> None:
+    process_root = ROOT / "docs/internal/engineering-process"
+    feature_playbook = (process_root / "feature-engineering-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    checklist = (
+        process_root / "spec-first-engineering-playbook/06-review-checklist.md"
+    ).read_text(encoding="utf-8")
+    portability = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "## End-to-End Enforcement Reachability Gate" in feature_playbook
+    for text in (feature_playbook, checklist, portability):
+        assert "model-controlled tool call" in text
+        assert "first deterministic" in text
+        assert "entrypoint" in text
+        assert "prohibited outcome" in text
+    assert "restrict and document the supported entrypoint" in feature_playbook
+    assert "best-effort" in feature_playbook
+    assert "ENG-PORT-DES-011" in portability
+
+
+def test_preimplementation_ux_uncertainty_gate_is_tracked() -> None:
+    process_root = ROOT / "docs/internal/engineering-process"
+    clarifications = (
+        process_root / "spec-first-engineering-playbook/01-clarifications.md"
+    ).read_text(encoding="utf-8")
+    feature_playbook = (process_root / "feature-engineering-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    review_checklist = (
+        process_root / "spec-first-engineering-playbook/06-review-checklist.md"
+    ).read_text(encoding="utf-8")
+    portability = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+
+    for text in (clarifications, feature_playbook, review_checklist):
+        assert "fixture-only" in text
+        assert "UX smoke" in text
+        assert "comfort" in text
+    assert "Do not wait for the operator" in clarifications
+    assert "clickable fixture without product/runtime installation" in clarifications
+    assert "progressive evidence ladder" in feature_playbook
+    assert "installed-host smoke" in feature_playbook
+    assert "cheapest fidelity" in review_checklist
+    assert "does not select the production design" in feature_playbook
+    assert "ENG-PORT-DES-012" in portability
+
+
+def test_representative_operational_outcome_gate_is_tracked() -> None:
+    process_root = ROOT / "docs/internal/engineering-process"
+    feature_playbook = (process_root / "feature-engineering-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    checklist = (
+        process_root / "spec-first-engineering-playbook/06-review-checklist.md"
+    ).read_text(encoding="utf-8")
+    portability = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "### Representative Operational Outcome Gate" in feature_playbook
+    for text in (feature_playbook, checklist, portability):
+        assert "synthetic" in text
+        assert "approved sanitized" in text
+        assert "representative" in text
+        assert "parent" in text
+        assert "operational" in text
+    assert "keep the parent outcome open" in feature_playbook
+    assert "ENG-PORT-DEL-012" in portability
+
+
+def test_version_control_and_artifact_closeout_gate_is_tracked() -> None:
+    process_root = ROOT / "docs/internal/engineering-process"
+    feature_playbook = (process_root / "feature-engineering-playbook.md").read_text(
+        encoding="utf-8"
+    )
+    checklist = (
+        process_root / "spec-first-engineering-playbook/06-review-checklist.md"
+    ).read_text(encoding="utf-8")
+    portability = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "### Version-Control And Artifact Closeout Gate" in feature_playbook
+    for text in (feature_playbook, checklist, portability):
+        assert "intended diff" in text
+        assert "committed" in text
+        assert "built" in text
+        assert "installed" in text
+        assert "traceable" in text
+    assert "mixed worktree" in feature_playbook
+    assert "provisional evidence" in feature_playbook
+    assert "ENG-PORT-DEL-011" in portability

@@ -12,8 +12,9 @@ Completed KCS-15 behavior slice: KCS-15.1 PLESK_INFO Trigger Parity
 Completed KCS-15 enabling slice: KCS-15.2a Local Public RAG Adapter
 Completed KCS-15 enabling slice: KCS-15.2b1 Bounded Public Comparison Evidence
 Completed KCS-15.2b2 phase: Phase A Exact Public Article Context
-KCS-15.2b2 Phase B Delivery state: authorized; deterministic implementation
-and the installed Desktop/model feasibility smoke remain before closeout
+KCS-15.2b2 deterministic implementation: committed; operational closeout open
+KCS-15.2b2 Phase C in-chat UI: host-blocked and deferred pending a direct
+operator-controlled launcher
 ```
 
 Historical KCS-1 guidance remains useful only as an early-slice boundary:
@@ -119,9 +120,12 @@ evidence directly.
     slice with fail-closed readiness and metadata-only candidates;
   - KCS-15.2b1 provider-neutral bounded public comparison evidence is complete;
     it did not change Desktop or decision behavior;
-  - KCS-15.2b2 operator-confirmed comparison target UX is selected; Phase A
-    exact public-article context is complete, while Phase B Desktop/operator
-    Delivery is authorized and its implementation/smoke closeout is active;
+  - KCS-15.2b2 exact public-article context is complete and the deterministic
+    local controlled-comparison implementation is committed; operational
+    closeout remains open because the approved sanitized super-noisy canary
+    stopped in upstream semantic submission before comparison; Phase C in-chat
+    UI is host-blocked and deferred pending a direct operator-controlled
+    launcher;
   - KCS-15.2b3 repeated comparison trials remain separately gated;
   - deterministic style/structure parity continues in KCS-15.3 and approved
     examples/model-mediated quality continue in KCS-15.4.
@@ -145,11 +149,13 @@ source-backed behavior slices. KCS-15.1 PLESK_INFO trigger parity is complete.
 KCS-15.2a local-public RAG adapter is complete as bounded enabling work.
 KCS-15.2b1 is complete only for the provider-neutral public comparison
 evidence contract, common acceptance gate, and local `/api/snippets`
-projection. The target UX for KCS-15.2b2 is selected. Phase A exact
-public-article context is complete, while Phase B Desktop/operator Delivery is
-authorized and its deterministic implementation plus installed model smoke
-remain before closeout. KCS-15.2 does not block independent
-KCS-15.3 style-parity work.
+projection. KCS-15.2b2 Phase A exact public-article context is complete and its
+deterministic local controlled-comparison implementation is committed.
+Operational closeout remains open because the approved sanitized super-noisy
+canary stopped in upstream semantic submission before comparison. Phase C
+in-chat UI is host-blocked and deferred because current Claude Desktop has no
+host-owned direct launcher for the first tool transition. KCS-15.2 does not
+block independent KCS-15.3 style-parity work.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening
 

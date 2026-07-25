@@ -42,8 +42,12 @@ evidence contract and one local provider adapter needed by the later workflow.
 - The token budget is at most 1,200 whitespace-delimited tokens, matching the
   current runtime rule but recomputed by the core acceptance gate; each excerpt
   is at most 6,000 characters and total excerpt text is at most 24,000.
-- Only approved public `support.plesk.com`, `kb.plesk.com`, and
-  `docs.plesk.com` HTTPS URLs are accepted.
+- Generic public RAG metadata search may accept approved
+  `support.plesk.com`, `kb.plesk.com`, and `docs.plesk.com` HTTPS URLs.
+- The reuse-comparison evidence contract accepts only reusable
+  `support.plesk.com` and legacy `kb.plesk.com` article URLs.
+  `docs.plesk.com` manuals, release notes, and changelogs may support research,
+  but cannot become operator `reuse` or `update` candidates.
 - Query input is bounded already sanitized symptom text and is sent with
   `query_source=final_clean_ticket`.
 - A priority-bearing explicit article is moved ahead of RAG-ranked candidates
@@ -129,7 +133,7 @@ second success confirms implemented compatibility, still not stability.
 | --- | --- |
 | The contract is independent of Claude/Desktop and local/remote RAG hosting. | deterministic contract tests and architecture review |
 | The local adapter sends the exact bounded `/api/snippets` request using `final_clean_ticket` query provenance. | deterministic transport fixture plus exact-path operational smoke |
-| Only one to three allowlisted public articles and bounded cited excerpts are projected. | deterministic positive, bounds, and forbidden-field tests |
+| Only one to three reusable Plesk Support/KB articles and bounded cited excerpts are projected; docs pages are filtered without changing generic RAG search. | deterministic positive, docs-filter, generic-search compatibility, bounds, and forbidden-field tests |
 | Provider-declared token counts match independently recomputed whitespace-token counts. | deterministic under-reporting and aggregate-bound tests |
 | An accepted helpful/partially-helpful priority reference outranks RAG-only candidates; absent explicit context blocks silent substitution. | deterministic priority and missing-context tests plus caller-prerequisite review |
 | When explicit URL and source ID are both present, both identify the same returned article. | deterministic conflicting-identifier test |
@@ -189,6 +193,12 @@ All four were corrected and received deterministic regression tests. The
 repeat review found no remaining issue and approved KCS-15.2b1. A final citation
 shape check also ensures a provider cannot append arbitrary text to the
 generated title/section/public-URL citation.
+
+Phase B operational use later exposed one additional contract correction:
+`docs.plesk.com` pages are public sources but are not reusable KCS articles.
+The core comparison boundary and local adapter therefore exclude them from
+comparison candidates while the generic metadata search remains compatible
+with the broader public corpus.
 
 ## Compact Ousterhout closeout
 

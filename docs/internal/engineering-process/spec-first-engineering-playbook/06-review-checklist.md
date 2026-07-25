@@ -13,13 +13,40 @@ Use this checklist for code, docs, contracts, and demo artifacts.
   architecture was selected?
 - Does the plan distinguish nominal behavior from demonstrated operational
   behavior and identify the intended entrypoint/UX?
+- For every claimed end-to-end invariant, does the design map each supported
+  entrypoint through user/app/model-controlled transitions to the first deterministic
+  gate and identify every pre-gate or bypass path, including direct model
+  responses and alternative host tools that can produce the same prohibited
+  outcome?
+- Is a model-controlled tool call treated as optional routing rather than as
+  enforcement, and is any user-controlled prompt/command still classified as
+  model-mediated unless it directly invokes the deterministic owner?
 - Are material facts marked as confirmed, provisional, unknown, or rejected?
 - Was only the smallest material question batch presented to the operator?
 - Did the agent resolve repository-, research-, and feasibility-owned unknowns
   before asking the operator to diagnose uncertainty?
+- When interaction, host UI capability, operator comfort, or cognitive load was
+  materially uncertain, did the agent proactively offer the smallest safe
+  fixture-only walkthrough or UX smoke before production implementation?
+- Did UX evidence start at the cheapest fidelity that could answer the
+  decision, with packaging, activation, restart, deployment, or installed-host
+  work used only for a remaining host-dependent claim?
+- If that UX evidence method was skipped, is there current evidence that the
+  interaction is unchanged and proven, or small, familiar, reversible, and
+  free of material comfort/host-capability uncertainty?
 - If an existing runtime/API is required, was its exact endpoint, mode,
   response shape, and operating condition proven by fresh evidence or a
   bounded pre-implementation smoke rather than a fixture or adjacent endpoint?
+- Before an installed-client/model/operator trial, was current source matched
+  to the built artifact, installed files, client registry/cache, explicit
+  enabled/activation state, reloaded runtime, every dependency service's
+  observed process/revision and config-data identity, its exact required
+  capability on the same live instance, and the deterministic installed-runtime
+  preflight?
+- For every stateful or side-effecting continuation, is duplicate/re-entrant
+  submission behavior explicit and deterministic: one side effect, stable
+  replay/no-op behavior, bounded replay state, conflicting replay rejection,
+  and no stale ref consuming a newer pending operation?
 - Are outcome agreement, design selection, and Delivery authorization recorded
   independently?
 - If an operator decision was requested, were the exact decision, visible
@@ -31,6 +58,15 @@ Use this checklist for code, docs, contracts, and demo artifacts.
 - Are tests added or updated where behavior changed?
 - Does every observable acceptance criterion map to a deterministic,
   bounded-model, or named human-review gate?
+- If the slice claims to resolve a parent incident, noisy input, or real
+  operational failure, does the plan name the approved sanitized
+  representative case and evidence level required to prove that outcome?
+- Are fixture, synthetic feasibility, representative-case, and real
+  operational evidence classified separately, without using synthetic success
+  to close a stronger operational claim?
+- Before Delivery closeout, is the intended diff isolated and committed (or
+  explicitly deferred with operator approval), and is built/installed evidence
+  traceable to that committed content?
 - Does README or related documentation need an update?
 - Does the change avoid unsupported version, model, command, or API claims?
 
@@ -90,13 +126,41 @@ Blockers:
 - raw/private/runtime artifact touch;
 - README or docs claim that contradicts actual behavior;
 - architecture drift that moves decisions out of deterministic Python code;
+- an end-to-end invariant whose supported entrypoint can produce a prohibited outcome
+  before or around its first deterministic gate;
+- a model-controlled tool call, prompt instruction, or successful model run
+  was treated as proof that the deterministic enforcement path is mandatory;
 - Delivery started while outcome, design, readiness, or authorization remained
   unconfirmed;
 - design selection was treated as Delivery authorization;
 - an enabling-slice success was treated as parent UX or integration approval;
 - substantial implementation started before an unproved exact runtime/API
   dependency received its bounded operational feasibility check;
+- an installed-client/model/operator trial was handed to the operator before
+  source, built artifact, installed files/cache, explicit enabled/activation
+  state, reloaded runtime, and deterministic installed-runtime preflight had
+  matching identity evidence;
+- operational evidence from a different dependency worktree, process,
+  deployment, or earlier runtime instance was treated as proof for the current
+  integration trial, or a generic health endpoint was treated as exact
+  capability/provenance evidence;
+- a stateful or side-effecting continuation can be submitted twice by the
+  client/model and either repeat the side effect or invalidate a newer pending
+  operation because no deterministic duplicate/replay contract was tested;
+- a slice motivated by a named real operational failure was closed from
+  fixture or synthetic feasibility evidence without the planned approved
+  sanitized representative-case gate, or without narrowing the completion
+  claim;
+- a material repository slice was declared delivered or used to start the
+  next material slice while its intended diff remained uncommitted, mixed with
+  deferred work, or its installed artifact was not traceable to the committed
+  content;
 - an operator decision was requested without the context needed to judge fit;
+- production UI implementation started while a materially unfamiliar
+  interaction, host UI capability, operator-comfort, or cognitive-load unknown
+  could have been resolved by a smaller fixture-only walkthrough or UX smoke;
+- a successful UX smoke was treated as production design selection, Delivery
+  authorization, or repeated-use comfort evidence;
 - a triggered Ousterhout review is missing or has an unresolved `revise` /
   `reject` verdict.
 

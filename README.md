@@ -532,6 +532,18 @@ For the installed wrapper, expect `registry_cache_checked=true` and
 but it verifies the server-side choice contract, cache alignment, and bundle
 artifacts without manual UI work.
 
+The manual-prompt and GUI-send entrypoints use two separate fail-closed
+preflights. Static artifact identity compares current source, the built MCPB,
+the exact installed extension file set, and Claude Desktop's registry cache;
+expect `installed_artifact_identity_checked=true` and
+`installed_artifact_identity_ok=true`. Rebuild and reinstall when it reports
+`installed_artifact_identity_stale`. Live preflight then requires a KCS
+Authoring server start after the install and a bounded exact-article request
+against the same active loopback RAG instance; expect
+`live_runtime_preflight_checked=true` and `live_runtime_preflight_ok=true`.
+When the RAG service cannot self-report its source revision, this exact
+capability proof leaves dependency provenance explicitly provisional.
+
 The Desktop authoring refactor target and delivery slices are tracked in
 `docs/internal/kcs-desktop-authoring-refactor-plan.md`.
 

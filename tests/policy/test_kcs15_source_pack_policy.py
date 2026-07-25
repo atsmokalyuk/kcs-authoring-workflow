@@ -176,7 +176,11 @@ def test_kcs15_tracking_separates_rag_enabling_from_parent_delivery() -> None:
     assert "Completed KCS-15 enabling slice: KCS-15.2a" in roadmap
     assert "Completed KCS-15 enabling slice: KCS-15.2b1" in roadmap
     assert "Completed KCS-15.2b2 phase: Phase A" in roadmap
-    assert "KCS-15.2b2 Phase B Delivery state: authorized" in roadmap
+    assert (
+        "KCS-15.2b2 deterministic implementation: committed; "
+        "operational closeout open"
+    ) in roadmap
+    assert "super-noisy canary" in roadmap
     assert "KCS-15.2b3 repeated comparison trials remain separately gated" in roadmap
     assert "`KCS-15.3`" in matrix
     assert "`KCS-15.4`" in matrix

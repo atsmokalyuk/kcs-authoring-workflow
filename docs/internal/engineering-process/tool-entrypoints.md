@@ -62,7 +62,7 @@ They do not prove full workflow behavior.
 | Cowork plugin build script | `uv run python scripts/build_kcs_cowork_plugin.py --help` | deterministic | Help-only check; does not build package. |
 | MCPB stdio smoke script | `uv run python scripts/smoke_kcs_mcpb_stdio.py --help` | deterministic | Help-only check; actual smoke is a separate validation step. |
 | Desktop log checker | `uv run python scripts/check_claude_kcs_desktop_log.py --help` | deterministic | Help-only check; actual log check needs local Desktop logs. |
-| Desktop UI smoke script | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --help` | deterministic | Help-only check; GUI send is manual/UI. |
+| Desktop UI smoke script | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --help` | deterministic | Help-only check; prompt print/send fails closed when source, built package, installed files, or Desktop registry identity is stale. GUI send remains manual/UI. |
 | Semantic projection rebaseline | `uv run python scripts/rebaseline_semantic_issue_projection.py --help` | deterministic | Help-only check; model execution and response capture remain manual/local-state. |
 | Langfuse synthetic rebaseline export | `uv run python scripts/kcs14_langfuse_rebaseline.py --help` | deterministic | Help-only check; export requires the separately managed local Langfuse service and pinned SDK command below. |
 | Complexity measurement | `uv run --extra dev python scripts/measure_complexity.py --help` | deterministic | Help-only check; actual measurement is advisory and listed above. |
@@ -79,8 +79,15 @@ See `README.md` for operator-facing caveats and manual Desktop steps.
 | Run source/installed stdio smoke | `uv run python scripts/smoke_kcs_mcpb_stdio.py` | deterministic-with-local-runtime | Requires local Node/uv wrapper availability. |
 | Check Desktop MCP logs | `uv run python scripts/check_claude_kcs_desktop_log.py` | manual/local-state | Requires local Claude Desktop log state. |
 | Check macOS GUI accessibility | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --check-accessibility` | manual/UI | Checks local GUI permission only. |
-| Print manual Desktop prompt | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --print-manual-prompt --prompt-kind raw-ticket` | manual/UI | Produces a synthetic prompt for manual Desktop send. |
-| Send Desktop UI smoke | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --send --prompt-kind single` | manual/UI | Uses macOS GUI automation and may be rate-limited. |
+| Print manual Desktop prompt | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --print-manual-prompt --prompt-kind raw-ticket` | manual/UI | Produces a synthetic prompt only after static installed-artifact identity and live Desktop/RAG exact-capability preflights pass. |
+| Send Desktop UI smoke | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --send --prompt-kind single` | manual/UI | Uses macOS GUI automation and may be rate-limited; fails before send when installed-artifact identity, Desktop reload, or exact live RAG capability is unproven. |
+
+Treat `installed_artifact_identity_stale` and `live_runtime_preflight_failed`
+as autonomous Delivery/preflight corrections: rebuild/reinstall through the
+supported installer, reload Claude Desktop, verify the exact required
+capability on the active dependency instance, rerun the installed stdio smoke,
+and only then expose a prompt to the operator. Static artifact identity is not
+reported as complete runtime provenance.
 
 ## Controlled Authoring Skeleton
 
