@@ -196,8 +196,9 @@ def confirm_reuse_comparison_input_schema() -> JsonDict:
             "candidate_ref": {
                 "type": "string",
                 "description": (
-                    "Required only for reuse or update; copy one opaque "
-                    "candidate_ref from the pending comparison."
+                    "Required for reuse or update; copy one opaque candidate_ref "
+                    "from the pending comparison. Omit for none_fit or "
+                    "need_more_evidence."
                 ),
             },
             "comparison_ref": {
@@ -497,6 +498,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "submit_arguments": {"type": "object"},
     "submit_tool": {"type": "string"},
     "task": {"type": "string"},
+    "terminal_cause_debug_code": {"type": "string"},
     "terminal_blocked_count": {"type": "integer"},
     "tool_count": {"type": "integer"},
     "tools": {"type": "array"},

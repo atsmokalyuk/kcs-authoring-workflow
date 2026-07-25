@@ -161,6 +161,38 @@ class DesktopAuthoringTools:
             draft_arguments["debug"] = arguments["debug"]
         return self._draft_article_tool.draft_article(draft_arguments)
 
+    def prepare_ticket_reuse_comparison(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        """Start ticket comparison without exposing an authoring-capable path."""
+
+        try:
+            _require_args(
+                arguments,
+                frozenset({"ticket_ref"}),
+                required=frozenset({"ticket_ref"}),
+            )
+        except McpArgumentError:
+            return {
+                "auto_publish_allowed": False,
+                "debug_code": "draft_article_args_invalid",
+                "draft_generated": False,
+                "failure_stage": "input_validation",
+                "manual_draft_allowed": False,
+                "network_calls": False,
+                "ok": False,
+                "pipeline_ok": False,
+                "public_output_approved": False,
+                "ready_for_real_ticket_use": False,
+                "result_kind": "draft_article_authoring",
+                "reviewer_bundle_written": False,
+                "schema_version": self._schema_version,
+                "validation_ok": False,
+                "writes_files": False,
+            }
+        return self._draft_article_tool.prepare_ticket_reuse_comparison(arguments)
+
     def confirm_reuse_comparison(
         self,
         arguments: Mapping[str, Any],
@@ -209,6 +241,7 @@ class DesktopAuthoringTools:
 
     def submit_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
         correction: JsonDict | None = None
+        terminal_cause_debug_code: str | None = None
         try:
             _require_semantic_submit_args(arguments)
             return self._draft_article_tool.submit_semantic_review(arguments)
@@ -226,6 +259,7 @@ class DesktopAuthoringTools:
         except SemanticReviewSubmissionInvalidError as exc:
             correction = exc.correction
             debug_code = exc.debug_code
+            terminal_cause_debug_code = exc.terminal_cause_debug_code
         except (ContractValidationError, McpArgumentError) as exc:
             _terminalize_invalid_semantic_submit_shape(
                 self._draft_workflow,
@@ -236,6 +270,7 @@ class DesktopAuthoringTools:
             correction=correction,
             debug_code=debug_code,
             schema_version=self._schema_version,
+            terminal_cause_debug_code=terminal_cause_debug_code,
         )
 
     def support_get_behavior_instructions(

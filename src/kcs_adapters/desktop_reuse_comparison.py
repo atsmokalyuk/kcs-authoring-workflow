@@ -18,6 +18,7 @@ from kcs_core.reuse_comparison import (
     ReuseComparisonEvidenceProvider,
     ReuseComparisonEvidenceRequest,
     ensure_valid_reuse_comparison_evidence,
+    is_reusable_kcs_article_url,
     request_from_symptoms,
 )
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
@@ -238,6 +239,8 @@ def reuse_comparison_required_result(
         "operator_choice_confirmed": False,
         "operator_prompt": (
             "Compare the accepted ticket facts with the cited public excerpts. "
+            "Display every candidate title as a clickable public_url link and "
+            "keep its candidate_ref visible. "
             "Present one concise coverage and missing-knowledge recommendation, "
             "then ask exactly one operator question using the allowed outcomes."
         ),
@@ -472,7 +475,7 @@ def confirmed_helpful_public_article(
     for text in _candidate_text_values(candidate):
         if text not in approved_summary_text:
             continue
-        for match in _PUBLIC_ARTICLE_URL_RE.finditer(text):
+        for match, public_url in _reusable_article_matches(text):
             start = max(0, match.start() - 180)
             end = min(len(text), match.end() + 180)
             context = text[start:end]
@@ -488,8 +491,19 @@ def confirmed_helpful_public_article(
                 + context[local_end:]
             )
             if _CONFIRMED_OUTCOME_RE.search(marked_context):
-                return PublicArticleReference(public_url=match.group(0).rstrip(".,;)"))
+                return PublicArticleReference(public_url=public_url)
     return None
+
+
+def _reusable_article_matches(
+    text: str,
+) -> tuple[tuple[re.Match[str], str], ...]:
+    matches: list[tuple[re.Match[str], str]] = []
+    for match in _PUBLIC_ARTICLE_URL_RE.finditer(text):
+        public_url = match.group(0).rstrip(".,;)")
+        if is_reusable_kcs_article_url(public_url):
+            matches.append((match, public_url))
+    return tuple(matches)
 
 
 def has_public_article_url(value: str) -> bool:
@@ -505,7 +519,10 @@ def _selected_comparison_candidate(
     candidate_ref: object,
 ) -> ReuseComparisonCandidate | None:
     if outcome in {"none_fit", "need_more_evidence"}:
-        if candidate_ref is not None:
+        if candidate_ref is not None and not _is_displayed_candidate_ref(
+            candidates,
+            candidate_ref,
+        ):
             raise ReuseComparisonInvalidError
         return None
     if not isinstance(candidate_ref, str):
@@ -514,6 +531,16 @@ def _selected_comparison_candidate(
         if candidate_ref == f"comparison-candidate-{index + 1:03d}":
             return candidate
     raise ReuseComparisonInvalidError
+
+
+def _is_displayed_candidate_ref(
+    candidates: Sequence[ReuseComparisonCandidate],
+    candidate_ref: object,
+) -> bool:
+    return isinstance(candidate_ref, str) and any(
+        candidate_ref == f"comparison-candidate-{index + 1:03d}"
+        for index in range(len(candidates))
+    )
 
 
 def _candidate_text_values(candidate: Mapping[str, object]) -> tuple[str, ...]:

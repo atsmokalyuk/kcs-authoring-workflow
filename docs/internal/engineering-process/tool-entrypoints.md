@@ -56,6 +56,7 @@ They do not prove full workflow behavior.
 | Tool | Command | Classification | Notes |
 | --- | --- | --- | --- |
 | KCS core CLI | `uv run kcs-core --help` | deterministic | Console entrypoint from `pyproject.toml`. |
+| Controlled authoring CLI | `uv run kcs-controlled-draft --help` | deterministic | Help-only check for the direct operator-controlled comparison skeleton. |
 | Smoke accounting CLI | `uv run kcs-smoke-account --help` | deterministic | Console entrypoint from `pyproject.toml`. |
 | MCPB build script | `uv run python scripts/build_kcs_mcpb.py --help` | deterministic | Help-only check; does not build package. |
 | Cowork plugin build script | `uv run python scripts/build_kcs_cowork_plugin.py --help` | deterministic | Help-only check; does not build package. |
@@ -80,6 +81,47 @@ See `README.md` for operator-facing caveats and manual Desktop steps.
 | Check macOS GUI accessibility | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --check-accessibility` | manual/UI | Checks local GUI permission only. |
 | Print manual Desktop prompt | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --print-manual-prompt --prompt-kind raw-ticket` | manual/UI | Produces a synthetic prompt for manual Desktop send. |
 | Send Desktop UI smoke | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --send --prompt-kind single` | manual/UI | Uses macOS GUI automation and may be rate-limited. |
+
+## Controlled Authoring Skeleton
+
+Use this entrypoint only with an existing approved local `ticket_ref`:
+
+```text
+uv run kcs-controlled-draft <ticket_ref>
+```
+
+Classification: manual/local-state with deterministic entry and interactive
+operator confirmation.
+
+The command creates the existing Desktop adapter and approved local public RAG
+provider in one process, calls the draft comparison gate directly, displays
+only bounded accepted facts and eligible public article excerpts, and then
+reads one closed-enum outcome from the local terminal menu. It has no
+`--outcome` argument: the choice is collected only after the comparison is
+shown. `reuse` and `update` additionally require selection of one displayed
+article. Normal execution requires interactive stdin and stdout before the
+adapter is created; piped or redirected outcome input fails closed.
+
+Use the write-incapable first-transition smoke when only live provider
+feasibility is required:
+
+```text
+uv run kcs-controlled-draft --preflight <ticket_ref>
+```
+
+Preflight directly collects and renders the comparison, then exits without
+reading or submitting an outcome.
+
+The first workflow result must be `reuse_comparison_required` or fail-closed
+`reuse_comparison_blocked`. A draft, reviewer bundle, file write, or unexpected
+result before the menu is structurally unavailable through the controller's
+comparison-only begin port and is also treated as an invariant failure. Only
+operator-confirmed `none_fit` may continue into the existing reviewer-only
+authoring path.
+
+This is an enforcement skeleton for KCS-15.2b2, not the final Desktop UX.
+Generic Claude chat remains model-routed and is outside this deterministic
+entrypoint claim.
 
 ## Semantic Projection Rebaseline
 

@@ -23,6 +23,8 @@ from kcs_core.reuse_comparison import (
     ReuseComparisonEvidenceRequest,
     ReuseComparisonExcerpt,
     ensure_valid_reuse_comparison_evidence,
+    is_reusable_kcs_article_candidate,
+    reusable_kcs_article_key,
 )
 from kcs_core.sanitizer import ensure_safe_sanitized_payload
 
@@ -763,11 +765,11 @@ def _combined_explicit_comparison_evidence(
     exact_candidate: ReuseComparisonCandidate | None,
     search_candidates: tuple[ReuseComparisonCandidate, ...],
 ) -> ReuseComparisonEvidence:
-    explicit_key = _public_article_key(explicit_article.public_url)
+    explicit_key = reusable_kcs_article_key(explicit_article.public_url)
     filtered_search = tuple(
         candidate
         for candidate in search_candidates
-        if _public_article_key(candidate.public_url) != explicit_key
+        if reusable_kcs_article_key(candidate.public_url) != explicit_key
     )
     ordered = (
         ((exact_candidate,) if exact_candidate is not None else ())
@@ -988,8 +990,16 @@ def _comparison_article_groups(
 ) -> list[list[_ParsedComparisonExcerpt]]:
     grouped: dict[str, list[_ParsedComparisonExcerpt]] = {}
     for excerpt in excerpts:
+        if not is_reusable_kcs_article_candidate(
+            public_url=excerpt.public_url,
+            title=excerpt.title,
+        ):
+            continue
         grouped.setdefault(excerpt.source_doc_id, []).append(excerpt)
-    groups = sorted(grouped.values(), key=lambda values: values[0].candidate_rank)
+    groups = sorted(
+        grouped.values(),
+        key=lambda values: min(value.candidate_rank for value in values),
+    )
     for values in groups:
         _validate_comparison_article_group(values)
     return groups
@@ -1013,7 +1023,6 @@ def _validate_comparison_article_group(
         raise ContractValidationError("local public RAG comparison response invalid")
     first = values[0]
     expected = (
-        first.candidate_rank,
         first.source_type,
         first.title,
         first.public_url,
@@ -1022,7 +1031,6 @@ def _validate_comparison_article_group(
     )
     if any(
         (
-            value.candidate_rank,
             value.source_type,
             value.title,
             value.public_url,
@@ -1052,9 +1060,9 @@ def _matches_explicit_article(
     candidate: _ParsedComparisonExcerpt,
     explicit_article: PublicArticleReference,
 ) -> bool:
-    url_matches = _public_article_key(candidate.public_url) == _public_article_key(
-        explicit_article.public_url
-    )
+    url_matches = reusable_kcs_article_key(
+        candidate.public_url
+    ) == reusable_kcs_article_key(explicit_article.public_url)
     if explicit_article.source_doc_id is None:
         return url_matches
     return url_matches and candidate.source_doc_id == explicit_article.source_doc_id
@@ -1167,18 +1175,6 @@ def _validated_explicit_article(
         public_url=public_url,
         source_doc_id=source_doc_id,
     )
-
-
-def _public_article_key(value: str) -> str:
-    parsed = urlparse(value)
-    path = parsed.path.rstrip("/")
-    if parsed.hostname == "support.plesk.com" and "/articles/" in path:
-        article_part = path.split("/articles/", 1)[1].split("/", 1)[0]
-        return f"support.plesk.com/articles/{article_part.split('-', 1)[0]}"
-    if parsed.hostname == "kb.plesk.com":
-        article_part = path.strip("/").split("/", 1)[0]
-        return f"kb.plesk.com/{article_part}"
-    return f"{parsed.hostname}{path}"
 
 
 def _bounded_public_url_string(value: object) -> str:

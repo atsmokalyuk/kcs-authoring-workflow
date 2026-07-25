@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+import time
 from collections.abc import Callable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -58,6 +60,9 @@ _LIKELY_KCS_MATERIAL_RE = re.compile(
 _DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS = claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE)
 _CONFIRM_REUSE_COMPARISON_DESKTOP_TOOL_ALIAS = claude_desktop_tool_alias(
     TOOL_CONFIRM_REUSE_COMPARISON
+)
+_CANDIDATE_FREE_COMPARISON_OUTCOMES = frozenset(
+    {"need_more_evidence", "none_fit"}
 )
 
 
@@ -129,6 +134,16 @@ class _DraftArticlePrimaryCallShape:
         )
 
 
+@dataclass(frozen=True)
+class _ReuseComparisonReplay:
+    comparison_ref: str
+    outcome: str
+    candidate_ref: str | None
+    allowed_candidate_refs: frozenset[str]
+    result: JsonDict
+    expires_at: float
+
+
 class DesktopDraftArticleTool:
     """Own the Desktop-visible kcs_draft_article state machine."""
 
@@ -146,6 +161,7 @@ class DesktopDraftArticleTool:
         self._schema_version = schema_version
         self._author_approved_summary = author_approved_summary
         self._author_ticket = author_ticket
+        self._last_reuse_comparison_replay: _ReuseComparisonReplay | None = None
 
     def draft_article(self, arguments: Mapping[str, Any]) -> JsonDict:
         try:
@@ -176,6 +192,28 @@ class DesktopDraftArticleTool:
         }:
             result["result_kind"] = "draft_article_authoring"
         return result
+
+    def prepare_ticket_reuse_comparison(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        """Reach the ticket comparison gate through a write-incapable path."""
+
+        try:
+            return self._draft_article_from_primary_ticket_ref(
+                arguments,
+                comparison_only=True,
+            )
+        except (
+            ContractValidationError,
+            McpArgumentError,
+            _desktop_draft_arguments.DraftArticleArgumentError,
+        ):
+            return _author_failure_result(
+                failure_stage="input_validation",
+                debug_code="draft_article_args_invalid",
+                schema_version=self._schema_version,
+            )
 
     def prepare_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
         """Return the bounded semantic-review packet for a pending ref."""
@@ -259,6 +297,16 @@ class DesktopDraftArticleTool:
     ) -> JsonDict:
         """Apply one operator-confirmed comparison outcome."""
 
+        replay = self._replayed_reuse_comparison(arguments)
+        if replay is not None:
+            return replay
+        pending_before_submit = self._draft_workflow.pending_reuse_comparison
+        if (
+            pending_before_submit is not None
+            and arguments.get("comparison_ref")
+            != pending_before_submit.comparison_ref
+        ):
+            raise _desktop_reuse_comparison.ReuseComparisonInvalidError
         submission = self._draft_workflow.submitted_reuse_comparison(
             comparison_ref=arguments.get("comparison_ref"),
             outcome=arguments.get("outcome"),
@@ -322,9 +370,79 @@ class DesktopDraftArticleTool:
             )
             if next_result is not None:
                 next_result["comparison_sequence_outcomes"] = completed
-                return next_result
+                return self._remember_reuse_comparison(
+                    arguments=arguments,
+                    pending=pending,
+                    result=next_result,
+                )
         result["comparison_sequence_outcomes"] = completed
         self._attach_remaining_selection_status(result)
+        return self._remember_reuse_comparison(
+            arguments=arguments,
+            pending=pending,
+            result=result,
+        )
+
+    def _replayed_reuse_comparison(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict | None:
+        replay = self._last_reuse_comparison_replay
+        if replay is None or arguments.get("comparison_ref") != replay.comparison_ref:
+            return None
+        if time.monotonic() > replay.expires_at:
+            self._last_reuse_comparison_replay = None
+            return None
+        outcome = arguments.get("outcome")
+        candidate_ref = arguments.get("candidate_ref")
+        if outcome != replay.outcome:
+            raise _desktop_reuse_comparison.ReuseComparisonInvalidError
+        if outcome in _CANDIDATE_FREE_COMPARISON_OUTCOMES:
+            if (
+                candidate_ref is not None
+                and (
+                    not isinstance(candidate_ref, str)
+                    or candidate_ref not in replay.allowed_candidate_refs
+                )
+            ):
+                raise _desktop_reuse_comparison.ReuseComparisonInvalidError
+        elif candidate_ref != replay.candidate_ref:
+            raise _desktop_reuse_comparison.ReuseComparisonInvalidError
+        return deepcopy(replay.result)
+
+    def _remember_reuse_comparison(
+        self,
+        *,
+        arguments: Mapping[str, Any],
+        pending: PendingReuseComparison,
+        result: JsonDict,
+    ) -> JsonDict:
+        outcome = str(arguments.get("outcome") or "")
+        requested_candidate_ref = arguments.get("candidate_ref")
+        candidate_ref = (
+            None
+            if outcome in _CANDIDATE_FREE_COMPARISON_OUTCOMES
+            else (
+                requested_candidate_ref
+                if isinstance(requested_candidate_ref, str)
+                else None
+            )
+        )
+        candidate_cards = _desktop_reuse_comparison.comparison_candidate_cards(
+            pending.evidence.candidates
+        )
+        self._last_reuse_comparison_replay = _ReuseComparisonReplay(
+            comparison_ref=pending.comparison_ref,
+            outcome=outcome,
+            candidate_ref=candidate_ref,
+            allowed_candidate_refs=frozenset(
+                str(card["candidate_ref"])
+                for card in candidate_cards
+                if isinstance(card.get("candidate_ref"), str)
+            ),
+            result=deepcopy(result),
+            expires_at=pending.expires_at,
+        )
         return result
 
     def _start_reuse_comparison(
@@ -449,6 +567,7 @@ class DesktopDraftArticleTool:
         *,
         ticket_ref_for_semantic_review: str | None = None,
         semantic_source_kind: str | None = None,
+        comparison_only: bool = False,
     ) -> JsonDict:
         approved_summary_text = _approved_summary_text_for_semantic_source(
             arguments,
@@ -497,20 +616,47 @@ class DesktopDraftArticleTool:
             selection_ref=None,
             debug=arguments.get("debug") is True,
         )
-        if comparison is not None:
-            return comparison
-        result = self._author_candidate(
+        return self._comparison_or_author_result(
+            comparison,
             candidate=candidates[0],
             approved_summary_text=approved_summary_text,
             approved_summary_source_kind=semantic_source_kind,
             debug=arguments.get("debug") is True,
+            comparison_only=comparison_only,
         )
-        _attach_candidate_control_metadata(result, candidates[0])
+
+    def _comparison_or_author_result(
+        self,
+        comparison: JsonDict | None,
+        *,
+        candidate: Mapping[str, Any],
+        approved_summary_text: str,
+        approved_summary_source_kind: str | None,
+        debug: bool,
+        comparison_only: bool,
+    ) -> JsonDict:
+        if comparison is not None:
+            return comparison
+        if comparison_only:
+            return _author_failure_result(
+                failure_stage="reuse_comparison",
+                debug_code="reuse_comparison_gate_unavailable",
+                schema_version=self._schema_version,
+            )
+        result = self._author_candidate(
+            candidate=candidate,
+            approved_summary_text=approved_summary_text,
+            approved_summary_source_kind=approved_summary_source_kind,
+            debug=debug,
+        )
+        _attach_candidate_control_metadata(result, candidate)
         return result
 
     def _draft_article_from_primary_ticket_ref(
         self,
         arguments: Mapping[str, Any],
+        *,
+        comparison_only: bool = False,
     ) -> JsonDict:
         ticket_ref = _ticket_ref_from_arguments(arguments)
         try:
@@ -525,44 +671,12 @@ class DesktopDraftArticleTool:
         if _desktop_draft_arguments.has_structured_approved_summary_item_input(
             approved_arguments
         ):
-            item = _desktop_payload.approved_summary_optional_item_object(
-                approved_arguments
+            return self._structured_ticket_ref_result(
+                arguments,
+                approved_arguments=approved_arguments,
+                ticket_ref=ticket_ref,
+                comparison_only=comparison_only,
             )
-            if item is not None:
-                candidate = dict(item)
-                candidate.setdefault(
-                    "item_ref",
-                    str(candidate.get("candidate_id") or "candidate-001"),
-                )
-                comparison = self._start_reuse_comparison(
-                    candidate=candidate,
-                    approved_summary_text=str(
-                        approved_arguments.get("approved_summary_text") or ""
-                    ),
-                    approved_summary_source_kind=(
-                        _desktop_semantic_providers.SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET
-                    ),
-                    selected_item_refs=[str(candidate["item_ref"])],
-                    current_index=0,
-                    selection_ref=None,
-                    debug=arguments.get("debug") is True,
-                )
-                if comparison is not None:
-                    comparison["approved_summary_source"] = (
-                        "local_approved_summary"
-                    )
-                    comparison["ticket_ref"] = ticket_ref
-                    return comparison
-            result = self._author_ticket(arguments)
-            finalized = finalize_author_result_with_bundle(
-                result,
-                bundle_root=self._reviewer_bundle_root,
-                include_reviewer_only_html=arguments.get("debug") is True,
-                schema_version=self._schema_version,
-            )
-            finalized["approved_summary_source"] = "local_approved_summary"
-            finalized["ticket_ref"] = ticket_ref
-            return finalized
         summary_arguments: JsonDict = {
             "approved_summary_text": approved_arguments["approved_summary_text"],
         }
@@ -574,10 +688,80 @@ class DesktopDraftArticleTool:
             semantic_source_kind=(
                 _desktop_semantic_providers.SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET
             ),
+            comparison_only=comparison_only,
         )
         result["approved_summary_source"] = "local_clean_ticket"
         result["ticket_ref"] = ticket_ref
         return result
+
+    def _structured_ticket_ref_result(
+        self,
+        arguments: Mapping[str, Any],
+        *,
+        approved_arguments: Mapping[str, Any],
+        ticket_ref: str,
+        comparison_only: bool,
+    ) -> JsonDict:
+        item = _desktop_payload.approved_summary_optional_item_object(
+            approved_arguments
+        )
+        if item is not None:
+            comparison = self._structured_ticket_ref_comparison(
+                arguments,
+                approved_arguments=approved_arguments,
+                item=item,
+                ticket_ref=ticket_ref,
+            )
+            if comparison is not None:
+                return comparison
+        if comparison_only:
+            return _ticket_author_failure_result(
+                ticket_ref=ticket_ref,
+                failure_stage="reuse_comparison",
+                debug_code="reuse_comparison_gate_unavailable",
+                schema_version=self._schema_version,
+            )
+        result = self._author_ticket(arguments)
+        finalized = finalize_author_result_with_bundle(
+            result,
+            bundle_root=self._reviewer_bundle_root,
+            include_reviewer_only_html=arguments.get("debug") is True,
+            schema_version=self._schema_version,
+        )
+        finalized["approved_summary_source"] = "local_approved_summary"
+        finalized["ticket_ref"] = ticket_ref
+        return finalized
+
+    def _structured_ticket_ref_comparison(
+        self,
+        arguments: Mapping[str, Any],
+        *,
+        approved_arguments: Mapping[str, Any],
+        item: Mapping[str, Any],
+        ticket_ref: str,
+    ) -> JsonDict | None:
+        candidate = dict(item)
+        candidate.setdefault(
+            "item_ref",
+            str(candidate.get("candidate_id") or "candidate-001"),
+        )
+        comparison = self._start_reuse_comparison(
+            candidate=candidate,
+            approved_summary_text=str(
+                approved_arguments.get("approved_summary_text") or ""
+            ),
+            approved_summary_source_kind=(
+                _desktop_semantic_providers.SEMANTIC_SOURCE_APPROVED_CLEAN_TICKET
+            ),
+            selected_item_refs=[str(candidate["item_ref"])],
+            current_index=0,
+            selection_ref=None,
+            debug=arguments.get("debug") is True,
+        )
+        if comparison is not None:
+            comparison["approved_summary_source"] = "local_approved_summary"
+            comparison["ticket_ref"] = ticket_ref
+        return comparison
 
     def _semantic_review_or_no_candidates_result(
         self,
@@ -1126,6 +1310,10 @@ def _comparison_outcome_ledger(
     bundle_ref = result.get("bundle_ref")
     if isinstance(bundle_ref, str) and bundle_ref:
         ledger["bundle_ref"] = bundle_ref
+    for key in ("manifest_path", "html_path"):
+        artifact_path = result.get(key)
+        if isinstance(artifact_path, str) and artifact_path:
+            ledger[key] = artifact_path
     return ledger
 
 

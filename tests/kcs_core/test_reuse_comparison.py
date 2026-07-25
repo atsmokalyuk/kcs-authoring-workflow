@@ -10,7 +10,9 @@ from kcs_core.reuse_comparison import (
     ReuseComparisonEvidence,
     ReuseComparisonEvidenceRequest,
     ReuseComparisonExcerpt,
+    is_reusable_kcs_article_candidate,
     request_from_symptoms,
+    reusable_kcs_article_key,
     validate_reuse_comparison_evidence,
 )
 
@@ -44,6 +46,28 @@ def _candidate(
         updated_at="2026-06-10",
         origin=origin,
         excerpts=(_excerpt(article_id),),
+    )
+
+
+def _kb_candidate(rank: int, article_id: str) -> ReuseComparisonCandidate:
+    public_url = f"https://kb.plesk.com/en/{article_id}"
+    excerpt = ReuseComparisonExcerpt(
+        excerpt_ref=f"public-excerpt-kb-{article_id}",
+        section_path="Resolution",
+        citation=f"Legacy KB {article_id} — Resolution — {public_url}",
+        text="Restart the affected service.",
+        token_count=4,
+    )
+    return ReuseComparisonCandidate(
+        rank=rank,
+        source_doc_id=f"plesk-kb://{article_id}",
+        source_type="kb",
+        title=f"Legacy KB {article_id}",
+        public_url=public_url,
+        article_status="active",
+        updated_at=None,
+        origin="search_result",
+        excerpts=(excerpt,),
     )
 
 
@@ -90,6 +114,109 @@ def test_reuse_comparison_request_is_immutable_and_provider_neutral() -> None:
 def test_reuse_comparison_request_rejects_string_sequence() -> None:
     with pytest.raises(ContractValidationError):
         request_from_symptoms("Plesk")
+
+
+def test_localized_legacy_kb_article_is_reusable() -> None:
+    public_url = "https://kb.plesk.com/en/12345"
+
+    assert PublicArticleReference(public_url=public_url).public_url == public_url
+    assert _kb_candidate(1, "12345").source_type == "kb"
+    assert reusable_kcs_article_key(public_url) == "kb.plesk.com/12345"
+
+
+def test_distinct_localized_legacy_kb_articles_do_not_share_identity() -> None:
+    candidates = (_kb_candidate(1, "12345"), _kb_candidate(2, "67890"))
+
+    evidence = ReuseComparisonEvidence(
+        searched=True,
+        status="comparison_evidence_ready",
+        search_run_ref="comparison-run-kb",
+        explicit_reference_status="not_provided",
+        candidates=candidates,
+    )
+
+    assert [candidate.source_doc_id for candidate in evidence.candidates] == [
+        "plesk-kb://12345",
+        "plesk-kb://67890",
+    ]
+    assert reusable_kcs_article_key(
+        "https://kb.plesk.com/12345"
+    ) == reusable_kcs_article_key("https://kb.plesk.com/en/12345")
+
+
+@pytest.mark.parametrize(
+    "public_url",
+    [
+        "https://docs.plesk.com/release-notes/obsidian/change-log",
+        "https://support.plesk.com/hc/en-us/categories/123456",
+        "https://kb.plesk.com/",
+    ],
+)
+def test_explicit_reference_rejects_non_reusable_public_pages(
+    public_url: str,
+) -> None:
+    with pytest.raises(ContractValidationError):
+        PublicArticleReference(public_url=public_url)
+
+
+def test_reuse_candidate_rejects_docs_supporting_evidence() -> None:
+    public_url = "https://docs.plesk.com/release-notes/obsidian/change-log"
+    excerpt = ReuseComparisonExcerpt(
+        excerpt_ref="public-excerpt-docs",
+        section_path="Monitoring",
+        citation=f"Plesk change log — Monitoring — {public_url}",
+        text="Monitoring no longer shows empty graphs.",
+        token_count=6,
+    )
+
+    with pytest.raises(ContractValidationError):
+        ReuseComparisonCandidate(
+            rank=1,
+            source_doc_id="plesk-docs://change-log",
+            source_type="docs",
+            title="Plesk change log",
+            public_url=public_url,
+            article_status="active",
+            updated_at="2026-07-01",
+            origin="search_result",
+            excerpts=(excerpt,),
+        )
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "[Incident] Websites show no data",
+        "[ incident ] Websites show no data",
+        "[INCIDENT]\tWebsites show no data",
+    ],
+)
+def test_reuse_candidate_rejects_incident_notice(title: str) -> None:
+    public_url = "https://support.plesk.com/hc/en-us/articles/123456-Incident"
+    excerpt = ReuseComparisonExcerpt(
+        excerpt_ref="public-excerpt-incident",
+        section_path="Symptoms",
+        citation=f"{title} — Symptoms — {public_url}",
+        text="Websites temporarily show no data.",
+        token_count=5,
+    )
+
+    assert not is_reusable_kcs_article_candidate(
+        public_url=public_url,
+        title=title,
+    )
+    with pytest.raises(ContractValidationError):
+        ReuseComparisonCandidate(
+            rank=1,
+            source_doc_id="plesk-support://123456",
+            source_type="support",
+            title=title,
+            public_url=public_url,
+            article_status="active",
+            updated_at="2026-07-25",
+            origin="search_result",
+            excerpts=(excerpt,),
+        )
 
 
 @pytest.mark.parametrize(

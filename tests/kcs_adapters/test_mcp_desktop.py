@@ -3546,6 +3546,60 @@ def test_schema_correction_budget_is_independent_and_bounded(
     assert second_result["reviewer_bundle_written"] is False
 
 
+def test_exhausted_semantic_correction_preserves_bounded_terminal_cause(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_issue_proposal_packet(
+        tmp_path, monkeypatch
+    )
+    proposal = _unassigned_proposal(packet, semantic_review_ref)
+    coverage_records = proposal["coverage_records"]
+    assert isinstance(coverage_records, list)
+    coverage_record = coverage_records[0]
+    assert isinstance(coverage_record, dict)
+    coverage_record["reason_code"] = "model_selected_reason"
+
+    first = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "semantic_issue_proposal": proposal,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+    assert first is not None
+    assert first["result"]["structuredContent"]["debug_code"] == (
+        "semantic_coverage_reason_invalid"
+    )
+
+    coverage_record["reason_code"] = "administrative_or_duplicate"
+    source_refs = proposal["source_refs"]
+    assert isinstance(source_refs, list)
+    source_refs.append("excerpt-not-prepared")
+    second = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "semantic_issue_proposal": proposal,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert second is not None
+    second_result = second["result"]["structuredContent"]
+    assert second_result["debug_code"] == "semantic_issue_submission_invalid"
+    assert second_result["terminal_cause_debug_code"] == (
+        "semantic_issue_top_level_source_refs_mismatch"
+    )
+    assert "semantic_submission_correction" not in second_result
+    assert second_result.get("next_required_action") is None
+    assert second_result["reviewer_bundle_written"] is False
+    second_text = second["result"]["content"][0]["text"]
+    assert "semantic_issue_top_level_source_refs_mismatch" in second_text
+    assert "No bounded correction is available" in second_text
+
+
 @pytest.mark.parametrize(
     ("invalid_shape", "expected_debug_code", "expected_field"),
     [

@@ -419,6 +419,29 @@ python -m kcs_core.cli run \
 
 The CLI prints deterministic JSON and keeps `auto_publish_allowed=false`.
 
+### Controlled comparison skeleton
+
+KCS-15.2b2 adds a local interactive controller for an existing approved
+`ticket_ref`:
+
+```bash
+uv run kcs-controlled-draft <ticket_ref>
+```
+
+This command calls the Python comparison workflow directly instead of asking a
+chat model to decide whether to invoke it. It shows bounded ticket facts and
+eligible public article evidence before reading the operator's closed-enum
+choice. Interactive stdin/stdout are required and piped choices are rejected.
+Only `none_fit` can continue to reviewer-only drafting. Use
+`--preflight` to prove the live comparison transition without accepting or
+submitting any outcome.
+
+This command is the current deterministic entrypoint. The in-chat MCP App
+implementation remains deferred because the current Claude Desktop host does
+not expose an operator-controlled launcher for the first tool transition. A
+normal Claude chat prompt remains model-routed and cannot provide the same
+no-bypass guarantee.
+
 ## Data Handling
 
 Follow `docs/internal/kcs-authoring-mvp-data-handling-baseline.md`.
@@ -618,9 +641,10 @@ tools are not loaded into the active chat.
 - Completed KCS-15 enabling slice: KCS-15.2b1 provider-neutral bounded public
   comparison evidence; Desktop/model/operator behavior stayed unchanged
 - Completed KCS-15.2b2 phase: Phase A exact public-article context
-- Authorized KCS-15.2b2 phase: Phase B Desktop/operator Delivery;
-  deterministic implementation is in progress and the installed Desktop/model
-  feasibility smoke remains a closeout gate
+- Completed KCS-15.2b2 deterministic entrypoint: the local controlled
+  comparison controller
+- Deferred KCS-15.2b2 phase: Phase C in-chat operator surface, blocked by the
+  absence of a host-owned direct tool/App launcher in current Claude Desktop
 
 Update this section when the PM owner, reviewer, Slack channel, or GitHub
 CODEOWNERS are finalized.

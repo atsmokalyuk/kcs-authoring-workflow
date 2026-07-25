@@ -11,10 +11,8 @@ from kcs_adapters.desktop_reuse_comparison import (
     PendingReuseComparison,
     ReuseComparisonExpiredError,
     ReuseComparisonInvalidError,
-    ReuseComparisonSubmission,
     confirmed_helpful_public_article,
     reuse_comparison_required_result,
-    reuse_comparison_terminal_result,
     validate_reuse_comparison_submit,
 )
 from kcs_adapters.desktop_tool_results import (
@@ -247,6 +245,19 @@ def test_candidate_relation_must_be_verbatim_in_approved_source() -> None:
     )
 
 
+def test_helpful_docs_page_is_not_promoted_as_reusable_article() -> None:
+    docs_url = "https://docs.plesk.com/release-notes/obsidian/change-log"
+    text = f"The article {docs_url} helped resolve the issue."
+
+    assert (
+        confirmed_helpful_public_article(
+            {"resolution_steps": [text]},
+            approved_summary_text=text,
+        )
+        is None
+    )
+
+
 def test_comparison_request_is_bounded_and_carries_confirmed_explicit_article() -> None:
     explicit_candidate = _issue_candidate()
     explicit_candidate["supported_resolution_or_workaround"] = (
@@ -325,6 +336,8 @@ def test_required_result_exposes_only_bounded_public_comparison_context() -> Non
     assert "approved_summary_text" not in result
     text = tool_result_text(result)
     assert "ask exactly one operator question" in text
+    assert "clickable Markdown link" in text
+    assert "candidate_ref visible" in text
     assert "Do not call the submit tool until the operator answers" in text
     assert _PUBLIC_URL in text
     validate_tool_structured_content(result, tool_output_schema())
@@ -355,7 +368,7 @@ def test_public_comparison_safety_exception_is_limited_to_comparison_result() ->
         validate_tool_structured_content(result, tool_output_schema())
 
 
-def test_selected_approved_public_docs_match_passes_tool_result_safety() -> None:
+def test_docs_page_cannot_be_constructed_as_reuse_candidate() -> None:
     public_url = "https://docs.plesk.com/release-notes/obsidian/change-log"
     excerpt = ReuseComparisonExcerpt(
         excerpt_ref="public-excerpt-docs",
@@ -364,42 +377,19 @@ def test_selected_approved_public_docs_match_passes_tool_result_safety() -> None
         text="Monitoring no longer shows empty graphs.",
         token_count=6,
     )
-    candidate = ReuseComparisonCandidate(
-        rank=1,
-        source_doc_id="plesk-docs://change-log",
-        source_type="docs",
-        title="Plesk change log",
-        public_url=public_url,
-        article_status="active",
-        updated_at="2026-07-01",
-        origin="search_result",
-        excerpts=(excerpt,),
-    )
-    provider = _FixtureComparisonProvider(
-        ReuseComparisonEvidence(
-            searched=True,
-            status="comparison_evidence_ready",
-            search_run_ref="comparison-run-docs",
-            explicit_reference_status="not_provided",
-            candidates=(candidate,),
-        )
-    )
-    pending = _workflow(provider).start_pending_reuse_comparison(
-        issue_candidate=_issue_candidate(),
-        approved_summary_text="Approved sanitized summary.",
-        approved_summary_source_kind=None,
-        selected_item_refs=["candidate-001"],
-        current_index=0,
-        selection_ref=None,
-        debug=False,
-    )
-    assert isinstance(pending, PendingReuseComparison)
-    result = reuse_comparison_terminal_result(
-        ReuseComparisonSubmission(pending, "reuse", candidate),
-        schema_version="kcs_mcp_tool_result_v1",
-    )
 
-    validate_tool_structured_content(result, tool_output_schema())
+    with pytest.raises(ContractValidationError):
+        ReuseComparisonCandidate(
+            rank=1,
+            source_doc_id="plesk-docs://change-log",
+            source_type="docs",
+            title="Plesk change log",
+            public_url=public_url,
+            article_status="active",
+            updated_at="2026-07-01",
+            origin="search_result",
+            excerpts=(excerpt,),
+        )
 
 
 def test_invalid_provider_response_blocks_without_authoring(tmp_path) -> None:
@@ -468,7 +458,30 @@ def test_candidate_outcomes_require_one_displayed_candidate_ref(
 
 
 @pytest.mark.parametrize("outcome", ["none_fit", "need_more_evidence"])
-def test_candidate_free_outcomes_reject_candidate_ref(outcome: str) -> None:
+def test_candidate_free_outcomes_ignore_displayed_candidate_ref(outcome: str) -> None:
+    pending = _workflow(_FixtureComparisonProvider()).start_pending_reuse_comparison(
+        issue_candidate=_issue_candidate(),
+        approved_summary_text="Approved sanitized summary.",
+        approved_summary_source_kind=None,
+        selected_item_refs=["candidate-001"],
+        current_index=0,
+        selection_ref=None,
+        debug=False,
+    )
+    assert isinstance(pending, PendingReuseComparison)
+
+    submission = validate_reuse_comparison_submit(
+        pending,
+        comparison_ref=pending.comparison_ref,
+        outcome=outcome,
+        candidate_ref="comparison-candidate-001",
+    )
+
+    assert submission.selected_candidate is None
+
+
+@pytest.mark.parametrize("outcome", ["none_fit", "need_more_evidence"])
+def test_candidate_free_outcomes_reject_unknown_candidate_ref(outcome: str) -> None:
     pending = _workflow(_FixtureComparisonProvider()).start_pending_reuse_comparison(
         issue_candidate=_issue_candidate(),
         approved_summary_text="Approved sanitized summary.",
@@ -485,7 +498,7 @@ def test_candidate_free_outcomes_reject_candidate_ref(outcome: str) -> None:
             pending,
             comparison_ref=pending.comparison_ref,
             outcome=outcome,
-            candidate_ref="comparison-candidate-001",
+            candidate_ref="comparison-candidate-999",
         )
 
 
@@ -512,6 +525,7 @@ def test_pre_draft_comparison_blocks_authoring_until_none_fit(tmp_path) -> None:
 
     result = tool.confirm_reuse_comparison(
         {
+            "candidate_ref": "comparison-candidate-001",
             "comparison_ref": comparison["comparison_ref"],
             "outcome": "none_fit",
         }
@@ -635,6 +649,46 @@ def test_invalid_submit_consumes_pending_state_and_replay_fails(tmp_path) -> Non
         )
 
     assert workflow.pending_reuse_comparison is None
+
+
+def test_unknown_candidate_ref_consumes_state_and_replay_requires_restart(
+    tmp_path,
+) -> None:
+    workflow = _workflow(_FixtureComparisonProvider())
+    pending_selection = workflow.start_pending_selection(
+        [_issue_candidate()],
+        approved_summary_text="Approved sanitized summary.",
+    )
+    tools = DesktopAuthoringTools(
+        draft_workflow=workflow,
+        reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles",
+        schema_version="kcs_mcp_tool_result_v1",
+    )
+    comparison = tools.draft_article(
+        {
+            "operator_selected_item_ref": "candidate-001",
+            "operator_selection_ref": pending_selection.selection_ref,
+        }
+    )
+    invalid = tools.confirm_reuse_comparison(
+        {
+            "candidate_ref": "comparison-candidate-999",
+            "comparison_ref": comparison["comparison_ref"],
+            "outcome": "none_fit",
+        }
+    )
+
+    assert invalid["debug_code"] == "reuse_comparison_invalid"
+    assert workflow.pending_reuse_comparison is None
+
+    replay = tools.confirm_reuse_comparison(
+        {
+            "comparison_ref": comparison["comparison_ref"],
+            "outcome": "none_fit",
+        }
+    )
+
+    assert replay["debug_code"] == "reuse_comparison_unavailable"
 
 
 def test_old_comparison_cannot_mutate_replaced_selection_state(tmp_path) -> None:
@@ -784,3 +838,95 @@ def test_batch_comparison_advances_one_selected_issue_at_a_time(tmp_path) -> Non
         "comparison_sequence_outcomes"
     ]] == ["reuse", "none_fit"]
     assert len(author_calls) == 1
+
+
+def test_duplicate_none_fit_replays_result_without_consuming_next_comparison(
+    tmp_path,
+) -> None:
+    provider = _FixtureComparisonProvider()
+    workflow = _workflow(provider)
+    first = _issue_candidate()
+    second = {
+        **_issue_candidate(),
+        "item_ref": "candidate-002",
+        "title": "Extension installation fails",
+    }
+    pending_selection = workflow.start_pending_selection(
+        [first, second],
+        approved_summary_text="Approved sanitized summary with two issues.",
+    )
+    author_calls: list[Mapping[str, Any]] = []
+
+    def author_approved_summary(arguments: Mapping[str, Any]) -> JsonDict:
+        author_calls.append(arguments)
+        return {
+            "auto_publish_allowed": False,
+            "draft_generated": True,
+            "public_output_approved": False,
+            "ready_for_reviewer": False,
+            "recommended_action": "create_candidate",
+            "result_kind": "approved_summary_authoring",
+            "reviewer_bundle_written": False,
+        }
+
+    tool = DesktopDraftArticleTool(
+        draft_workflow=workflow,
+        reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles",
+        schema_version="kcs_mcp_tool_result_v1",
+        author_approved_summary=author_approved_summary,
+        author_ticket=lambda arguments: {},
+    )
+    first_comparison = tool.draft_article(
+        {
+            "operator_selected_item_refs": ["candidate-001", "candidate-002"],
+            "operator_selection_ref": pending_selection.selection_ref,
+        }
+    )
+    first_submit = {
+        "comparison_ref": first_comparison["comparison_ref"],
+        "outcome": "none_fit",
+    }
+
+    second_comparison = tool.confirm_reuse_comparison(first_submit)
+    replay = tool.confirm_reuse_comparison(first_submit)
+    redundant_ref_replay = tool.confirm_reuse_comparison(
+        {
+            **first_submit,
+            "candidate_ref": "comparison-candidate-001",
+        }
+    )
+
+    assert replay == second_comparison
+    assert redundant_ref_replay == second_comparison
+    assert len(author_calls) == 1
+    assert workflow.pending_reuse_comparison is not None
+    assert (
+        workflow.pending_reuse_comparison.comparison_ref
+        == second_comparison["comparison_ref"]
+    )
+    with pytest.raises(ReuseComparisonInvalidError):
+        tool.confirm_reuse_comparison(
+            {
+                "candidate_ref": "comparison-candidate-001",
+                "comparison_ref": first_comparison["comparison_ref"],
+                "outcome": "reuse",
+            }
+        )
+    assert workflow.pending_reuse_comparison is not None
+    assert (
+        workflow.pending_reuse_comparison.comparison_ref
+        == second_comparison["comparison_ref"]
+    )
+
+    final = tool.confirm_reuse_comparison(
+        {
+            "comparison_ref": second_comparison["comparison_ref"],
+            "outcome": "none_fit",
+        }
+    )
+
+    assert len(author_calls) == 2
+    assert [
+        outcome["item_ref"]
+        for outcome in final["comparison_sequence_outcomes"]
+    ] == ["candidate-001", "candidate-002"]

@@ -377,6 +377,7 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "submit_tool",
     "task",
     "terminal_blocked_count",
+    "terminal_cause_debug_code",
     "ticket_ref",
     "tool_count",
     "tools",

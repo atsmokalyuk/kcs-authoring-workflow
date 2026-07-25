@@ -233,10 +233,12 @@ class SemanticReviewSubmissionInvalidError(RuntimeError):
         debug_code: str,
         *,
         correction: JsonDict | None,
+        terminal_cause_debug_code: str | None = None,
     ) -> None:
         super().__init__("semantic review submission invalid")
         self.correction = correction
         self.debug_code = debug_code
+        self.terminal_cause_debug_code = terminal_cause_debug_code
 
 
 class SemanticReviewBoundaryAmbiguousError(RuntimeError):
@@ -609,6 +611,12 @@ class DesktopDraftWorkflow:
         correction = semantic_submission_correction(debug_code)
         if correction is None or pending.failed_submit_attempts > 0:
             self._pending_semantic_review = None
+            bounded_cause_debug_code = (
+                debug_code
+                if correction is not None
+                or debug_code in _TERMINAL_SEMANTIC_SUBMISSION_DEBUG_CODES
+                else "semantic_review_submission_invalid"
+            )
             terminal_debug_code = (
                 debug_code
                 if correction is None
@@ -618,6 +626,11 @@ class DesktopDraftWorkflow:
             raise SemanticReviewSubmissionInvalidError(
                 terminal_debug_code,
                 correction=None,
+                terminal_cause_debug_code=(
+                    bounded_cause_debug_code
+                    if terminal_debug_code != bounded_cause_debug_code
+                    else None
+                ),
             ) from cause
         self._pending_semantic_review = replace(
             pending,

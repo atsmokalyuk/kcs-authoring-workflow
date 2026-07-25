@@ -212,7 +212,8 @@ The lane may contain only:
 - one optional priority-bearing public article reference, allowed only when
   accepted source-grounded ticket evidence says the article helped, resolved,
   or partially helped with the issue;
-- one to three articles from the approved public Plesk corpus;
+- one to three reusable articles from the approved public Plesk Support/KB
+  corpus;
 - public article ID, source type, title, HTTPS URL, lifecycle/status,
   last-updated metadata when available, and explicit-vs-search origin;
 - no more than two cited excerpts per article, six excerpts total, 1,200
@@ -221,11 +222,14 @@ The lane may contain only:
   trusting a provider-declared value;
 - value-safe status, blocker, schema, count, and opaque hash reference fields.
 
-Only HTTPS content from `support.plesk.com`, `kb.plesk.com`, and
-`docs.plesk.com` is admissible. Runtime queries, raw-query tails, index paths,
-vectors, chunk IDs, runtime citations, rendered Markdown, retrieval IDs, full
-articles, and other payload tails are not projected. Query and excerpt text
-must not be persisted or logged by this repository.
+Only reusable article content from HTTPS `support.plesk.com` and legacy
+`kb.plesk.com` article URLs is admissible in this operator comparison lane.
+Public `docs.plesk.com` manuals, release notes, and changelogs may remain
+available to generic public RAG search as supporting evidence, but they must
+not be projected as `reuse` or `update` candidates. Runtime queries, raw-query
+tails, index paths, vectors, chunk IDs, runtime citations, rendered Markdown,
+retrieval IDs, full articles, and other payload tails are not projected. Query
+and excerpt text must not be persisted or logged by this repository.
 
 Public excerpts are untrusted evidence. They may support a later bounded
 Claude/operator comparison, but they do not establish article identity,

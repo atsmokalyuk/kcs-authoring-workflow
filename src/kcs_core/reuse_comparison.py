@@ -27,6 +27,10 @@ _PUBLIC_SOURCE_TYPES = {
     "support.plesk.com": "support",
     "docs.plesk.com": "docs",
 }
+_REUSABLE_ARTICLE_SOURCE_TYPES = {
+    "kb.plesk.com": "kb",
+    "support.plesk.com": "support",
+}
 _ARTICLE_STATUSES = frozenset({"active", "stale_suspect", "deleted_from_site"})
 _ORIGINS = frozenset({"explicit_resolution_reference", "search_result"})
 _EVIDENCE_STATES = {
@@ -50,6 +54,7 @@ _CREDENTIAL_RE = re.compile(
     r"\b(?:password|passwd|api[_-]?key|token|secret)\s*[:=-]\s*\S+)",
     re.I,
 )
+_INCIDENT_TITLE_RE = re.compile(r"^\[\s*incident\s*\](?:\s|$)", re.I)
 
 
 @dataclass(frozen=True)
@@ -60,7 +65,7 @@ class PublicArticleReference:
     source_doc_id: str | None = None
 
     def __post_init__(self) -> None:
-        _public_url(self.public_url)
+        _reusable_article_url(self.public_url)
         if self.source_doc_id is not None:
             _safe_ref(self.source_doc_id)
 
@@ -214,6 +219,41 @@ def request_from_symptoms(
     return ReuseComparisonEvidenceRequest(tuple(symptoms), explicit_article)
 
 
+def is_reusable_kcs_article_url(value: object) -> bool:
+    """Return whether a public URL may be offered for KCS reuse or update."""
+
+    try:
+        reusable_kcs_article_key(value)
+    except ContractValidationError:
+        return False
+    return True
+
+
+def is_reusable_kcs_article_candidate(
+    *,
+    public_url: object,
+    title: object,
+) -> bool:
+    """Return whether public metadata may be offered for KCS reuse or update."""
+
+    try:
+        _reusable_article_url(public_url)
+        _reusable_article_title(title)
+    except ContractValidationError:
+        return False
+    return True
+
+
+def reusable_kcs_article_key(value: object) -> str:
+    """Return the canonical host/article-ID key for an eligible KCS article."""
+
+    parsed = _reusable_article_url(value)
+    article_id = _reusable_article_id(parsed)
+    if parsed.hostname == "support.plesk.com":
+        return f"support.plesk.com/articles/{article_id}"
+    return f"kb.plesk.com/{article_id}"
+
+
 def validate_reuse_comparison_evidence(
     evidence: ReuseComparisonEvidence | object,
 ) -> ReuseComparisonValidationResult:
@@ -292,13 +332,13 @@ def _validate_candidate_rank(rank: object) -> None:
 
 
 def _validate_candidate_public_identity(candidate: ReuseComparisonCandidate) -> None:
-    hostname = _public_url(candidate.public_url).hostname or ""
-    if candidate.source_type != _PUBLIC_SOURCE_TYPES[hostname]:
+    hostname = _reusable_article_url(candidate.public_url).hostname or ""
+    if candidate.source_type != _REUSABLE_ARTICLE_SOURCE_TYPES[hostname]:
         raise ContractValidationError("comparison candidate is invalid")
 
 
 def _validate_candidate_metadata(candidate: ReuseComparisonCandidate) -> None:
-    _bounded_public_text(candidate.title, max_chars=300, single_line=True)
+    _reusable_article_title(candidate.title)
     if candidate.article_status not in _ARTICLE_STATUSES:
         raise ContractValidationError("comparison candidate is invalid")
     if candidate.updated_at is not None:
@@ -541,6 +581,42 @@ def _public_url(value: object) -> ParseResult:
     return parsed
 
 
+def _reusable_article_url(value: object) -> ParseResult:
+    parsed = _public_url(value)
+    if parsed.hostname not in _REUSABLE_ARTICLE_SOURCE_TYPES:
+        raise ContractValidationError("public article reference is invalid")
+    _reusable_article_id(parsed)
+    return parsed
+
+
+def _reusable_article_title(value: object) -> str:
+    title = _bounded_public_text(value, max_chars=300, single_line=True)
+    if _INCIDENT_TITLE_RE.match(title):
+        raise ContractValidationError("comparison candidate is invalid")
+    return title
+
+
+def _reusable_article_id(parsed: ParseResult) -> str:
+    parts = parsed.path.strip("/").split("/")
+    if parsed.hostname == "support.plesk.com":
+        if len(parts) != 4 or parts[0] != "hc" or parts[2] != "articles":
+            raise ContractValidationError("public article reference is invalid")
+        article_id = parts[3].split("-", 1)[0]
+    else:
+        article_id = _legacy_kb_article_id(parts)
+    if not article_id.isdigit():
+        raise ContractValidationError("public article reference is invalid")
+    return article_id
+
+
+def _legacy_kb_article_id(parts: list[str]) -> str:
+    if len(parts) == 1:
+        return parts[0]
+    if len(parts) == 2 and re.fullmatch(r"[A-Za-z]{2}(?:-[A-Za-z]{2})?", parts[0]):
+        return parts[1]
+    raise ContractValidationError("public article reference is invalid")
+
+
 def _parse_public_url(value: str) -> tuple[ParseResult, int | None]:
     try:
         parsed = urlparse(value)
@@ -569,14 +645,7 @@ def _validate_public_url_shape(parsed: ParseResult, value: str) -> None:
 
 
 def _public_article_key(value: str) -> str:
-    parsed = urlparse(value)
-    path = parsed.path.rstrip("/")
-    if parsed.hostname == "support.plesk.com" and "/articles/" in path:
-        article_part = path.split("/articles/", 1)[1].split("/", 1)[0]
-        return f"support.plesk.com/articles/{article_part.split('-', 1)[0]}"
-    if parsed.hostname == "kb.plesk.com":
-        return f"kb.plesk.com/{path.strip('/').split('/', 1)[0]}"
-    return f"{parsed.hostname}{path}"
+    return reusable_kcs_article_key(value)
 
 
 def _safe_ref(value: object) -> str:
@@ -637,6 +706,9 @@ __all__ = [
     "ReuseComparisonExcerpt",
     "ReuseComparisonValidationResult",
     "ensure_valid_reuse_comparison_evidence",
+    "is_reusable_kcs_article_candidate",
+    "is_reusable_kcs_article_url",
     "request_from_symptoms",
+    "reusable_kcs_article_key",
     "validate_reuse_comparison_evidence",
 ]

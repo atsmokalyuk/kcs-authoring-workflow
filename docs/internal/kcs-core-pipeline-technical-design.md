@@ -455,8 +455,10 @@ symptoms plus an optional priority-bearing public article reference. The caller
 may set that priority-bearing reference only when accepted, source-grounded
 ticket evidence says the article helped, resolved, or partially helped with the
 issue. A URL-only, merely mentioned, unconfirmed, or confirmed-not-helpful
-article is not promoted. The provider returns only allowlisted public article
-metadata and bounded cited excerpts.
+article is not promoted. The provider returns only reusable Plesk Support/KB
+article metadata and bounded cited excerpts. Public `docs.plesk.com` manuals,
+release notes, and changelogs may remain searchable supporting evidence, but
+they are outside the reuse/update candidate contract.
 
 The initial local adapter translates the existing loopback `/api/snippets`
 schema into `reuse_comparison_evidence_v1`. Runtime wrapper fields, local index

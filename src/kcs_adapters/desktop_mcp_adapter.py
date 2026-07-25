@@ -139,6 +139,28 @@ class KcsDesktopMcpAdapter:
             self._tools = tools
         return self._tools
 
+    @property
+    def reuse_comparison_enabled(self) -> bool:
+        """Return whether direct entrypoints have a deterministic comparison gate."""
+
+        return self._draft_workflow.reuse_comparison_enabled
+
+    def begin_operator_reuse_comparison(
+        self,
+        ticket_ref: str,
+    ) -> McpToolResult:
+        """Enter the write-incapable comparison-only ticket path."""
+
+        try:
+            result = self._authoring_tools.prepare_ticket_reuse_comparison(
+                {"ticket_ref": ticket_ref}
+            )
+        except ContractValidationError:
+            return _desktop_mcp_results.tool_error("validation_failed")
+        except Exception:  # pragma: no cover - defensive adapter boundary
+            return _desktop_mcp_results.tool_error("tool_failed")
+        return McpToolResult(ok=True, result=result)
+
     def call_tool(
         self, name: str, arguments: Mapping[str, Any] | None = None
     ) -> McpToolResult:

@@ -674,6 +674,168 @@ def test_comparison_evidence_posts_bounded_request_and_projects_public_data() ->
     assert "chunk-not-projected" not in projected
 
 
+def test_comparison_evidence_excludes_docs_pages_and_reindexes_articles() -> None:
+    snippets = [
+        _snippet(
+            source_doc_id="plesk-support://111111",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/111111-First",
+            title="First support article",
+        ),
+        _snippet(
+            rank=2,
+            candidate_rank=2,
+            source_doc_id="plesk-docs://change-log",
+            canonical_url="https://docs.plesk.com/release-notes/obsidian/change-log",
+            title="Change Log for Plesk Obsidian",
+            section_path="Plesk Obsidian 18.0.53",
+            text="Fixed an issue where monitoring graphs could be empty.",
+            token_count=9,
+        ),
+        _snippet(
+            rank=3,
+            candidate_rank=3,
+            source_doc_id="plesk-kb://222222",
+            canonical_url="https://kb.plesk.com/en/222222",
+            title="Legacy KB article",
+        ),
+    ]
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(snippets=snippets),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Monitoring graphs show no data.",))
+    )
+
+    assert result.status == "comparison_evidence_ready"
+    assert [
+        (candidate.rank, candidate.source_doc_id)
+        for candidate in result.candidates
+    ] == [
+        (1, "plesk-support://111111"),
+        (2, "plesk-kb://222222"),
+    ]
+    assert "docs.plesk.com" not in str(result.to_json_dict())
+
+
+def test_comparison_evidence_excludes_incident_notices_and_reindexes_articles() -> None:
+    snippets = [
+        _snippet(
+            source_doc_id="plesk-support://111111",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/111111-First",
+            title="First support article",
+        ),
+        _snippet(
+            rank=2,
+            candidate_rank=2,
+            source_doc_id="plesk-support://222222",
+            canonical_url=(
+                "https://support.plesk.com/hc/en-us/articles/222222-Incident"
+            ),
+            title="[Incident] Websites show no data",
+        ),
+        _snippet(
+            rank=3,
+            candidate_rank=3,
+            source_doc_id="plesk-support://333333",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/333333-Third",
+            title="Third support article",
+        ),
+    ]
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(snippets=snippets),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Monitoring graphs show no data.",))
+    )
+
+    assert [
+        (candidate.rank, candidate.source_doc_id)
+        for candidate in result.candidates
+    ] == [
+        (1, "plesk-support://111111"),
+        (2, "plesk-support://333333"),
+    ]
+    assert "[Incident]" not in str(result.to_json_dict())
+
+
+def test_comparison_evidence_with_only_incident_notices_is_empty() -> None:
+    incident = _snippet(
+        source_doc_id="plesk-support://222222",
+        canonical_url="https://support.plesk.com/hc/en-us/articles/222222-Incident",
+        title="[Incident] Websites show no data",
+    )
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(snippets=[incident]),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Monitoring graphs show no data.",))
+    )
+
+    assert result.status == "comparison_no_evidence"
+    assert result.candidates == ()
+    assert result.blockers == ("comparison_no_evidence",)
+
+
+def test_comparison_evidence_groups_distinct_snippet_ranks() -> None:
+    snippets = [
+        _snippet(
+            candidate_rank=1,
+            source_doc_id="plesk-support://111111",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/111111-First",
+            title="First support article",
+        ),
+        _snippet(
+            rank=2,
+            candidate_rank=2,
+            source_doc_id="plesk-docs://change-log",
+            canonical_url="https://docs.plesk.com/release-notes/obsidian/change-log",
+            title="Change Log for Plesk Obsidian",
+        ),
+        _snippet(
+            rank=3,
+            candidate_rank=3,
+            source_doc_id="plesk-support://222222",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/222222-Second",
+            title="Second support article",
+            section_path="Symptoms",
+            text="The monitoring graphs are empty.",
+            token_count=5,
+        ),
+        _snippet(
+            rank=4,
+            candidate_rank=4,
+            source_doc_id="plesk-support://222222",
+            canonical_url="https://support.plesk.com/hc/en-us/articles/222222-Second",
+            title="Second support article",
+            section_path="Cause",
+            text="The monitoring datasource is unavailable.",
+            token_count=5,
+        ),
+    ]
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(snippets=snippets),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Monitoring graphs show no data.",))
+    )
+
+    assert result.status == "comparison_evidence_ready"
+    assert [candidate.source_doc_id for candidate in result.candidates] == [
+        "plesk-support://111111",
+        "plesk-support://222222",
+    ]
+    assert len(result.candidates[1].excerpts) == 2
+    assert "docs.plesk.com" not in str(result.to_json_dict())
+
+
 def test_explicit_resolution_article_is_prioritized_over_rag_rank() -> None:
     snippets = [
         _snippet(

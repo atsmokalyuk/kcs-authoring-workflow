@@ -51,22 +51,32 @@
         },
         {
           "path": "src/kcs_adapters/desktop_tool_schemas.py",
-          "file_hash": "6daf0ac1d9485ab5c11349b8b496671d64c60d788352374c2f9e80f46d26519c",
+          "file_hash": "7ff8c983ebbf5b4d16898937bac371afd101f2a45ead60549ef7956a5fcb4adc",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_tool_results.py",
-          "file_hash": "2350c687779ca6de78932e0bc1e32c7da504ac92a842a6af0aaddfd0fadbe7bd",
+          "file_hash": "070dc561846d20cb6dbf11243b47726892d11498eeccc2ecf627e703b86c7e5a",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_mcp_adapter.py",
-          "file_hash": "168f69869d3c56d2368a7d4d44c8b87ecac1fe4ba8dcdab1455fd4a0fda53bfe",
+          "file_hash": "d803fe7cd84992f013a78906cac36277b76cbd47b23f95f73cacfeb0d2c2a9f5",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/operator_authoring_controller.py",
+          "file_hash": "2974be25cb5ca26abc178916c038ad76857bb69aef6157e5a80fd5a563765603",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/operator_authoring_cli.py",
+          "file_hash": "65ba68805b4a32f4a80615daa318e231a4b9dc3be1acc50e630d53cf449ffa1b",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_authoring_tools.py",
-          "file_hash": "af6413eb84a404c6a461964c98a4a07f0264d9a5fd0aa17dc1e5e00b0ce9e341",
+          "file_hash": "e8928c56dde62ea410a3dbfbfa5c58a321de23fded2679d7d0cdfa8b25bddd13",
           "valid_until_changed": true
         },
         {
@@ -90,7 +100,9 @@
         "tests/kcs_adapters/test_desktop_mcp_adapter.py",
         "tests/kcs_adapters/test_desktop_protocol_results.py",
         "tests/kcs_adapters/test_desktop_authoring_tools.py",
-        "tests/kcs_adapters/test_desktop_control_tools.py"
+        "tests/kcs_adapters/test_desktop_control_tools.py",
+        "tests/kcs_adapters/test_operator_authoring_controller.py",
+        "tests/kcs_adapters/test_operator_authoring_cli.py"
       ]
     },
     {
@@ -378,12 +390,12 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_draft_tool.py",
-          "file_hash": "eab57af904b0663de356ac79842af1555b6fbfedd94446692f897404d351f478",
+          "file_hash": "e6fa941df0622293ef68330e7321c978bdb1869ab72a580f391981a1acc35dce",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_reuse_comparison.py",
-          "file_hash": "32bd34cb6cdd874f418aafd90d14b06ad3fefa3594c898a189b74300da750bd7",
+          "file_hash": "deda8dfb14478b7f80b673d502d5bf7e531f8ec361ef7e44e53e1590a26469e0",
           "valid_until_changed": true
         },
         {
@@ -393,7 +405,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_workflow.py",
-          "file_hash": "532778a7dffb93156ff36a1580e7db4a1dd75f570e812ca874f9ac28b7973229",
+          "file_hash": "9f44b431613bbbf1f9f08d1da9161a5abf6dafe1ab38b59239154a5dd0bd9b68",
           "valid_until_changed": true
         },
         {
@@ -418,7 +430,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_workflow_results.py",
-          "file_hash": "d41a1c161c59d1bc5c2386bb3b8601f36ec5f6519bafddf7e09b8183bcf452e3",
+          "file_hash": "e3edb683fdce1f7d297124d8e56a52739dbfb8710abface44b293ac16695e1c5",
           "valid_until_changed": true
         },
         {
@@ -431,6 +443,7 @@
         "tests/kcs_adapters/test_desktop_draft_batch.py",
         "tests/kcs_adapters/test_desktop_draft_tool.py",
         "tests/kcs_adapters/test_desktop_reuse_comparison.py",
+        "tests/kcs_adapters/test_desktop_reuse_sequence_handoff.py",
         "tests/kcs_adapters/test_desktop_workflow.py",
         "tests/kcs_adapters/test_desktop_operator_selection.py",
         "tests/kcs_adapters/test_desktop_draft_output.py",
@@ -577,12 +590,12 @@
         },
         {
           "path": "src/kcs_core/reuse_comparison.py",
-          "file_hash": "a781eb72819c078d4c35cd9d32af739e718fe8ec76418ebfac4e0f34c570d502",
+          "file_hash": "affe31b463ca1674fe38d38863ddab2961b98bf0373f2da1bb71c6d4417c63ca",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/local_public_rag.py",
-          "file_hash": "0fc84775e7cc12758d26ff5e75ce2f669bd21c9cfbb8545d4d61b1b0f2760bd9",
+          "file_hash": "857542dcbddd7b62beeb29039b6365442bab91b0ea58f939abdb6cce58279571",
           "valid_until_changed": true
         }
       ],
@@ -987,7 +1000,7 @@
         },
         {
           "path": "tests/policy/test_kcs14_freeze_snapshots.py",
-          "file_hash": "96d3998305a228e1af0e2b828694b29595ef2f6c19c9ab269c4a9e5638ab874e",
+          "file_hash": "c15e337a51a46bda52e992f2383c531e6a88362f4b29fb16deb45a080c337b6a",
           "valid_until_changed": true
         },
         {
