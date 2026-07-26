@@ -266,7 +266,11 @@ def _submit_semantic_review_descriptor() -> McpToolDescriptor:
             "Propose all separately searchable issue boundaries and explicit "
             "coverage records visible in the packet. Do not choose operator or "
             "KCS actions. No article draft, HTML, legacy candidate fields, item, "
-            "item_candidates, or raw ticket text. "
+            "item_candidates, or raw ticket text. After Python returns a "
+            "multi-item selection, if and only if the operator says an issue "
+            "was missed or merged, submit one complete amended proposal with "
+            "the returned operator_selection_ref. Use only the same prepared "
+            "excerpts; operator prose is steering context, never evidence. "
             f"{SEMANTIC_CONTROL_GUIDANCE}"
         ),
         input_schema=_desktop_tool_schemas.submit_semantic_review_input_schema(),

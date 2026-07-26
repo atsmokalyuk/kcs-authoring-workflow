@@ -139,6 +139,7 @@ DESKTOP_TOOL_SNAPSHOT = (
         "kcs.submit_semantic_review",
         "kcs_submit_semantic_review",
         (
+            "operator_selection_ref",
             "semantic_issue_proposal",
             "semantic_review_ref",
         ),
@@ -309,6 +310,7 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "next_tool_name",
     "ok",
     "open_questions",
+    "operator_boundary_correction",
     "operator_choice_confirmed",
     "operator_choice_options",
     "operator_choice_request",
@@ -681,7 +683,11 @@ def test_rejected_semantic_experiments_stay_off_active_submit_surface() -> None:
     )
     properties = frozenset(descriptor.input_schema.get("properties", {}))
 
-    assert properties == {"semantic_issue_proposal", "semantic_review_ref"}
+    assert properties == {
+        "operator_selection_ref",
+        "semantic_issue_proposal",
+        "semantic_review_ref",
+    }
     assert properties.isdisjoint(REJECTED_ACTIVE_SEMANTIC_SUBMIT_FIELDS)
     for schema_term in REJECTED_ACTIVE_SEMANTIC_SCHEMA_TERMS:
         assert schema_term not in descriptor.description

@@ -159,6 +159,8 @@ class PendingSemanticReview:
     expires_at: float
     failed_submit_attempts: int = 0
     used_correction_stages: tuple[str, ...] = ()
+    accepted_for_selection: bool = False
+    operator_amendment_started: bool = False
 
 
 def new_pending_semantic_review(
@@ -208,6 +210,8 @@ def prepared_pending_semantic_review(
         source_kind=pending.source_kind,
         ticket_ref=pending.ticket_ref,
         used_correction_stages=pending.used_correction_stages,
+        accepted_for_selection=pending.accepted_for_selection,
+        operator_amendment_started=pending.operator_amendment_started,
     )
 
 

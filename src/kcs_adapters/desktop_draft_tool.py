@@ -21,6 +21,7 @@ from kcs_adapters.desktop_stdio_transport import McpArgumentError
 from kcs_adapters.desktop_tool_names import (
     TOOL_CONFIRM_REUSE_COMPARISON,
     TOOL_DRAFT_ARTICLE,
+    TOOL_SUBMIT_SEMANTIC_REVIEW,
     claude_desktop_tool_alias,
 )
 from kcs_adapters.desktop_workflow import (
@@ -60,6 +61,9 @@ _LIKELY_KCS_MATERIAL_RE = re.compile(
 _DRAFT_ARTICLE_DESKTOP_TOOL_ALIAS = claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE)
 _CONFIRM_REUSE_COMPARISON_DESKTOP_TOOL_ALIAS = claude_desktop_tool_alias(
     TOOL_CONFIRM_REUSE_COMPARISON
+)
+_SUBMIT_SEMANTIC_REVIEW_DESKTOP_TOOL_ALIAS = claude_desktop_tool_alias(
+    TOOL_SUBMIT_SEMANTIC_REVIEW
 )
 _CANDIDATE_FREE_COMPARISON_OUTCOMES = frozenset(
     {"need_more_evidence", "none_fit"}
@@ -228,6 +232,7 @@ class DesktopDraftArticleTool:
         submission = self._draft_workflow.submitted_semantic_review_candidates(
             semantic_review_ref=arguments.get("semantic_review_ref"),
             semantic_issue_proposal=arguments.get("semantic_issue_proposal"),
+            operator_selection_ref=arguments.get("operator_selection_ref"),
         )
         if isinstance(submission, dict):
             return submission
@@ -242,6 +247,7 @@ class DesktopDraftArticleTool:
             candidates
         )
         if not candidates:
+            self._draft_workflow.clear_pending_semantic_review()
             result = _author_failure_result(
                 failure_stage="semantic_extraction",
                 debug_code="semantic_review_submission_invalid",
@@ -263,7 +269,13 @@ class DesktopDraftArticleTool:
             result["semantic_item_outcomes"] = semantic_item_outcomes
             result["review_summary"]["semantic_item_outcomes"] = semantic_item_outcomes
             result["ticket_ref"] = ticket_ref
+            if arguments.get("operator_selection_ref") is None:
+                _attach_operator_boundary_correction(
+                    result,
+                    semantic_review_ref=str(arguments["semantic_review_ref"]),
+                )
             return result
+        self._draft_workflow.clear_pending_semantic_review()
         comparison = self._start_reuse_comparison(
             candidate=candidates[0],
             approved_summary_text=approved_summary_text,
@@ -1291,6 +1303,29 @@ def _attach_operator_evidence_provenance(
         result["operator_evidence_provenance"] = (
             _desktop_draft_arguments.OPERATOR_RESOLUTION_EVIDENCE_PROVENANCE
         )
+
+
+def _attach_operator_boundary_correction(
+    result: JsonDict,
+    *,
+    semantic_review_ref: str,
+) -> None:
+    selection_ref = result.get("operator_selection_ref")
+    if not isinstance(selection_ref, str) or not selection_ref:
+        raise ContractValidationError("operator selection ref unavailable")
+    correction: JsonDict = {
+        "available": True,
+        "max_amendments": 1,
+        "operator_prose_is_evidence": False,
+        "operator_selection_ref": selection_ref,
+        "semantic_review_ref": semantic_review_ref,
+        "submit_tool": _SUBMIT_SEMANTIC_REVIEW_DESKTOP_TOOL_ALIAS,
+        "uses_same_prepared_excerpts": True,
+    }
+    result["operator_boundary_correction"] = correction
+    review_summary = result.get("review_summary")
+    if isinstance(review_summary, dict):
+        review_summary["operator_boundary_correction"] = dict(correction)
 
 
 def _comparison_outcome_ledger(

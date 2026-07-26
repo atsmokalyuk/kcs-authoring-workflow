@@ -234,6 +234,15 @@ def prepare_semantic_review_input_schema() -> JsonDict:
 def submit_semantic_review_input_schema() -> JsonDict:
     return object_schema(
         properties={
+            "operator_selection_ref": {
+                "type": "string",
+                "description": (
+                    "Opaque active selection ref. Include only after the "
+                    "operator says the accepted multi-item list missed or "
+                    "merged an issue. This permits one amended proposal over "
+                    "the same prepared excerpts."
+                ),
+            },
             "semantic_issue_proposal": {
                 "type": "object",
                 "description": (
@@ -436,6 +445,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "operator_choice_request": {"type": "object"},
     "operator_choice_submit_options": {"type": "array"},
     "operator_evidence_provenance": {"type": "string"},
+    "operator_boundary_correction": {"type": "object"},
     "operator_followup": {"type": "object"},
     "operator_prompt": {"type": "string"},
     "operator_prompt_style": {"type": "string"},

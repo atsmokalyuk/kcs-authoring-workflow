@@ -296,7 +296,13 @@ class DesktopAuthoringTools:
 def _require_semantic_submit_args(arguments: Mapping[str, Any]) -> None:
     _require_args(
         arguments,
-        frozenset({"semantic_issue_proposal", "semantic_review_ref"}),
+        frozenset(
+            {
+                "operator_selection_ref",
+                "semantic_issue_proposal",
+                "semantic_review_ref",
+            }
+        ),
         required=frozenset({"semantic_issue_proposal", "semantic_review_ref"}),
     )
 

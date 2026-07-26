@@ -562,10 +562,16 @@ class DesktopDraftWorkflow:
         *,
         semantic_review_ref: object,
         semantic_issue_proposal: object = None,
+        operator_selection_ref: object = None,
     ) -> JsonDict | tuple[list[JsonDict], str, str, str | None, list[JsonDict]]:
         """Validate a semantic-review submit and return Desktop candidates."""
 
-        pending = self._pending_semantic_review_for_submit(semantic_review_ref)
+        pending, is_operator_amendment = (
+            self._pending_semantic_review_for_submission(
+                semantic_review_ref=semantic_review_ref,
+                operator_selection_ref=operator_selection_ref,
+            )
+        )
         try:
             submission = self._semantic_submission_candidates(
                 pending,
@@ -591,7 +597,11 @@ class DesktopDraftWorkflow:
         if isinstance(submission, dict):
             return submission
         candidates, semantic_item_outcomes = submission
-        self._pending_semantic_review = None
+        self._complete_semantic_review_submission(
+            pending,
+            candidate_count=len(candidates),
+            is_operator_amendment=is_operator_amendment,
+        )
         return (
             candidates,
             pending.approved_summary_text,
@@ -599,6 +609,83 @@ class DesktopDraftWorkflow:
             pending.source_kind,
             semantic_item_outcomes,
         )
+
+    def _pending_semantic_review_for_submission(
+        self,
+        *,
+        semantic_review_ref: object,
+        operator_selection_ref: object,
+    ) -> tuple[PendingSemanticReview, bool]:
+        pending = self._pending_semantic_review_for_submit(semantic_review_ref)
+        if operator_selection_ref is not None:
+            return (
+                self._pending_semantic_review_for_operator_amendment(
+                    pending,
+                    operator_selection_ref=operator_selection_ref,
+                ),
+                True,
+            )
+        if pending.accepted_for_selection:
+            raise SemanticReviewUnavailableError
+        return pending, False
+
+    def _complete_semantic_review_submission(
+        self,
+        pending: PendingSemanticReview,
+        *,
+        candidate_count: int,
+        is_operator_amendment: bool,
+    ) -> None:
+        if is_operator_amendment:
+            self._pending_semantic_review = None
+            if candidate_count < 2:
+                raise SemanticReviewSubmissionInvalidError(
+                    "semantic_review_submission_invalid",
+                    correction=None,
+                )
+            return
+        self._pending_semantic_review = replace(
+            pending,
+            accepted_for_selection=True,
+            failed_submit_attempts=0,
+            used_correction_stages=(),
+        )
+
+    def _pending_semantic_review_for_operator_amendment(
+        self,
+        pending: PendingSemanticReview,
+        *,
+        operator_selection_ref: object,
+    ) -> PendingSemanticReview:
+        if not pending.accepted_for_selection:
+            raise SemanticReviewInvalidError
+        self._active_selection_for_semantic_amendment(operator_selection_ref)
+        if pending.operator_amendment_started:
+            return pending
+        started = replace(
+            pending,
+            failed_submit_attempts=0,
+            operator_amendment_started=True,
+            used_correction_stages=(),
+        )
+        self._pending_semantic_review = started
+        return started
+
+    def _active_selection_for_semantic_amendment(
+        self,
+        operator_selection_ref: object,
+    ) -> PendingDraftSelection:
+        pending_selection = self._pending_selection
+        if pending_selection is None or not isinstance(operator_selection_ref, str):
+            raise SemanticReviewInvalidError
+        if operator_selection_ref != pending_selection.selection_ref:
+            raise SemanticReviewInvalidError
+        if (
+            pending_selection.selected_candidate_refs
+            or pending_selection.retryable_candidate_refs
+        ):
+            raise SemanticReviewInvalidError
+        return pending_selection
 
     def _semantic_submission_candidates(
         self,

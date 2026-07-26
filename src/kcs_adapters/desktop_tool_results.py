@@ -1101,6 +1101,7 @@ def _semantic_review_required_tool_result_text(
 
 def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
     choice_request = structured.get("operator_choice_request")
+    boundary_correction = structured.get("operator_boundary_correction")
     options = (
         choice_request.get("options") if isinstance(choice_request, Mapping) else None
     )
@@ -1126,6 +1127,7 @@ def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
         "manual_draft_allowed": structured.get("manual_draft_allowed"),
         "next_required_action": structured.get("next_required_action"),
         "operator_selection_ref": structured.get("operator_selection_ref"),
+        "operator_boundary_correction": boundary_correction,
         "recommended_action": structured.get("recommended_action"),
         "result_kind": structured.get("result_kind"),
         "semantic_item_outcomes": structured.get("semantic_item_outcomes"),
@@ -1134,6 +1136,19 @@ def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
         "\n".join(option_lines) if option_lines else "No safe options returned."
     )
     outcome_text = _semantic_item_outcome_text(structured.get("semantic_item_outcomes"))
+    boundary_correction_text = (
+        "If the operator says this list missed an issue or merged separate "
+        "problems, do not ask them for schema fields or source refs. Build one "
+        "complete amended semantic_issue_proposal from the same prepared "
+        "excerpts, then call kcs_submit_semantic_review once with that proposal, "
+        "the returned semantic_review_ref, and operator_selection_ref. Treat "
+        "the operator's prose only as steering context; do not copy it into "
+        "evidence. Wait for the revised native selection before any draft or "
+        "reuse action. "
+        if isinstance(boundary_correction, Mapping)
+        and boundary_correction.get("available") is True
+        else "Do not call kcs_submit_semantic_review again for this choice. "
+    )
     return (
         "Multiple KCS article candidates were detected. Operator selection is "
         "required before drafting. Selection eligibility does not mean a "
@@ -1147,7 +1162,7 @@ def _split_required_tool_result_text(structured: Mapping[str, Any]) -> str:
         "option and call kcs_draft_article once with exactly its nested "
         "submit_arguments. Python owns the sequential batch; "
         "do not call each option independently. "
-        "Do not call kcs_submit_semantic_review again for this choice. Do not "
+        f"{boundary_correction_text}Do not "
         "draft manually.\n\n"
         f"{outcome_text}"
         "Candidate options:\n"

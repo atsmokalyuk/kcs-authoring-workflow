@@ -1402,6 +1402,169 @@ fail-closed behavior, and downstream contracts do not change. This occurrence
 adds evidence to `ENG-PORT-DES-001` and `ENG-PORT-DEL-006`; it does not justify
 another process rule.
 
+### Operator-steered semantic boundary correction
+
+Status: target UX selected and Delivery authorized by the operator on
+2026-07-26. This is a bounded KCS-15.2b2 sub-slice. It does not attempt to make
+automatic semantic partitioning perfect for every super-noisy ticket.
+
+Requested outcome:
+
+When the proposed KCS-item list misses or incorrectly merges a separately
+searchable problem, the operator can name the missing boundary in the native
+selection interaction. The operator does not have to reconstruct the semantic
+proposal, provide source references, or diagnose why extraction missed it.
+
+Operational baseline:
+
+- the semantic review packet already contains bounded sanitized excerpts and
+  Python validates every proposed observation against those excerpts;
+- after a valid multi-item semantic submission, Python currently clears the
+  semantic packet and accepts only one existing item or all existing items;
+- Claude Desktop may show a host-provided `Something else` response, but the
+  current KCS tool contract cannot safely amend the Python-owned item set from
+  that response;
+- the installed super-noisy canary demonstrated this gap by returning four
+  selectable items while the operator identified an invalid-IP binding issue
+  as a separate fifth boundary;
+- improving the automatic splitter for this individual ticket is rejected as
+  disproportionate complexity.
+
+Selected target UX:
+
+1. Python returns the validated candidate list and native selection options.
+2. If the operator accepts the list, the existing single/all selection path is
+   unchanged.
+3. If the operator says that a problem was missed or merged, Claude may submit
+   one complete amended semantic proposal through the existing semantic-submit
+   tool, bound to both the original semantic-review ref and current
+   operator-selection ref.
+4. The operator's prose is steering context only. It is not accepted as ticket
+   evidence, persisted, logged, or echoed by Python.
+5. Python validates the amended proposal against the same prepared excerpts,
+   source-ref allowlist, observation bounds, safety rules, and maximum of five
+   candidates.
+6. A valid amendment atomically replaces the pending item list and returns a
+   fresh selection ref. Drafting and reuse comparison remain blocked until the
+   operator chooses from that revised list.
+7. An invalid amendment leaves the previous selection usable while following
+   the existing bounded structural/grounding correction rules. A second
+   operator-requested amendment is not available.
+
+Deterministic owner and enforcement reachability:
+
+```text
+operator free-text steering in Claude Desktop
+  -> model-controlled amended semantic proposal
+  -> kcs_submit_semantic_review with existing review + selection refs
+  -> Python verifies pending refs and one-amendment budget
+  -> existing Python semantic contract and extractive evidence validators
+  -> atomically replaced Python-owned selection, or fail-closed correction
+```
+
+The first transition remains model-mediated. The deterministic claim begins at
+the semantic-submit tool boundary: no operator prose becomes evidence and no
+unvalidated candidate becomes selectable or draftable.
+
+Changed contracts:
+
+- `kcs_submit_semantic_review` accepts optional
+  `operator_selection_ref` only for one amendment of an already accepted
+  multi-item semantic result;
+- split-required results expose a bounded
+  `operator_boundary_correction` instruction containing only opaque refs,
+  submit-tool identity, availability, and limits;
+- successful amendment returns a new selection ref and consumes amendment
+  availability.
+
+Unchanged contracts:
+
+- initial semantic preparation, proposal schema, excerpt selection, source-ref
+  allowlist, safety validation, item limit, and candidate projection;
+- normal single-item/all-items selection and sequential batch behavior;
+- RAG retrieval, reuse outcomes, article drafting, renderer, reviewer bundle,
+  local storage, publication, and Zendesk behavior;
+- `auto_publish_allowed=false`, `public_output_approved=false`, and no manual
+  draft fallback;
+- operator prose is not a new evidence or persistence source.
+
+Acceptance-to-gate mapping:
+
+| Acceptance criterion | Gate |
+| --- | --- |
+| A valid first multi-item submission exposes one amendment instruction bound to the active semantic and selection refs. | deterministic MCP schema/result test |
+| One amended proposal grounded in the same excerpts replaces the old list and returns a fresh selection ref before drafting. | deterministic workflow transition test |
+| Operator prose is neither required in tool arguments nor stored, echoed, logged, or projected as evidence. | deterministic schema/privacy assertions and human privacy review |
+| Unknown, stale, mismatched, single-item, or already-consumed selection refs cannot amend the list. | deterministic invalid-state matrix |
+| Invalid amended proposals use the existing bounded validation correction path and do not destroy the old selection. | deterministic fail-closed regression |
+| A second operator amendment is rejected; duplicate/re-entrant calls cannot replace a newer selection. | deterministic one-use/replay matrix |
+| Existing selection, reuse, drafting, bundle, and publish-safety contracts do not drift. | focused regression, full suite, and behavior-drift review |
+| The installed Desktop surface lets the operator steer one missed boundary and then choose from the revised list. | bounded-model trial, synthetic five-item fixture, `N=1` feasibility; no stability claim |
+
+Trial contract:
+
+- fixture and provenance: synthetic sanitized noisy ticket with four proposed
+  items and one evidence-backed merged/missed boundary;
+- `N=1`;
+- fixed client/model conditions: installed current KCS Authoring package in
+  Claude Desktop; client/model identity recorded at trial time;
+- invariants: one amendment maximum, same excerpts, no operator prose in
+  evidence, revised native selection before any reuse search or draft;
+- acceptable variance: wording and issue labels may vary while the missed
+  boundary remains separately selectable;
+- threshold: the single feasibility run satisfies every invariant;
+- permitted corrections: existing one structural stage followed by one
+  grounding stage; no second operator amendment;
+- overhead: one operator steering response plus the revised selection;
+- false positives: zero ungrounded selectable candidates;
+- stop condition: any draft/reuse action before revised selection, lost
+  previous selection after invalid amendment, private-text echo, or need for a
+  new UI/runtime service.
+
+Ousterhout gate: `reviewed`.
+Trigger: additive stateful tool contract and semantic-selection transition.
+Complexity hidden: one-use amendment state, ref binding, atomic replacement,
+and reuse of existing semantic validators.
+Owner and what it must not know: Desktop workflow owns the amendment lifecycle;
+core semantic contracts must not know about Claude Desktop UI or operator
+selection.
+Interface depth and caller cognitive load: Claude submits the same full
+semantic proposal plus one opaque selection ref; the operator only names the
+missed boundary.
+Information leakage and change amplification: no new evidence or persistence
+surface; the response adds only bounded opaque control metadata.
+Complexity removed, moved, or added: one bounded state transition is added to
+avoid automatic-splitter special cases and manual proposal construction.
+Residual design risk: the host-provided `Something else` transition remains
+model-mediated and requires an installed-client feasibility trial.
+Verdict: `pass`.
+
+Delivery evidence on 2026-07-26:
+
+- deterministic contract tests cover schema exposure, a valid one-use
+  amendment, fresh selection identity, second-amendment rejection, invalid
+  observation shape, mismatched selection refs, preservation of the prior
+  selection, and rejection of a single-item amendment that would bypass the
+  revised selection;
+- focused semantic/workflow validation passed 331 tests before the final
+  complexity split; the final focused workflow/policy validation passed 249
+  tests;
+- the full deterministic suite passed with 1,624 tests and 1 skip when the
+  commit-only frozen-path guard was excluded; that guard remains unchanged and
+  must pass from committed content;
+- Ruff and `git diff --check` passed;
+- the advisory complexity sensor reports no new function above the configured
+  threshold; the amendment lifecycle was split into small workflow-owner
+  helpers rather than adding another service or module;
+- after explicit operator authorization, the configured
+  `gpt-5.3-codex-spark` reviewer inspected the full intended diff and reported
+  no correctness regression or blocker in the amendment, selection, result,
+  privacy, or unchanged-contract paths;
+- no package install or Desktop trial is claimed from this source-only
+  evidence;
+- the installed-client `N=1` feasibility trial remains pending a reviewed,
+  committed, rebuilt, installed, and reloaded artifact identity.
+
 ## Remaining unknown inventory
 
 - The final comfortable Desktop-integrated surface that directly owns entry and
@@ -1442,6 +1605,7 @@ KCS-15.2b2 controlled-entrypoint skeleton: implemented and verified; current det
 KCS-15.2b2 accepted runtime source: committed in dbb1b8e
 KCS-15.2b2 artifact/runtime closeout: incomplete; committed diagnostic build not installed
 KCS-15.2b2 parent super-noisy KCS-14.5 canary: failed before reuse comparison; parent outcome unproven
+KCS-15.2b2 operator-steered boundary correction: target UX selected and Delivery authorized 2026-07-26
 KCS-15.2b2 Phase C controlled operator surface: host-blocked and deferred
 KCS-15.2b2 final Desktop UX: deferred pending a host-owned direct launcher
 KCS-15.2b3 repeated trial: locked

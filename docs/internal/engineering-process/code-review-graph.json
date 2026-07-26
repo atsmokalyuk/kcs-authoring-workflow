@@ -51,12 +51,12 @@
         },
         {
           "path": "src/kcs_adapters/desktop_tool_schemas.py",
-          "file_hash": "7ff8c983ebbf5b4d16898937bac371afd101f2a45ead60549ef7956a5fcb4adc",
+          "file_hash": "97d994bd8704dfe80025ea66fc224ac1268adb2cad81d101168b3bf7292ca496",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_tool_results.py",
-          "file_hash": "418509a339f04114d3f3da51d8e4313e181db9210d715b19d3862a83eb7be019",
+          "file_hash": "df42eb93119ba4b3ecb7cf37abfe4a9875535241d006fa6edf4d97ce7010d595",
           "valid_until_changed": true
         },
         {
@@ -76,7 +76,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_authoring_tools.py",
-          "file_hash": "e8928c56dde62ea410a3dbfbfa5c58a321de23fded2679d7d0cdfa8b25bddd13",
+          "file_hash": "84f145d537c9088b2b74c377b7b5c79243a8d9352efb2972c9d6d2f3550d78b3",
           "valid_until_changed": true
         },
         {
@@ -86,7 +86,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_tool_descriptors.py",
-          "file_hash": "c2885437063b6b94b71cf5d26142f75c7e5a10a768560b278da17a62f59b4f53",
+          "file_hash": "18eefa9024e4badeea5eec616d27ad9cb774dbabbde8067f4dd549efc95e7fa5",
           "valid_until_changed": true
         },
         {
@@ -314,7 +314,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_semantic_review.py",
-          "file_hash": "11a89a918209fa3902f6c245c55f6c15e2ecde4708499b4141798f2a08f08155",
+          "file_hash": "4f74cad021eef17cb64b3406cb12d23dbda7b686312219812984b2b93cc1c7ab",
           "valid_until_changed": true
         },
         {
@@ -390,7 +390,7 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_draft_tool.py",
-          "file_hash": "51dde044e970f829df947ab0be4d699e44e261973583a297112c910b50830ea8",
+          "file_hash": "4f1cacb0007b1ec6af2bafa3055d0737255ee8fd680bcf5fa7f65b107f1ae3e8",
           "valid_until_changed": true
         },
         {
@@ -405,7 +405,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_workflow.py",
-          "file_hash": "cc70ce588497552a8e66fbb73ddb10e2dadc4adba45344025a369988f942ede2",
+          "file_hash": "bd7063dfdc33d3839b9851269f24ff5fa0960eace46dd37ad0f939267ae77820",
           "valid_until_changed": true
         },
         {
@@ -1000,7 +1000,7 @@
         },
         {
           "path": "tests/policy/test_kcs14_freeze_snapshots.py",
-          "file_hash": "c15e337a51a46bda52e992f2383c531e6a88362f4b29fb16deb45a080c337b6a",
+          "file_hash": "10bc652cbff5777c2bc4ba2b556dea6756e1b4ff4620650f2a1d2844b752b1df",
           "valid_until_changed": true
         },
         {
