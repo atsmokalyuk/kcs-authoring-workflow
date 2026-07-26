@@ -38,6 +38,12 @@ _RESULT_FORBIDDEN_FRAGMENTS = (
     "reviewer_only_draft_artifact",
     "zendesk_source_html",
 )
+_SEMANTIC_OBSERVATION_FIELD_PATH_RE = re.compile(
+    r"issues\[(?:0|[1-9][0-9]*)\]\.(?:"
+    r"answer_evidence|cause_evidence|context_evidence|error_evidence|question|"
+    r"resolution_evidence|summary|symptoms|verification_evidence"
+    r")\Z"
+)
 _RESULT_FORBIDDEN_COMPACT_FRAGMENTS = (
     "articlebody",
     "attachmenturl",
@@ -983,9 +989,15 @@ def _semantic_shape_correction_text(correction: Mapping[object, object]) -> str:
     ):
         raise ContractValidationError("semantic correction contract invalid")
     retry_text = str(retry_allowed).lower()
+    field_paths = correction.get("field_paths")
+    field_path_text = (
+        f" Correct every invalid field: {', '.join(field_paths)}."
+        if isinstance(field_paths, list)
+        else ""
+    )
     return (
         f"Submit shape correction for {field_name}: {instruction} "
-        f"retry_allowed={retry_text}."
+        f"retry_allowed={retry_text}.{field_path_text}"
     )
 
 
@@ -1001,6 +1013,22 @@ def _validated_semantic_correction(
     if expected is None or not isinstance(retry_allowed, bool):
         raise ContractValidationError("semantic correction contract invalid")
     expected["retry_allowed"] = retry_allowed
+    field_paths = value.get("field_paths")
+    if field_paths is not None:
+        if (
+            debug_code != "semantic_observation_shape_invalid"
+            or not isinstance(field_paths, list)
+            or not field_paths
+            or len(field_paths) > 45
+            or len(field_paths) != len(set(field_paths))
+            or any(
+                not isinstance(field_path, str)
+                or _SEMANTIC_OBSERVATION_FIELD_PATH_RE.fullmatch(field_path) is None
+                for field_path in field_paths
+            )
+        ):
+            raise ContractValidationError("semantic correction contract invalid")
+        expected["field_paths"] = list(field_paths)
     if dict(value) != expected:
         raise ContractValidationError("semantic correction contract invalid")
     return expected

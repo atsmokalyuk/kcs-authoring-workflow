@@ -3901,7 +3901,10 @@ def test_observation_shape_gets_one_bounded_correction_and_can_retry(
     assert isinstance(issues, list)
     issue = issues[0]
     assert isinstance(issue, dict)
+    valid_summary = issue["summary"]
+    assert isinstance(valid_summary, dict)
     valid_resolution_evidence = issue["resolution_evidence"]
+    issue["summary"] = {**valid_summary, "unexpected": "field"}
     issue["resolution_evidence"] = "not-an-observation-list"
     arguments = {
         "semantic_issue_proposal": proposal,
@@ -3919,14 +3922,22 @@ def test_observation_shape_gets_one_bounded_correction_and_can_retry(
     assert blocked["debug_code"] == "semantic_observation_shape_invalid"
     assert blocked["semantic_submission_correction"] == {
         **semantic_submission_correction("semantic_observation_shape_invalid"),
+        "field_paths": [
+            "issues[0].summary",
+            "issues[0].resolution_evidence",
+        ],
         "retry_allowed": True,
     }
     assert blocked["semantic_submission_correction"]["field_name"] == (
         "observation_fields"
     )
+    correction_text = first["result"]["content"][0]["text"]
+    assert "issues[0].summary" in correction_text
+    assert "issues[0].resolution_evidence" in correction_text
     assert blocked["draft_generated"] is False
     assert blocked["reviewer_bundle_written"] is False
 
+    issue["summary"] = valid_summary
     issue["resolution_evidence"] = valid_resolution_evidence
     second = _call_tool(
         transport,

@@ -1331,6 +1331,37 @@ batch-transition test for both `reuse` and `need_more_evidence`.
 Ousterhout gate: `not triggered`; no interface, owner, dependency, persistence,
 or public schema changes.
 
+### Repeated semantic-submit correction failure
+
+The next fresh noisy canary again stopped before item selection:
+
+- the first five-item submission returned
+  `semantic_observation_shape_invalid`;
+- Claude corrected one apparent field, but a second submission returned the
+  same terminal cause and exhausted the one-use correction;
+- no comparison, draft, bundle, or publication action occurred.
+
+This repeated the earlier upstream failure already recorded in this plan. The
+implementation exposed one shared code for every observation field, while the
+single correction described only the general contract. Tests covered one
+malformed field followed by a valid packet, not multiple malformed fields in
+one model-generated packet. Continuing after one intervening successful canary
+treated feasibility as stability and missed `ENG-PORT-DES-001` and
+`ENG-PORT-DEL-006`.
+
+Requested outcome: one validation pass identifies every structurally invalid
+observation field so the existing single correction can repair the whole
+packet. Only bounded paths such as `issues[0].summary` may be returned; submitted
+values, ticket text, source refs, and raw exceptions remain hidden. The retry
+budget, fail-closed terminal behavior, semantic ownership, and all downstream
+contracts remain unchanged.
+
+Acceptance gate: a deterministic multi-error packet returns all invalid field
+paths in one correction, succeeds after correcting them, and still permits no
+second correction. Operational stability then requires three fresh identical
+installed-client runs of `/draft ticket-94893302` to reach native item selection
+without terminal semantic shape failure.
+
 ## Remaining unknown inventory
 
 - The final comfortable Desktop-integrated surface that directly owns entry and

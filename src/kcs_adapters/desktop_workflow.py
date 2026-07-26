@@ -41,6 +41,7 @@ from kcs_adapters.desktop_semantic_candidates import (
 )
 from kcs_adapters.desktop_semantic_review import (
     PendingSemanticReview,
+    SemanticReviewError,
     new_pending_semantic_review,
     prepared_pending_semantic_review,
     semantic_issue_proposal_from_submission,
@@ -609,6 +610,12 @@ class DesktopDraftWorkflow:
     ) -> None:
         failed_submit_attempts = pending.failed_submit_attempts + 1
         correction = semantic_submission_correction(debug_code)
+        if (
+            correction is not None
+            and isinstance(cause, SemanticReviewError)
+            and cause.field_paths
+        ):
+            correction["field_paths"] = list(cause.field_paths)
         if correction is None or pending.failed_submit_attempts > 0:
             self._pending_semantic_review = None
             bounded_cause_debug_code = (

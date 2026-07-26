@@ -132,9 +132,15 @@ _PUBLIC_SUPPORT_ARTICLE_URL_RE = re.compile(
 class SemanticReviewError(ValueError):
     """Value-safe semantic-review workflow error."""
 
-    def __init__(self, debug_code: str) -> None:
+    def __init__(
+        self,
+        debug_code: str,
+        *,
+        field_paths: tuple[str, ...] = (),
+    ) -> None:
         super().__init__("semantic review unavailable")
         self.debug_code = debug_code
+        self.field_paths = field_paths
 
 
 @dataclass(frozen=True)
@@ -404,6 +410,7 @@ def semantic_issue_proposal_from_submission(
             pending=pending,
             semantic_issue_proposal=semantic_issue_proposal,
         )
+        _ensure_observation_wire_shapes(semantic_issue_proposal)
         proposal = SemanticIssueProposalPacket.from_json_dict(semantic_issue_proposal)
     except SemanticReviewSubmissionError as exc:
         raise SemanticReviewError(exc.debug_code) from exc
@@ -476,6 +483,60 @@ def _normalized_issue_wire_shapes(payload: Mapping[str, object]) -> JsonDict:
     normalized = dict(payload)
     normalized["issues"] = normalized_issues
     return normalized
+
+
+def _ensure_observation_wire_shapes(payload: object) -> None:
+    invalid_field_paths = _invalid_observation_shape_paths(payload)
+    if invalid_field_paths:
+        raise SemanticReviewError(
+            "semantic_observation_shape_invalid",
+            field_paths=invalid_field_paths,
+        )
+
+
+def _invalid_observation_shape_paths(payload: object) -> tuple[str, ...]:
+    if not isinstance(payload, Mapping):
+        return ()
+    issues = payload.get("issues")
+    if not isinstance(issues, list):
+        return ()
+    invalid: list[str] = []
+    for index, issue in enumerate(issues):
+        invalid.extend(_invalid_issue_observation_paths(index, issue))
+    return tuple(invalid)
+
+
+def _invalid_issue_observation_paths(index: int, issue: object) -> list[str]:
+    if not isinstance(issue, Mapping):
+        return []
+    invalid = []
+    if not _is_observation_wire_shape(issue.get("summary")):
+        invalid.append(f"issues[{index}].summary")
+    question = issue.get("question")
+    if question is not None and not _is_observation_wire_shape(question):
+        invalid.append(f"issues[{index}].question")
+    invalid.extend(
+        f"issues[{index}].{field_name}"
+        for field_name in _ISSUE_OBSERVATION_LIST_FIELDS
+        if not _is_observation_list_wire_shape(issue.get(field_name))
+    )
+    return invalid
+
+
+def _is_observation_list_wire_shape(value: object) -> bool:
+    return isinstance(value, list) and all(
+        _is_observation_wire_shape(observation) for observation in value
+    )
+
+
+def _is_observation_wire_shape(value: object) -> bool:
+    return (
+        isinstance(value, Mapping)
+        and set(value) == {"source_refs", "text"}
+        and isinstance(value.get("text"), str)
+        and bool(str(value["text"]).strip())
+        and isinstance(value.get("source_refs"), list)
+    )
 
 
 def _issue_observation_source_refs(issue: Mapping[str, object]) -> list[str]:
