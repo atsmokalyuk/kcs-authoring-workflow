@@ -3909,8 +3909,10 @@ def test_structure_then_grounding_each_get_one_bounded_correction(
     symptom = symptoms[0]
     assert isinstance(symptom, dict)
     exact_symptom_text = symptom["text"]
+    exact_symptom_source_refs = symptom["source_refs"]
     issue["summary"] = {**valid_summary, "unexpected": "field"}
     issue["resolution_evidence"] = "not-an-observation-list"
+    symptom["source_refs"] = []
     arguments = {
         "semantic_issue_proposal": proposal,
         "semantic_review_ref": semantic_review_ref,
@@ -3930,6 +3932,7 @@ def test_structure_then_grounding_each_get_one_bounded_correction(
         "field_paths": [
             "issues[0].summary",
             "issues[0].resolution_evidence",
+            "issues[0].symptoms",
         ],
         "retry_allowed": True,
     }
@@ -3938,12 +3941,14 @@ def test_structure_then_grounding_each_get_one_bounded_correction(
     )
     correction_text = first["result"]["content"][0]["text"]
     assert "issues[0].summary" in correction_text
+    assert "issues[0].symptoms" in correction_text
     assert "issues[0].resolution_evidence" in correction_text
     assert blocked["draft_generated"] is False
     assert blocked["reviewer_bundle_written"] is False
 
     issue["summary"] = valid_summary
     issue["resolution_evidence"] = valid_resolution_evidence
+    symptom["source_refs"] = exact_symptom_source_refs
     symptom["text"] = "The synthetic operation did not work."
     second = _call_tool(
         transport,

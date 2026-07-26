@@ -309,12 +309,12 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_semantic_candidate_contract.py",
-          "file_hash": "cdee6419c3ac1ae931a2951f8c721cb69d5a072faf9225261e392fee2780af42",
+          "file_hash": "bdd7477c477b627fb56e981adc78e5bd5924b23c02563bf38d7b7982eb9c52d1",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_semantic_review.py",
-          "file_hash": "8186e8cb2651ddaf0ba01122dde1f6ada120a3a20a4ed0cd77ef616c35e09b02",
+          "file_hash": "11a89a918209fa3902f6c245c55f6c15e2ecde4708499b4141798f2a08f08155",
           "valid_until_changed": true
         },
         {

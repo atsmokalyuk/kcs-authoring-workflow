@@ -67,10 +67,14 @@ _SUBMISSION_SHAPE_CORRECTIONS = MappingProxyType(
             "field_name": "observation_fields",
             "instruction": (
                 "Use an object with exactly text and source_refs for every "
-                "observation. Use observation lists for symptoms, error_evidence, "
+                "observation. source_refs must be a non-empty list of unique "
+                "exact refs from allowed_source_refs. "
+                "Use observation lists for symptoms, error_evidence, "
                 "cause_evidence, resolution_evidence, verification_evidence, "
                 "answer_evidence, and context_evidence. Use one required "
-                "observation for summary and null or one observation for question."
+                "observation for summary and null or one observation for question. "
+                "Correct every listed field path in one submission and preserve "
+                "unlisted fields."
             ),
         },
         "semantic_issue_case_ref_mismatch": {

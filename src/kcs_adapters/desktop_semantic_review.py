@@ -24,10 +24,12 @@ from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
 from kcs_core.sanitizer import ensure_safe_ref, ensure_safe_sanitized_payload
 from kcs_core.semantic_extraction import (
+    SEMANTIC_ISSUE_PROPOSAL_MAX_OBSERVATIONS_PER_FIELD,
     SEMANTIC_ISSUE_PROPOSAL_MAX_SOURCE_REFS,
     SEMANTIC_ISSUE_PROPOSAL_MAX_TOTAL_BYTES,
     SEMANTIC_ISSUE_PROPOSAL_SCHEMA_VERSION,
     SemanticIssueProposalPacket,
+    SemanticObservation,
 )
 
 SEMANTIC_REVIEW_PACKET_SCHEMA_VERSION = "kcs_semantic_review_packet_v1"
@@ -532,19 +534,25 @@ def _invalid_issue_observation_paths(index: int, issue: object) -> list[str]:
 
 
 def _is_observation_list_wire_shape(value: object) -> bool:
-    return isinstance(value, list) and all(
-        _is_observation_wire_shape(observation) for observation in value
+    return (
+        isinstance(value, list)
+        and len(value) <= SEMANTIC_ISSUE_PROPOSAL_MAX_OBSERVATIONS_PER_FIELD
+        and all(_is_observation_wire_shape(observation) for observation in value)
     )
 
 
 def _is_observation_wire_shape(value: object) -> bool:
-    return (
-        isinstance(value, Mapping)
-        and set(value) == {"source_refs", "text"}
-        and isinstance(value.get("text"), str)
-        and bool(str(value["text"]).strip())
-        and isinstance(value.get("source_refs"), list)
-    )
+    try:
+        SemanticObservation.from_json_dict(value)
+    except ContractValidationError as exc:
+        debug_code = semantic_contract_debug_code(str(exc))
+        if debug_code in {
+            "semantic_ref_shape_invalid",
+            "semantic_review_unsafe_value_blocked",
+        }:
+            raise
+        return False
+    return True
 
 
 def _issue_observation_source_refs(issue: Mapping[str, object]) -> list[str]:

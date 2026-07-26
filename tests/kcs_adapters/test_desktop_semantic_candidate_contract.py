@@ -311,6 +311,7 @@ def test_observation_shape_failures_share_one_static_correction(
     assert debug_code == "semantic_observation_shape_invalid"
     assert correction is not None
     assert correction["field_name"] == "observation_fields"
+    assert "non-empty" in correction["instruction"]
     assert "suggested_value" not in correction
 
 

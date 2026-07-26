@@ -1384,6 +1384,24 @@ Deterministic gate:
 grounding -> normal continuation`; repeated structure or grounding remains
 terminal.
 
+The next installed N=1 still terminated on repeated
+`semantic_observation_shape_invalid`. The first correction exposed
+`summary`, but the shape collector only checked that nested `source_refs` was
+a list. Core validation also requires non-empty, unique refs and enforces
+observation count/text-size limits; unsafe ref/value classes remain separate
+terminal safety errors. Those deeper structural constraints could therefore
+surface only after the first correction. This was an implementation and test
+parity defect in `62620a0`: the acceptance fixture covered multiple shallow
+shape failures, not nested structural constraints already owned by core.
+
+Bounded correction: make the existing path collector reuse the core observation
+parser for structural constraints while preserving separate safety/ref
+classification, and tell the model to correct every listed path while
+preserving unlisted fields. Retry counts, stage order, semantic authority,
+fail-closed behavior, and downstream contracts do not change. This occurrence
+adds evidence to `ENG-PORT-DES-001` and `ENG-PORT-DEL-006`; it does not justify
+another process rule.
+
 ## Remaining unknown inventory
 
 - The final comfortable Desktop-integrated surface that directly owns entry and
