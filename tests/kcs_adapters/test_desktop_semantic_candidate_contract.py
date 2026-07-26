@@ -7,6 +7,7 @@ from kcs_adapters.desktop_semantic_candidate_contract import (
     semantic_contract_debug_code,
     semantic_issue_proposal_contract_metadata,
     semantic_submission_correction,
+    semantic_submission_correction_stage,
 )
 from kcs_adapters.desktop_semantic_review import (
     SemanticReviewError,
@@ -25,6 +26,22 @@ from kcs_core.semantic_extraction import (
     SEMANTIC_ISSUE_PROPOSAL_SCHEMA_VERSION,
     SemanticIssueProposalPacket,
 )
+
+
+@pytest.mark.parametrize(
+    ("debug_code", "expected_stage"),
+    [
+        ("semantic_observation_shape_invalid", "structure"),
+        ("semantic_observation_text_not_extractive", "grounding"),
+        ("semantic_issue_entry_speaker_incompatible", "grounding"),
+        ("semantic_review_submission_invalid", None),
+    ],
+)
+def test_semantic_corrections_have_bounded_stages(
+    debug_code: str,
+    expected_stage: str | None,
+) -> None:
+    assert semantic_submission_correction_stage(debug_code) == expected_stage
 
 
 def _proposal_payload() -> dict[str, object]:

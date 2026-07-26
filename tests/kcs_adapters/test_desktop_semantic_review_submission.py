@@ -110,6 +110,7 @@ def test_paraphrased_customer_evidence_is_rejected(
         )
 
     assert captured.value.debug_code == "semantic_observation_text_not_extractive"
+    assert captured.value.field_paths
 
 
 def test_generative_summary_does_not_require_extractive_match() -> None:

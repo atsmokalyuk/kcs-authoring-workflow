@@ -1356,11 +1356,33 @@ values, ticket text, source refs, and raw exceptions remain hidden. The retry
 budget, fail-closed terminal behavior, semantic ownership, and all downstream
 contracts remain unchanged.
 
-Acceptance gate: a deterministic multi-error packet returns all invalid field
+Initial acceptance gate: a deterministic multi-error packet returns all invalid field
 paths in one correction, succeeds after correcting them, and still permits no
 second correction. Operational stability then requires three fresh identical
 installed-client runs of `/draft ticket-94893302` to reach native item selection
 without terminal semantic shape failure.
+
+The first installed run on `62620a0` passed the structural correction but then
+stopped on the independent grounding validator with
+`semantic_observation_text_not_extractive`. This is failed N=1, not a retryable
+ticket result. It proves that one global correction budget is the wrong boundary
+for a staged validator: a valid structural correction can reveal a separate
+grounding defect.
+
+Revised bounded contract:
+
+- one structural correction may be followed by one grounding correction;
+- the same correction stage cannot repeat, grounding cannot reopen structure,
+  and the total remains capped at two;
+- non-extractive feedback lists only invalid observation field paths, never
+  submitted text, source refs, excerpts, or raw exceptions;
+- all terminal, no-manual-draft, no-write, and downstream contracts remain
+  unchanged.
+
+Deterministic gate:
+`invalid structure -> corrected structure plus invalid grounding -> corrected
+grounding -> normal continuation`; repeated structure or grounding remains
+terminal.
 
 ## Remaining unknown inventory
 

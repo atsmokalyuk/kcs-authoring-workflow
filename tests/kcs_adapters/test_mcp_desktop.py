@@ -3889,7 +3889,7 @@ def test_terminal_semantic_validation_classes_are_operator_visible(
     assert structured["reviewer_bundle_written"] is False
 
 
-def test_observation_shape_gets_one_bounded_correction_and_can_retry(
+def test_structure_then_grounding_each_get_one_bounded_correction(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -3904,6 +3904,11 @@ def test_observation_shape_gets_one_bounded_correction_and_can_retry(
     valid_summary = issue["summary"]
     assert isinstance(valid_summary, dict)
     valid_resolution_evidence = issue["resolution_evidence"]
+    symptoms = issue["symptoms"]
+    assert isinstance(symptoms, list)
+    symptom = symptoms[0]
+    assert isinstance(symptom, dict)
+    exact_symptom_text = symptom["text"]
     issue["summary"] = {**valid_summary, "unexpected": "field"}
     issue["resolution_evidence"] = "not-an-observation-list"
     arguments = {
@@ -3939,6 +3944,7 @@ def test_observation_shape_gets_one_bounded_correction_and_can_retry(
 
     issue["summary"] = valid_summary
     issue["resolution_evidence"] = valid_resolution_evidence
+    symptom["text"] = "The synthetic operation did not work."
     second = _call_tool(
         transport,
         claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
@@ -3946,9 +3952,55 @@ def test_observation_shape_gets_one_bounded_correction_and_can_retry(
     )
 
     assert second is not None
-    continued = second["result"]["structuredContent"]
+    second_blocked = second["result"]["structuredContent"]
+    assert second_blocked["debug_code"] == (
+        "semantic_observation_text_not_extractive"
+    )
+    assert second_blocked["semantic_submission_correction"] == {
+        **semantic_submission_correction(
+            "semantic_observation_text_not_extractive"
+        ),
+        "field_paths": ["issues[0].symptoms"],
+        "retry_allowed": True,
+    }
+
+    symptom["text"] = exact_symptom_text
+    third = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        arguments,
+    )
+
+    assert third is not None
+    continued = third["result"]["structuredContent"]
     assert continued.get("debug_code") != "semantic_issue_submission_invalid"
     assert "semantic_submission_correction" not in continued
+
+
+@pytest.mark.parametrize(
+    ("used_stages", "next_stage", "allowed"),
+    [
+        ((), "structure", True),
+        ((), "grounding", True),
+        (("structure",), "grounding", True),
+        (("structure",), "structure", False),
+        (("grounding",), "grounding", False),
+        (("grounding",), "structure", False),
+        (("structure", "grounding"), None, False),
+    ],
+)
+def test_semantic_correction_stage_transition_is_bounded(
+    used_stages: tuple[str, ...],
+    next_stage: str | None,
+    allowed: bool,
+) -> None:
+    assert (
+        desktop_workflow._semantic_correction_stage_allowed(  # noqa: SLF001
+            used_stages,
+            next_stage,
+        )
+        is allowed
+    )
 
 
 def test_paraphrased_observation_gets_one_exact_copy_correction(
@@ -3986,6 +4038,7 @@ def test_paraphrased_observation_gets_one_exact_copy_correction(
     assert blocked["debug_code"] == "semantic_observation_text_not_extractive"
     assert blocked["semantic_submission_correction"] == {
         **semantic_submission_correction("semantic_observation_text_not_extractive"),
+        "field_paths": ["issues[0].symptoms"],
         "retry_allowed": True,
     }
     assert blocked["draft_generated"] is False

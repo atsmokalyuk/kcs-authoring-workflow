@@ -31,6 +31,7 @@ from kcs_adapters.desktop_draft_output import (
 from kcs_adapters.desktop_reviewer_bundle import write_desktop_reviewer_bundle
 from kcs_adapters.desktop_semantic_candidate_contract import (
     semantic_submission_correction,
+    semantic_submission_correction_stage,
 )
 from kcs_adapters.desktop_semantic_candidates import (
     ProjectedIssueSet,
@@ -266,6 +267,30 @@ _TERMINAL_SEMANTIC_SUBMISSION_DEBUG_CODES = frozenset(
         "semantic_source_refs_shape_invalid",
     }
 )
+
+
+def _semantic_correction_stage_allowed(
+    used_stages: tuple[str, ...],
+    next_stage: str | None,
+) -> bool:
+    return next_stage is not None and (
+        not used_stages
+        or (used_stages == ("structure",) and next_stage == "grounding")
+    )
+
+
+def _semantic_correction_for_error(
+    debug_code: str,
+    cause: Exception,
+) -> tuple[JsonDict | None, str | None]:
+    correction = semantic_submission_correction(debug_code)
+    if (
+        correction is not None
+        and isinstance(cause, SemanticReviewError)
+        and cause.field_paths
+    ):
+        correction["field_paths"] = list(cause.field_paths)
+    return correction, semantic_submission_correction_stage(debug_code)
 
 
 class ApprovedSummaryPipelineStageError(ContractValidationError):
@@ -609,14 +634,14 @@ class DesktopDraftWorkflow:
         cause: Exception,
     ) -> None:
         failed_submit_attempts = pending.failed_submit_attempts + 1
-        correction = semantic_submission_correction(debug_code)
-        if (
-            correction is not None
-            and isinstance(cause, SemanticReviewError)
-            and cause.field_paths
+        correction, correction_stage = _semantic_correction_for_error(
+            debug_code,
+            cause,
+        )
+        if correction is None or not _semantic_correction_stage_allowed(
+            pending.used_correction_stages,
+            correction_stage,
         ):
-            correction["field_paths"] = list(cause.field_paths)
-        if correction is None or pending.failed_submit_attempts > 0:
             self._pending_semantic_review = None
             bounded_cause_debug_code = (
                 debug_code
@@ -639,9 +664,14 @@ class DesktopDraftWorkflow:
                     else None
                 ),
             ) from cause
+        assert correction_stage is not None
         self._pending_semantic_review = replace(
             pending,
             failed_submit_attempts=failed_submit_attempts,
+            used_correction_stages=(
+                *pending.used_correction_stages,
+                correction_stage,
+            ),
         )
         correction["retry_allowed"] = True
         raise SemanticReviewSubmissionInvalidError(

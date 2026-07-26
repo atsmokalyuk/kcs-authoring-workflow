@@ -56,7 +56,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_tool_results.py",
-          "file_hash": "e9f42d09ba588d90e97c363a3eb8e11c5cd8c34b735cffb83a7b05325f6f75f2",
+          "file_hash": "418509a339f04114d3f3da51d8e4313e181db9210d715b19d3862a83eb7be019",
           "valid_until_changed": true
         },
         {
@@ -309,17 +309,17 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_semantic_candidate_contract.py",
-          "file_hash": "8624a12c95606387887d93dbbc93134c51aa9cfda1b4acf26f1280d8c4082fd6",
+          "file_hash": "cdee6419c3ac1ae931a2951f8c721cb69d5a072faf9225261e392fee2780af42",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_semantic_review.py",
-          "file_hash": "24695dd524f81747f1bb7d7fcd337fe9e997caec49275583ec94492d71da9ffd",
+          "file_hash": "8186e8cb2651ddaf0ba01122dde1f6ada120a3a20a4ed0cd77ef616c35e09b02",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_semantic_review_submission.py",
-          "file_hash": "ffc37376414ad1b3acbc84dcc75d2ccb2fcd1d8497732738a5933f57d8bdc057",
+          "file_hash": "4b28f756300ef3d348e4ed14cf4836943ce4e8ca235d63a7ff293e4599fcf51f",
           "valid_until_changed": true
         },
         {
@@ -405,7 +405,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_workflow.py",
-          "file_hash": "38b7ca97485080d257733fe505f0a9fae66d24689f6fcd0c55916206e9746617",
+          "file_hash": "cc70ce588497552a8e66fbb73ddb10e2dadc4adba45344025a369988f942ede2",
           "valid_until_changed": true
         },
         {

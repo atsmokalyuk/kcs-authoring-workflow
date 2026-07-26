@@ -160,14 +160,16 @@ Rules:
   shape, coverage shape, and whole-proposal shape; an unregistered internal
   code is collapsed to the generic terminal code. Observation shape,
   non-extractive observation text, and explicit speaker incompatibility have
-  static one-retry corrections that restate the already prepared contract
-  without echoing or repairing submitted values. The same per-review correction
-  budget remains single-use.
+  bounded corrections that restate the already prepared contract without
+  echoing or repairing submitted values. A review may use one structural
+  correction followed by one grounding correction; neither stage may repeat,
+  grounding cannot reopen structure, and the total is capped at two.
 - Resolution and verification observations preserve executable detail present
   in the approved excerpts; downstream Python evidence/readiness checks still
   block incomplete procedures.
-- The one-use schema-correction retry remains bound to the same review ref and
-  applies only to bounded observation-shape correction.
+- Every correction remains bound to the same review ref. Grounding feedback may
+  expose only closed observation field paths, never submitted text or source
+  excerpts.
 
 ## Planned End-to-End Flow
 

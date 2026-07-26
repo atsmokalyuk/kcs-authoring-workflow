@@ -156,6 +156,7 @@ class PendingSemanticReview:
     packet_prepared: bool
     expires_at: float
     failed_submit_attempts: int = 0
+    used_correction_stages: tuple[str, ...] = ()
 
 
 def new_pending_semantic_review(
@@ -204,6 +205,7 @@ def prepared_pending_semantic_review(
         semantic_review_ref=pending.semantic_review_ref,
         source_kind=pending.source_kind,
         ticket_ref=pending.ticket_ref,
+        used_correction_stages=pending.used_correction_stages,
     )
 
 
@@ -413,7 +415,10 @@ def semantic_issue_proposal_from_submission(
         _ensure_observation_wire_shapes(semantic_issue_proposal)
         proposal = SemanticIssueProposalPacket.from_json_dict(semantic_issue_proposal)
     except SemanticReviewSubmissionError as exc:
-        raise SemanticReviewError(exc.debug_code) from exc
+        raise SemanticReviewError(
+            exc.debug_code,
+            field_paths=exc.field_paths,
+        ) from exc
     except ContractValidationError as exc:
         raise SemanticReviewError(semantic_contract_debug_code(str(exc))) from exc
     expected_refs = set(pending.allowed_source_refs)
@@ -435,7 +440,10 @@ def semantic_issue_proposal_from_submission(
             _semantic_review_excerpt_speaker_index(pending),
         )
     except SemanticReviewSubmissionError as exc:
-        raise SemanticReviewError(exc.debug_code) from exc
+        raise SemanticReviewError(
+            exc.debug_code,
+            field_paths=exc.field_paths,
+        ) from exc
     return proposal
 
 

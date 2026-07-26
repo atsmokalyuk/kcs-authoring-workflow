@@ -127,6 +127,12 @@ _SUBMISSION_SHAPE_CORRECTIONS = MappingProxyType(
         },
     }
 )
+_GROUNDING_CORRECTION_CODES = frozenset(
+    {
+        "semantic_issue_entry_speaker_incompatible",
+        "semantic_observation_text_not_extractive",
+    }
+)
 
 
 def semantic_issue_proposal_contract_metadata() -> JsonDict:
@@ -283,6 +289,16 @@ def semantic_submission_correction(debug_code: str) -> JsonDict | None:
                 "field_name": field_name,
             }
     return None
+
+
+def semantic_submission_correction_stage(debug_code: str) -> str | None:
+    """Classify one registered correction without exposing submitted values."""
+
+    if semantic_submission_correction(debug_code) is None:
+        return None
+    if debug_code in _GROUNDING_CORRECTION_CODES:
+        return "grounding"
+    return "structure"
 
 
 def _field_contract_json(contract: _SemanticFieldContract) -> JsonDict:

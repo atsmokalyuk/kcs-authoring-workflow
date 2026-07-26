@@ -44,6 +44,12 @@ _SEMANTIC_OBSERVATION_FIELD_PATH_RE = re.compile(
     r"resolution_evidence|summary|symptoms|verification_evidence"
     r")\Z"
 )
+_SEMANTIC_FIELD_PATH_CORRECTION_CODES = frozenset(
+    {
+        "semantic_observation_shape_invalid",
+        "semantic_observation_text_not_extractive",
+    }
+)
 _RESULT_FORBIDDEN_COMPACT_FRAGMENTS = (
     "articlebody",
     "attachmenturl",
@@ -1016,7 +1022,7 @@ def _validated_semantic_correction(
     field_paths = value.get("field_paths")
     if field_paths is not None:
         if (
-            debug_code != "semantic_observation_shape_invalid"
+            debug_code not in _SEMANTIC_FIELD_PATH_CORRECTION_CODES
             or not isinstance(field_paths, list)
             or not field_paths
             or len(field_paths) > 45
