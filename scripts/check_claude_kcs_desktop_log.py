@@ -284,6 +284,7 @@ _EXPECTED_TOOLS = {
     "kcs_submit_semantic_review": _ExpectedTool(
         properties=frozenset(
             {
+                "operator_selection_ref",
                 "semantic_issue_proposal",
                 "semantic_review_ref",
             }

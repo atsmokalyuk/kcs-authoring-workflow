@@ -158,6 +158,7 @@ _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
         name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
         properties=frozenset(
             {
+                "operator_selection_ref",
                 "semantic_issue_proposal",
                 "semantic_review_ref",
             }
@@ -167,7 +168,12 @@ _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
         idempotent=False,
         open_world=False,
         read_only=False,
-        description_includes=("semantic_issue_proposal_v1", "No article draft"),
+        description_includes=(
+            "semantic_issue_proposal_v1",
+            "No article draft",
+            "operator says an issue was missed or merged",
+            "operator prose is steering context, never evidence",
+        ),
     ),
     _ExpectedToolSurface(
         name=BEHAVIOR_TOOL_NAME,
@@ -225,7 +231,11 @@ _EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS: tuple[
     ),
     _ExpectedManifestToolDescription(
         name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
-        includes=("semantic_issue_proposal_v1", "No article draft"),
+        includes=(
+            "semantic_issue_proposal_v1",
+            "No article draft",
+            "operator says an issue was missed or merged",
+        ),
     ),
     _ExpectedManifestToolDescription(
         name=BEHAVIOR_TOOL_NAME,
@@ -1764,7 +1774,7 @@ def _semantic_review_submit_ok(responses: dict[str, dict[str, Any]]) -> bool:
         and _shared_identity_refs_remain_audit_only(submit)
         and _active_semantic_comparison_gate_ok(submit, responses["batch"], batch)
         and "reviewer_only_html" not in submit
-        and "semantic_issue_proposal" not in response_text
+        and "semantic-proposal-smoke-submit-001" not in response_text
     )
 
 

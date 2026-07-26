@@ -770,12 +770,12 @@
         },
         {
           "path": "scripts/check_claude_kcs_desktop_log.py",
-          "file_hash": "30bd91f4e0759824192ff51d555e3c8f20c9a28c9f8e4a6daac3922bf949b25e",
+          "file_hash": "67715c111acad53202419beaacb301f4b8018c0aaadbe46cfc26286df35031b4",
           "valid_until_changed": true
         },
         {
           "path": "scripts/smoke_kcs_mcpb_stdio.py",
-          "file_hash": "3e75b007b13a299618f3e25a22b300f63da295a7399eca266e5306d0be8d4606",
+          "file_hash": "899c1f18337df50cd267694f641a9cdb50c716b57c1804f3c11f864ab2a3c3d4",
           "valid_until_changed": true
         },
         {
@@ -855,7 +855,7 @@
         },
         {
           "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/manifest.json",
-          "file_hash": "c8169213b9e12878738e2e61b22f7062117de91c9d9f62e219297c18ad9052f1",
+          "file_hash": "93519c7124a91298fe289a8dcedc4d9d2b12352659839318c5db0c5bf028c65e",
           "valid_until_changed": true
         },
         {

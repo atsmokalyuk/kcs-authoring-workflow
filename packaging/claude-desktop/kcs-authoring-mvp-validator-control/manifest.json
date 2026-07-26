@@ -59,7 +59,7 @@
       "name": "kcs_prepare_semantic_review"
     },
     {
-      "description": "Submit semantic_issue_proposal_v1 from the prepared packet. No article draft, HTML, item, item_candidates, or raw ticket text.",
+      "description": "Submit semantic_issue_proposal_v1 from the prepared packet. No article draft, HTML, item, item_candidates, or raw ticket text. After a multi-item selection, if the operator says an issue was missed or merged, submit one amended proposal with the returned operator_selection_ref. Operator prose is steering context, never evidence.",
       "name": "kcs_submit_semantic_review"
     },
     {

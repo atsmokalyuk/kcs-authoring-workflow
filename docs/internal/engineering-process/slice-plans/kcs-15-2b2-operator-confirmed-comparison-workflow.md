@@ -1560,8 +1560,23 @@ Delivery evidence on 2026-07-26:
   `gpt-5.3-codex-spark` reviewer inspected the full intended diff and reported
   no correctness regression or blocker in the amendment, selection, result,
   privacy, or unchanged-contract paths;
-- no package install or Desktop trial is claimed from this source-only
-  evidence;
+- the first post-commit installed-wrapper smoke rejected the new optional
+  `operator_selection_ref` because its expected tool surface and packaged
+  manifest description still represented the previous submit contract; its
+  proposal-reflection assertion also treated the now-required safe schema name
+  `semantic_issue_proposal` as if it were a reflected proposal value;
+- the bounded Delivery correction updated the manifest, smoke oracle, and
+  package fixtures to recognize the optional ref and to detect reflection by
+  the synthetic proposal identity rather than by the safe schema name; the
+  source-wrapper stdio smoke then passed all checks with the unchanged seven
+  production tools;
+- the independent follow-up review found the same contract drift in the
+  separate Claude Desktop log checker; its exact submit-schema oracle and
+  existing latest-surface fixture were updated to require the optional
+  `operator_selection_ref`, preventing a valid reloaded Desktop runtime from
+  being reported as stale;
+- the corrected manifest/smoke follow-up is not yet committed or installed,
+  and no Desktop trial is claimed from this source evidence;
 - the installed-client `N=1` feasibility trial remains pending a reviewed,
   committed, rebuilt, installed, and reloaded artifact identity.
 

@@ -75,6 +75,7 @@ MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES = {
     "kcs_submit_semantic_review": (
         "semantic_issue_proposal_v1",
         "No article draft",
+        "operator says an issue was missed or merged",
     ),
     "support_get_behavior_instructions": (
         "Legacy compatibility helper",
@@ -577,11 +578,16 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                     },
                     "description": (
                         "Submit semantic_issue_proposal_v1 from the prepared "
-                        "packet. No article draft, HTML, item, "
-                        "item_candidates, or raw ticket text."
+                        "packet. No article draft, HTML, item, item_candidates, "
+                        "or raw ticket text. After Python returns a multi-item "
+                        "selection, if and only if the operator says an issue "
+                        "was missed or merged, submit one complete amended "
+                        "proposal. operator prose is steering context, never "
+                        "evidence."
                     ),
                     "inputSchema": {
                         "properties": {
+                            "operator_selection_ref": {},
                             "semantic_issue_proposal": {},
                             "semantic_review_ref": {},
                         },
@@ -1025,6 +1031,7 @@ def test_claude_desktop_log_check_accepts_latest_thin_tool_surface(
                     },
                     "inputSchema": {
                         "properties": {
+                            "operator_selection_ref": {},
                             "semantic_issue_proposal": {},
                             "semantic_review_ref": {},
                         }
