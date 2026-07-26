@@ -252,6 +252,10 @@ def test_material_slice_design_is_tracked_before_delivery() -> None:
     assert "still-locked" in review_checklist
     assert "Active Slice Plan path" in workflow
     assert "ENG-PORT-DES-010" in portability
+    assert "ENG-PORT-DES-001" in portability
+    assert "outcome-by-context transition matrix" in feature_playbook
+    assert "outcome-by-context transition matrix" in portability
+    assert "happy-path sequence" in review_checklist
 
 
 def test_ousterhout_material_review_gate_anchors_are_tracked() -> None:

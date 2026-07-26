@@ -390,7 +390,7 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_draft_tool.py",
-          "file_hash": "e6fa941df0622293ef68330e7321c978bdb1869ab72a580f391981a1acc35dce",
+          "file_hash": "51dde044e970f829df947ab0be4d699e44e261973583a297112c910b50830ea8",
           "valid_until_changed": true
         },
         {
@@ -990,7 +990,7 @@
         },
         {
           "path": "tests/policy/test_engineering_process_docs_policy.py",
-          "file_hash": "f40b0005d36a75138e556aaacbe7cc63976920ebc275333161d399736ec9ee68",
+          "file_hash": "ea5c18480c5a3d06dc57a46ef280e2bcc9b6fb1ed04132a59173058d2707a5f9",
           "valid_until_changed": true
         },
         {

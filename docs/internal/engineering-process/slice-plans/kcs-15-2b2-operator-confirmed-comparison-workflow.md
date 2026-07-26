@@ -1312,9 +1312,24 @@ Reason: this is an additive value-safe diagnostic field on the existing
 semantic-submit failure owner. It adds no state, retry, semantic decision,
 workflow transition, dependency, persistence, or service boundary.
 
-The diagnostic correction is committed in `dbb1b8e` but not yet promoted. It
-must be packaged and installed from that commit before one fresh
-representative canary may diagnose the next specific failure.
+The diagnostic correction is committed in `dbb1b8e`, included in the clean
+closeout chain through `8e17adf`, packaged, installed, and verified through the
+installed-wrapper smoke. The active local RAG dependency was also corrected
+from the stale main-checkout process to the committed exact-context source
+`0fd28fe9`; current status and the exact `POST /api/article-snippets`
+capability passed on the same active loopback instance.
+
+### Representative canary continuation defect
+
+The noisy canary accepted five items and opened the first comparison, but
+`need_more_evidence` stopped the whole batch instead of advancing to item two.
+No draft or reviewer bundle was written. The implementation had excluded that
+outcome from the existing batch-advance path, contrary to the sequential batch
+contract. The bounded fix removes that exception and parameterizes the existing
+batch-transition test for both `reuse` and `need_more_evidence`.
+
+Ousterhout gate: `not triggered`; no interface, owner, dependency, persistence,
+or public schema changes.
 
 ## Remaining unknown inventory
 

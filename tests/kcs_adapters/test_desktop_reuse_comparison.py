@@ -780,7 +780,15 @@ def test_comparison_expiry_consumes_pending_state() -> None:
     assert workflow.pending_reuse_comparison is None
 
 
-def test_batch_comparison_advances_one_selected_issue_at_a_time(tmp_path) -> None:
+@pytest.mark.parametrize(
+    ("first_outcome", "recommended_action"),
+    [("reuse", "reuse_existing"), ("need_more_evidence", "blocked")],
+)
+def test_batch_comparison_advances_one_selected_issue_at_a_time(
+    tmp_path,
+    first_outcome: str,
+    recommended_action: str,
+) -> None:
     provider = _FixtureComparisonProvider()
     workflow = _workflow(provider)
     first = _issue_candidate()
@@ -810,21 +818,25 @@ def test_batch_comparison_advances_one_selected_issue_at_a_time(tmp_path) -> Non
 
     second_comparison = tool.confirm_reuse_comparison(
         {
-            "candidate_ref": "comparison-candidate-001",
             "comparison_ref": first_comparison["comparison_ref"],
-            "outcome": "reuse",
+            "outcome": first_outcome,
+            **(
+                {"candidate_ref": "comparison-candidate-001"}
+                if first_outcome == "reuse"
+                else {}
+            ),
         }
     )
     assert second_comparison["result_kind"] == "reuse_comparison_required"
     assert second_comparison["comparison_sequence_outcomes"] == [
         {
-            "comparison_outcome": "reuse",
+            "comparison_outcome": first_outcome,
             "draft_generated": False,
-                "item_ref": "candidate-001",
-                "recommended_action": "reuse_existing",
-                "reviewer_bundle_written": False,
-            }
-        ]
+            "item_ref": "candidate-001",
+            "recommended_action": recommended_action,
+            "reviewer_bundle_written": False,
+        }
+    ]
     assert len(provider.requests) == 2
     assert author_calls == []
 
@@ -834,9 +846,9 @@ def test_batch_comparison_advances_one_selected_issue_at_a_time(tmp_path) -> Non
             "outcome": "none_fit",
         }
     )
-    assert [entry["comparison_outcome"] for entry in result[
-        "comparison_sequence_outcomes"
-    ]] == ["reuse", "none_fit"]
+    assert [
+        entry["comparison_outcome"] for entry in result["comparison_sequence_outcomes"]
+    ] == [first_outcome, "none_fit"]
     assert len(author_calls) == 1
 
 

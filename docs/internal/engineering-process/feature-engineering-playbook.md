@@ -102,6 +102,10 @@ continue without reconstructing the design from chat:
 - Operator Decision Readiness evidence and approval ledger;
 - changed and unchanged contracts;
 - acceptance-to-gate mapping and model/experiment contract when applicable;
+  for a branching or stateful workflow, enumerate the supported
+  outcome-by-context transition matrix, including single-item, batch,
+  continuation, retry/replay, and terminal behavior where those contexts
+  exist;
 - authorized and still-locked Delivery phases.
 
 Chat should show only the compact decision-relevant projection. It does not

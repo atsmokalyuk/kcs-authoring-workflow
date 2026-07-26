@@ -58,6 +58,9 @@ Use this checklist for code, docs, contracts, and demo artifacts.
 - Are tests added or updated where behavior changed?
 - Does every observable acceptance criterion map to a deterministic,
   bounded-model, or named human-review gate?
+- For a branching or stateful workflow, does the gate cover every supported
+  outcome in every material context rather than proving each outcome and one
+  happy-path sequence separately?
 - If the slice claims to resolve a parent incident, noisy input, or real
   operational failure, does the plan name the approved sanitized
   representative case and evidence level required to prove that outcome?

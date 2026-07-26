@@ -346,8 +346,7 @@ class DesktopDraftArticleTool:
             ),
         ]
         if (
-            submission.outcome != "need_more_evidence"
-            and selection_outcome != "workflow_stopped"
+            selection_outcome != "workflow_stopped"
             and pending.current_index + 1 < len(pending.selected_item_refs)
         ):
             next_index = pending.current_index + 1
