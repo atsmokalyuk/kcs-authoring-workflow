@@ -13,6 +13,7 @@ from kcs_adapters.desktop_reuse_comparison import (
     ReuseComparisonInvalidError,
     confirmed_helpful_public_article,
     reuse_comparison_required_result,
+    reuse_comparison_submit_failure_result,
     validate_reuse_comparison_submit,
 )
 from kcs_adapters.desktop_tool_results import (
@@ -626,7 +627,9 @@ def test_terminal_comparison_outcomes_do_not_draft(
     assert author_calls == []
 
 
-def test_invalid_submit_consumes_pending_state_and_replay_fails(tmp_path) -> None:
+def test_invalid_submit_preserves_pending_state_for_bounded_correction(
+    tmp_path,
+) -> None:
     workflow = _workflow(_FixtureComparisonProvider())
     pending_selection = workflow.start_pending_selection(
         [_issue_candidate()],
@@ -648,10 +651,22 @@ def test_invalid_submit_consumes_pending_state_and_replay_fails(tmp_path) -> Non
             }
         )
 
+    assert workflow.pending_reuse_comparison is not None
+
+    corrected = tool.confirm_reuse_comparison(
+        {
+            "comparison_ref": comparison["comparison_ref"],
+            "outcome": "none_fit",
+        }
+    )
+
+    assert corrected["comparison_sequence_outcomes"][0]["comparison_outcome"] == (
+        "none_fit"
+    )
     assert workflow.pending_reuse_comparison is None
 
 
-def test_unknown_candidate_ref_consumes_state_and_replay_requires_restart(
+def test_unknown_candidate_ref_preserves_state_for_bounded_correction(
     tmp_path,
 ) -> None:
     workflow = _workflow(_FixtureComparisonProvider())
@@ -679,16 +694,31 @@ def test_unknown_candidate_ref_consumes_state_and_replay_requires_restart(
     )
 
     assert invalid["debug_code"] == "reuse_comparison_invalid"
-    assert workflow.pending_reuse_comparison is None
+    assert invalid["next_required_action"] == "resubmit_pending_reuse_comparison"
+    assert invalid["comparison_ref"] == comparison["comparison_ref"]
+    assert invalid["comparison_outcomes"] == [
+        "need_more_evidence",
+        "none_fit",
+        "reuse",
+        "update",
+    ]
+    assert workflow.pending_reuse_comparison is not None
+    invalid_text = tool_result_text(invalid)
+    assert "active comparison is preserved" in invalid_text
+    assert "outcome argument" in invalid_text
+    assert "without asking the operator to reconfirm" in invalid_text
 
-    replay = tools.confirm_reuse_comparison(
+    corrected = tools.confirm_reuse_comparison(
         {
             "comparison_ref": comparison["comparison_ref"],
             "outcome": "none_fit",
         }
     )
 
-    assert replay["debug_code"] == "reuse_comparison_unavailable"
+    assert corrected["comparison_sequence_outcomes"][0]["comparison_outcome"] == (
+        "none_fit"
+    )
+    assert workflow.pending_reuse_comparison is None
 
 
 def test_old_comparison_cannot_mutate_replaced_selection_state(tmp_path) -> None:
@@ -758,6 +788,51 @@ def test_unknown_submit_field_clears_state_and_requires_restart(tmp_path) -> Non
         }
     )
     assert replay["debug_code"] == "reuse_comparison_unavailable"
+
+
+def test_identity_conflict_does_not_offer_payload_correction() -> None:
+    invalid = reuse_comparison_submit_failure_result(
+        comparison_ref="reuse-comparison-current",
+        correction_allowed=False,
+        debug_code="reuse_comparison_invalid",
+        schema_version="kcs_mcp_tool_result_v1",
+    )
+
+    assert invalid["next_required_action"] == "restart_reuse_comparison"
+    assert "comparison_ref" not in invalid
+    assert "comparison_outcomes" not in invalid
+
+
+def test_mismatched_comparison_ref_preserves_current_state_without_correction(
+    tmp_path,
+) -> None:
+    workflow = _workflow(_FixtureComparisonProvider())
+    pending = workflow.start_pending_reuse_comparison(
+        issue_candidate=_issue_candidate(),
+        approved_summary_text="Approved sanitized summary.",
+        approved_summary_source_kind=None,
+        selected_item_refs=["candidate-001"],
+        current_index=0,
+        selection_ref=None,
+        debug=False,
+    )
+    assert isinstance(pending, PendingReuseComparison)
+    tools = DesktopAuthoringTools(
+        draft_workflow=workflow,
+        reviewer_bundle_root=tmp_path / "local-data" / "reviewer-bundles",
+        schema_version="kcs_mcp_tool_result_v1",
+    )
+
+    invalid = tools.confirm_reuse_comparison(
+        {
+            "comparison_ref": "reuse-comparison-stale",
+            "outcome": "none_fit",
+        }
+    )
+
+    assert invalid["next_required_action"] == "restart_reuse_comparison"
+    assert "comparison_ref" not in invalid
+    assert workflow.pending_reuse_comparison is pending
 
 
 def test_comparison_expiry_consumes_pending_state() -> None:

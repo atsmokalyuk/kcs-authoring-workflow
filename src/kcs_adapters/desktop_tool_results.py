@@ -303,6 +303,29 @@ def _comparison_sequence_section(
 def _reuse_comparison_terminal_tool_result_text(
     structured: Mapping[str, Any],
 ) -> str:
+    if structured.get("next_required_action") == "resubmit_pending_reuse_comparison":
+        status = {
+            "comparison_outcomes": structured.get("comparison_outcomes"),
+            "comparison_ref": structured.get("comparison_ref"),
+            "debug_code": structured.get("debug_code"),
+            "next_required_action": structured.get("next_required_action"),
+            "result_kind": structured.get("result_kind"),
+        }
+        return (
+            "The previous submit shape was invalid, but the active comparison "
+            "is preserved. Submit the same comparison_ref again with the "
+            "outcome argument set to exactly one value listed in "
+            "comparison_outcomes. Use only the operator's latest "
+            "answer; when it maps unambiguously to a listed value, correct the "
+            "tool argument without asking the operator to reconfirm. For reuse "
+            "or update include one displayed candidate_ref. For none_fit or "
+            "need_more_evidence omit candidate_ref. Do not restart drafting or "
+            "change the operator's decision.\n\n"
+            "Compact status:\n"
+            "```json\n"
+            f"{_compact_json(status)}\n"
+            "```"
+        )
     status = {
         "blockers": structured.get("blockers"),
         "comparison_outcome": structured.get("comparison_outcome"),

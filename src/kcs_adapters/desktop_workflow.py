@@ -476,7 +476,6 @@ class DesktopDraftWorkflow:
                 candidate_ref=candidate_ref,
             )
         except ReuseComparisonInvalidError:
-            self._pending_reuse_comparison = None
             raise
         self._pending_reuse_comparison = None
         return submission

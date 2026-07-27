@@ -1580,6 +1580,92 @@ Delivery evidence on 2026-07-26:
 - the installed-client `N=1` feasibility trial remains pending a reviewed,
   committed, rebuilt, installed, and reloaded artifact identity.
 
+Real-ticket canary defect evidence on 2026-07-27:
+
+- confirmed: the installed `78b1f86` package reached the five-item native
+  selection and the first public-article comparison on approved sanitized
+  ticket `ticket-94893302`;
+- confirmed: an invalid closed-enum submission (`non_fit`) consumed the active
+  comparison, so the operator's corrected `none_fit` could not be applied to
+  the still-visible comparison card;
+- confirmed: the transport collapsed all result-boundary validation failures
+  to `tool_result_invalid` without recording whether the internal cause was
+  schema mismatch, unsafe value, oversize, or another closed validation class;
+- confirmed: direct current-source and installed-wrapper probes produce a valid
+  `reuse_comparison_unavailable` envelope when no pending comparison exists;
+- confirmed: a deterministic five-item replay over the same approved sanitized
+  ticket produces a valid next-comparison MCP envelope with a fixture provider;
+- provisional: the exact first `tool_result_invalid` payload cause remains
+  unknown because the running transport discarded the validation class before
+  logging. The next installed canary must use the new closed diagnostic marker;
+  no ticket facts, tool arguments, tool results, or exception traceback may be
+  logged.
+
+Bounded correction:
+
+- a malformed outcome or candidate ref no longer consumes an otherwise valid
+  pending comparison; the result returns
+  `resubmit_pending_reuse_comparison`, allowing the same operator decision to
+  be submitted in canonical form;
+- unknown tool fields, expired state, replaced selection identity, and missing
+  pending state still clear or reject state and require a workflow restart;
+- the stdio transport now writes only
+  `tool_result_boundary_failure code=<closed-code> tool=<canonical-name>` to
+  local stderr when the MCP result boundary rejects an internal result;
+- the operator decision, candidate evidence, ticket content, artifact content,
+  and raw exception are not included in that marker;
+- this changes only bounded correction and local diagnostics. Reuse semantics,
+  RAG ownership, article authoring, storage, reviewer output, and publication
+  contracts remain unchanged.
+
+Acceptance-to-gate correction:
+
+| Acceptance criterion | Gate |
+| --- | --- |
+| A malformed enum/candidate submission does not destroy the active comparison, and the canonical correction succeeds once. | deterministic state-transition regression |
+| Unknown fields and stale/replaced state still fail closed and require restart. | deterministic negative matrix |
+| Every transport-side result rejection records one closed reason without payload content. | deterministic stderr-capture/privacy test |
+| The real five-item ticket accepts `none_fit` and advances to item 2 without `tool_result_invalid`. | installed Desktop canary; `N=1` feasibility |
+
+Ousterhout gate: `reviewed`.
+Trigger: stateful continuation behavior and the transport failure boundary
+changed across existing Desktop workflow modules.
+Complexity hidden: the workflow distinguishes a correctable pre-side-effect
+payload rejection from expired, replaced, or structurally unknown state.
+Owner and what it must not know: `DesktopDraftWorkflow` owns pending comparison
+lifecycle; the stdio transport knows only closed result-validation classes and
+must not inspect or log workflow payloads.
+Interface depth and caller cognitive load: the existing confirmation tool
+returns the same comparison ref and closed outcomes only when correction is
+possible, so Claude can normalize an unambiguous submit typo without another
+operator question.
+Information leakage and change amplification: no payload or exception content
+crosses the diagnostic boundary; no provider, renderer, storage, or publishing
+interface changes.
+Complexity removed, moved, or added: one pending-state preservation condition,
+one result-action distinction, and one closed diagnostic mapping were added;
+no abstraction, module, service, or persistence layer was introduced.
+Residual design risk: the original `tool_result_invalid` class must be observed
+again after install because the prior runtime discarded its exact validation
+class.
+Verdict: `pass`.
+
+Delivery validation and review on 2026-07-27:
+
+- focused runtime and policy validation passed 86 tests;
+- the full deterministic suite passed 1,631 tests with 1 skip and the
+  commit-only frozen-path guard deselected;
+- Ruff and `git diff --check` passed;
+- independent deep review returned `pass` with no blockers or warnings after
+  checking pending-state lifecycle, stale-ref isolation, correction wording,
+  closed diagnostics, privacy, behavior drift, review-graph ownership, and the
+  Ousterhout gate;
+- the frozen-path guard must be repeated after commit, when the changed
+  `desktop_tool_results.py` content has a committed baseline.
+
+The current correction is source-only until commit, rebuild, install, Desktop
+reload, and the real-ticket canary complete.
+
 ## Remaining unknown inventory
 
 - The final comfortable Desktop-integrated surface that directly owns entry and
@@ -1618,9 +1704,10 @@ KCS-15.2b2 Phase A exact public context Delivery: complete; independent review c
 KCS-15.2b2 downstream Python Delivery: implemented
 KCS-15.2b2 controlled-entrypoint skeleton: implemented and verified; current deterministic entrypoint
 KCS-15.2b2 accepted runtime source: committed in dbb1b8e
-KCS-15.2b2 artifact/runtime closeout: incomplete; committed diagnostic build not installed
-KCS-15.2b2 parent super-noisy KCS-14.5 canary: failed before reuse comparison; parent outcome unproven
+KCS-15.2b2 artifact/runtime baseline: 78b1f86 installed and reloaded; current bounded correction not installed
+KCS-15.2b2 parent super-noisy KCS-14.5 canary: reached five-item selection and item-1 comparison; failed at corrected outcome submit, parent outcome still unproven
 KCS-15.2b2 operator-steered boundary correction: target UX selected and Delivery authorized 2026-07-26
+KCS-15.2b2 real-ticket comparison-submit defect correction: Delivery authorized by operator continuation 2026-07-27
 KCS-15.2b2 Phase C controlled operator surface: host-blocked and deferred
 KCS-15.2b2 final Desktop UX: deferred pending a host-owned direct launcher
 KCS-15.2b3 repeated trial: locked

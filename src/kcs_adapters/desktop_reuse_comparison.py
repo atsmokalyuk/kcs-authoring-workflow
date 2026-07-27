@@ -334,12 +334,19 @@ def reuse_comparison_terminal_result(
 
 def reuse_comparison_submit_failure_result(
     *,
+    comparison_ref: str | None,
+    correction_allowed: bool,
     debug_code: str,
     schema_version: str,
 ) -> JsonDict:
-    """Return a value-safe restart response for invalid pending state."""
+    """Return value-safe recovery guidance for an invalid comparison submit."""
 
-    return {
+    next_required_action = (
+        "resubmit_pending_reuse_comparison"
+        if debug_code == "reuse_comparison_invalid" and correction_allowed
+        else "restart_reuse_comparison"
+    )
+    result: JsonDict = {
         "auto_publish_allowed": False,
         "blockers": [debug_code],
         "debug_code": debug_code,
@@ -347,7 +354,7 @@ def reuse_comparison_submit_failure_result(
         "failure_stage": "reuse_comparison",
         "manual_draft_allowed": False,
         "network_calls": False,
-        "next_required_action": "restart_reuse_comparison",
+        "next_required_action": next_required_action,
         "ok": False,
         "pipeline_ok": False,
         "public_output_approved": False,
@@ -358,6 +365,10 @@ def reuse_comparison_submit_failure_result(
         "validation_ok": False,
         "writes_files": False,
     }
+    if correction_allowed and comparison_ref is not None:
+        result["comparison_outcomes"] = sorted(REUSE_COMPARISON_OUTCOMES)
+        result["comparison_ref"] = comparison_ref
+    return result
 
 
 def comparison_outcome_action(outcome: str) -> str:

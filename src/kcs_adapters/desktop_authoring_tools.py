@@ -213,7 +213,14 @@ class DesktopAuthoringTools:
         except McpArgumentError:
             self._draft_workflow.clear_pending_reuse_comparison()
             debug_code = "reuse_comparison_invalid"
+        pending = self._draft_workflow.pending_reuse_comparison
+        correction_allowed = (
+            pending is not None
+            and arguments.get("comparison_ref") == pending.comparison_ref
+        )
         return _desktop_reuse_comparison.reuse_comparison_submit_failure_result(
+            comparison_ref=(pending.comparison_ref if pending is not None else None),
+            correction_allowed=correction_allowed,
             debug_code=debug_code,
             schema_version=self._schema_version,
         )
