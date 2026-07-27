@@ -1655,16 +1655,18 @@ Delivery validation and review on 2026-07-27:
 - focused runtime and policy validation passed 86 tests;
 - the full deterministic suite passed 1,631 tests with 1 skip and the
   commit-only frozen-path guard deselected;
+- after commit `5e8a32c`, the complete repository suite, including the
+  frozen-path guard, passed 1,632 tests with 1 skip;
+- the MCPB package build and source-wrapper stdio smoke passed all 17 checks
+  with the unchanged seven-tool production surface;
 - Ruff and `git diff --check` passed;
 - independent deep review returned `pass` with no blockers or warnings after
   checking pending-state lifecycle, stale-ref isolation, correction wording,
   closed diagnostics, privacy, behavior drift, review-graph ownership, and the
   Ousterhout gate;
-- the frozen-path guard must be repeated after commit, when the changed
-  `desktop_tool_results.py` content has a committed baseline.
-
-The current correction is source-only until commit, rebuild, install, Desktop
-reload, and the real-ticket canary complete.
+The correction is committed and source/package validated. It remains
+operationally unproven until install, Desktop reload, and the real-ticket
+canary complete.
 
 ## Remaining unknown inventory
 
@@ -1705,6 +1707,7 @@ KCS-15.2b2 downstream Python Delivery: implemented
 KCS-15.2b2 controlled-entrypoint skeleton: implemented and verified; current deterministic entrypoint
 KCS-15.2b2 accepted runtime source: committed in dbb1b8e
 KCS-15.2b2 artifact/runtime baseline: 78b1f86 installed and reloaded; current bounded correction not installed
+KCS-15.2b2 comparison-submit correction source: committed in 5e8a32c; package/source smoke passed; not installed
 KCS-15.2b2 parent super-noisy KCS-14.5 canary: reached five-item selection and item-1 comparison; failed at corrected outcome submit, parent outcome still unproven
 KCS-15.2b2 operator-steered boundary correction: target UX selected and Delivery authorized 2026-07-26
 KCS-15.2b2 real-ticket comparison-submit defect correction: Delivery authorized by operator continuation 2026-07-27
