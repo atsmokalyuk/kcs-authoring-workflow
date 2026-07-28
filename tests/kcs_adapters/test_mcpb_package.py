@@ -427,6 +427,19 @@ def test_mcpb_node_wrapper_forwards_semantic_provider_env() -> None:
     assert "KCS_AUTHORING_APPROVED_SEMANTIC_PROVIDER_REF" in text
 
 
+def test_mcpb_node_wrapper_forwards_draft_run_accounting_env() -> None:
+    text = (MCPB_SOURCE / "server" / "index.js").read_text(encoding="utf-8")
+
+    assert (
+        "KCS_DRAFT_RUN_ACCOUNTING:\n"
+        "    process.env.KCS_DRAFT_RUN_ACCOUNTING || \"\""
+    ) in text
+    assert (
+        "KCS_DRAFT_RUN_REPORT_DIR:\n"
+        "    process.env.KCS_DRAFT_RUN_REPORT_DIR || \"\""
+    ) in text
+
+
 def test_build_script_creates_mcpb_archive(tmp_path: Path) -> None:
     module = _load_build_module()
     output = tmp_path / "kcs-authoring-mvp-validator-control.mcpb"

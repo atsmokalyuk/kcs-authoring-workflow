@@ -237,6 +237,10 @@ const childEnv = {
     process.env.KCS_AUTHORING_APPROVED_SEMANTIC_PROVIDER_REF || "",
   KCS_AUTHORING_SEMANTIC_PROVIDER:
     process.env.KCS_AUTHORING_SEMANTIC_PROVIDER || "",
+  KCS_DRAFT_RUN_ACCOUNTING:
+    process.env.KCS_DRAFT_RUN_ACCOUNTING || "",
+  KCS_DRAFT_RUN_REPORT_DIR:
+    process.env.KCS_DRAFT_RUN_REPORT_DIR || "",
   LANG: process.env.LANG || "C.UTF-8",
   LC_ALL: process.env.LC_ALL || "",
   LOCALAPPDATA: process.env.LOCALAPPDATA || "",
