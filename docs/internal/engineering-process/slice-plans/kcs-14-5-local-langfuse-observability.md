@@ -1,12 +1,61 @@
 # KCS-14.5 Local Langfuse Observability
 
-Status: LF-0 local deployment complete; LF-1 and product instrumentation remain
-separately gated.
+Status: LF-0 local deployment and LF-1 synthetic export complete; auxiliary
+live run accounting delivery authorized on 2026-07-28.
 
-LF-0 was explicitly approved and completed on 2026-07-13. This document does
-not authorize changing product code, adding Python dependencies, or enabling
-telemetry for real ticket workflows. Each later implementation slice retains
-its own stop/go gate and requires explicit operator approval.
+LF-0 was explicitly approved and completed on 2026-07-13. On 2026-07-28 the
+operator explicitly authorized implementation of the auxiliary live `/draft`
+run-accounting boundary. This is an operational observability delivery, not a
+product feature slice. It does not authorize changing workflow behavior,
+schemas, decisions, publication behavior, or adding a required Python
+dependency.
+
+## 2026-07-28 Auxiliary Delivery Boundary
+
+The delivered boundary is intentionally split:
+
+1. the central Desktop MCP adapter projects each relevant tool transition into
+   a strict value-safe run report;
+2. an optional local sink checkpoints that report under an ignored operator
+   directory;
+3. a separate command validates the report and exports metadata-only
+   observations to loopback Langfuse;
+4. an optional local Desktop-log classifier may close an otherwise incomplete
+   report as `host_quota_exhausted`.
+
+The runtime boundary records only closed stage/tool/outcome/debug codes, counts,
+booleans, byte counts, durations, retry/correction counts, and a random
+correlation SHA-256. It never places tool arguments, tool results, refs, ticket
+text, excerpts, titles, URLs, prompts, generated prose, reviewer output, paths,
+credentials, hostnames, or arbitrary metadata in the report.
+
+The local sink and external exporter are disabled unless the operator supplies
+their explicit local configuration. Sink/export failure is fail-open and may
+not change a returned `McpToolResult`, raised adapter argument error, workflow
+state, written authoring artifact, or process exit behavior.
+The environment-created local sink uses a bounded non-blocking background
+queue; filesystem latency is outside the workflow call path, and a newer
+checkpoint may replace an older one under sustained queue pressure.
+
+The MCP process cannot observe Claude Desktop token usage, hidden context,
+stop reason, or remaining host quota. Therefore it must not infer
+`host_quota_exhausted`. That outcome is allowed only when the external
+Desktop-log classifier observes an allowlisted quota message; otherwise an
+unfinished run remains `in_progress` or is explicitly closed as
+`client_interruption`.
+
+Acceptance evidence for this auxiliary delivery:
+
+- telemetry disabled, healthy local sink, and failing sink return equivalent
+  product results;
+- report validation rejects extra fields, arbitrary codes, identifiers, paths,
+  or content-bearing values;
+- captured reports contain no test privacy canary;
+- Langfuse export uses no input/output fields and accepts only an explicit
+  loopback URL;
+- authoring characterization tests pass without Langfuse or its SDK installed;
+- packet, Desktop tool, candidate selection, renderer, reviewer-bundle,
+  readiness, and publication contracts remain unchanged.
 
 ## Decision
 
@@ -872,3 +921,106 @@ Changed surfaces:
 LF-0 permits LF-1 synthetic metadata-only evaluation. It does not authorize
 LF-2, LF-3, real-ticket telemetry, automatic instrumentation, dashboards, or
 product runtime coupling.
+
+## 2026-07-28 Auxiliary Live Accounting Implementation Checkpoint
+
+Status: source implementation and local deterministic validation complete in
+the isolated `feature/PAUX-7103-langfuse-live-run-accounting` worktree.
+Package rebuild/install, Desktop configuration, and a live `/draft` trace
+remain separate operator actions.
+
+Implemented surfaces:
+
+- strict typed live report and observation projection;
+- optional env-created local JSON sink with atomic file replacement;
+- bounded non-blocking background persistence queue;
+- one central MCP dispatch hook around the five relevant workflow tools;
+- external loopback-only Langfuse exporter using the already reviewed pinned
+  SDK version;
+- optional run-scoped Desktop-log classifier for the exact Claude Desktop Free
+  quota category;
+- privacy canaries, fail-open equivalence, batch accounting, real-SDK
+  metadata-only capture, tool-liveness, ownership, and regression tests.
+
+Preserved surfaces:
+
+- packet, Desktop tool input/output, and provider schemas;
+- semantic projection, candidate selection, reuse decisions, deterministic
+  checks, rendering, reviewer bundles, readiness, and publication behavior;
+- `auto_publish_allowed=false` and `public_output_approved=false`;
+- the dependency-free product runtime;
+- normal authoring when Langfuse, its SDK, local report configuration, or the
+  local report directory is unavailable.
+
+Validation evidence:
+
+- full default suite: `1665 passed, 2 skipped`;
+- pinned Langfuse 4.7.0 real-SDK metadata capture plus existing synthetic
+  exporter suite: `60 passed`;
+- Desktop adapter and stdio characterization subset: `218 passed`;
+- engineering docs, review graph, tool entrypoints, and review protocol:
+  `38 passed`;
+- full `src tests scripts` Ruff check: passed;
+- diff whitespace check: passed;
+- touched integration complexity: maximum cyclomatic complexity `7`, with no
+  function above the configured threshold;
+- no live Langfuse project write, package rebuild/install, Desktop
+  configuration, or model-mediated operational smoke was performed in this
+  source-only checkpoint.
+
+Interpretation limits:
+
+- `transition_count` counts observed relevant MCP tool calls, not hidden model
+  turns;
+- `model_visible_bytes` is the serialized deterministic model-visible
+  `content` projection at the accounting boundary, not `structuredContent`,
+  the full hidden Desktop context, or an exact token count;
+- the duration of `item.reuse_search_comparison` is a high-level tool-boundary
+  duration, not a separately measured provider-only RAG duration;
+- host quota classification requires a run-scoped log capture containing the
+  allowlisted Claude Desktop Free marker;
+- a sudden process termination may leave the latest persisted checkpoint
+  `in_progress`; the external classifier is the only component allowed to
+  close it as `host_quota_exhausted`.
+
+Ousterhout gate: reviewed
+
+Trigger: new auxiliary module, persistence/failure boundary, cross-module
+adapter hook, and external SDK integration.
+
+Complexity hidden: exact allowlist projection, content-free report
+serialization, atomic/background persistence, strict external validation,
+loopback enforcement, and metadata-only Langfuse span creation.
+
+Owner and what it must not know: `kcs_adapters` live accounting owns only
+observation projection and must not know or decide KCS semantics, retain
+workflow content, call Langfuse, or inspect Desktop logs. The external script
+owns report validation/export and must not affect workflow execution.
+
+Interface depth and caller cognitive load: the Desktop adapter has one optional
+accounting collaborator and one post-dispatch call; normal callers configure
+nothing. Operators enable two local environment values and export one exact
+report through one documented command.
+
+Information leakage and change amplification: the runtime-to-accounting edge
+passes existing arguments/results only for immediate size/count projection;
+neither is retained. Langfuse sees the closed report only. Adding a new safe
+field requires coordinated dataclass, validator, exporter, and privacy-test
+changes by design.
+
+Complexity removed, moved, or added: the Langfuse SDK, auth, network, Desktop
+log parsing, and host terminal classification stay outside product runtime.
+Added source/script functions remain at or below the configured cyclomatic
+complexity threshold.
+
+Residual design risk: the stdio transport is currently sequential and the
+accounting state intentionally models one active `/draft` per process. A future
+concurrent transport would require an explicit safe correlation carrier before
+this state holder could be reused. Background queue pressure may replace an
+older checkpoint with a newer snapshot. The external exporter rejects more
+than 200 observations, while the optional runtime checkpoint itself does not
+truncate a pathological tool loop; adding runtime truncation requires a
+separate accounting-schema decision rather than silently losing terminal
+state.
+
+Verdict: pass

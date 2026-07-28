@@ -300,6 +300,29 @@ Review when touching:
 Risk: observability metadata can become a side channel for private input or be
 mistaken for causal evidence when the control-surface profile is not comparable.
 
+### Live Draft Run Accounting
+
+Owns the optional value-safe projection of relevant Desktop MCP transitions,
+local report checkpointing, bounded Desktop host-quota classification, and
+metadata-only export to the separately managed loopback Langfuse service.
+
+Must not own runtime KCS decisions, tool/result schemas, provider behavior,
+ticket or excerpt content, model prose, Desktop hidden state, reviewer bundles,
+publication behavior, or Langfuse availability. The MCP boundary must not infer
+a Desktop quota outcome that only the external log classifier can observe.
+
+Review when touching:
+
+- `src/kcs_adapters/draft_run_accounting.py`
+- `src/kcs_adapters/desktop_mcp_adapter.py`
+- `scripts/kcs14_langfuse_draft_run.py`
+- `tests/kcs_adapters/test_draft_run_accounting.py`
+- `tests/kcs_adapters/test_kcs14_langfuse_draft_run.py`
+
+Risk: size/count projection can accidentally retain content, terminal
+classification can overstate an unobserved host cause, or sink failure can
+drift the returned Desktop result.
+
 ### Engineering Policy Tests
 
 Owns KCS-14/KCS-15 deterministic policy checks, documentation/process

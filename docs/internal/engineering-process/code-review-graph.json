@@ -61,7 +61,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_mcp_adapter.py",
-          "file_hash": "d803fe7cd84992f013a78906cac36277b76cbd47b23f95f73cacfeb0d2c2a9f5",
+          "file_hash": "b939d022f1fe0a9629568d39d8279848a2e8e7c4f18e28c060ce35918c4afb56",
           "valid_until_changed": true
         },
         {
@@ -735,7 +735,8 @@
         "Desktop log check entrypoints",
         "MCPB stdio smoke scripts",
         "local model/client rebaseline evidence harnesses",
-        "metadata-only synthetic trace export to loopback observability"
+        "metadata-only synthetic trace export to loopback observability",
+        "optional value-safe live draft-run accounting and external export"
       ],
       "must_not_own": [
         "runtime KCS decisions",
@@ -746,7 +747,8 @@
       "must_preserve": [
         "log tooling reports compact value-safe metrics only",
         "manual/Desktop checks remain classified as manual or local-runtime checks",
-        "smoke scripts do not become architecture-planning harnesses"
+        "smoke scripts do not become architecture-planning harnesses",
+        "live accounting remains disabled by default and fail-open"
       ],
       "contract_edges": [
         "desktop_tool_surface",
@@ -758,6 +760,11 @@
         "observability metadata can leak private values or overstate non-comparable evidence"
       ],
       "files": [
+        {
+          "path": "src/kcs_adapters/draft_run_accounting.py",
+          "file_hash": "5d01fb1c0e5e03fd3af390fe49c7df99bdeaf9b0463a30ff499a327c1813d55d",
+          "valid_until_changed": true
+        },
         {
           "path": "src/kcs_adapters/smoke_accounting.py",
           "file_hash": "7edb08c91db9dbb818be9e40a24335673353e0df079afeb7875e0bf1db4bbb3b",
@@ -792,13 +799,20 @@
           "path": "scripts/kcs14_langfuse_rebaseline.py",
           "file_hash": "859a4a1cb83b332b12e5046518728a6436d2ccd1a3ff59a597f26541e155ea8f",
           "valid_until_changed": true
+        },
+        {
+          "path": "scripts/kcs14_langfuse_draft_run.py",
+          "file_hash": "1927011726b6cf512e02de89a4aaedd903663320359894cbc594bfbf2341b455",
+          "valid_until_changed": true
         }
       ],
       "related_tests": [
         "tests/kcs_adapters/test_smoke_accounting.py",
         "tests/kcs_adapters/test_mcpb_package.py",
         "tests/kcs_adapters/test_semantic_projection_rebaseline.py",
-        "tests/kcs_adapters/test_kcs14_langfuse_rebaseline.py"
+        "tests/kcs_adapters/test_kcs14_langfuse_rebaseline.py",
+        "tests/kcs_adapters/test_draft_run_accounting.py",
+        "tests/kcs_adapters/test_kcs14_langfuse_draft_run.py"
       ]
     },
     {
@@ -1020,7 +1034,7 @@
         },
         {
           "path": "tests/policy/test_tool_entrypoints.py",
-          "file_hash": "a04448f9fc3f59077d6c1405aa4eedec2375fc041e0cbadb259877e4f4e90264",
+          "file_hash": "b5fc1963cc2157d568ade2ef44fd6fc7d979db8b3ab9b91a270123741508a4f0",
           "valid_until_changed": true
         }
       ],

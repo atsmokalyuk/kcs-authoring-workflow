@@ -65,6 +65,7 @@ They do not prove full workflow behavior.
 | Desktop UI smoke script | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --help` | deterministic | Help-only check; prompt print/send fails closed when source, built package, installed files, or Desktop registry identity is stale. GUI send remains manual/UI. |
 | Semantic projection rebaseline | `uv run python scripts/rebaseline_semantic_issue_projection.py --help` | deterministic | Help-only check; model execution and response capture remain manual/local-state. |
 | Langfuse synthetic rebaseline export | `uv run python scripts/kcs14_langfuse_rebaseline.py --help` | deterministic | Help-only check; export requires the separately managed local Langfuse service and pinned SDK command below. |
+| Langfuse live draft-run export | `uv run python scripts/kcs14_langfuse_draft_run.py --help` | deterministic | Help-only check; reads only a closed value-safe local run report. Optional Desktop-log classification stays local. |
 | Complexity measurement | `uv run --extra dev python scripts/measure_complexity.py --help` | deterministic | Help-only check; actual measurement is advisory and listed above. |
 
 ## Desktop / MCPB Validation
@@ -176,6 +177,31 @@ sequence `post_kcs14_legacy_baseline`, `m3_medium`, `m3_continuation`, then
 `m3_continuation`. Do not start `m3_complex` until both stages are stable.
 Compare only runs with the same scenario and control-surface identity hashes.
 The exporter rejects a runtime outcome when the profile is not comparable.
+
+## Local Langfuse Live Draft-Run Accounting
+
+Live accounting is an optional auxiliary adapter around the existing Desktop
+MCP dispatch boundary. It is disabled unless both
+`KCS_DRAFT_RUN_ACCOUNTING=local-json` and `KCS_DRAFT_RUN_REPORT_DIR` are set.
+Use an ignored local directory such as `.runtime/kcs-draft-runs`. The runtime
+checkpoints counts, closed codes, durations, byte sizes, and a random
+correlation hash only. Sink failure is ignored and must not alter authoring.
+The environment-created file sink uses a bounded non-blocking background queue,
+so Desktop tool responses do not wait for local filesystem persistence. Under
+sustained queue pressure an older checkpoint may be replaced by a newer one.
+
+The external exporter validates the exact report schema before constructing
+Langfuse observations. It never sends tool arguments/results or Desktop log
+text. `--desktop-log` must point to a run-scoped Desktop log capture and scans
+only a bounded local tail for an allowlisted Claude Desktop Free quota message;
+generic limit text is not sufficient. `--classified-output` can persist the
+resulting value-safe closed report at an operator-selected ignored path.
+
+| Task | Command | Classification | Notes |
+| --- | --- | --- | --- |
+| Enable local report checkpoints | `KCS_DRAFT_RUN_ACCOUNTING=local-json KCS_DRAFT_RUN_REPORT_DIR=.runtime/kcs-draft-runs uv run kcs-desktop-mcp` | manual/local-state | Changes only auxiliary local reporting. Langfuse and its SDK are not required. Configure equivalent environment values in the Desktop extension when observing an installed runtime. |
+| Export one live run | `uv run --python 3.11 --with langfuse==4.7.0 python scripts/kcs14_langfuse_draft_run.py --report <value-safe-report.json> [--desktop-log <local-desktop-log>] [--classified-output <ignored-classified-report.json>] [--model-identity <safe-id>] [--client-identity <safe-id>]` | manual/local-state | Requires the three loopback Langfuse environment values. Desktop logs are read locally and their contents are never included in metadata. Optional model/client identities are exported only as SHA-256 values. |
+| Validate live accounting and exporter | `uv run --extra dev pytest tests/kcs_adapters/test_draft_run_accounting.py tests/kcs_adapters/test_kcs14_langfuse_draft_run.py -q` | deterministic | Covers fail-open equivalence, strict field validation, privacy canaries, and host-quota classification. |
 
 ## Artifact Rules
 
