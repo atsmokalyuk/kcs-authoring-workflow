@@ -303,6 +303,9 @@ def _comparison_sequence_section(
 def _reuse_comparison_terminal_tool_result_text(
     structured: Mapping[str, Any],
 ) -> str:
+    provider_failure_text = _reuse_provider_failure_tool_result_text(structured)
+    if provider_failure_text is not None:
+        return provider_failure_text
     if structured.get("next_required_action") == "resubmit_pending_reuse_comparison":
         status = {
             "comparison_outcomes": structured.get("comparison_outcomes"),
@@ -341,6 +344,41 @@ def _reuse_comparison_terminal_tool_result_text(
         "fail-closed. Follow only the returned recommended_action or "
         "next_required_action. Do not draft manually, infer another outcome, "
         "or replay the comparison reference.\n\n"
+        "Compact status:\n"
+        "```json\n"
+        f"{_compact_json(status)}\n"
+        "```"
+    )
+
+
+def _reuse_provider_failure_tool_result_text(
+    structured: Mapping[str, Any],
+) -> str | None:
+    debug_code = structured.get("debug_code")
+    failure_labels = {
+        "comparison_provider_invalid_response": (
+            "returned an incompatible response"
+        ),
+        "comparison_provider_not_ready": "is running but not ready",
+        "comparison_provider_unavailable": "is unavailable",
+    }
+    failure_label = failure_labels.get(debug_code)
+    if failure_label is None:
+        return None
+    status = {
+        "debug_code": debug_code,
+        "draft_generated": structured.get("draft_generated"),
+        "next_required_action": structured.get("next_required_action"),
+        "result_kind": structured.get("result_kind"),
+    }
+    return (
+        f"KCS public-article search (RAG) {failure_label}, so reuse comparison "
+        "cannot run and no article was drafted. This is a search-service "
+        "readiness problem, not an operator decision or missing ticket "
+        "evidence. Do not retry the same comparison, infer an outcome, or "
+        "draft manually. Restore the configured RAG service, then restart "
+        "`/draft` for the same ticket. Report this compactly to the operator; "
+        "do not ask whether to retry now.\n\n"
         "Compact status:\n"
         "```json\n"
         f"{_compact_json(status)}\n"

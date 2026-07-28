@@ -422,8 +422,51 @@ def test_invalid_provider_response_blocks_without_authoring(tmp_path) -> None:
     assert result["result_kind"] == "reuse_comparison_blocked"
     assert result["debug_code"] == "comparison_provider_invalid_response"
     assert result["draft_generated"] is False
+    result_text = tool_result_text(result)
+    assert "KCS public-article search (RAG)" in result_text
+    assert "returned an incompatible response" in result_text
+    assert "no article was drafted" in result_text
+    assert "not an operator decision or missing ticket evidence" in result_text
+    assert "Do not retry the same comparison" in result_text
+    assert "draft manually" in result_text
+    assert "do not ask whether to retry now" in result_text
     assert author_calls == []
     assert workflow.pending_reuse_comparison is None
+
+
+@pytest.mark.parametrize(
+    ("debug_code", "failure_label"),
+    [
+        ("comparison_provider_unavailable", "is unavailable"),
+        ("comparison_provider_not_ready", "is running but not ready"),
+        (
+            "comparison_provider_invalid_response",
+            "returned an incompatible response",
+        ),
+    ],
+)
+def test_provider_failure_text_names_rag_and_one_recovery_action(
+    debug_code: str,
+    failure_label: str,
+) -> None:
+    result_text = tool_result_text(
+        {
+            "debug_code": debug_code,
+            "draft_generated": False,
+            "next_required_action": "restart_reuse_comparison",
+            "result_kind": "reuse_comparison_blocked",
+        }
+    )
+
+    assert f"KCS public-article search (RAG) {failure_label}" in result_text
+    assert "no article was drafted" in result_text
+    assert "not an operator decision or missing ticket evidence" in result_text
+    assert "Do not retry the same comparison" in result_text
+    assert "draft manually" in result_text
+    assert "Restore the configured RAG service" in result_text
+    assert "restart `/draft` for the same ticket" in result_text
+    assert "do not ask whether to retry now" in result_text
+    assert "Retry now" not in result_text
 
 
 @pytest.mark.parametrize("outcome", ["reuse", "update"])

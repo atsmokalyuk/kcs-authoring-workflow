@@ -1668,6 +1668,55 @@ The correction is committed and source/package validated. It remains
 operationally unproven until install, Desktop reload, and the real-ticket
 canary complete.
 
+Post-install dependency and operator-guidance evidence on 2026-07-27:
+
+- confirmed: the installed connector and registry passed all 17 stdio checks,
+  Claude Desktop reloaded the new seven-tool package, and the noisy canary
+  reached selected-item processing;
+- confirmed: no process was listening on the configured RAG loopback port, so
+  the Python workflow returned `comparison_provider_unavailable` and generated
+  no draft;
+- confirmed: the generic terminal tool text named only a comparison provider,
+  which led Claude to offer repeated retry/wait choices instead of telling the
+  operator that public-article RAG had to be restored;
+- bounded correction: provider unavailable, not-ready, and invalid-response
+  results now name KCS public-article search (RAG), distinguish the readiness
+  failure from missing ticket evidence or an operator decision, prohibit
+  manual drafting and same-comparison retries, and give one recovery action:
+  restore the configured RAG service and restart `/draft` for the same ticket;
+- unchanged: the core status codes, provider-neutral adapter, RAG hosting
+  choice, draft gate, ticket evidence, operator outcomes, storage, reviewer
+  output, and publication boundaries.
+- focused runtime/policy validation passed 70 tests; the full suite passed
+  1,634 tests with 1 skip and the commit-only frozen-path guard deselected;
+  Ruff and `git diff --check` passed;
+- independent deep review first found that the text-only acceptance matrix did
+  not assert the complete no-draft/no-retry/manual-draft contract; after those
+  assertions were added, final re-review returned `pass` with no blockers or
+  warnings;
+- the configured public RAG was restored from the exact-context source revision
+  `0fd28fe9` with its declared vector dependency; `/api/status` reported 6,150
+  articles and 35,695 ready keyword/vector chunks, and a bounded
+  `/api/article-snippets` request returned
+  `knowledge-exact-article-snippets-v1`;
+- the runtime-up command timed out before the warmed process became ready even
+  though that process later passed both capability checks. This startup timing
+  remains operational evidence, not a reason to add retry logic to KCS
+  authoring.
+
+Acceptance-to-gate mapping:
+
+| Acceptance criterion | Gate |
+| --- | --- |
+| Every public-RAG readiness failure names RAG in operator-visible text and says that no draft was generated. | deterministic tool-result text matrix |
+| The text distinguishes service readiness from operator choice and missing ticket evidence. | deterministic wording assertions |
+| The model is told not to offer retry/wait choices or draft manually and receives one recovery action. | deterministic positive/negative wording assertions |
+| Status codes, result schemas, provider neutrality, and workflow transitions do not change. | focused/full regression and behavior-drift review |
+
+Ousterhout gate: `not triggered`; this is a leaf projection of three existing
+closed status codes into operator-facing recovery text. It adds no state,
+service, dependency, retry mechanism, persistence, or hosting assumption.
+
 ## Remaining unknown inventory
 
 - The final comfortable Desktop-integrated surface that directly owns entry and
@@ -1711,6 +1760,7 @@ KCS-15.2b2 comparison-submit correction source: committed in 5e8a32c; package/so
 KCS-15.2b2 parent super-noisy KCS-14.5 canary: reached five-item selection and item-1 comparison; failed at corrected outcome submit, parent outcome still unproven
 KCS-15.2b2 operator-steered boundary correction: target UX selected and Delivery authorized 2026-07-26
 KCS-15.2b2 real-ticket comparison-submit defect correction: Delivery authorized by operator continuation 2026-07-27
+KCS-15.2b2 RAG-unavailable operator guidance: Delivery authorized by operator 2026-07-27
 KCS-15.2b2 Phase C controlled operator surface: host-blocked and deferred
 KCS-15.2b2 final Desktop UX: deferred pending a host-owned direct launcher
 KCS-15.2b3 repeated trial: locked
