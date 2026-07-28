@@ -924,10 +924,10 @@ product runtime coupling.
 
 ## 2026-07-28 Auxiliary Live Accounting Implementation Checkpoint
 
-Status: source implementation and local deterministic validation complete in
-the isolated `feature/PAUX-7103-langfuse-live-run-accounting` worktree.
-Package rebuild/install, Desktop configuration, and a live `/draft` trace
-remain separate operator actions.
+Status: source implementation, installed-package validation, and one bounded
+Desktop attempt complete in the isolated
+`feature/PAUX-7103-langfuse-live-run-accounting` worktree. The model-mediated
+attempt stopped before the first MCP call, so no workflow trace was produced.
 
 Implemented surfaces:
 
@@ -964,9 +964,17 @@ Validation evidence:
 - diff whitespace check: passed;
 - touched integration complexity: maximum cyclomatic complexity `7`, with no
   function above the configured threshold;
-- no live Langfuse project write, package rebuild/install, Desktop
-  configuration, or model-mediated operational smoke was performed in this
-  source-only checkpoint.
+- installed MCPB stdio smoke passed all 17 checks after the Node wrapper was
+  corrected to forward the two optional accounting environment values;
+- installed accounting smoke produced three schema-valid, hash-named reports
+  containing nine observed transitions and no searched content canaries;
+- Claude Desktop was restarted with local accounting enabled and the installed
+  package loaded;
+- the real `ticket-94893302` attempt produced no local report and no KCS MCP
+  tool call; the contemporaneous Desktop web log recorded a generic completion
+  `network error`, while the operator surface reported a usage limit;
+- no live Langfuse project write was performed because the host had 14 GiB
+  free, below the tracked 15 GiB post-start stop floor.
 
 Interpretation limits:
 
@@ -979,6 +987,10 @@ Interpretation limits:
   duration, not a separately measured provider-only RAG duration;
 - host quota classification requires a run-scoped log capture containing the
   allowlisted Claude Desktop Free marker;
+- an operator-visible limit before the first MCP call cannot be classified from
+  the accounting report because no run exists yet; a generic Desktop
+  `network error` is not sufficient evidence to relabel it as
+  `host_quota_exhausted`;
 - a sudden process termination may leave the latest persisted checkpoint
   `in_progress`; the external classifier is the only component allowed to
   close it as `host_quota_exhausted`.
@@ -1021,6 +1033,9 @@ older checkpoint with a newer snapshot. The external exporter rejects more
 than 200 observations, while the optional runtime checkpoint itself does not
 truncate a pathological tool loop; adding runtime truncation requires a
 separate accounting-schema decision rather than silently losing terminal
-state.
+state. Pre-MCP host failures require an external, explicitly run-scoped attempt
+envelope if they must become machine-classifiable; adding such an envelope is a
+separate observability design decision, not a reason to expand the KCS runtime
+workflow.
 
 Verdict: pass
