@@ -1835,13 +1835,13 @@ KCS-15.2b2 Phase A exact public context Delivery: complete; independent review c
 KCS-15.2b2 downstream Python Delivery: implemented
 KCS-15.2b2 controlled-entrypoint skeleton: implemented and verified; current deterministic entrypoint
 KCS-15.2b2 accepted runtime source: committed in dbb1b8e
-KCS-15.2b2 artifact/runtime baseline: c31e155 installed and reloaded; current representative boundary correction not installed
+KCS-15.2b2 artifact/runtime baseline: 82b2e85 installed and reloaded; installed-wrapper smoke passed all 17 checks; post-restart tools/list request and response observed, while exact log surface detail remains unavailable because the host log is truncated; static artifact identity and live RAG preflight passed
 KCS-15.2b2 comparison-submit correction source: committed in 5e8a32c and installed as part of c31e155
-KCS-15.2b2 parent super-noisy KCS-14.5 canary: installed run accepted five items and recorded item 1 none_fit, item 2 reuse, and item 3 reuse before the next boundary failure; direct current-source replay completed all five comparisons; parent authoring remains open on existing content-quality gates and installation of the current correction
+KCS-15.2b2 parent super-noisy KCS-14.5 canary: prior installed run accepted five items and recorded item 1 none_fit, item 2 reuse, and item 3 reuse before the next boundary failure; direct current-source replay completed all five comparisons; final installed Desktop replay and existing content-quality gates remain open
 KCS-15.2b2 operator-steered boundary correction: target UX selected and Delivery authorized 2026-07-26
 KCS-15.2b2 real-ticket comparison-submit defect correction: Delivery authorized by operator continuation 2026-07-27
 KCS-15.2b2 RAG-unavailable operator guidance: Delivery authorized by operator 2026-07-27
-KCS-15.2b2 representative comparison-boundary correction: Delivery authorized by operator continuation 2026-07-28; current-source five-item comparison replay passed; commit/install/Desktop recheck pending
+KCS-15.2b2 representative comparison-boundary correction: Delivery authorized by operator continuation 2026-07-28; committed in 82b2e85, installed, reloaded, independently confirmed, and installed-wrapper/runtime preflights passed; final Desktop super-noisy replay pending
 KCS-15.2b2 Phase C controlled operator surface: host-blocked and deferred
 KCS-15.2b2 final Desktop UX: deferred pending a host-owned direct launcher
 KCS-15.2b3 repeated trial: locked
