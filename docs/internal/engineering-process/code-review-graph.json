@@ -864,17 +864,17 @@
         },
         {
           "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/README.md",
-          "file_hash": "922358815829df748f067cbc97ea686d89deee7bde4d4d5cd7ab68b1d1f2b248",
+          "file_hash": "bde49513f3c02b16c582bb6b98d804aec138b671eebd5558491436db03b24228",
           "valid_until_changed": true
         },
         {
           "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/manifest.json",
-          "file_hash": "93519c7124a91298fe289a8dcedc4d9d2b12352659839318c5db0c5bf028c65e",
+          "file_hash": "e83a55b2764d26bada2825d486f2f498e9541a6a24859039716b2832ebe9629c",
           "valid_until_changed": true
         },
         {
           "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/server/index.js",
-          "file_hash": "130d79077ce407a0a8054e87e3f6260d62ed80b73b330eea6c30e24028e2ee1c",
+          "file_hash": "303ef246635678f97e0fd48dc4c8d4c31974692ed4a83c485d2ebb720ba2a3d0",
           "valid_until_changed": true
         },
         {
@@ -1004,7 +1004,7 @@
         },
         {
           "path": "tests/policy/test_engineering_process_docs_policy.py",
-          "file_hash": "ea5c18480c5a3d06dc57a46ef280e2bcc9b6fb1ed04132a59173058d2707a5f9",
+          "file_hash": "2250cc0825eaeffdb1d0ce7d9e784ce91e67226e813780b16e99c95b5a997c69",
           "valid_until_changed": true
         },
         {

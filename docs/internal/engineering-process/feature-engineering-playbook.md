@@ -360,6 +360,7 @@ current source
   -> current built artifact
   -> installed files, client registry/cache, and explicit enabled/activation state
   -> reloaded client process
+  -> effective configuration observed at the terminal runtime process
   -> every dependency service's source revision / process / config-data identity
   -> exact required capability on those same live instances
   -> deterministic installed-runtime preflight
@@ -377,12 +378,20 @@ the component. If the client caches tools or schemas, restart/reload it and
 verify the live surface before the trial. For a dependency owned by another
 repository or worktree,
 record the expected revision and the observed running executable/process
-provenance. Evidence from a different worktree, process, deployment, or earlier
-runtime instance does not transfer to the current trial. When a service cannot
-self-report a revision or artifact identity, run the bounded exact capability
-probe required by the slice and keep provenance `provisional`; do not infer
-freshness from a generic health/status endpoint. A stale-identity result is a
-Delivery/preflight failure, not model behavior evidence.
+provenance. For every configuration value required by the trial, verify its
+effective value or a non-sensitive derived effect at the terminal process that
+consumes it. A value set in a shell, launcher, service manager, package
+manifest, registry, parent process, or synthetic wrapper is only declared
+configuration; it does not prove propagation through host sanitization,
+subprocess boundaries, config substitution, or restart. Prefer a supported
+host configuration surface and a value-safe preflight over inspecting or
+printing secrets. Evidence from a different worktree, process, deployment, or
+earlier runtime instance does not transfer to the current trial. When a service
+cannot self-report a revision or artifact identity, run the bounded exact
+capability probe required by the slice and keep provenance `provisional`; do
+not infer freshness from a generic health/status endpoint. A stale-identity or
+missing-effective-configuration result is a Delivery/preflight failure, not
+model behavior evidence.
 
 A successful dry-run means only:
 

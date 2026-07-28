@@ -33,7 +33,9 @@
         "${__dirname}/server/index.js"
       ],
       "command": "node",
-      "env": {}
+      "env": {
+        "KCS_DRAFT_RUN_REPORT_DIR": "${user_config.draft_run_report_directory}"
+      }
     },
     "type": "node"
   },
@@ -68,5 +70,13 @@
     }
   ],
   "tools_generated": false,
+  "user_config": {
+    "draft_run_report_directory": {
+      "description": "Optional local directory for value-safe /draft diagnostic reports. Leave unset for normal authoring.",
+      "required": false,
+      "title": "Draft run accounting directory",
+      "type": "directory"
+    }
+  },
   "version": "0.1.0"
 }

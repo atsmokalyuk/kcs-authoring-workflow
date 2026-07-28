@@ -299,6 +299,7 @@ Status:
 | KCS14-PROMO-013 | M3 canaries must run in fail-closed order: legacy baseline, medium, continuation, then complex only after the first two stages are stable | M2 closeout and M3 staged canary gate | ordered documentation policy test | KCS-14.5 M2 closeout | implemented |
 | KCS14-PROMO-014 | Material implementation, refactor, deployment, or integration closeout needs a compact Ousterhout review record or a concrete leaf-change `not triggered` reason | KCS-14 design-review usage and KCS-15.2a closeout audit | review gate plus deterministic record-shape anchor | KCS-15 process hardening | implemented |
 | KCS14-PROMO-015 | An existing runtime/API dependency needs exact endpoint/mode/response-shape operational evidence before substantial implementation; fixtures and adjacent endpoints are insufficient | KCS-15.2b1 `/api/snippets` pre-implementation correction | clarification/playbook/review gate plus policy anchor | KCS-15.2b1 | implemented |
+| KCS14-PROMO-016 | Configuration declared at a launcher or intermediate wrapper must not be treated as effective at the terminal runtime; prove propagation with a value-safe effective-config or derived-effect preflight on the current live process | PAUX-7103 source/installed-wrapper accounting smokes passed, but Claude Desktop did not propagate `launchctl` values to its MCPB connector and the real run remained unobserved | extend installed-runtime identity gate plus deterministic wording anchor | PAUX-7103 | implemented |
 
 ## Exact Integration Feasibility Promotion Detail
 

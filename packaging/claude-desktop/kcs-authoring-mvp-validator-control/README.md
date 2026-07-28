@@ -46,6 +46,11 @@ dist/kcs-authoring-mvp-validator-control.mcpb
 Install the generated MCPB in Claude Desktop, enable the extension, then start a
 new Claude Desktop chat.
 
+Live draft-run accounting is optional. To capture value-safe diagnostic
+checkpoints from an installed extension, select a local directory in the
+extension's **Draft run accounting directory** setting. Leaving the setting
+unset preserves normal authoring behavior and creates no accounting files.
+
 Before drafting, start or verify the existing public RAG runtime from its
 `plesk_support` checkout:
 

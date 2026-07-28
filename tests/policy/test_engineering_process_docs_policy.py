@@ -361,12 +361,19 @@ def test_installed_runtime_identity_gate_is_tracked() -> None:
         assert "dependency" in text
         assert "exact" in text
         assert "generic health" in text
+        assert "terminal" in text
+        assert "effective" in text
+        assert "configuration" in text
     assert "installed-artifact identity" in entrypoints
     assert "installed_artifact_identity_stale" in entrypoints
     assert "live_runtime_preflight_failed" in entrypoints
     assert "Static artifact identity is not" in entrypoints
     assert "ENG-PORT-DEL-009" in portability
     assert "another worktree/process/deployment does not transfer" in portability
+    assert "parent-process configuration does not prove" in portability
+    assert "KCS14-PROMO-016" in (
+        process_root / "promotion-candidates.md"
+    ).read_text(encoding="utf-8")
 
 
 def test_duplicate_continuation_gate_is_tracked() -> None:

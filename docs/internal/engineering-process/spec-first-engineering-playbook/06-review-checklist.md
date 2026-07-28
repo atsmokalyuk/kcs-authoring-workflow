@@ -39,10 +39,10 @@ Use this checklist for code, docs, contracts, and demo artifacts.
   bounded pre-implementation smoke rather than a fixture or adjacent endpoint?
 - Before an installed-client/model/operator trial, was current source matched
   to the built artifact, installed files, client registry/cache, explicit
-  enabled/activation state, reloaded runtime, every dependency service's
-  observed process/revision and config-data identity, its exact required
-  capability on the same live instance, and the deterministic installed-runtime
-  preflight?
+  enabled/activation state, reloaded runtime, effective required configuration
+  at the terminal consuming process, every dependency service's observed
+  process/revision and config-data identity, its exact required capability on
+  the same live instance, and the deterministic installed-runtime preflight?
 - For every stateful or side-effecting continuation, is duplicate/re-entrant
   submission behavior explicit and deterministic: one side effect, stable
   replay/no-op behavior, bounded replay state, conflicting replay rejection,
@@ -147,6 +147,10 @@ Blockers:
   deployment, or earlier runtime instance was treated as proof for the current
   integration trial, or a generic health endpoint was treated as exact
   capability/provenance evidence;
+- configuration declared in a shell, launcher, service manager, manifest,
+  registry, parent process, or synthetic wrapper was treated as proof that the
+  terminal runtime received it, without a value-safe effective-config or
+  derived-effect preflight on the current live process;
 - a stateful or side-effecting continuation can be submitted twice by the
   client/model and either repeat the side effect or invalidate a newer pending
   operation because no deterministic duplicate/replay contract was tested;

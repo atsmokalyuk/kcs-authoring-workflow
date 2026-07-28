@@ -243,14 +243,26 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert manifest["tools_generated"] is False
 
 
-def test_mcpb_manifest_requires_no_user_config_or_secrets() -> None:
+def test_mcpb_manifest_requires_no_secrets_or_mandatory_config() -> None:
     text = (MCPB_SOURCE / "manifest.json").read_text(encoding="utf-8")
     manifest = json.loads(text)
 
-    assert "user_config" not in manifest
+    assert manifest["user_config"] == {
+        "draft_run_report_directory": {
+            "description": (
+                "Optional local directory for value-safe /draft diagnostic reports. "
+                "Leave unset for normal authoring."
+            ),
+            "required": False,
+            "title": "Draft run accounting directory",
+            "type": "directory",
+        }
+    }
     assert "${user_config.repository_root}" not in text
     assert "${user_config.uv_command}" not in text
-    assert manifest["server"]["mcp_config"]["env"] == {}
+    assert manifest["server"]["mcp_config"]["env"] == {
+        "KCS_DRAFT_RUN_REPORT_DIR": "${user_config.draft_run_report_directory}"
+    }
     assert "Local KCS Authoring Workflow adapter" in manifest["long_description"]
     assert "external semantic-provider setup" in manifest["long_description"]
     assert "/Users/" not in text
@@ -431,13 +443,12 @@ def test_mcpb_node_wrapper_forwards_draft_run_accounting_env() -> None:
     text = (MCPB_SOURCE / "server" / "index.js").read_text(encoding="utf-8")
 
     assert (
-        "KCS_DRAFT_RUN_ACCOUNTING:\n"
-        "    process.env.KCS_DRAFT_RUN_ACCOUNTING || \"\""
+        "const draftRunAccountingMode =\n"
+        "  process.env.KCS_DRAFT_RUN_ACCOUNTING ||\n"
+        "  (draftRunReportDir ? \"local-json\" : \"\");"
     ) in text
-    assert (
-        "KCS_DRAFT_RUN_REPORT_DIR:\n"
-        "    process.env.KCS_DRAFT_RUN_REPORT_DIR || \"\""
-    ) in text
+    assert "KCS_DRAFT_RUN_ACCOUNTING: draftRunAccountingMode" in text
+    assert "KCS_DRAFT_RUN_REPORT_DIR: draftRunReportDir" in text
 
 
 def test_build_script_creates_mcpb_archive(tmp_path: Path) -> None:

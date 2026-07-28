@@ -968,11 +968,19 @@ Validation evidence:
   corrected to forward the two optional accounting environment values;
 - installed accounting smoke produced three schema-valid, hash-named reports
   containing nine observed transitions and no searched content canaries;
-- Claude Desktop was restarted with local accounting enabled and the installed
-  package loaded;
-- the real `ticket-94893302` attempt produced no local report and no KCS MCP
-  tool call; the contemporaneous Desktop web log recorded a generic completion
-  `network error`, while the operator surface reported a usage limit;
+- Claude Desktop was restarted after setting the two accounting values through
+  `launchctl`, but the installed MCPB connector did not inherit either value;
+- the first real `ticket-94893302` attempt therefore produced no local report
+  and no KCS MCP tool call; the contemporaneous Desktop web log recorded a
+  generic completion `network error`, while the operator surface reported a
+  usage limit;
+- a later real run completed the five-item workflow across a host-limit
+  interruption, but it was likewise unobserved because the connector still had
+  no accounting configuration;
+- the package now exposes one optional MCPB `directory` user setting. Selecting
+  it passes only the report directory to the Node wrapper, which enables
+  `local-json` accounting for the Python child. Leaving it unset preserves the
+  previous no-accounting behavior;
 - no live Langfuse project write was performed because the host had 14 GiB
   free, below the tracked 15 GiB post-start stop floor.
 
@@ -998,7 +1006,8 @@ Interpretation limits:
 Ousterhout gate: reviewed
 
 Trigger: new auxiliary module, persistence/failure boundary, cross-module
-adapter hook, and external SDK integration.
+adapter hook, external SDK integration, and installed-host configuration
+boundary.
 
 Complexity hidden: exact allowlist projection, content-free report
 serialization, atomic/background persistence, strict external validation,
@@ -1011,8 +1020,10 @@ owns report validation/export and must not affect workflow execution.
 
 Interface depth and caller cognitive load: the Desktop adapter has one optional
 accounting collaborator and one post-dispatch call; normal callers configure
-nothing. Operators enable two local environment values and export one exact
-report through one documented command.
+nothing. Source/dev operators may enable two local environment values.
+Installed-extension operators select one optional report directory through the
+host-supported MCPB configuration UI; the wrapper derives the fixed
+`local-json` mode. Export uses one exact report and one documented command.
 
 Information leakage and change amplification: the runtime-to-accounting edge
 passes existing arguments/results only for immediate size/count projection;

@@ -9,6 +9,9 @@ closed and report a safe, actionable reason.
 - Nominal behavior is treated as demonstrated operational behavior.
 - A fixture, documented schema, or neighboring endpoint is treated as proof
   that the exact runtime/API path required by the design is operational.
+- Configuration declared at a launcher, manifest, registry, service manager,
+  parent process, or synthetic wrapper is treated as effective configuration
+  at the terminal runtime without current value-safe evidence.
 - Unknown or missing evidence is treated as a default, permission, or success.
 - Feature scope requires an excessive material question batch.
 - Acceptance criterion has no deterministic, bounded-model, or named
