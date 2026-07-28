@@ -924,10 +924,11 @@ product runtime coupling.
 
 ## 2026-07-28 Auxiliary Live Accounting Implementation Checkpoint
 
-Status: source implementation, installed-package validation, and one bounded
-Desktop attempt complete in the isolated
-`feature/PAUX-7103-langfuse-live-run-accounting` worktree. The model-mediated
-attempt stopped before the first MCP call, so no workflow trace was produced.
+Status: source implementation, installed-package validation, terminal-process
+effective-configuration proof, and bounded Desktop attempts complete in the
+isolated `feature/PAUX-7103-langfuse-live-run-accounting` worktree. No
+post-fix model-mediated tool call completed, so the first live workflow report
+remains pending.
 
 Implemented surfaces:
 
@@ -981,6 +982,19 @@ Validation evidence:
   it passes only the report directory to the Node wrapper, which enables
   `local-json` accounting for the Python child. Leaving it unset preserves the
   previous no-accounting behavior;
+- commit `00e3d5a` was rebuilt and installed; source and installed manifest and
+  wrapper SHA-256 values matched;
+- the supported MCPB setting was stored in the enabled extension's
+  `userConfig`, Claude Desktop was restarted, and both the live `uv` process
+  and its terminal Python `kcs-desktop-mcp` child were observed with
+  `KCS_DRAFT_RUN_ACCOUNTING=local-json` and the selected report directory.
+  This proves current configuration propagation without relying on the parent
+  launcher;
+- two repo-approved synthetic UI-send attempts failed before prompt submission
+  with `osascript_timeout`, while the separate accessibility preflight passed.
+  Neither attempt made a KCS tool call or created a report. Repeating the same
+  UI automation was stopped; one later manual or working host-UI tool call is
+  still required to prove report creation on this installed process;
 - no live Langfuse project write was performed because the host had 14 GiB
   free, below the tracked 15 GiB post-start stop floor.
 
