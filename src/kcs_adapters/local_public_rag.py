@@ -11,6 +11,7 @@ import urllib.request
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
+from html.parser import HTMLParser
 from typing import Any, Protocol
 from urllib.parse import ParseResult, urlparse
 
@@ -83,6 +84,89 @@ _COMPARISON_FAILURE_STATUSES = {
 
 class LocalPublicRagTransportError(RuntimeError):
     """Value-free transport failure at the local RAG boundary."""
+
+
+class _PublicExcerptTextParser(HTMLParser):
+    _HTML_TAGS = frozenset(
+        """
+        a abbr address article aside b blockquote body br caption cite code col
+        colgroup dd del details div dl dt em fieldset figcaption figure footer
+        h1 h2 h3 h4 h5 h6 header hgroup hr html i ins kbd label legend li main
+        mark menu nav ol p pre q s samp section small span strong sub summary
+        sup table tbody td tfoot th thead time tr u ul var wbr
+        audio base canvas embed head iframe image img link math meta noscript
+        object picture script source style svg title video
+        """.split()
+    )
+    _BLOCK_TAGS = frozenset(
+        """
+        address article aside blockquote body br caption dd details div dl dt
+        fieldset figcaption figure footer h1 h2 h3 h4 h5 h6 header hgroup hr
+        html legend li main menu nav ol p pre section summary table tbody td
+        tfoot th thead tr ul
+        """.split()
+    )
+    _SUPPRESSED_TAGS = frozenset(
+        """
+        audio canvas head iframe math noscript object picture script style svg
+        video
+        """.split()
+    )
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._suppressed_depth = 0
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        del attrs
+        if tag in self._SUPPRESSED_TAGS:
+            self._suppressed_depth += 1
+            return
+        if self._suppressed_depth:
+            return
+        if tag not in self._HTML_TAGS:
+            raw_tag = self.get_starttag_text()
+            if raw_tag is not None:
+                self.parts.append(raw_tag)
+            return
+        if tag in self._BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self._SUPPRESSED_TAGS:
+            if self._suppressed_depth:
+                self._suppressed_depth -= 1
+            return
+        if self._suppressed_depth:
+            return
+        if tag not in self._HTML_TAGS:
+            self.parts.append(f"</{tag}>")
+            return
+        if tag in self._BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_startendtag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        if tag in self._SUPPRESSED_TAGS or self._suppressed_depth:
+            return
+        if tag not in self._HTML_TAGS:
+            raw_tag = self.get_starttag_text()
+            if raw_tag is not None:
+                self.parts.append(raw_tag)
+            return
+        self.handle_starttag(tag, attrs)
+
+    def handle_data(self, data: str) -> None:
+        if not self._suppressed_depth:
+            self.parts.append(data)
 
 
 class LocalPublicRagTransport(Protocol):
@@ -203,6 +287,7 @@ class _ParsedComparisonExcerpt:
     section_path: str
     article_status: str
     updated_at: str | None
+    provider_token_count: int
     excerpt: ReuseComparisonExcerpt
 
 
@@ -909,7 +994,7 @@ def _validate_comparison_totals(
     if total_chars > _MAX_TOTAL_EXCERPT_CHARS:
         raise ContractValidationError("local public RAG comparison response invalid")
     total_token_count = _nonnegative_int(result.get("total_token_count"))
-    projected_tokens = sum(item.excerpt.token_count for item in parsed)
+    projected_tokens = sum(item.provider_token_count for item in parsed)
     if total_token_count != projected_tokens:
         raise ContractValidationError("local public RAG comparison response invalid")
     if total_token_count > max_tokens:
@@ -937,7 +1022,7 @@ def _parse_comparison_excerpt_fields(
         value.get("section_path"), max_chars=300
     )
     text = _public_excerpt_text(value.get("text"))
-    token_count = _positive_int(value.get("token_count"))
+    provider_token_count = _positive_int(value.get("token_count"))
     excerpt_hash = sha256(
         f"{source_doc_id}\n{section_path}\n{text}".encode("utf-8")
     ).hexdigest()[:20]
@@ -952,12 +1037,13 @@ def _parse_comparison_excerpt_fields(
         updated_at=_optional_public_metadata_string(
             value.get("updated_at"), max_chars=64
         ),
+        provider_token_count=provider_token_count,
         excerpt=ReuseComparisonExcerpt(
             excerpt_ref=f"public-excerpt-{excerpt_hash}",
             section_path=section_path,
             citation=f"{title} — {section_path} — {public_url}",
             text=text,
-            token_count=token_count,
+            token_count=len(text.split()),
         ),
     )
 
@@ -1249,7 +1335,10 @@ def _optional_public_metadata_string(value: object, *, max_chars: int) -> str | 
 def _public_excerpt_text(value: object) -> str:
     if not isinstance(value, str):
         raise ContractValidationError("local public RAG comparison excerpt invalid")
-    text = value.strip()
+    parser = _PublicExcerptTextParser()
+    parser.feed(value)
+    parser.close()
+    text = "".join(parser.parts).strip()
     if not text or len(text) > _MAX_EXCERPT_CHARS:
         raise ContractValidationError("local public RAG comparison excerpt invalid")
     if _has_forbidden_control_character(text):

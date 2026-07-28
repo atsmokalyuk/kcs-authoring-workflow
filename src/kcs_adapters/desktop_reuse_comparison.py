@@ -33,6 +33,7 @@ REUSE_COMPARISON_REF_BYTES = 12
 REUSE_COMPARISON_MAX_ACCEPTED_FACTS = 8
 REUSE_COMPARISON_MAX_FACT_BYTES = 1_000
 REUSE_COMPARISON_MAX_TOTAL_FACT_BYTES = 6_000
+REUSE_COMPARISON_MAX_QUERY_CHARS = 512
 
 _PUBLIC_ARTICLE_URL_RE = re.compile(
     r"https://(?:support\.plesk\.com/hc/[A-Za-z-]+/articles/"
@@ -452,7 +453,12 @@ def comparison_symptoms(candidate: Mapping[str, object]) -> tuple[str, ...]:
     selected: list[str] = []
     total_chars = 0
     for value in values:
-        remaining = 512 - total_chars
+        separator_chars = len(selected)
+        remaining = (
+            REUSE_COMPARISON_MAX_QUERY_CHARS
+            - total_chars
+            - separator_chars
+        )
         if remaining <= 0 or len(selected) >= 5:
             break
         bounded = value[:remaining].strip()

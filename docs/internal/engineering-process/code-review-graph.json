@@ -56,7 +56,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_tool_results.py",
-          "file_hash": "ec98f84a91fcb0eb390da1d511d393941984d575d64432b30eed720cc53ae951",
+          "file_hash": "584084c9fdc405f75132e94d6f231f7fc1ecb842852db8cc2bf29fb5482ca5ac",
           "valid_until_changed": true
         },
         {
@@ -395,7 +395,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_reuse_comparison.py",
-          "file_hash": "f02746a78279b065f80ac4d1ba4b51c38a6eb0a4cf364ece883615562c1a7069",
+          "file_hash": "4fd0e839d30d9fcef0f03896772c1cf682aa37e8fb080cf00ecf35bef940922c",
           "valid_until_changed": true
         },
         {
@@ -595,7 +595,7 @@
         },
         {
           "path": "src/kcs_adapters/local_public_rag.py",
-          "file_hash": "857542dcbddd7b62beeb29039b6365442bab91b0ea58f939abdb6cce58279571",
+          "file_hash": "d5047c749fe102ee60835b9fda8f02d7546d7501939643b57ca9bd026722427d",
           "valid_until_changed": true
         }
       ],

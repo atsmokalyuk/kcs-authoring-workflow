@@ -3,11 +3,12 @@
 Status: parent outcome and target UX selected; Phase A Delivery is complete and
 the accepted Phase B deterministic implementation is committed in `dbb1b8e`.
 Operational closeout remains open. The approved sanitized super-noisy KCS-14.5
-canary failed in upstream semantic submission before native item selection or
-reuse comparison, and the bounded diagnostic correction has not yet been
-rebuilt/installed from the commit. Current successful installed runs therefore
-prove the synthetic two-item mechanism and bounded recovery behavior, not
-resolution of the parent real-ticket outcome. The generic-chat
+canary now accepts five native items and has exercised three installed
+comparison decisions. A current-source replay completes the comparison
+transition ledger for all five items, but the new boundary correction is not
+yet committed, rebuilt, installed, or rechecked in Desktop. Drafting of the
+remaining `none_fit` items also reaches existing content-quality gates, so the
+parent real-ticket authoring outcome remains open. The generic-chat
 entrypoint claim is rejected after installed Sonnet 5 trials bypassed either
 the operator decision or the complete KCS tool workflow. Phase C in-chat UI is
 host-blocked and deferred because the current Claude Desktop contract exposes
@@ -1717,6 +1718,85 @@ Ousterhout gate: `not triggered`; this is a leaf projection of three existing
 closed status codes into operator-facing recovery text. It adds no state,
 service, dependency, retry mechanism, persistence, or hosting assumption.
 
+### Representative canary comparison-boundary correction
+
+Current-source forensic replay on 2026-07-28 found that the installed
+item-3 stop was not a RAG outage:
+
+- the query projection counted 512 symptom characters without the separators
+  inserted between them, so a multi-symptom request could exceed the adapter's
+  own 512-character limit before any RAG call;
+- public Zendesk snippets could contain HTML markup. RAG returned valid public
+  evidence, but the model-visible MCP result correctly rejected the unprojected
+  markup;
+- the output safety check treated the ordinary word `image` in a public
+  article title, URL, or excerpt as a media payload.
+
+Bounded correction:
+
+- query projection now includes separators in the existing 512-character
+  bound;
+- the local public-RAG adapter projects excerpt markup to bounded plain text
+  while retaining the provider token total for response-contract validation
+  and recalculating the model-visible text count;
+- bare media keys and URL/data variants remain forbidden, while ordinary
+  public prose containing `image` or `audio` is permitted;
+- no RAG endpoint, hosting, retrieval, ranking, operator outcome, authoring,
+  storage, reviewer, or publication contract changes.
+
+Acceptance evidence:
+
+| Acceptance criterion | Gate |
+| --- | --- |
+| Multiple symptom fragments always produce a query of at most 512 characters. | deterministic boundary regression |
+| Public HTML becomes plain model-visible text and the original provider total is still validated. | deterministic adapter/contract regression |
+| Media payload keys remain forbidden while ordinary public prose is accepted. | deterministic positive/negative output-safety matrix |
+| The approved five-item ticket preserves item 1-3 decisions and reaches item 4 and item 5 comparison without an MCP result error. | direct current-source representative canary; `N=1` feasibility |
+
+Validation:
+
+- focused comparison/RAG/Desktop boundary suite: 337 passed;
+- full repository suite excluding the intentionally dirty-worktree frozen-path
+  guard: 1646 passed, 1 skipped, 1 deselected;
+- direct current-source five-item live-RAG replay: all five transition result
+  schemas passed, with the ordered ledger
+  `none_fit`, `reuse`, `reuse`, `none_fit`, `none_fit`;
+- Ruff, review-graph policy and hashes, and `git diff --check`: passed;
+- complexity sensor: no newly changed function exceeds the configured
+  threshold;
+- final independent correction re-review: `confirmed`, with no blockers.
+
+The direct replay recorded all five comparison outcomes with valid result
+schemas. It then reached existing authoring-quality behavior: item 5 was
+blocked because its 1,380-character extractive cause exceeds the renderer's
+600-character Cause bound. That is not a comparison/RAG failure and is not
+silently relaxed by this correction.
+
+Ousterhout closeout:
+
+- Trigger: public-data normalization and the model-visible output-safety
+  boundary changed.
+- Complexity hidden: provider token totals and public HTML remain behind the
+  local public-RAG adapter; forbidden media surfaces remain behind the Desktop
+  result validator.
+- Owner and non-owner knowledge: `LocalPublicRagAdapter` owns plain-text
+  projection and provider-total validation; the Desktop result boundary owns
+  media-key and data-URI rejection. Callers do not learn provider HTML, token,
+  or media-validation details.
+- Interface depth and operator load: the existing evidence, comparison-card,
+  and outcome contracts are unchanged, and no operator question was added.
+- Leakage and change amplification: recognized public HTML is projected to
+  plain text, non-visible script/style content is suppressed, unknown
+  technical placeholders remain visible, and media keys/data URIs still fail
+  closed.
+- Complexity delta: one bounded parser state and one media-key classifier were
+  added inside existing owners; no service, workflow state, persistence,
+  observability, or abstraction layer was added.
+- Residual risk: malformed or uncommon public markup and repeated-ticket
+  retrieval stability still require installed representative trials.
+- Verdict: `pass` after deterministic boundary regressions and independent
+  correction re-review.
+
 ## Remaining unknown inventory
 
 - The final comfortable Desktop-integrated surface that directly owns entry and
@@ -1755,12 +1835,13 @@ KCS-15.2b2 Phase A exact public context Delivery: complete; independent review c
 KCS-15.2b2 downstream Python Delivery: implemented
 KCS-15.2b2 controlled-entrypoint skeleton: implemented and verified; current deterministic entrypoint
 KCS-15.2b2 accepted runtime source: committed in dbb1b8e
-KCS-15.2b2 artifact/runtime baseline: 78b1f86 installed and reloaded; current bounded correction not installed
-KCS-15.2b2 comparison-submit correction source: committed in 5e8a32c; package/source smoke passed; not installed
-KCS-15.2b2 parent super-noisy KCS-14.5 canary: reached five-item selection and item-1 comparison; failed at corrected outcome submit, parent outcome still unproven
+KCS-15.2b2 artifact/runtime baseline: c31e155 installed and reloaded; current representative boundary correction not installed
+KCS-15.2b2 comparison-submit correction source: committed in 5e8a32c and installed as part of c31e155
+KCS-15.2b2 parent super-noisy KCS-14.5 canary: installed run accepted five items and recorded item 1 none_fit, item 2 reuse, and item 3 reuse before the next boundary failure; direct current-source replay completed all five comparisons; parent authoring remains open on existing content-quality gates and installation of the current correction
 KCS-15.2b2 operator-steered boundary correction: target UX selected and Delivery authorized 2026-07-26
 KCS-15.2b2 real-ticket comparison-submit defect correction: Delivery authorized by operator continuation 2026-07-27
 KCS-15.2b2 RAG-unavailable operator guidance: Delivery authorized by operator 2026-07-27
+KCS-15.2b2 representative comparison-boundary correction: Delivery authorized by operator continuation 2026-07-28; current-source five-item comparison replay passed; commit/install/Desktop recheck pending
 KCS-15.2b2 Phase C controlled operator surface: host-blocked and deferred
 KCS-15.2b2 final Desktop UX: deferred pending a host-owned direct launcher
 KCS-15.2b3 repeated trial: locked

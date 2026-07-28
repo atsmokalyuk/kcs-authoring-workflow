@@ -104,8 +104,10 @@ Recommended slice order:
   comparison evidence is complete; KCS-15.2b2 Phase A exact public-article
   context is complete and the deterministic local controlled-comparison
   implementation is committed. Operational closeout remains open because the
-  approved sanitized super-noisy canary stopped in upstream semantic
-  submission before comparison. Phase C in-chat UI is host-blocked and
+  approved sanitized super-noisy canary reaches all five comparison decisions
+  only in current-source replay; the latest boundary correction still needs
+  commit/install/Desktop evidence and remaining `none_fit` drafts reach
+  separate authoring-quality gates. Phase C in-chat UI is host-blocked and
   deferred pending a host-owned direct launcher. It remains outside KCS-14
   scope;
 - Future harness-portable agent engineering support: git-aware code-review

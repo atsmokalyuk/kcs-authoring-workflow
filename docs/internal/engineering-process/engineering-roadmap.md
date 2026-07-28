@@ -123,9 +123,11 @@ evidence directly.
   - KCS-15.2b2 exact public-article context is complete and the deterministic
     local controlled-comparison implementation is committed; operational
     closeout remains open because the approved sanitized super-noisy canary
-    stopped in upstream semantic submission before comparison; Phase C in-chat
-    UI is host-blocked and deferred pending a direct operator-controlled
-    launcher;
+    now reaches all five comparison decisions in current-source replay, while
+    the latest comparison-boundary correction still requires commit, install,
+    and Desktop recheck and remaining `none_fit` drafts reach separate
+    authoring-quality gates; Phase C in-chat UI is host-blocked and deferred
+    pending a direct operator-controlled launcher;
   - KCS-15.2b3 repeated comparison trials remain separately gated;
   - deterministic style/structure parity continues in KCS-15.3 and approved
     examples/model-mediated quality continue in KCS-15.4.
@@ -152,10 +154,12 @@ evidence contract, common acceptance gate, and local `/api/snippets`
 projection. KCS-15.2b2 Phase A exact public-article context is complete and its
 deterministic local controlled-comparison implementation is committed.
 Operational closeout remains open because the approved sanitized super-noisy
-canary stopped in upstream semantic submission before comparison. Phase C
-in-chat UI is host-blocked and deferred because current Claude Desktop has no
-host-owned direct launcher for the first tool transition. KCS-15.2 does not
-block independent KCS-15.3 style-parity work.
+canary now reaches all five comparison decisions in current-source replay, but
+the latest boundary correction is not yet installed and the remaining
+`none_fit` drafts reach separate authoring-quality gates. Phase C in-chat UI is
+host-blocked and deferred because current Claude Desktop has no host-owned
+direct launcher for the first tool transition. KCS-15.2 does not block
+independent KCS-15.3 style-parity work.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening
 

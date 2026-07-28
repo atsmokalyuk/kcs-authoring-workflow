@@ -1031,6 +1031,88 @@ def test_comparison_evidence_reports_no_public_evidence() -> None:
     assert result.blockers == ("comparison_no_evidence",)
 
 
+def test_comparison_evidence_projects_public_html_as_plain_text() -> None:
+    source_text = (
+        "Certificate processing failed: "
+        '<span class="provider hidden marker" data-note="not visible">'
+        "</span><b>example.com</b>."
+        "<div>Authorization failed.</div><br/>"
+        "Use <domain>."
+    )
+    provider_token_count = len(source_text.split())
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(
+            snippets=[
+                _snippet(
+                    text=source_text,
+                    token_count=provider_token_count,
+                )
+            ],
+            total_token_count=provider_token_count,
+        ),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Certificate authorization failed.",))
+    )
+
+    assert result.status == "comparison_evidence_ready"
+    assert result.candidates[0].excerpts[0].text == (
+        "Certificate processing failed: example.com.\nAuthorization failed.\n\n"
+        "Use <domain>."
+    )
+    projected_token_count = result.candidates[0].excerpts[0].token_count
+    assert projected_token_count == 8
+    assert projected_token_count != provider_token_count
+
+
+def test_comparison_evidence_projects_table_and_nonvisible_html() -> None:
+    source_text = (
+        "<html><body><table><thead><tr><th>Symptom</th><th>Cause</th></tr></thead>"
+        "<tbody><tr><td>No data</td><td>Wrong path</td></tr></tbody></table>"
+        "<hr><i>Visible note</i>"
+        "<iframe>embedded content</iframe>"
+        "<script>alert('not visible')</script>"
+        "<style>.hidden { display: none; }</style>"
+        "Use <domain>.</body></html>"
+    )
+    provider_token_count = len(source_text.split())
+    transport = FakeTransport(
+        readiness=_readiness_result(),
+        search=_snippets_result(
+            snippets=[
+                _snippet(
+                    text=source_text,
+                    token_count=provider_token_count,
+                )
+            ],
+            total_token_count=provider_token_count,
+        ),
+    )
+
+    result = LocalPublicRagAdapter(transport=transport).collect_comparison_evidence(
+        ReuseComparisonEvidenceRequest(("Certificate authorization failed.",))
+    )
+
+    excerpt_text = result.candidates[0].excerpts[0].text
+    assert result.status == "comparison_evidence_ready"
+    assert "Symptom" in excerpt_text
+    assert "Cause" in excerpt_text
+    assert "No data" in excerpt_text
+    assert "Wrong path" in excerpt_text
+    assert "Visible note" in excerpt_text
+    assert "<table" not in excerpt_text
+    assert "<html" not in excerpt_text
+    assert "<body" not in excerpt_text
+    assert "<hr" not in excerpt_text
+    assert "<i>" not in excerpt_text
+    assert "embedded content" not in excerpt_text
+    assert "alert" not in excerpt_text
+    assert "display" not in excerpt_text
+    assert "Use <domain>." in excerpt_text
+
+
 def test_comparison_evidence_normalizes_transport_failure() -> None:
     transport = FakeTransport(readiness=_readiness_result(), search=None)
     transport.post_error = LocalPublicRagTransportError("SECRET upstream detail")

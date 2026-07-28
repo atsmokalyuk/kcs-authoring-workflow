@@ -52,9 +52,12 @@ instead of implying that external tracking was updated.
     - KCS-15.2b2 Operator-Confirmed Comparison Workflow: Phase A exact
       public-article context is complete and the deterministic local
       controlled-comparison implementation is committed; operational closeout
-      remains open because the approved sanitized super-noisy canary stopped
-      in upstream semantic submission before comparison; Phase C in-chat UI is
-      host-blocked and deferred pending a host-owned direct launcher
+      remains open because the approved sanitized super-noisy canary reaches
+      all five comparison decisions only in current-source replay; the latest
+      boundary correction still needs commit/install/Desktop evidence and
+      remaining `none_fit` drafts reach separate authoring-quality gates;
+      Phase C in-chat UI is host-blocked and deferred pending a host-owned
+      direct launcher
     - KCS-15.2b3 Repeated Comparison Trial: planned after b2 with a separately
       approved fixture/trial contract
   - KCS-15.3 Deterministic structure/title/entrypoint/safety/naming parity:

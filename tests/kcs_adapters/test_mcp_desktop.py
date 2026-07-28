@@ -7096,11 +7096,17 @@ def test_tool_result_builder_rejects_forbidden_output_surfaces() -> None:
         "attachment_url",
         "attachmentUrl",
         "audio",
+        "audio_blob",
+        "audio_src",
+        "audios",
         "draft_artifact",
         "draftArtifact",
         "embedded_resource",
         "embeddedResource",
         "image",
+        "image_base64",
+        "image_uri",
+        "images",
         "local_path",
         "localPath",
         "raw_validation_payload",
@@ -7124,6 +7130,33 @@ def test_tool_result_builder_rejects_nested_forbidden_surfaces(
                 ok=True,
                 result={
                     "checks": [{forbidden_key: "safe-ref"}],
+                    "ok": True,
+                    "result_kind": "policy_summary",
+                    "schema_version": "kcs_mcp_tool_result_v1",
+                },
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    "media_value",
+    [
+        "data:audio/mpeg;base64,AAAA",
+        "data:image/png;base64,AAAA",
+    ],
+)
+def test_tool_result_builder_rejects_media_data_uri_values(
+    media_value: str,
+) -> None:
+    descriptor = KcsDesktopMcpAdapter().list_tools()[0]
+
+    with pytest.raises(ContractValidationError):
+        mcp_desktop._mcp_tool_response(  # noqa: SLF001
+            descriptor=descriptor,
+            result=McpToolResult(
+                ok=True,
+                result={
+                    "checks": [{"value": media_value}],
                     "ok": True,
                     "result_kind": "policy_summary",
                     "schema_version": "kcs_mcp_tool_result_v1",

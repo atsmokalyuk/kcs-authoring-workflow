@@ -11,6 +11,7 @@ from kcs_adapters.desktop_reuse_comparison import (
     PendingReuseComparison,
     ReuseComparisonExpiredError,
     ReuseComparisonInvalidError,
+    comparison_symptoms,
     confirmed_helpful_public_article,
     reuse_comparison_required_result,
     reuse_comparison_submit_failure_result,
@@ -22,6 +23,7 @@ from kcs_adapters.desktop_tool_results import (
 )
 from kcs_adapters.desktop_tool_schemas import tool_output_schema
 from kcs_adapters.desktop_workflow import DesktopDraftWorkflow
+from kcs_adapters.local_public_rag import build_local_public_rag_query
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
 from kcs_core.reuse_comparison import (
@@ -344,6 +346,58 @@ def test_required_result_exposes_only_bounded_public_comparison_context() -> Non
     validate_tool_structured_content(result, tool_output_schema())
 
 
+def test_required_result_allows_image_as_public_article_text() -> None:
+    public_url = (
+        "https://support.plesk.com/hc/en-us/articles/"
+        "123456-Broken-image-preview"
+    )
+    excerpt = ReuseComparisonExcerpt(
+        excerpt_ref="public-excerpt-image",
+        section_path="Resolution",
+        citation=f"Broken image preview — Resolution — {public_url}",
+        text="The image preview is regenerated after the repair.",
+        token_count=8,
+    )
+    evidence = ReuseComparisonEvidence(
+        searched=True,
+        status="comparison_evidence_ready",
+        search_run_ref="comparison-run-image",
+        explicit_reference_status="not_provided",
+        candidates=(
+            ReuseComparisonCandidate(
+                rank=1,
+                source_doc_id="plesk-support://123456",
+                source_type="support",
+                title="Broken image preview",
+                public_url=public_url,
+                article_status="active",
+                updated_at="2026-07-28",
+                origin="search_result",
+                excerpts=(excerpt,),
+            ),
+        ),
+    )
+    pending = _workflow(
+        _FixtureComparisonProvider(evidence)
+    ).start_pending_reuse_comparison(
+        issue_candidate=_issue_candidate(),
+        approved_summary_text="Approved sanitized summary.",
+        approved_summary_source_kind=None,
+        selected_item_refs=["candidate-001"],
+        current_index=0,
+        selection_ref=None,
+        debug=False,
+    )
+
+    result = reuse_comparison_required_result(
+        pending,
+        schema_version="kcs_mcp_tool_result_v1",
+        submit_tool="kcs_confirm_reuse_comparison",
+    )
+
+    validate_tool_structured_content(result, tool_output_schema())
+
+
 def test_public_comparison_safety_exception_is_limited_to_comparison_result() -> None:
     pending = _workflow(_FixtureComparisonProvider()).start_pending_reuse_comparison(
         issue_candidate=_issue_candidate(),
@@ -390,7 +444,23 @@ def test_docs_page_cannot_be_constructed_as_reuse_candidate() -> None:
             updated_at="2026-07-01",
             origin="search_result",
             excerpts=(excerpt,),
-        )
+    )
+
+
+def test_comparison_symptoms_account_for_query_separators() -> None:
+    symptoms = comparison_symptoms(
+        {
+            "symptoms": [
+                "a" * 256,
+                "b" * 256,
+            ]
+        }
+    )
+
+    query = build_local_public_rag_query(symptoms)
+
+    assert len(query) == 512
+    assert query == f"{'a' * 256} {'b' * 255}"
 
 
 def test_invalid_provider_response_blocks_without_authoring(tmp_path) -> None:

@@ -21,12 +21,12 @@ MAX_TOOL_RESULT_BYTES = 256 * 1024
 _RESULT_FORBIDDEN_FRAGMENTS = (
     "article_body",
     "attachment_url",
-    "audio",
+    "data:audio/",
+    "data:image/",
     "draft_artifact",
     "embedded_resource",
     "evidence_basis",
     "file://",
-    "image",
     "internal_comment",
     "local_path",
     "raw_comment",
@@ -62,6 +62,7 @@ _RESULT_FORBIDDEN_COMPACT_FRAGMENTS = (
     "zendesksourcehtml",
 )
 _RESULT_FORBIDDEN_EXACT_KEYS = frozenset({"resource"})
+_RESULT_FORBIDDEN_MEDIA_KEY_PREFIXES = ("audio", "image")
 _TOOL_RESULT_HTML_FIELDS = frozenset({"reviewer_only_html"})
 _APPROVED_HTML_URL_REFS = {
     "https://support.plesk.com/hc/en-us/articles/"
@@ -1402,7 +1403,11 @@ def _ensure_no_forbidden_tool_result_text(value: str) -> None:
 
 def _ensure_no_forbidden_tool_result_key(value: str) -> None:
     normalized = value.casefold()
-    if normalized in _RESULT_FORBIDDEN_EXACT_KEYS:
+    compact = normalized.replace("_", "").replace("-", "")
+    if (
+        normalized in _RESULT_FORBIDDEN_EXACT_KEYS
+        or compact.startswith(_RESULT_FORBIDDEN_MEDIA_KEY_PREFIXES)
+    ):
         raise ContractValidationError("MCP tool result contains unsafe value")
     _ensure_no_forbidden_tool_result_text(value)
 
