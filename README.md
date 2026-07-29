@@ -655,6 +655,12 @@ tools are not loaded into the active chat.
 - Completed KCS-15.2b2 phase: Phase A exact public-article context
 - Completed KCS-15.2b2 deterministic entrypoint: the local controlled
   comparison controller
+- Completed KCS-15.2b2 operational closeout: one installed approved
+  super-noisy ticket completed five item comparisons; repeated stability is
+  not claimed
+- Planned KCS-15.2b3 repeated comparison trial: `N=3` comparable installed
+  runs with existing value-safe local/Langfuse accounting; Delivery remains
+  locked
 - Deferred KCS-15.2b2 phase: Phase C in-chat operator surface, blocked by the
   absence of a host-owned direct tool/App launcher in current Claude Desktop
 

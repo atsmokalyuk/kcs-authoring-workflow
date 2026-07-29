@@ -166,6 +166,9 @@ def test_kcs15_tracking_separates_rag_enabling_from_parent_delivery() -> None:
     kcs15_1_plan = (
         process / "slice-plans/kcs-15-1-plesk-info-trigger-parity.md"
     ).read_text(encoding="utf-8")
+    kcs15_2b3_plan = (
+        process / "slice-plans/kcs-15-2b3-repeated-comparison-trial.md"
+    ).read_text(encoding="utf-8")
     registry = (process / "engineering-rule-portability.md").read_text(
         encoding="utf-8"
     )
@@ -176,12 +179,12 @@ def test_kcs15_tracking_separates_rag_enabling_from_parent_delivery() -> None:
     assert "Completed KCS-15 enabling slice: KCS-15.2a" in roadmap
     assert "Completed KCS-15 enabling slice: KCS-15.2b1" in roadmap
     assert "Completed KCS-15.2b2 phase: Phase A" in roadmap
-    assert (
-        "KCS-15.2b2 deterministic implementation: committed; "
-        "operational closeout open"
-    ) in roadmap
-    assert "super-noisy canary" in roadmap
-    assert "KCS-15.2b3 repeated comparison trials remain separately gated" in roadmap
+    assert "Completed KCS-15.2b2: Operator-Confirmed Comparison Workflow" in roadmap
+    assert "super-noisy run" in roadmap
+    assert "Selected KCS-15.2b3 Design: N=3 repeated comparison trial" in roadmap
+    assert "Status: Design selected; Delivery locked" in kcs15_2b3_plan
+    assert "Trial count: `N=3`" in kcs15_2b3_plan
+    assert "value-safe Langfuse accounting" in kcs15_2b3_plan
     assert "`KCS-15.3`" in matrix
     assert "`KCS-15.4`" in matrix
     assert "Status: completed" in adapter_plan

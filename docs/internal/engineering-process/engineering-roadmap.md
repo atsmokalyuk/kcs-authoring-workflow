@@ -12,7 +12,10 @@ Completed KCS-15 behavior slice: KCS-15.1 PLESK_INFO Trigger Parity
 Completed KCS-15 enabling slice: KCS-15.2a Local Public RAG Adapter
 Completed KCS-15 enabling slice: KCS-15.2b1 Bounded Public Comparison Evidence
 Completed KCS-15.2b2 phase: Phase A Exact Public Article Context
-KCS-15.2b2 deterministic implementation: committed; operational closeout open
+Completed KCS-15.2b2: Operator-Confirmed Comparison Workflow, with one
+installed representative super-noisy run and no repeated-stability claim
+Selected KCS-15.2b3 Design: N=3 repeated comparison trial with existing
+value-safe Langfuse accounting; Delivery locked
 KCS-15.2b2 Phase C in-chat UI: host-blocked and deferred pending a direct
 operator-controlled launcher
 ```
@@ -120,16 +123,15 @@ evidence directly.
     slice with fail-closed readiness and metadata-only candidates;
   - KCS-15.2b1 provider-neutral bounded public comparison evidence is complete;
     it did not change Desktop or decision behavior;
-  - KCS-15.2b2 exact public-article context is complete and the deterministic
-    local controlled-comparison implementation is committed; operational
-    closeout remains open because the approved sanitized super-noisy canary
-    now reaches all five comparison decisions in current-source replay. The
-    reviewed correction is committed, installed, reloaded, and passes the
-    installed-wrapper/runtime preflights; the final installed Desktop
-    super-noisy canary and separate `none_fit` authoring-quality gates remain
-    open. Phase C in-chat UI is host-blocked and deferred pending a direct
-    operator-controlled launcher;
-  - KCS-15.2b3 repeated comparison trials remain separately gated;
+  - KCS-15.2b2 operator-confirmed comparison workflow is complete. One
+    installed approved super-noisy run preserved five accepted items through
+    the decisions `none_fit`, `reuse`, `reuse`, `update`, `none_fit`.
+    Downstream evidence/content-quality blocks remained fail closed and are
+    outside this comparison-workflow closeout. Phase C in-chat UI is
+    host-blocked and deferred pending a direct operator-controlled launcher;
+  - KCS-15.2b3 repeated comparison trial Design is selected as `N=3`
+    comparable installed runs with existing value-safe Langfuse accounting;
+    Delivery remains locked;
   - deterministic style/structure parity continues in KCS-15.3 and approved
     examples/model-mediated quality continue in KCS-15.4.
 - Future deployment slice: optional managed internal service version of the
@@ -152,15 +154,15 @@ source-backed behavior slices. KCS-15.1 PLESK_INFO trigger parity is complete.
 KCS-15.2a local-public RAG adapter is complete as bounded enabling work.
 KCS-15.2b1 is complete only for the provider-neutral public comparison
 evidence contract, common acceptance gate, and local `/api/snippets`
-projection. KCS-15.2b2 Phase A exact public-article context is complete and its
-deterministic local controlled-comparison implementation is committed.
-Operational closeout remains open because the approved sanitized super-noisy
-canary now reaches all five comparison decisions in current-source replay, but
-the latest boundary correction is not yet installed and the remaining
-`none_fit` drafts reach separate authoring-quality gates. Phase C in-chat UI is
-host-blocked and deferred because current Claude Desktop has no host-owned
-direct launcher for the first tool transition. KCS-15.2 does not block
-independent KCS-15.3 style-parity work.
+projection. KCS-15.2b2 operator-confirmed comparison workflow is complete
+after one installed approved super-noisy run preserved all five accepted items
+through all five comparison decisions. This is representative feasibility,
+not repeated stability. Downstream `none_fit` evidence and draft-quality
+blocks remain separate authoring outcomes. KCS-15.2b3 owns the selected `N=3`
+repeated trial with existing value-safe Langfuse accounting; Delivery remains
+locked. Phase C in-chat UI is host-blocked and deferred because current Claude
+Desktop has no host-owned direct launcher for the first tool transition.
+KCS-15.2 does not block independent KCS-15.3 style-parity work.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening
 

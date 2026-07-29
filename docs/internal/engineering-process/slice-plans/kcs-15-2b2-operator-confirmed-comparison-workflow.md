@@ -1,14 +1,13 @@
 # KCS-15.2b2 Operator-Confirmed Comparison Workflow
 
-Status: parent outcome and target UX selected; Phase A Delivery is complete and
-the accepted Phase B deterministic implementation is committed in `dbb1b8e`.
-Operational closeout remains open. The approved sanitized super-noisy KCS-14.5
-canary now accepts five native items and has exercised three installed
-comparison decisions. A current-source replay completes the comparison
-transition ledger for all five items, but the new boundary correction is not
-yet committed, rebuilt, installed, or rechecked in Desktop. Drafting of the
-remaining `none_fit` items also reaches existing content-quality gates, so the
-parent real-ticket authoring outcome remains open. The generic-chat
+Status: operational closeout completed on 2026-07-29. Phase A Delivery and the
+accepted Phase B deterministic implementation are complete. The approved
+sanitized super-noisy KCS-14.5 canary completed one installed Desktop run
+across all five native items and all five comparison decisions. Existing
+downstream evidence and draft-quality gates remained fail closed and are not
+comparison-workflow failures. Repeated stability, operator comfort, false
+positives, and Langfuse accounting are owned by the separately gated
+KCS-15.2b3 trial. The generic-chat
 entrypoint claim is rejected after installed Sonnet 5 trials bypassed either
 the operator decision or the complete KCS tool workflow. Phase C in-chat UI is
 host-blocked and deferred because the current Claude Desktop contract exposes
@@ -17,8 +16,7 @@ no operator-controlled launcher for the first transition. Details:
 The installed Phase C overlay is not accepted as a production path; recovery
 returns the production connector to the last proven text-based workflow while
 retaining the completed comparison backend and deterministic controller.
-KCS-15.2b3 and KCS-15.3 Delivery remain locked until that recovery passes a
-fresh end-to-end smoke.
+KCS-15.2b3 Delivery remains locked under its separate tracked trial plan.
 
 ## Requested outcome
 
@@ -501,11 +499,12 @@ provider.
 
 ### KCS-15.2b3: repeated comparison trial
 
-Status: locked.
+Status: moved to the separate tracked plan
+`kcs-15-2b3-repeated-comparison-trial.md`; Delivery remains locked.
 
-One successful Phase B Desktop smoke may prove feasibility only. Recommendation
-quality, retrieval stability, operator comfort, correction overhead, and false
-positives require a separately approved repeated trial contract.
+One successful Phase B Desktop smoke proves representative feasibility only.
+Recommendation quality, retrieval stability, operator comfort, correction
+overhead, and false positives use the selected `N=3` contract in that plan.
 
 ## Phase A exact-integration smoke contract
 
@@ -1197,7 +1196,7 @@ Ousterhout closeout for the duplicate-submit correction:
 
 ## Delivery Process Failure Audit
 
-Status: recorded on 2026-07-25; both findings keep KCS-15.2b2 closeout open.
+Status: recorded on 2026-07-25 and resolved for closeout on 2026-07-29.
 
 ### Premature repository closeout
 
@@ -1357,11 +1356,13 @@ values, ticket text, source refs, and raw exceptions remain hidden. The retry
 budget, fail-closed terminal behavior, semantic ownership, and all downstream
 contracts remain unchanged.
 
-Initial acceptance gate: a deterministic multi-error packet returns all invalid field
-paths in one correction, succeeds after correcting them, and still permits no
-second correction. Operational stability then requires three fresh identical
-installed-client runs of `/draft ticket-94893302` to reach native item selection
-without terminal semantic shape failure.
+Initial acceptance gate: a deterministic multi-error packet returns all invalid
+field paths in one correction, succeeds after correcting them, and still
+permits no second correction. At this point three fresh identical
+installed-client runs were proposed for operational stability. The later
+closeout decision assigns that repeated-stability claim to KCS-15.2b3.
+KCS-15.2b2 requires one complete installed representative run and makes no
+stability claim.
 
 The first installed run on `62620a0` passed the structural correction but then
 stopped on the independent grounding validator with
@@ -1797,6 +1798,48 @@ Ousterhout closeout:
 - Verdict: `pass` after deterministic boundary regressions and independent
   correction re-review.
 
+## Operational Closeout
+
+Status: `passed` with a narrowed claim on 2026-07-29.
+
+The final installed Claude Desktop run used the approved sanitized
+`ticket-94893302` canary through `/draft <ticket_ref>` and:
+
+- accepted the five operator-visible KCS item identities;
+- preserved the selected batch through all five public-article comparisons;
+- recorded the ordered decisions
+  `none_fit`, `reuse`, `reuse`, `update`, `none_fit`;
+- reached existing downstream authoring gates without a comparison-boundary,
+  RAG, MCP result, or lost-state failure;
+- preserved reviewer-only output, fail-closed behavior, and no publication.
+
+The DNS `none_fit` item remained blocked because the ticket did not contain an
+executable resolution procedure. The recurring-binding/permissions item
+reached a reviewer-only draft and remained blocked by existing content-quality
+checks. These are evidence/authoring-quality outcomes, not KCS-15.2b2 reuse
+workflow failures, and do not justify widening this slice.
+
+Closeout gate disposition:
+
+1. isolated diff, review, and focused/full validation: passed;
+2. committed source and installed artifact/runtime mapping: passed;
+3. approved super-noisy installed Desktop canary: passed for comparison
+   feasibility;
+4. reviewer-only, no-publish, fail-closed, bounded-decision invariants: passed;
+5. repeated stability, operator comfort, false positives, and performance
+   accounting: explicitly moved to KCS-15.2b3.
+
+Claim boundary: KCS-15.2b2 proves one complete representative operational
+comparison workflow. It does not prove repeated model/RAG stability,
+cross-ticket recommendation quality, performance consistency, or repeated-use
+operator comfort.
+
+Ousterhout gate: `not triggered`.
+Not-triggered reason: this closeout only classifies existing operational
+evidence and moves a repeated-trial claim into its own plan; it changes no
+runtime owner, interface, dependency, state, failure boundary, or internal
+control-flow complexity.
+
 ## Remaining unknown inventory
 
 - The final comfortable Desktop-integrated surface that directly owns entry and
@@ -1837,14 +1880,15 @@ KCS-15.2b2 controlled-entrypoint skeleton: implemented and verified; current det
 KCS-15.2b2 accepted runtime source: committed in dbb1b8e
 KCS-15.2b2 artifact/runtime baseline: 82b2e85 installed and reloaded; installed-wrapper smoke passed all 17 checks; post-restart tools/list request and response observed, while exact log surface detail remains unavailable because the host log is truncated; static artifact identity and live RAG preflight passed
 KCS-15.2b2 comparison-submit correction source: committed in 5e8a32c and installed as part of c31e155
-KCS-15.2b2 parent super-noisy KCS-14.5 canary: prior installed run accepted five items and recorded item 1 none_fit, item 2 reuse, and item 3 reuse before the next boundary failure; direct current-source replay completed all five comparisons; final installed Desktop replay and existing content-quality gates remain open
+KCS-15.2b2 parent super-noisy KCS-14.5 canary: completed one installed Desktop run across five accepted items and five ordered decisions (none_fit, reuse, reuse, update, none_fit); downstream evidence/content-quality gates remained fail closed and are outside the comparison-workflow closeout claim
 KCS-15.2b2 operator-steered boundary correction: target UX selected and Delivery authorized 2026-07-26
 KCS-15.2b2 real-ticket comparison-submit defect correction: Delivery authorized by operator continuation 2026-07-27
 KCS-15.2b2 RAG-unavailable operator guidance: Delivery authorized by operator 2026-07-27
-KCS-15.2b2 representative comparison-boundary correction: Delivery authorized by operator continuation 2026-07-28; committed in 82b2e85, installed, reloaded, independently confirmed, and installed-wrapper/runtime preflights passed; final Desktop super-noisy replay pending
+KCS-15.2b2 representative comparison-boundary correction: Delivery authorized by operator continuation 2026-07-28; committed in 82b2e85, installed, reloaded, independently confirmed, installed-wrapper/runtime preflights passed, and final Desktop super-noisy replay completed
 KCS-15.2b2 Phase C controlled operator surface: host-blocked and deferred
 KCS-15.2b2 final Desktop UX: deferred pending a host-owned direct launcher
-KCS-15.2b3 repeated trial: locked
+KCS-15.2b2 operational closeout: passed with representative-feasibility claim 2026-07-29
+KCS-15.2b3 repeated trial: Design selected under kcs-15-2b3-repeated-comparison-trial.md; Delivery locked
 ```
 
 ## Stop conditions
