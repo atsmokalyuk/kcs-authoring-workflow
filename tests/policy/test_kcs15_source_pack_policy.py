@@ -185,6 +185,9 @@ def test_kcs15_tracking_separates_rag_enabling_from_parent_delivery() -> None:
     assert "Status: Design selected; Delivery locked" in kcs15_2b3_plan
     assert "Trial count: `N=3`" in kcs15_2b3_plan
     assert "value-safe Langfuse accounting" in kcs15_2b3_plan
+    assert "`clearly_irrelevant`" in kcs15_2b3_plan
+    assert "zero recommendation false positives" in kcs15_2b3_plan
+    assert "comparison cognitive-load findings" in kcs15_2b3_plan
     assert "`KCS-15.3`" in matrix
     assert "`KCS-15.4`" in matrix
     assert "Status: completed" in adapter_plan

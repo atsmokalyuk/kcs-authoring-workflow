@@ -36,6 +36,10 @@ Unknown:
 
 - stability of the five accepted item identities and comparison progression;
 - repeated retrieval and recommendation consistency;
+- how often eligible but clearly irrelevant KB results are shown merely
+  because retrieval returned them;
+- whether weak candidate presentation creates unnecessary operator inspection
+  even when the final recommendation is correct;
 - correction and operator overhead across comparable runs;
 - whether host quota interrupts the bounded evidence budget;
 - which observable workflow stage contributes the most duration and
@@ -159,6 +163,12 @@ Every counted run must:
 - show only eligible Plesk Support/KB reuse candidates;
 - keep manuals, release notes, changelogs, incident notices, and other
   ineligible pages out of reuse/update candidates;
+- present no more than one clearly irrelevant eligible KB candidate for an
+  item;
+- when no plausible comparison candidate exists, say that no credible fit was
+  found instead of presenting all retrieved articles as meaningful options;
+- never frame a weak, tangential, clearly irrelevant, or ineligible result as
+  a viable `reuse` or `update` recommendation;
 - preserve exact helpful/partially-helpful article priority only when the
   ticket says the article helped or resolved the issue;
 - create no draft before its comparison decision;
@@ -189,7 +199,16 @@ The aggregate closeout reports:
 - cross-run variance for counts, corrections, and durations;
 - host quota or RAG availability interruptions;
 - unexpected repeated questions or operator actions;
-- false-positive candidate or recommendation findings.
+- candidate relevance findings using the closed operator labels
+  `plausible_comparison`, `weak_or_tangential`, `clearly_irrelevant`, and
+  `ineligible_source`;
+- recommendation false positives where a weak, irrelevant, or ineligible
+  result was presented as viable `reuse` or `update`;
+- comparison cognitive-load findings where irrelevant results caused
+  unnecessary article inspection.
+
+Only label counts and closed findings enter the tracked closeout or Langfuse;
+article titles, URLs, excerpts, and operator prose remain outside telemetry.
 
 This instrumentation observes MCP transitions, not hidden model turns.
 Comparison-stage duration includes the existing high-level tool boundary and
@@ -202,6 +221,10 @@ Pass threshold:
 - 3/3 accepted runs satisfy every critical behavioral invariant;
 - 3/3 emit schema-valid local reports and metadata-only Langfuse traces;
 - zero ineligible reuse/update candidates;
+- zero recommendation false positives;
+- no item shows more than one candidate labelled `clearly_irrelevant`;
+- every item with zero `plausible_comparison` candidates explicitly says that
+  no credible fit was found;
 - zero unsupported claims that an article helped or resolved the issue;
 - zero lost, duplicated, or reordered deterministic comparison decisions;
 - no more than one bounded semantic correction per accepted run;
@@ -234,7 +257,8 @@ gap stops the current revision and produces an `iterate` or `stop` verdict.
 | --- | --- |
 | Fixed runtime, model, ticket, RAG, tool, and accounting identities are current before every attempt. | deterministic installed-runtime preflight and value-safe trial ledger |
 | Five accepted items and all five comparison decisions survive every counted run. | bounded-model trial, `N=3`, plus deterministic accounting counts |
-| Candidate eligibility and helpful-article priority do not produce false positives. | bounded-model trial plus named operator review |
+| Candidate eligibility, actual relevance, recommendation framing, and helpful-article priority do not produce false positives. | bounded-model trial plus named operator review using closed relevance labels |
+| Clearly irrelevant eligible KB results do not create avoidable comparison load. | named operator review of per-item relevance labels and cognitive-load finding |
 | Operator overhead stays within the declared bound and no run is uncomfortable. | named operator review using enum-only closeout |
 | Every counted run has a valid local report and metadata-only Langfuse trace. | deterministic report validation and exporter result |
 | Observability cannot change authoring behavior and exposes no content. | existing fail-open equivalence, privacy canary, and metadata-schema tests |
@@ -253,6 +277,8 @@ gap stops the current revision and produces an `iterate` or `stop` verdict.
 
 - Whether three comparable accepted runs fit within the current host quota.
 - Whether the current operator-comfort enum needs a later richer UX study.
+- Whether repeated irrelevant-result findings justify a later retrieval,
+  ranking, filtering, or collapsed-presentation design change.
 - Whether duration variance from only three runs is sufficient for a later
   performance hypothesis.
 - Whether a materially different representative ticket is required after this
