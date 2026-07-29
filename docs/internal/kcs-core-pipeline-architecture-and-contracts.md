@@ -276,6 +276,59 @@ reuse_search_results_packet_v1 {
 }
 ```
 
+KCS-15.2b1 also defines a separate provider-neutral evidence contract for the
+future pre-draft operator comparison:
+
+```text
+reuse_comparison_evidence_v1 {
+  searched
+  status
+  search_run_ref
+  explicit_reference_status
+  explicit_article
+  candidates[1..3] {
+    rank
+    public article metadata
+    origin
+    excerpts[1..2] {
+      excerpt_ref
+      section_path
+      citation
+      bounded public text
+      token_count
+    }
+  }
+  blockers
+}
+```
+
+`ReuseComparisonEvidenceProvider` hides where the approved public evidence is
+hosted. The initial implementation projects the existing loopback
+`/api/snippets` response. A future remote provider may implement the same port
+only after its own data/security/readiness approval.
+
+The caller may populate the priority-bearing `explicit_article` field only
+when accepted source-grounded ticket evidence states that the article helped,
+resolved, or partially helped with the issue. URL presence, a neutral mention,
+an unknown outcome, or a confirmed failed attempt does not establish priority.
+The provider validates and retrieves the requested public identity; it does not
+infer this ticket/article relation.
+
+Provider output is untrusted. `validate_reuse_comparison_evidence()` and
+`ensure_valid_reuse_comparison_evidence()` own common acceptance for public
+origins, request/result states, explicit-reference consistency, candidate and
+excerpt counts, citations, forbidden values, character limits, and independently
+recomputed whitespace-token limits. A future provider cannot replace this gate
+with adapter-local parsing.
+
+This evidence contract is not `ReuseSearchResultsPacket` and does not assign
+the KCS action. It carries no article type, cause-resolution
+or question-answer identity, content-status decision, recommended action,
+draft, renderer state, or publication flag. KCS-15.2b1 alone does not connect
+it to Desktop or Claude; the separately authorized KCS-15.2b2 Phase B workflow
+adds a bounded operator-confirmed pre-draft gate without widening this core
+evidence contract.
+
 ```text
 kcs_action_decision_packet_v1 {
   schema_version

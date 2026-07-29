@@ -6,6 +6,7 @@ import re
 from collections.abc import Mapping
 
 from kcs_core.semantic_extraction import (
+    SemanticIssueProposal,
     SemanticIssueProposalPacket,
     SemanticObservation,
 )
@@ -70,9 +71,15 @@ _SUBMIT_FORBIDDEN_COMPACT_KEYS = frozenset(
 class SemanticReviewSubmissionError(ValueError):
     """Value-safe semantic submission validation error."""
 
-    def __init__(self, debug_code: str) -> None:
+    def __init__(
+        self,
+        debug_code: str,
+        *,
+        field_paths: tuple[str, ...] = (),
+    ) -> None:
         super().__init__("semantic review submission unavailable")
         self.debug_code = debug_code
+        self.field_paths = field_paths
 
 
 def ensure_no_forbidden_submit_values(value: object) -> None:
@@ -105,15 +112,16 @@ def ensure_extractively_grounded_observations(
         source_ref: _normalized_grounding_text(text)
         for source_ref, text in excerpt_text_by_ref.items()
     }
-    for issue in proposal.issues:
-        if issue.question is not None:
-            _ensure_observation_is_extractive(issue.question, normalized_excerpts)
-        for field_name in _EXTRACTIVE_OBSERVATION_SEQUENCE_FIELDS:
-            for observation in getattr(issue, field_name):
-                _ensure_observation_is_extractive(
-                    observation,
-                    normalized_excerpts,
-                )
+    invalid: list[str] = []
+    for index, issue in enumerate(proposal.issues):
+        invalid.extend(
+            _non_extractive_issue_field_paths(index, issue, normalized_excerpts)
+        )
+    if invalid:
+        raise SemanticReviewSubmissionError(
+            "semantic_observation_text_not_extractive",
+            field_paths=tuple(invalid),
+        )
 
 
 def ensure_issue_entry_speaker_compatibility(
@@ -144,17 +152,37 @@ def ensure_issue_entry_speaker_compatibility(
                 )
 
 
-def _ensure_observation_is_extractive(
+def _non_extractive_issue_field_paths(
+    index: int,
+    issue: SemanticIssueProposal,
+    normalized_excerpts: Mapping[str, str],
+) -> list[str]:
+    invalid: list[str] = []
+    question = getattr(issue, "question")
+    if question is not None and not _observation_is_extractive(
+        question, normalized_excerpts
+    ):
+        invalid.append(f"issues[{index}].question")
+    invalid.extend(
+        f"issues[{index}].{field_name}"
+        for field_name in _EXTRACTIVE_OBSERVATION_SEQUENCE_FIELDS
+        if any(
+            not _observation_is_extractive(observation, normalized_excerpts)
+            for observation in getattr(issue, field_name)
+        )
+    )
+    return invalid
+
+
+def _observation_is_extractive(
     observation: SemanticObservation,
     normalized_excerpts: Mapping[str, str],
-) -> None:
+) -> bool:
     normalized_observation = _normalized_grounding_text(observation.text)
-    if any(
+    return any(
         normalized_observation in normalized_excerpts.get(source_ref, "")
         for source_ref in observation.source_refs
-    ):
-        return
-    raise SemanticReviewSubmissionError("semantic_observation_text_not_extractive")
+    )
 
 
 def _normalized_grounding_text(value: str) -> str:

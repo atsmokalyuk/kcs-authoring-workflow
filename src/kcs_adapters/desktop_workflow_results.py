@@ -151,6 +151,7 @@ def semantic_review_submit_failure_result(
     correction: JsonDict | None,
     debug_code: str,
     schema_version: str,
+    terminal_cause_debug_code: str | None = None,
 ) -> JsonDict:
     """Return controlled result for invalid semantic-review submit calls."""
 
@@ -171,11 +172,17 @@ def semantic_review_submit_failure_result(
     if correction is not None:
         result["next_required_action"] = "retry_corrected_semantic_submission"
         result["semantic_submission_correction"] = dict(correction)
+    if terminal_cause_debug_code is not None:
+        result["terminal_cause_debug_code"] = terminal_cause_debug_code
     result["review_summary"] = {
         "draft_available": False,
         "reason": debug_code,
         "workflow_state": "semantic_review_submit_blocked",
     }
+    if terminal_cause_debug_code is not None:
+        result["review_summary"]["terminal_cause_debug_code"] = (
+            terminal_cause_debug_code
+        )
     if correction is not None:
         result["review_summary"]["next_required_action"] = (
             "retry_corrected_semantic_submission"

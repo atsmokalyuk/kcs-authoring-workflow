@@ -6,10 +6,18 @@ Current implementation state is anchored by the repository README and Jira
 tracking document:
 
 ```text
-Last completed implementation slice: KCS-13 Controlled Semantic Review
-Current planned engineering/process hardening: KCS-14 Engineering and Codebase
-Design Hardening
-Deferred runtime hardening: KCS-15 KCS Style and Markup Parity
+Last completed engineering/process slice: KCS-14.5 Runtime Incident Closeout
+Completed KCS-15 prerequisite: KCS-15.0 Style Source And Governance Baseline
+Completed KCS-15 behavior slice: KCS-15.1 PLESK_INFO Trigger Parity
+Completed KCS-15 enabling slice: KCS-15.2a Local Public RAG Adapter
+Completed KCS-15 enabling slice: KCS-15.2b1 Bounded Public Comparison Evidence
+Completed KCS-15.2b2 phase: Phase A Exact Public Article Context
+Completed KCS-15.2b2: Operator-Confirmed Comparison Workflow, with one
+installed representative super-noisy run and no repeated-stability claim
+Selected KCS-15.2b3 Design: N=3 repeated comparison trial with existing
+value-safe Langfuse accounting; Delivery locked
+KCS-15.2b2 Phase C in-chat UI: host-blocked and deferred pending a direct
+operator-controlled launcher
 ```
 
 Historical KCS-1 guidance remains useful only as an early-slice boundary:
@@ -106,10 +114,26 @@ evidence directly.
   process, harness-portable review support, local tool entrypoints, code-review
   graph, compact agent context, and behavior-preserving codebase design
   refactor.
-- KCS-15: KCS style and markup parity with the source KCS Style Guide, Article
-  Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules. This is deferred and is not part of the current
-  engineering/process hardening cycle.
+- KCS-15: KCS authoring quality through source style/markup parity, Article
+  Quality criteria, KCS practices, approved examples, assisted reuse, and
+  portable `plesk_support` rules. KCS-15 is active through independently approved
+  behavior slices:
+  - KCS-15.1 PLESK_INFO trigger parity is complete;
+  - KCS-15.2a loopback-only local public RAG adapter is complete as an enabling
+    slice with fail-closed readiness and metadata-only candidates;
+  - KCS-15.2b1 provider-neutral bounded public comparison evidence is complete;
+    it did not change Desktop or decision behavior;
+  - KCS-15.2b2 operator-confirmed comparison workflow is complete. One
+    installed approved super-noisy run preserved five accepted items through
+    the decisions `none_fit`, `reuse`, `reuse`, `update`, `none_fit`.
+    Downstream evidence/content-quality blocks remained fail closed and are
+    outside this comparison-workflow closeout. Phase C in-chat UI is
+    host-blocked and deferred pending a direct operator-controlled launcher;
+  - KCS-15.2b3 repeated comparison trial Design is selected as `N=3`
+    comparable installed runs with existing value-safe Langfuse accounting;
+    Delivery remains locked;
+  - deterministic style/structure parity continues in KCS-15.3 and approved
+    examples/model-mediated quality continue in KCS-15.4.
 - Future deployment slice: optional managed internal service version of the
   current local Claude Desktop workflow.
 
@@ -123,10 +147,22 @@ This roadmap does not duplicate completed runtime slice contracts. Future work
 must preserve those active contracts unless an approved behavior-change slice
 explicitly changes them.
 
-## Deferred Runtime Hardening
+## Active KCS-15 Authoring Quality
 
-KCS-15 style and markup parity is deferred and is not part of the current
-engineering/process hardening cycle.
+KCS-15 authoring quality is active through independently approved,
+source-backed behavior slices. KCS-15.1 PLESK_INFO trigger parity is complete.
+KCS-15.2a local-public RAG adapter is complete as bounded enabling work.
+KCS-15.2b1 is complete only for the provider-neutral public comparison
+evidence contract, common acceptance gate, and local `/api/snippets`
+projection. KCS-15.2b2 operator-confirmed comparison workflow is complete
+after one installed approved super-noisy run preserved all five accepted items
+through all five comparison decisions. This is representative feasibility,
+not repeated stability. Downstream `none_fit` evidence and draft-quality
+blocks remain separate authoring outcomes. KCS-15.2b3 owns the selected `N=3`
+repeated trial with existing value-safe Langfuse accounting; Delivery remains
+locked. Phase C in-chat UI is host-blocked and deferred because current Claude
+Desktop has no host-owned direct launcher for the first tool transition.
+KCS-15.2 does not block independent KCS-15.3 style-parity work.
 
 ## KCS-14 Umbrella: Engineering And Codebase Design Hardening
 

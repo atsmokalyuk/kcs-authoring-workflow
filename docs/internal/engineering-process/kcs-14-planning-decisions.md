@@ -17,7 +17,16 @@ or reviewer-bundle behavior.
 Forward-looking repository documents should use this numbering:
 
 - KCS-14: Engineering and Codebase Design Hardening.
-- KCS-15: KCS Style and Markup Parity, deferred.
+- KCS-15: KCS Authoring Quality through source style/markup parity, approved
+  examples, and assisted reuse, active through independently approved slices.
+  KCS-15.1 PLESK_INFO trigger parity is complete. KCS-15.2 owns
+  RAG-assisted reuse: KCS-15.2a adapter/readiness is complete, KCS-15.2b1
+  bounded public comparison evidence is complete, KCS-15.2b2 Phase A exact
+  public-article context and Phase B operator-confirmed comparison workflow are
+  complete after one installed representative super-noisy run. KCS-15.2b3
+  owns the selected `N=3` repeated stability trial with value-safe Langfuse
+  accounting and remains Delivery-locked. KCS-15.3 and KCS-15.4 retain the
+  remaining deterministic and model-mediated style/quality inventory.
 
 Historical files may mention the older KCS-14 style/markup framing only when
 the text is clearly historical. Active README, roadmap, Jira-tracking,
@@ -101,12 +110,16 @@ This reopening does not authorize runtime feature work.
   that the same templates, review packets, tool entrypoints, and gates worked
   across both refactor-heavy and feature-heavy slices with less manual
   correction.
-- Personal agentic engineering kit packaging belongs in KCS-17 or a separate
-  downstream project after reusable extraction is stable and useful outside the
-  immediate KCS workflow. It is a future packaging decision, not a committed
-  architecture; choose the implementation after KCS-14/KCS-15 field results
-  and a current review of agentic-engineering tooling. KCS-14 should
-  stabilize repo-native practice first, not create a premature shared package.
+- KCS-17 is the handoff and initiation boundary for a separate personal
+  agentic engineering kit project after reusable extraction is stable and
+  useful outside the immediate KCS workflow. KCS-17 may define the export
+  manifest, compatibility boundary, and evidence handoff, but it does not own
+  agent roles, orchestration, the integration gate, or stable kit packaging.
+  The separate project integrates extracted assets into beta roles, runs the
+  end-to-end gate, and packages a stable kit only after that gate passes.
+  Choose its architecture after KCS-14/KCS-15 field results and a current
+  review of agentic-engineering tooling. KCS-14 should stabilize repo-native
+  practice first, not create a premature shared package.
 
 Golden-case evaluation for KCS-14 must stay within existing behavior
 contracts: action decision, split/single/block behavior, evidence grounding,
@@ -474,14 +487,22 @@ was restored. This closes schema rearrangement as a recovery strategy: a future
 semantic design must introduce a new authority source rather than another
 model interpretation of the same bounded excerpts.
 
-While the retained legacy provider/evaluation M4 blocker remains active:
+KCS-14.5 is closed. Its retained legacy provider/evaluation and semantic
+control-surface boundary remains frozen. Reopening requires a separate
+behavior-change design. Independently approved KCS-15 slices may proceed when
+they leave that boundary and its safety contracts unchanged.
+
+While the retained boundary remains frozen:
 
 - do not commit new runtime incident candidates as refactor-only;
 - do not mix runtime incident changes into the test-suite-maintainability
   branch;
-- do not start KCS-15 runtime implementation;
-- KCS-15 planning may continue only without changes to incident control-surface
-  code, tests, package guidance, or contracts.
+- do not change incident control-surface code, tests, package guidance, or
+  contracts from a KCS-15 style/markup slice;
+- require a separate behavior-change design to reopen semantic ownership,
+  provider, evaluation, or candidate-scope behavior;
+- allow an explicitly approved KCS-15 slice only after its diff
+  proves that the scoped incident surfaces remain untouched.
 
 ## Review Routing
 

@@ -64,13 +64,24 @@ Use the smallest mode that fits the operator request:
   `create implementation plan`, `создай план реализации фичи`, or equivalent
   feature/slice planning requests. Do not code immediately. Use
   `docs/internal/engineering-process/spec-first-engineering-playbook/` and
-  `docs/internal/engineering-process/feature-engineering-playbook.md`. Draft the
-  slice plan in chat by default and wait for operator confirmation before
-  behavior, privacy, schema, persistence, integration, or reviewer-output
-  changes. If the operator asks to persist the plan, write it under
-  `docs/internal/engineering-process/slice-plans/`. Do not mutate playbook
-  templates unless the operator explicitly asks to change the planning process
-  itself.
+  `docs/internal/engineering-process/feature-engineering-playbook.md`. For every
+  material feature or slice, create or update its tracked design artifact under
+  `docs/internal/engineering-process/slice-plans/` before requesting or acting
+  on Delivery authorization. Chat may summarize the plan but is not its
+  authoritative home. Before behavior, privacy, schema, persistence,
+  integration, or reviewer-output changes, independently record in that
+  artifact that the outcome is agreed, the design is selected from
+  decision-ready evidence, and Delivery is explicitly authorized.
+  Design selection does not authorize Delivery. If authorization arrives
+  before the artifact is written, persist the selected boundary and
+  authorization before implementation. When the design depends on an existing
+  runtime or API
+  capability, verify the exact endpoint, mode, and response shape with fresh
+  tracked evidence or a bounded safe operational smoke before substantial
+  implementation. Similar endpoints and fixtures are not operational proof.
+  A small mechanical edit or bounded leaf bugfix may use an existing tracked
+  contract without creating a new slice plan. Do not mutate playbook templates
+  for each slice.
 - Builder / implementation mode: implement the smallest agreed safe slice.
   Preserve existing contracts unless explicitly authorized, follow existing
   style and naming, add or update tests/fixtures for behavior changes, and
@@ -81,7 +92,14 @@ Use the smallest mode that fits the operator request:
   behavior-preserving work unless changed behavior, stable contracts, tests, and
   review-only drift risks are explicitly accounted for. Before each material
   batch, start from a compact current-state frame rather than relying on long
-  chat history. After each commit or aggregate review, emit a
+  chat history. General continuation wording such as `go next` applies only
+  inside the already selected and authorized slice; it does not authorize a
+  new behavior-changing slice. Before closing a material implementation,
+  refactor, deployment, or integration slice, record a compact Ousterhout
+  design review. A small leaf change may record `not triggered` only with a
+  concrete reason showing that no ownership, interface, dependency,
+  persistence, failure, or deployment boundary and no material internal
+  complexity changed. After each commit or aggregate review, emit a
   visible compact checkpoint before starting the next material batch.
 - Bugfix / forensic mode: reproduce or define the failing case first, gather
   evidence before patching, fix the root cause only, and keep a regression test
@@ -102,7 +120,13 @@ Detailed mode behavior lives in
   `docs/internal/engineering-process/codex-agent-instructions.md` and
   `docs/internal/engineering-process/spec-first-engineering-playbook/06-review-checklist.md`.
 - Reviews must cover diff sanity, unintended file touches, tests/contracts,
-  safety and data boundaries, docs/README consistency, and behavior drift.
+  safety and data boundaries, docs/README consistency, behavior drift, and the
+  compact Ousterhout gate when a material implementation, refactor, deployment,
+  or integration trigger applies.
+- Every material review packet must name its tracked Active Slice Plan. The
+  reviewer must verify that the diff matches the selected and authorized phase
+  and does not touch still-locked phases before reviewing implementation
+  details.
 - For security-sensitive, privacy-sensitive, hosted/local-boundary, or
   cross-module architecture changes, require a deeper review pass focused on
   policy, privacy, data boundaries, and architecture drift.
@@ -134,6 +158,10 @@ Authoritative layers:
   inter-slice gates, review routing, and refactor freeze list.
 - `docs/internal/engineering-process/agent-operable-engineering-workflow.md`:
   authoritative development-agent workflow below this policy kernel.
+- `docs/internal/engineering-process/engineering-rule-portability.md`:
+  Discovery/Design/Delivery rule families, local-enforcement versus
+  cross-project portability ladders, pre-extraction candidate registry, and
+  KCS-14.5/KCS-15/KCS-16/KCS-17 gates.
 - `docs/internal/engineering-process/functional-test-from-behavior.md`:
   functional acceptance test convention, fixture tiers, provenance checks, and
   refactor-safety test expectations.

@@ -24,10 +24,12 @@ from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
 from kcs_core.sanitizer import ensure_safe_ref, ensure_safe_sanitized_payload
 from kcs_core.semantic_extraction import (
+    SEMANTIC_ISSUE_PROPOSAL_MAX_OBSERVATIONS_PER_FIELD,
     SEMANTIC_ISSUE_PROPOSAL_MAX_SOURCE_REFS,
     SEMANTIC_ISSUE_PROPOSAL_MAX_TOTAL_BYTES,
     SEMANTIC_ISSUE_PROPOSAL_SCHEMA_VERSION,
     SemanticIssueProposalPacket,
+    SemanticObservation,
 )
 
 SEMANTIC_REVIEW_PACKET_SCHEMA_VERSION = "kcs_semantic_review_packet_v1"
@@ -132,9 +134,15 @@ _PUBLIC_SUPPORT_ARTICLE_URL_RE = re.compile(
 class SemanticReviewError(ValueError):
     """Value-safe semantic-review workflow error."""
 
-    def __init__(self, debug_code: str) -> None:
+    def __init__(
+        self,
+        debug_code: str,
+        *,
+        field_paths: tuple[str, ...] = (),
+    ) -> None:
         super().__init__("semantic review unavailable")
         self.debug_code = debug_code
+        self.field_paths = field_paths
 
 
 @dataclass(frozen=True)
@@ -150,6 +158,9 @@ class PendingSemanticReview:
     packet_prepared: bool
     expires_at: float
     failed_submit_attempts: int = 0
+    used_correction_stages: tuple[str, ...] = ()
+    accepted_for_selection: bool = False
+    operator_amendment_started: bool = False
 
 
 def new_pending_semantic_review(
@@ -198,6 +209,9 @@ def prepared_pending_semantic_review(
         semantic_review_ref=pending.semantic_review_ref,
         source_kind=pending.source_kind,
         ticket_ref=pending.ticket_ref,
+        used_correction_stages=pending.used_correction_stages,
+        accepted_for_selection=pending.accepted_for_selection,
+        operator_amendment_started=pending.operator_amendment_started,
     )
 
 
@@ -404,9 +418,13 @@ def semantic_issue_proposal_from_submission(
             pending=pending,
             semantic_issue_proposal=semantic_issue_proposal,
         )
+        _ensure_observation_wire_shapes(semantic_issue_proposal)
         proposal = SemanticIssueProposalPacket.from_json_dict(semantic_issue_proposal)
     except SemanticReviewSubmissionError as exc:
-        raise SemanticReviewError(exc.debug_code) from exc
+        raise SemanticReviewError(
+            exc.debug_code,
+            field_paths=exc.field_paths,
+        ) from exc
     except ContractValidationError as exc:
         raise SemanticReviewError(semantic_contract_debug_code(str(exc))) from exc
     expected_refs = set(pending.allowed_source_refs)
@@ -428,7 +446,10 @@ def semantic_issue_proposal_from_submission(
             _semantic_review_excerpt_speaker_index(pending),
         )
     except SemanticReviewSubmissionError as exc:
-        raise SemanticReviewError(exc.debug_code) from exc
+        raise SemanticReviewError(
+            exc.debug_code,
+            field_paths=exc.field_paths,
+        ) from exc
     return proposal
 
 
@@ -476,6 +497,66 @@ def _normalized_issue_wire_shapes(payload: Mapping[str, object]) -> JsonDict:
     normalized = dict(payload)
     normalized["issues"] = normalized_issues
     return normalized
+
+
+def _ensure_observation_wire_shapes(payload: object) -> None:
+    invalid_field_paths = _invalid_observation_shape_paths(payload)
+    if invalid_field_paths:
+        raise SemanticReviewError(
+            "semantic_observation_shape_invalid",
+            field_paths=invalid_field_paths,
+        )
+
+
+def _invalid_observation_shape_paths(payload: object) -> tuple[str, ...]:
+    if not isinstance(payload, Mapping):
+        return ()
+    issues = payload.get("issues")
+    if not isinstance(issues, list):
+        return ()
+    invalid: list[str] = []
+    for index, issue in enumerate(issues):
+        invalid.extend(_invalid_issue_observation_paths(index, issue))
+    return tuple(invalid)
+
+
+def _invalid_issue_observation_paths(index: int, issue: object) -> list[str]:
+    if not isinstance(issue, Mapping):
+        return []
+    invalid = []
+    if not _is_observation_wire_shape(issue.get("summary")):
+        invalid.append(f"issues[{index}].summary")
+    question = issue.get("question")
+    if question is not None and not _is_observation_wire_shape(question):
+        invalid.append(f"issues[{index}].question")
+    invalid.extend(
+        f"issues[{index}].{field_name}"
+        for field_name in _ISSUE_OBSERVATION_LIST_FIELDS
+        if not _is_observation_list_wire_shape(issue.get(field_name))
+    )
+    return invalid
+
+
+def _is_observation_list_wire_shape(value: object) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) <= SEMANTIC_ISSUE_PROPOSAL_MAX_OBSERVATIONS_PER_FIELD
+        and all(_is_observation_wire_shape(observation) for observation in value)
+    )
+
+
+def _is_observation_wire_shape(value: object) -> bool:
+    try:
+        SemanticObservation.from_json_dict(value)
+    except ContractValidationError as exc:
+        debug_code = semantic_contract_debug_code(str(exc))
+        if debug_code in {
+            "semantic_ref_shape_invalid",
+            "semantic_review_unsafe_value_blocked",
+        }:
+            raise
+        return False
+    return True
 
 
 def _issue_observation_source_refs(issue: Mapping[str, object]) -> list[str]:

@@ -117,7 +117,8 @@ schema and blocker rules across multiple files.
 ### Desktop Draft Workflow
 
 Owns orchestration from Desktop request to validated workflow result, including
-operator selection state and semantic provider handoff.
+operator selection state, bounded operator-confirmed reuse-comparison state,
+and semantic provider handoff.
 
 Must not own clean-ticket storage rules, semantic-review schema internals, core
 decision rules, renderer policy, or publication.
@@ -126,6 +127,7 @@ Review when touching:
 
 - `src/kcs_adapters/desktop_draft_tool.py`
 - `src/kcs_adapters/desktop_workflow.py`
+- `src/kcs_adapters/desktop_reuse_comparison.py`
 - `src/kcs_adapters/desktop_operator_selection.py`
 - `src/kcs_adapters/desktop_authoring_pipeline.py`
 - `src/kcs_adapters/desktop_draft_arguments.py`
@@ -156,13 +158,15 @@ Review when touching:
 Risk: validation or decision drift can silently change behavior while a change
 is described as refactor-only.
 
-### CLI, Ingest, And Readiness
+### CLI, Ingest, Local Public Evidence, And Readiness
 
 Owns CLI entrypoint behavior, JSON payload loading, Zendesk ingest helpers,
-readiness checks, and safe error surfaces.
+the provider-neutral bounded public comparison-evidence contract and common
+acceptance gate, the loopback-only local public RAG adapter, readiness checks,
+and safe error surfaces.
 
-Must not own Desktop-specific state, provider trust decisions, renderer
-presentation policy, or reviewer bundle writing.
+Must not own Desktop-specific state, article identity, provider trust decisions,
+renderer presentation policy, or reviewer bundle writing.
 
 Review when touching:
 
@@ -170,18 +174,23 @@ Review when touching:
 - `src/kcs_core/json_payload.py`
 - `src/kcs_core/zendesk_ingest.py`
 - `src/kcs_core/readiness.py`
+- `src/kcs_core/reuse_comparison.py`
 - `src/kcs_core/errors.py`
+- `src/kcs_adapters/local_public_rag.py`
 
 Risk: CLI and ingest helpers can bypass the same validators used by Desktop if
-they grow their own acceptance logic.
+they grow their own acceptance logic. Search hits or public excerpts can also
+be mistaken for confirmed KCS identity if the evidence boundary is widened
+without an approved operator-confirmation design.
 
 ### Renderer And Current Style Gates
 
-Owns reviewer packet rendering, Zendesk HTML rendering, and current
-markup-quality checks.
+Owns reviewer packet rendering, Zendesk HTML rendering, source-backed
+markup-quality checks, and the compact approved markup pattern set.
 
-Must not own KCS-15 style/markup parity expansion, action decisions,
-semantic-review validation, or Desktop transport.
+Must not own KCS action decisions, semantic-review validation, Desktop
+transport, or automatic inference that needs evidence absent from rendered
+source.
 
 Review when touching:
 
@@ -189,8 +198,10 @@ Review when touching:
 - `src/kcs_adapters/zendesk_markup_quality.py`
 - `src/kcs_adapters/kcs_markup_patterns.py`
 - `src/kcs_adapters/kcs_article_style_refs.py`
+- `evals/kcs_markup_patterns_v1.jsonl`
 
-Risk: formatting cleanup can accidentally become deferred KCS-15 behavior work.
+Risk: a source-parity change can add or remove reviewer blockers. Every such
+change needs an explicit behavior contract, source fixture, and drift review.
 
 ### Reviewer Bundle Output
 
@@ -289,10 +300,33 @@ Review when touching:
 Risk: observability metadata can become a side channel for private input or be
 mistaken for causal evidence when the control-surface profile is not comparable.
 
+### Live Draft Run Accounting
+
+Owns the optional value-safe projection of relevant Desktop MCP transitions,
+local report checkpointing, bounded Desktop host-quota classification, and
+metadata-only export to the separately managed loopback Langfuse service.
+
+Must not own runtime KCS decisions, tool/result schemas, provider behavior,
+ticket or excerpt content, model prose, Desktop hidden state, reviewer bundles,
+publication behavior, or Langfuse availability. The MCP boundary must not infer
+a Desktop quota outcome that only the external log classifier can observe.
+
+Review when touching:
+
+- `src/kcs_adapters/draft_run_accounting.py`
+- `src/kcs_adapters/desktop_mcp_adapter.py`
+- `scripts/kcs14_langfuse_draft_run.py`
+- `tests/kcs_adapters/test_draft_run_accounting.py`
+- `tests/kcs_adapters/test_kcs14_langfuse_draft_run.py`
+
+Risk: size/count projection can accidentally retain content, terminal
+classification can overstate an unobserved host cause, or sink failure can
+drift the returned Desktop result.
+
 ### Engineering Policy Tests
 
-Owns KCS-14 deterministic policy checks, documentation/process guardrail
-tests, and code-review graph coverage checks.
+Owns KCS-14/KCS-15 deterministic policy checks, documentation/process
+guardrail tests, and code-review graph coverage checks.
 
 Must not own runtime KCS behavior, Desktop behavior, packet schemas, or
 provider behavior.
@@ -301,7 +335,8 @@ Review when touching:
 
 - `tests/policy/test_code_review_graph_policy.py`
 - `tests/policy/test_functional_test_policy.py`
-- `tests/policy/test_kcs14_docs_policy.py`
+- `tests/policy/test_engineering_process_docs_policy.py`
+- `tests/policy/test_kcs15_source_pack_policy.py`
 - `tests/policy/test_review_context_policy.py`
 - `tests/policy/test_tool_entrypoints.py`
 

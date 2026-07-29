@@ -96,10 +96,20 @@ Recommended slice order:
   entrypoints, functional test conventions, compact review context protocol,
   minimal code map, behavior-preserving codebase design refactor, and
   review/agent tooling after the manual protocol is stable;
-- KCS-15: KCS style and markup parity with source KCS Style Guide, Article
-  Quality criteria, KCS practices, approved article examples, and portable
-  `plesk_support` rules. This is deferred runtime hardening, not part of
-  KCS-14 engineering/process hardening;
+- KCS-15: KCS authoring quality through source style/markup parity, Article
+  Quality criteria, KCS practices, approved examples, assisted reuse, and
+  portable `plesk_support` rules. This was deferred during KCS-14 and is now active
+  through independently approved behavior slices. KCS-15.1 trigger parity and
+  KCS-15.2a adapter feasibility is complete; KCS-15.2b1 bounded public
+  comparison evidence is complete; KCS-15.2b2 Phase A exact public-article
+  context and operator-confirmed comparison workflow are complete. One
+  installed approved super-noisy run preserved five accepted items through
+  all five comparison decisions. Downstream `none_fit` evidence and
+  draft-quality blocks remained fail closed and are separate authoring
+  outcomes. KCS-15.2b3 owns the selected `N=3` repeated trial with existing
+  value-safe Langfuse accounting; Delivery remains locked. Phase C in-chat UI
+  is host-blocked and deferred pending a host-owned direct launcher. It
+  remains outside KCS-14 scope;
 - Future harness-portable agent engineering support: git-aware code-review
   graph, compact agent context, official local tool entrypoints, and review
   handoffs for Codex, ChatGPT Pro review, Fable 5 review, or future internal
@@ -119,10 +129,14 @@ Recommended slice order:
   slices with less manual correction. Extract only generic design/spec
   workflow pieces; KCS-specific contracts, ticket policy, privacy rules, and
   article standards stay in this repository;
-- KCS-17 or separate downstream project: personal agentic engineering kit
-  packaging, only after reusable extraction is stable and useful outside the
-  immediate KCS workflow. This is a future packaging decision, not a committed
-  architecture; choose the implementation after KCS-14/KCS-15 field results
+- KCS-17: handoff and initiation boundary for a separate personal agentic
+  engineering kit project, only after reusable extraction is stable and useful
+  outside the immediate KCS workflow. KCS-17 may produce an export manifest,
+  compatibility boundary, and evidence handoff; it does not implement agent
+  roles, orchestration, the integration gate, or the stable kit package in this
+  repository. The separate project assigns extracted assets to beta roles,
+  runs the end-to-end integration gate, and packages a stable kit only after
+  that gate passes. Choose its architecture after KCS-14/KCS-15 field results
   and a current review of agentic-engineering tooling;
 - Future deployment slice: intranet remote MCP service for managed
   operator use. Claude Desktop would connect through a custom remote MCP

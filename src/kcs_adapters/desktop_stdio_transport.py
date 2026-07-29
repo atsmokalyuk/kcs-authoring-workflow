@@ -49,6 +49,15 @@ _SUPPORTED_TOOL_NAME_STYLES = frozenset(
     {TOOL_NAME_STYLE_DESKTOP_ALIASES, TOOL_NAME_STYLE_CANONICAL}
 )
 _TOOL_CALL_PARAM_KEYS = frozenset({"arguments", "name"})
+_TOOL_RESULT_BOUNDARY_DEBUG_CODES = {
+    "MCP tool result contains unsafe value": "unsafe_value",
+    "MCP tool result is too large": "too_large",
+    "MCP tool result schema mismatch": "schema_mismatch",
+}
+
+
+def _tool_result_boundary_debug_code(exc: ContractValidationError) -> str:
+    return _TOOL_RESULT_BOUNDARY_DEBUG_CODES.get(str(exc), "invalid")
 
 
 class McpStdioTransport:
@@ -199,7 +208,14 @@ class McpStdioTransport:
         result = self._adapter.call_tool(canonical_name, arguments)
         try:
             return mcp_tool_response(descriptor=descriptor, result=result)
-        except ContractValidationError:
+        except ContractValidationError as exc:
+            debug_code = _tool_result_boundary_debug_code(exc)
+            print(
+                "[kcs-authoring-mvp] tool_result_boundary_failure "
+                f"code={debug_code} tool={canonical_name}",
+                file=sys.stderr,
+                flush=True,
+            )
             return mcp_tool_response(
                 descriptor=descriptor,
                 result=tool_error("tool_result_invalid"),

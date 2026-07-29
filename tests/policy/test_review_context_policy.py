@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 REVIEW_PROTOCOL = (
     ROOT / "docs" / "internal" / "engineering-process" / "review-context-protocol.md"
 )
+PULL_REQUEST_TEMPLATE = ROOT / ".github" / "pull_request_template.md"
 PROMOTION_CANDIDATES = (
     ROOT / "docs" / "internal" / "engineering-process" / "promotion-candidates.md"
 )
@@ -22,6 +23,7 @@ PROMOTION_CODE_RE = re.compile(r"\bKCS14-PROMO-\d{3}\b")
 
 REQUIRED_PACKET_SECTIONS = (
     "Review Task",
+    "Active Slice Plan",
     "Slice Intent",
     "Changed Files",
     "Affected Contracts",
@@ -70,6 +72,49 @@ def test_review_context_protocol_defines_required_packet_sections() -> None:
     missing = [section for section in REQUIRED_PACKET_SECTIONS if section not in text]
 
     assert not missing, "\n".join(missing)
+
+
+def test_review_context_protocol_links_material_diff_to_authorized_plan() -> None:
+    text = " ".join(REVIEW_PROTOCOL.read_text(encoding="utf-8").split())
+
+    required = (
+        "## Active Slice Plan Gate",
+        "Path: docs/internal/engineering-process/slice-plans/<plan>.md",
+        "Authorized Delivery phase:",
+        "Still locked:",
+        "Plan/diff alignment: pass | revise | blocked",
+        "included in the intended/staged diff",
+        "still-locked phases",
+        "named human-review verdict",
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+
+
+def test_default_pull_request_template_carries_active_slice_plan_handoff() -> None:
+    text = PULL_REQUEST_TEMPLATE.read_text(encoding="utf-8")
+
+    required = (
+        "## Active Slice Plan",
+        "Path: `docs/internal/engineering-process/slice-plans/<plan>.md`",
+        "Authorized Delivery phase:",
+        "Still locked:",
+        "Plan/diff alignment:",
+        "pass",
+        "revise",
+        "blocked",
+    )
+    missing = [phrase for phrase in required if phrase not in text]
+
+    assert not missing, "\n".join(missing)
+    missing_sections = [
+        section
+        for section in REQUIRED_PACKET_SECTIONS
+        if f"## {section}" not in text
+    ]
+
+    assert not missing_sections, "\n".join(missing_sections)
 
 def test_review_context_protocol_defines_forbidden_content_and_output_budget() -> None:
     text = REVIEW_PROTOCOL.read_text(encoding="utf-8")

@@ -12,6 +12,7 @@ dependencies = []
 
 [project.scripts]
 kcs-core = "kcs_core.cli:main"
+kcs-controlled-draft = "kcs_adapters.operator_authoring_cli:main"
 kcs-desktop-mcp = "kcs_adapters.mcp_desktop:main"
 kcs-smoke-account = "kcs_adapters.smoke_accounting:main"
 

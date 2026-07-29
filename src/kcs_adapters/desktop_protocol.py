@@ -36,6 +36,12 @@ MCP_INITIALIZE_INSTRUCTIONS = (
     "approved_summary_text. "
     "If semantic_review_required is returned, call "
     "kcs_prepare_semantic_review, then kcs_submit_semantic_review. "
+    "If reuse_comparison_required is returned, compare only the returned "
+    "accepted_ticket_facts and cited public excerpts, present one concise "
+    "coverage/gap recommendation, and ask exactly one operator question using "
+    "the returned outcomes. Call kcs_confirm_reuse_comparison only after the "
+    "operator answers, copying comparison_ref and any required candidate_ref "
+    "exactly; do not add evidence or free-form text. "
     "Do not draft manually or pass item/item_candidates."
     f" {SEMANTIC_CONTROL_GUIDANCE}"
 )

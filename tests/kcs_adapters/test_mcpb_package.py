@@ -42,6 +42,7 @@ MCPB_MANIFEST_LONG_DESCRIPTION_INCLUDES = (
     "Do not report Plesk Support Assistant Local as missing",
     "kcs_prepare_semantic_review",
     "kcs_submit_semantic_review",
+    "kcs_confirm_reuse_comparison",
     "Claude CLI/Code",
     "API key",
 )
@@ -62,6 +63,11 @@ MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES = {
         "short approved_summary_text",
         "For /draft <ticket_ref>, use kcs_draft_ticket",
     ),
+    "kcs_confirm_reuse_comparison": (
+        "operator-confirmed outcome",
+        "comparison_ref exactly",
+        "Do not include ticket facts",
+    ),
     "kcs_prepare_semantic_review": (
         "semantic_review_required",
         "bounded excerpts",
@@ -69,6 +75,7 @@ MCPB_MANIFEST_TOOL_DESCRIPTION_INCLUDES = {
     "kcs_submit_semantic_review": (
         "semantic_issue_proposal_v1",
         "No article draft",
+        "operator says an issue was missed or merged",
     ),
     "support_get_behavior_instructions": (
         "Legacy compatibility helper",
@@ -236,14 +243,26 @@ def test_mcpb_manifest_exposes_desktop_alias_tools_only() -> None:
     assert manifest["tools_generated"] is False
 
 
-def test_mcpb_manifest_requires_no_user_config_or_secrets() -> None:
+def test_mcpb_manifest_requires_no_secrets_or_mandatory_config() -> None:
     text = (MCPB_SOURCE / "manifest.json").read_text(encoding="utf-8")
     manifest = json.loads(text)
 
-    assert "user_config" not in manifest
+    assert manifest["user_config"] == {
+        "draft_run_report_directory": {
+            "description": (
+                "Optional local directory for value-safe /draft diagnostic reports. "
+                "Leave unset for normal authoring."
+            ),
+            "required": False,
+            "title": "Draft run accounting directory",
+            "type": "directory",
+        }
+    }
     assert "${user_config.repository_root}" not in text
     assert "${user_config.uv_command}" not in text
-    assert manifest["server"]["mcp_config"]["env"] == {}
+    assert manifest["server"]["mcp_config"]["env"] == {
+        "KCS_DRAFT_RUN_REPORT_DIR": "${user_config.draft_run_report_directory}"
+    }
     assert "Local KCS Authoring Workflow adapter" in manifest["long_description"]
     assert "external semantic-provider setup" in manifest["long_description"]
     assert "/Users/" not in text
@@ -329,6 +348,33 @@ def test_stdio_smoke_roots_include_approved_ticket_store_override(
     assert tmp_path.resolve() in roots
 
 
+def test_stdio_smoke_requires_traceable_none_fit_sequence_outcome() -> None:
+    smoke = _load_smoke_module()
+    confirmed = {
+        "bundle_ref": "run-example",
+        "html_path": "local-data/reviewer-bundles/run-example/reviewer_only.html",
+        "manifest_path": "local-data/reviewer-bundles/run-example/manifest.json",
+    }
+    confirmed["comparison_sequence_outcomes"] = [
+        {
+            "bundle_ref": confirmed["bundle_ref"],
+            "comparison_outcome": "none_fit",
+            "draft_generated": True,
+            "html_path": confirmed["html_path"],
+            "item_ref": "candidate-001",
+            "manifest_path": confirmed["manifest_path"],
+            "recommended_action": "create_candidate",
+            "reviewer_bundle_written": True,
+        }
+    ]
+
+    assert smoke._single_none_fit_sequence_ok(confirmed) is True
+
+    confirmed["comparison_sequence_outcomes"][0].pop("manifest_path")
+
+    assert smoke._single_none_fit_sequence_ok(confirmed) is False
+
+
 def test_mcpb_node_wrapper_rejects_wrong_explicit_repo_root_without_spawn(
     tmp_path: Path,
 ) -> None:
@@ -391,6 +437,18 @@ def test_mcpb_node_wrapper_forwards_semantic_provider_env() -> None:
 
     assert "KCS_AUTHORING_SEMANTIC_PROVIDER" in text
     assert "KCS_AUTHORING_APPROVED_SEMANTIC_PROVIDER_REF" in text
+
+
+def test_mcpb_node_wrapper_forwards_draft_run_accounting_env() -> None:
+    text = (MCPB_SOURCE / "server" / "index.js").read_text(encoding="utf-8")
+
+    assert (
+        "const draftRunAccountingMode =\n"
+        "  process.env.KCS_DRAFT_RUN_ACCOUNTING ||\n"
+        "  (draftRunReportDir ? \"local-json\" : \"\");"
+    ) in text
+    assert "KCS_DRAFT_RUN_ACCOUNTING: draftRunAccountingMode" in text
+    assert "KCS_DRAFT_RUN_REPORT_DIR: draftRunReportDir" in text
 
 
 def test_build_script_creates_mcpb_archive(tmp_path: Path) -> None:
@@ -493,10 +551,31 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                                 "operator_selected_item_refs": {},
                                 "operator_selection_ref": {},
                         }
+                        },
+                        "name": "kcs_draft_article",
                     },
-                    "name": "kcs_draft_article",
-                },
-                {
+                    {
+                        "annotations": {
+                            "destructiveHint": False,
+                            "idempotentHint": False,
+                            "openWorldHint": False,
+                            "readOnlyHint": False,
+                        },
+                        "description": (
+                            "Submit only the operator-confirmed outcome. Copy "
+                            "comparison_ref exactly. Do not include ticket facts."
+                        ),
+                        "inputSchema": {
+                            "properties": {
+                                "candidate_ref": {},
+                                "comparison_ref": {},
+                                "outcome": {},
+                            },
+                            "required": ["comparison_ref", "outcome"],
+                        },
+                        "name": "kcs_confirm_reuse_comparison",
+                    },
+                    {
                     "annotations": {
                         "destructiveHint": False,
                         "idempotentHint": True,
@@ -523,11 +602,16 @@ def test_mcpb_stdio_smoke_tool_surface_check_accepts_current_contract() -> None:
                     },
                     "description": (
                         "Submit semantic_issue_proposal_v1 from the prepared "
-                        "packet. No article draft, HTML, item, "
-                        "item_candidates, or raw ticket text."
+                        "packet. No article draft, HTML, item, item_candidates, "
+                        "or raw ticket text. After Python returns a multi-item "
+                        "selection, if and only if the operator says an issue "
+                        "was missed or merged, submit one complete amended "
+                        "proposal. operator prose is steering context, never "
+                        "evidence."
                     ),
                     "inputSchema": {
                         "properties": {
+                            "operator_selection_ref": {},
                             "semantic_issue_proposal": {},
                             "semantic_review_ref": {},
                         },
@@ -639,26 +723,34 @@ def test_mcpb_stdio_smoke_result_checks_controlled_statuses(tmp_path: Path) -> N
         "result": {
             "content": [
                 {
-                    "text": "```html\n"
-                    f"{html}\n"
-                    "```\n\n"
-                    "```json\n"
-                    '{"html_path":"local-data/reviewer-bundles/run/item/'
-                    'reviewer_only.html"}\n'
-                    "```",
+                    "text": (
+                        "A bounded public-article comparison is required before "
+                        "drafting."
+                    ),
                     "type": "text",
                 },
             ],
             "isError": False,
             "structuredContent": {
-                "debug_code": "draft_only_reuse_search_missing",
-                "draft_generated": True,
-                "html_path": html_path,
-                "html_sha256": module.sha256(html.encode("utf-8")).hexdigest(),
-                "recommended_action": "draft_only",
-                "reuse_search_status": "skipped",
-                "reviewer_bundle_written": True,
-                "writes_files": True,
+                "accepted_ticket_facts": ["Monitoring graphs show no data."],
+                "comparison_candidates": [
+                    {
+                        "candidate_ref": "comparison-candidate-001",
+                    }
+                ],
+                "comparison_outcomes": [
+                    "reuse",
+                    "update",
+                    "none_fit",
+                    "need_more_evidence",
+                ],
+                "comparison_ref": "reuse-comparison-abc",
+                "draft_generated": False,
+                "next_tool": "kcs_confirm_reuse_comparison",
+                "result_kind": "reuse_comparison_required",
+                "reviewer_bundle_written": False,
+                "submit_tool": "kcs_confirm_reuse_comparison",
+                "writes_files": False,
             },
         }
     }
@@ -755,68 +847,31 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
         "result": {
             "content": [
                 {
-                    "text": (
-                        "Present the Python-owned ordered candidate summary below.\n\n"
-                        "Operator result summary:\n"
-                        "1. **Synthetic item candidate-001 (candidate-001)**\n"
-                        "   - **Draft generated, not KCS-ready** - Review needed.\n"
-                        "   - Reviewer bundle: `run-synthetic/candidate-001`\n"
-                        "   - Reviewer HTML: `local-data/reviewer-bundles/"
-                        "candidate-001/reviewer_only.html`\n"
-                        "2. **Synthetic item candidate-002 (candidate-002)**\n"
-                        "   - **Draft generated, not KCS-ready** - Review needed.\n"
-                        "   - Reviewer bundle: `run-synthetic/candidate-002`\n"
-                        "   - Reviewer HTML: `local-data/reviewer-bundles/"
-                        "candidate-002/reviewer_only.html`"
-                    ),
+                    "text": "A bounded public-article comparison is required.",
                     "type": "text",
                 },
             ],
+            "isError": False,
             "structuredContent": {
-                "batch_status": "batch_completed",
-                "candidate_outcomes": [
+                "accepted_ticket_facts": ["Monitoring graphs show no data."],
+                "comparison_candidates": [
                     {
-                        "html_path": html_paths[item_ref],
-                        "html_sha256": module.sha256(
-                            html.encode("utf-8")
-                        ).hexdigest(),
-                        "item_ref": item_ref,
-                        "outcome": "completed_draft",
+                        "candidate_ref": "comparison-candidate-001",
                     }
-                    for item_ref in ("candidate-001", "candidate-002")
                 ],
-                "draft_generated_count": 2,
-                "operator_followup": {
-                    "allow_leave_blocked": False,
-                    "completed_not_ready_candidates": [
-                        {
-                            "item_ref": item_ref,
-                            "label": f"Synthetic item {item_ref}",
-                        }
-                        for item_ref in ("candidate-001", "candidate-002")
-                    ],
-                    "kind": "none",
-                    "not_attempted_candidates": [],
-                    "prompt": "No operator follow-up is required.",
-                    "retryable_candidates": [],
-                    "reviewer_ready_candidates": [],
-                    "summary_candidates": [
-                        {
-                            "bundle_ref": f"run-synthetic/{item_ref}",
-                            "html_path": html_paths[item_ref],
-                            "item_ref": item_ref,
-                            "label": f"Synthetic item {item_ref}",
-                            "presentation_status": (
-                                "draft_generated_not_kcs_ready"
-                            ),
-                        }
-                        for item_ref in ("candidate-001", "candidate-002")
-                    ],
-                    "tool_review_candidates": [],
-                },
-                "result_kind": "draft_article_batch",
-                "reviewer_bundle_written": True,
-                "writes_files": True,
+                "comparison_outcomes": [
+                    "reuse",
+                    "update",
+                    "none_fit",
+                    "need_more_evidence",
+                ],
+                "comparison_ref": "reuse-comparison-abc",
+                "draft_generated": False,
+                "next_tool": "kcs_confirm_reuse_comparison",
+                "result_kind": "reuse_comparison_required",
+                "reviewer_bundle_written": False,
+                "submit_tool": "kcs_confirm_reuse_comparison",
+                "writes_files": False,
             }
         }
     }
@@ -831,12 +886,7 @@ def test_mcpb_stdio_smoke_result_checks_split_choice_flow(tmp_path: Path) -> Non
         }
         assert module._split_choice_ok({"batch": batch, "split": split}) is True
 
-        html_without_resolution = "<h1>Synthetic article</h1><p>No list.</p>"
-        first_bundle = tmp_path / html_paths["candidate-001"]
-        first_bundle.write_text(html_without_resolution, encoding="utf-8")
-        batch["result"]["structuredContent"]["candidate_outcomes"][0][
-            "html_sha256"
-        ] = module.sha256(html_without_resolution.encode("utf-8")).hexdigest()
+        batch["result"]["structuredContent"]["comparison_candidates"] = []
         assert module._split_choice_ok({"batch": batch, "split": split}) is False
     finally:
         module.REPO_ROOT = old_repo_root
@@ -1005,6 +1055,7 @@ def test_claude_desktop_log_check_accepts_latest_thin_tool_surface(
                     },
                     "inputSchema": {
                         "properties": {
+                            "operator_selection_ref": {},
                             "semantic_issue_proposal": {},
                             "semantic_review_ref": {},
                         }

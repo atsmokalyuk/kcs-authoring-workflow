@@ -7,6 +7,7 @@ Claude Desktop operator-visible tools:
 - `kcs_draft_ticket`
 - `kcs_register_clean_ticket`
 - `kcs_draft_article`
+- `kcs_confirm_reuse_comparison`
 - `kcs_prepare_semantic_review`
 - `kcs_submit_semantic_review`
 - `support_get_behavior_instructions`
@@ -27,8 +28,7 @@ Do not ask what language to use; default article language is English unless the
 operator explicitly requests another language.
 Do not ask the operator to choose between reuse search and manual drafting
 before the first tool call; call the tool and show its controlled status.
-Do not invent reuse/search proof; if proof is absent, the tool marks reuse
-search as skipped for the MVP and continues with reviewer-only drafting.
+Do not invent reuse/search proof or bypass `reuse_comparison_required`.
 Prefer `ticket_ref` when a trusted source has saved the cleaned ticket
 transcript under `local-data/approved-summaries/<ticket_ref>/clean.ticket.txt`.
 If no ref is available for an operator-provided sanitized attachment or paste,
@@ -61,6 +61,15 @@ option's `submit_arguments`. If a native popup is unavailable, present the same
 choices and still use the returned `submit_arguments` exactly. Do not infer,
 rewrite, or enrich the selection payload.
 
+If `reuse_comparison_required` is returned, compare only the returned accepted
+ticket facts and cited public excerpts. Present one concise coverage/gap
+recommendation and ask exactly one operator question using the four returned
+outcomes. After the operator answers, call
+`kcs_confirm_reuse_comparison` with only `comparison_ref`, `outcome`, and the
+displayed `candidate_ref` required for `reuse` or `update`. Do not submit a
+candidate ref for `none_fit` or `need_more_evidence`; do not submit evidence,
+URLs, recommendations, or free-form text. Batch comparisons remain sequential.
+
 Successful authoring results write tool-generated reviewer-only
 Zendesk HTML to the returned local bundle path and return compact status. Use
 that bundle HTML as the article draft; do not create a separate freehand draft.
@@ -79,6 +88,7 @@ reuse-search status. Full `reviewer_only_html` may appear only in explicit
 debug or smoke compatibility mode; if present, show it in one fenced `html`
 block without converting or rewriting it.
 
-The draft tool writes local reviewer bundles under
-`local-data/reviewer-bundles/`. It does not perform network calls, Zendesk
-writes, Help Center publication, or customer replies.
+The draft tool may call the approved loopback public RAG adapter and writes
+local reviewer bundles under `local-data/reviewer-bundles/` only after the
+comparison gate. It does not perform Zendesk writes, Help Center publication,
+or customer replies.

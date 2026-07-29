@@ -35,7 +35,7 @@ Use these before commits when relevant to the touched files.
 
 | Task | Command | Classification | Notes |
 | --- | --- | --- | --- |
-| Policy docs check | `uv run pytest tests/policy/test_kcs14_docs_policy.py -q` | deterministic | Required for KCS-14 process/doc changes. |
+| Engineering process docs check | `uv run pytest tests/policy/test_engineering_process_docs_policy.py -q` | deterministic | Required for tracked engineering-process and policy-document changes. |
 | Review protocol and promotion check | `uv run pytest tests/policy/test_review_context_policy.py -q` | deterministic | Required for KCS-14 review, promotion, closeout-shape, or review-packet protocol changes. |
 | Code-review graph policy check | `uv run pytest tests/policy/test_code_review_graph_policy.py -q` | deterministic | Required for code-map, graph hash, ownership-node, or refactor-boundary changes. |
 | KCS-14 freeze/snapshot check | `uv run pytest tests/policy/test_kcs14_freeze_snapshots.py -q` | deterministic | Required before and after Slice 6 refactor batches. |
@@ -56,14 +56,16 @@ They do not prove full workflow behavior.
 | Tool | Command | Classification | Notes |
 | --- | --- | --- | --- |
 | KCS core CLI | `uv run kcs-core --help` | deterministic | Console entrypoint from `pyproject.toml`. |
+| Controlled authoring CLI | `uv run kcs-controlled-draft --help` | deterministic | Help-only check for the direct operator-controlled comparison skeleton. |
 | Smoke accounting CLI | `uv run kcs-smoke-account --help` | deterministic | Console entrypoint from `pyproject.toml`. |
 | MCPB build script | `uv run python scripts/build_kcs_mcpb.py --help` | deterministic | Help-only check; does not build package. |
 | Cowork plugin build script | `uv run python scripts/build_kcs_cowork_plugin.py --help` | deterministic | Help-only check; does not build package. |
 | MCPB stdio smoke script | `uv run python scripts/smoke_kcs_mcpb_stdio.py --help` | deterministic | Help-only check; actual smoke is a separate validation step. |
 | Desktop log checker | `uv run python scripts/check_claude_kcs_desktop_log.py --help` | deterministic | Help-only check; actual log check needs local Desktop logs. |
-| Desktop UI smoke script | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --help` | deterministic | Help-only check; GUI send is manual/UI. |
+| Desktop UI smoke script | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --help` | deterministic | Help-only check; prompt print/send fails closed when source, built package, installed files, or Desktop registry identity is stale. GUI send remains manual/UI. |
 | Semantic projection rebaseline | `uv run python scripts/rebaseline_semantic_issue_projection.py --help` | deterministic | Help-only check; model execution and response capture remain manual/local-state. |
 | Langfuse synthetic rebaseline export | `uv run python scripts/kcs14_langfuse_rebaseline.py --help` | deterministic | Help-only check; export requires the separately managed local Langfuse service and pinned SDK command below. |
+| Langfuse live draft-run export | `uv run python scripts/kcs14_langfuse_draft_run.py --help` | deterministic | Help-only check; reads only a closed value-safe local run report. Optional Desktop-log classification stays local. |
 | Complexity measurement | `uv run --extra dev python scripts/measure_complexity.py --help` | deterministic | Help-only check; actual measurement is advisory and listed above. |
 
 ## Desktop / MCPB Validation
@@ -78,8 +80,56 @@ See `README.md` for operator-facing caveats and manual Desktop steps.
 | Run source/installed stdio smoke | `uv run python scripts/smoke_kcs_mcpb_stdio.py` | deterministic-with-local-runtime | Requires local Node/uv wrapper availability. |
 | Check Desktop MCP logs | `uv run python scripts/check_claude_kcs_desktop_log.py` | manual/local-state | Requires local Claude Desktop log state. |
 | Check macOS GUI accessibility | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --check-accessibility` | manual/UI | Checks local GUI permission only. |
-| Print manual Desktop prompt | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --print-manual-prompt --prompt-kind raw-ticket` | manual/UI | Produces a synthetic prompt for manual Desktop send. |
-| Send Desktop UI smoke | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --send --prompt-kind single` | manual/UI | Uses macOS GUI automation and may be rate-limited. |
+| Print manual Desktop prompt | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --print-manual-prompt --prompt-kind raw-ticket` | manual/UI | Produces a synthetic prompt only after static installed-artifact identity and live Desktop/RAG exact-capability preflights pass. |
+| Send Desktop UI smoke | `uv run python scripts/smoke_claude_desktop_ui_prompt.py --send --prompt-kind single` | manual/UI | Uses macOS GUI automation and may be rate-limited; fails before send when installed-artifact identity, Desktop reload, or exact live RAG capability is unproven. |
+
+Treat `installed_artifact_identity_stale` and `live_runtime_preflight_failed`
+as autonomous Delivery/preflight corrections: rebuild/reinstall through the
+supported installer, reload Claude Desktop, verify the exact required
+capability on the active dependency instance, rerun the installed stdio smoke,
+and only then expose a prompt to the operator. Static artifact identity is not
+reported as complete runtime provenance.
+
+## Controlled Authoring Skeleton
+
+Use this entrypoint only with an existing approved local `ticket_ref`:
+
+```text
+uv run kcs-controlled-draft <ticket_ref>
+```
+
+Classification: manual/local-state with deterministic entry and interactive
+operator confirmation.
+
+The command creates the existing Desktop adapter and approved local public RAG
+provider in one process, calls the draft comparison gate directly, displays
+only bounded accepted facts and eligible public article excerpts, and then
+reads one closed-enum outcome from the local terminal menu. It has no
+`--outcome` argument: the choice is collected only after the comparison is
+shown. `reuse` and `update` additionally require selection of one displayed
+article. Normal execution requires interactive stdin and stdout before the
+adapter is created; piped or redirected outcome input fails closed.
+
+Use the write-incapable first-transition smoke when only live provider
+feasibility is required:
+
+```text
+uv run kcs-controlled-draft --preflight <ticket_ref>
+```
+
+Preflight directly collects and renders the comparison, then exits without
+reading or submitting an outcome.
+
+The first workflow result must be `reuse_comparison_required` or fail-closed
+`reuse_comparison_blocked`. A draft, reviewer bundle, file write, or unexpected
+result before the menu is structurally unavailable through the controller's
+comparison-only begin port and is also treated as an invariant failure. Only
+operator-confirmed `none_fit` may continue into the existing reviewer-only
+authoring path.
+
+This is an enforcement skeleton for KCS-15.2b2, not the final Desktop UX.
+Generic Claude chat remains model-routed and is outside this deterministic
+entrypoint claim.
 
 ## Semantic Projection Rebaseline
 
@@ -127,6 +177,31 @@ sequence `post_kcs14_legacy_baseline`, `m3_medium`, `m3_continuation`, then
 `m3_continuation`. Do not start `m3_complex` until both stages are stable.
 Compare only runs with the same scenario and control-surface identity hashes.
 The exporter rejects a runtime outcome when the profile is not comparable.
+
+## Local Langfuse Live Draft-Run Accounting
+
+Live accounting is an optional auxiliary adapter around the existing Desktop
+MCP dispatch boundary. It is disabled unless both
+`KCS_DRAFT_RUN_ACCOUNTING=local-json` and `KCS_DRAFT_RUN_REPORT_DIR` are set.
+Use an ignored local directory such as `.runtime/kcs-draft-runs`. The runtime
+checkpoints counts, closed codes, durations, byte sizes, and a random
+correlation hash only. Sink failure is ignored and must not alter authoring.
+The environment-created file sink uses a bounded non-blocking background queue,
+so Desktop tool responses do not wait for local filesystem persistence. Under
+sustained queue pressure an older checkpoint may be replaced by a newer one.
+
+The external exporter validates the exact report schema before constructing
+Langfuse observations. It never sends tool arguments/results or Desktop log
+text. `--desktop-log` must point to a run-scoped Desktop log capture and scans
+only a bounded local tail for an allowlisted Claude Desktop Free quota message;
+generic limit text is not sufficient. `--classified-output` can persist the
+resulting value-safe closed report at an operator-selected ignored path.
+
+| Task | Command | Classification | Notes |
+| --- | --- | --- | --- |
+| Enable local report checkpoints | Source/dev: `KCS_DRAFT_RUN_ACCOUNTING=local-json KCS_DRAFT_RUN_REPORT_DIR=.runtime/kcs-draft-runs uv run kcs-desktop-mcp`. Installed MCPB: select the optional **Draft run accounting directory** extension setting. | manual/local-state | Changes only auxiliary local reporting. Selecting the installed-extension directory enables `local-json` mode inside the wrapper; leaving it unset preserves normal authoring. Langfuse and its SDK are not required. |
+| Export one live run | `uv run --python 3.11 --with langfuse==4.7.0 python scripts/kcs14_langfuse_draft_run.py --report <value-safe-report.json> [--desktop-log <local-desktop-log>] [--classified-output <ignored-classified-report.json>] [--model-identity <safe-id>] [--client-identity <safe-id>]` | manual/local-state | Requires the three loopback Langfuse environment values. Desktop logs are read locally and their contents are never included in metadata. Optional model/client identities are exported only as SHA-256 values. |
+| Validate live accounting and exporter | `uv run --extra dev pytest tests/kcs_adapters/test_draft_run_accounting.py tests/kcs_adapters/test_kcs14_langfuse_draft_run.py -q` | deterministic | Covers fail-open equivalence, strict field validation, privacy canaries, and host-quota classification. |
 
 ## Artifact Rules
 

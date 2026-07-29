@@ -67,10 +67,14 @@ _SUBMISSION_SHAPE_CORRECTIONS = MappingProxyType(
             "field_name": "observation_fields",
             "instruction": (
                 "Use an object with exactly text and source_refs for every "
-                "observation. Use observation lists for symptoms, error_evidence, "
+                "observation. source_refs must be a non-empty list of unique "
+                "exact refs from allowed_source_refs. "
+                "Use observation lists for symptoms, error_evidence, "
                 "cause_evidence, resolution_evidence, verification_evidence, "
                 "answer_evidence, and context_evidence. Use one required "
-                "observation for summary and null or one observation for question."
+                "observation for summary and null or one observation for question. "
+                "Correct every listed field path in one submission and preserve "
+                "unlisted fields."
             ),
         },
         "semantic_issue_case_ref_mismatch": {
@@ -125,6 +129,12 @@ _SUBMISSION_SHAPE_CORRECTIONS = MappingProxyType(
                 "admissible; do not guess their speaker."
             ),
         },
+    }
+)
+_GROUNDING_CORRECTION_CODES = frozenset(
+    {
+        "semantic_issue_entry_speaker_incompatible",
+        "semantic_observation_text_not_extractive",
     }
 )
 
@@ -283,6 +293,16 @@ def semantic_submission_correction(debug_code: str) -> JsonDict | None:
                 "field_name": field_name,
             }
     return None
+
+
+def semantic_submission_correction_stage(debug_code: str) -> str | None:
+    """Classify one registered correction without exposing submitted values."""
+
+    if semantic_submission_correction(debug_code) is None:
+        return None
+    if debug_code in _GROUNDING_CORRECTION_CODES:
+        return "grounding"
+    return "structure"
 
 
 def _field_contract_json(contract: _SemanticFieldContract) -> JsonDict:

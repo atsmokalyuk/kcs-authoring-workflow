@@ -46,6 +46,7 @@ TICKET_REF_TOOL_NAME = "kcs_draft_ticket"
 REGISTER_TOOL_NAME = "kcs_register_clean_ticket"
 PREPARE_SEMANTIC_REVIEW_TOOL_NAME = "kcs_prepare_semantic_review"
 SUBMIT_SEMANTIC_REVIEW_TOOL_NAME = "kcs_submit_semantic_review"
+CONFIRM_REUSE_COMPARISON_TOOL_NAME = "kcs_confirm_reuse_comparison"
 BEHAVIOR_TOOL_NAME = "support_get_behavior_instructions"
 CALL_REQUEST_IDS = (3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 APPROVED_TICKET_STORE_ROOT_ENV = "KCS_AUTHORING_MVP_APPROVED_TICKET_STORE_ROOT"
@@ -130,6 +131,20 @@ _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
         debug_description_includes=("reviewer-only Zendesk HTML",),
     ),
     _ExpectedToolSurface(
+        name=CONFIRM_REUSE_COMPARISON_TOOL_NAME,
+        properties=frozenset({"candidate_ref", "comparison_ref", "outcome"}),
+        required=("comparison_ref", "outcome"),
+        destructive=False,
+        idempotent=False,
+        open_world=False,
+        read_only=False,
+        description_includes=(
+            "operator-confirmed outcome",
+            "Copy comparison_ref exactly",
+            "Do not include ticket facts",
+        ),
+    ),
+    _ExpectedToolSurface(
         name=PREPARE_SEMANTIC_REVIEW_TOOL_NAME,
         properties=frozenset({"semantic_review_ref"}),
         required=("semantic_review_ref",),
@@ -143,6 +158,7 @@ _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
         name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
         properties=frozenset(
             {
+                "operator_selection_ref",
                 "semantic_issue_proposal",
                 "semantic_review_ref",
             }
@@ -152,7 +168,12 @@ _EXPECTED_TOOL_SURFACES: tuple[_ExpectedToolSurface, ...] = (
         idempotent=False,
         open_world=False,
         read_only=False,
-        description_includes=("semantic_issue_proposal_v1", "No article draft"),
+        description_includes=(
+            "semantic_issue_proposal_v1",
+            "No article draft",
+            "operator says an issue was missed or merged",
+            "operator prose is steering context, never evidence",
+        ),
     ),
     _ExpectedToolSurface(
         name=BEHAVIOR_TOOL_NAME,
@@ -197,12 +218,24 @@ _EXPECTED_REGISTRY_MANIFEST_TOOL_DESCRIPTIONS: tuple[
         ),
     ),
     _ExpectedManifestToolDescription(
+        name=CONFIRM_REUSE_COMPARISON_TOOL_NAME,
+        includes=(
+            "operator-confirmed outcome",
+            "comparison_ref exactly",
+            "Do not include ticket facts",
+        ),
+    ),
+    _ExpectedManifestToolDescription(
         name=PREPARE_SEMANTIC_REVIEW_TOOL_NAME,
         includes=("semantic_review_required", "bounded excerpts"),
     ),
     _ExpectedManifestToolDescription(
         name=SUBMIT_SEMANTIC_REVIEW_TOOL_NAME,
-        includes=("semantic_issue_proposal_v1", "No article draft"),
+        includes=(
+            "semantic_issue_proposal_v1",
+            "No article draft",
+            "operator says an issue was missed or merged",
+        ),
     ),
     _ExpectedManifestToolDescription(
         name=BEHAVIOR_TOOL_NAME,
@@ -423,7 +456,7 @@ def _run_jsonrpc_session(
                 semantic_provider="fixture",
             ),
             text=True,
-            timeout=15,
+            timeout=60,
         )
     except subprocess.TimeoutExpired as exc:
         raise SmokeError("wrapper_timeout") from exc
@@ -520,6 +553,7 @@ def _run_register_then_draft_smoke(
             {"jsonrpc": "2.0", "method": "notifications/initialized"},
         )
         register_started_at = time.time()
+        ticket_ref = f"smoke-monitoring-{int(register_started_at * 1000)}"
         register = _send_jsonrpc(
             process,
             _request(
@@ -529,7 +563,7 @@ def _run_register_then_draft_smoke(
                     "name": REGISTER_TOOL_NAME,
                     "arguments": {
                         "clean_ticket_text": _raw_ticket_summary_text(),
-                        "ticket_ref": "smoke-monitoring-001",
+                        "ticket_ref": ticket_ref,
                     },
                 },
             ),
@@ -546,8 +580,27 @@ def _run_register_then_draft_smoke(
                 {"name": TOOL_NAME, "arguments": dict(next_arguments)},
             ),
         )
+        draft_structured = _structured(draft)
+        comparison_ref = draft_structured.get("comparison_ref")
+        if not isinstance(comparison_ref, str):
+            raise SmokeError("register_then_draft_missing_comparison_ref")
+        confirmed = _send_jsonrpc(
+            process,
+            _request(
+                13,
+                "tools/call",
+                {
+                    "name": CONFIRM_REUSE_COMPARISON_TOOL_NAME,
+                    "arguments": {
+                        "comparison_ref": comparison_ref,
+                        "outcome": "none_fit",
+                    },
+                },
+            ),
+        )
         return {
             "_register_started_at": {"value": register_started_at},
+            "confirmed": confirmed,
             "draft": draft,
             "initialize": initialize,
             "register": register,
@@ -1310,7 +1363,7 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
     if not isinstance(value, dict):
         return False
     tools = value.get("tools")
-    if not isinstance(tools, list) or len(tools) != 6:
+    if not isinstance(tools, list) or len(tools) != 7:
         return False
     long_description = str(value.get("long_description", ""))
     return _registry_manifest_tools_have_expected_descriptions(
@@ -1324,7 +1377,7 @@ def _registry_manifest_has_thin_contract(value: object) -> bool:
 
 def _tool_surface_ok(response: dict[str, Any]) -> bool:
     tools = response.get("result", {}).get("tools", [])
-    if len(tools) != 6:
+    if len(tools) != 7:
         return False
     for spec in _EXPECTED_TOOL_SURFACES:
         tool = _tool_by_name(tools, spec.name)
@@ -1479,41 +1532,44 @@ def _response_bundle_html_text(response: dict[str, Any]) -> str:
 
 def _labeled_draft_ok(response: dict[str, Any]) -> bool:
     structured = _structured(response)
-    html = _response_html_resource_text(response)
-    html_path = structured.get("html_path")
-    return (
-        response.get("result", {}).get("isError") is False
-        and structured.get("draft_generated") is True
-        and structured.get("debug_code") == "draft_only_reuse_search_missing"
-        and structured.get("recommended_action") == "draft_only"
-        and structured.get("reuse_search_status") == "skipped"
-        and structured.get("reviewer_bundle_written") is True
-        and structured.get("writes_files") is True
-        and isinstance(html_path, str)
-        and html_path.startswith("local-data/reviewer-bundles/")
-        and _bundle_file_ok(html_path, structured.get("html_sha256"))
-        and "reviewer_only_html" not in structured
-        and "Connect to the Plesk server via SSH.</a>" in html
-    )
+    return _comparison_required_ok(response, structured)
 
 
 def _non_debug_labeled_draft_text_ok(response: dict[str, Any]) -> bool:
     structured = _structured(response)
     text = _response_text(response)
-    html = _response_bundle_html_text(response)
+    return (
+        _comparison_required_ok(response, structured)
+        and not text.startswith("```html\n")
+        and "Compare only accepted_ticket_facts" in text
+        and "ask exactly one operator question" in text
+        and "Do not call the submit tool until the operator answers." in text
+    )
+
+
+def _comparison_required_ok(
+    response: dict[str, Any],
+    structured: dict[str, Any] | None = None,
+) -> bool:
+    value = structured if structured is not None else _structured(response)
+    candidates = value.get("comparison_candidates")
     return (
         response.get("result", {}).get("isError") is False
-        and structured.get("draft_generated") is True
-        and structured.get("debug_code") == "draft_only_reuse_search_missing"
-        and "reviewer_only_html" not in structured
-        and "<h2>Resolution</h2>" in html
-        and not text.startswith("```html\n")
-        and "Reviewer-only Zendesk HTML draft generated" not in text
-        and "COPY THE FINAL RESPONSE BELOW VERBATIM" not in text
-        and "Do not rewrite it into a Markdown article" not in text
-        and "do not claim the file is unavailable from this chat" in text
-        and "do not offer a separate chat-authored article" in text
-        and "html_path" in text
+        and value.get("result_kind") == "reuse_comparison_required"
+        and value.get("draft_generated") is False
+        and value.get("reviewer_bundle_written") is False
+        and value.get("writes_files") is False
+        and value.get("next_tool") == CONFIRM_REUSE_COMPARISON_TOOL_NAME
+        and value.get("submit_tool") == CONFIRM_REUSE_COMPARISON_TOOL_NAME
+        and isinstance(value.get("comparison_ref"), str)
+        and value.get("comparison_outcomes")
+        == ["reuse", "update", "none_fit", "need_more_evidence"]
+        and isinstance(candidates, list)
+        and 1 <= len(candidates) <= 3
+        and isinstance(value.get("accepted_ticket_facts"), list)
+        and 1 <= len(value["accepted_ticket_facts"]) <= 8
+        and "reviewer_only_html" not in value
+        and "html_path" not in value
     )
 
 
@@ -1546,9 +1602,8 @@ def _split_choice_ok(responses: dict[str, dict[str, Any]]) -> bool:
     return (
         isinstance(options, list)
         and _split_choice_request_ok(split, choice_request, options)
-        and _completed_batch_ok(batch)
+        and _comparison_required_ok(responses["batch"], batch)
         and _split_choice_text_ok(responses["split"])
-        and _batch_result_text_ok(responses["batch"])
     )
 
 
@@ -1645,38 +1700,51 @@ def _bundle_file_contains(html_path: str, expected_text: str) -> bool:
 def _register_then_draft_ok(responses: dict[str, dict[str, Any]]) -> bool:
     registered = _structured(responses["register"])
     draft = _structured(responses["draft"])
+    confirmed = _structured(responses["confirmed"])
+    ticket_ref = registered.get("ticket_ref")
     register_text = json.dumps(responses["register"], sort_keys=True)
-    draft_text = _response_text(responses["draft"])
-    draft_html = _response_bundle_html_text(responses["draft"])
-    html_path = draft.get("html_path")
     return (
         responses["register"].get("result", {}).get("isError") is False
         and responses["draft"].get("result", {}).get("isError") is False
+        and responses["confirmed"].get("result", {}).get("isError") is False
         and registered.get("result_kind") == "clean_ticket_registered"
-        and registered.get("ticket_ref") == "smoke-monitoring-001"
+        and isinstance(ticket_ref, str)
+        and ticket_ref.startswith("smoke-monitoring-")
         and _clean_ticket_file_ok(
-            "smoke-monitoring-001",
+            ticket_ref,
             registered.get("clean_ticket_sha256"),
             min_mtime=_register_started_at(responses),
         )
         and registered.get("next_tool_name") == TOOL_NAME
-        and registered.get("next_arguments") == {"ticket_ref": "smoke-monitoring-001"}
+        and registered.get("next_arguments") == {"ticket_ref": ticket_ref}
         and "clean_ticket_text" not in register_text
         and "When loading the monitoring module" not in register_text
-        and draft.get("result_kind") == "draft_article_authoring"
-        and draft.get("ticket_ref") == "smoke-monitoring-001"
+        and _comparison_required_ok(responses["draft"], draft)
+        and draft.get("ticket_ref") == ticket_ref
         and draft.get("approved_summary_source") == "local_clean_ticket"
-        and draft.get("draft_generated") is True
-        and draft.get("debug_code") == "draft_only_reuse_search_missing"
-        and draft.get("reviewer_bundle_written") is True
-        and draft.get("writes_files") is True
-        and isinstance(html_path, str)
-        and html_path.startswith("local-data/reviewer-bundles/")
-        and _bundle_file_ok(html_path, draft.get("html_sha256"))
-        and "reviewer_only_html" not in draft
-        and not draft_text.startswith("```html\n")
-        and "<h2>Resolution</h2>" in draft_html
+        and confirmed.get("result_kind") == "approved_summary_authoring"
+        and confirmed.get("draft_generated") is True
+        and confirmed.get("recommended_action") == "create_candidate"
+        and confirmed.get("reuse_search_status") == "checked"
+        and confirmed.get("reviewer_bundle_written") is True
+        and confirmed.get("writes_files") is True
+        and _single_none_fit_sequence_ok(confirmed)
     )
+
+
+def _single_none_fit_sequence_ok(confirmed: dict[str, Any]) -> bool:
+    return confirmed.get("comparison_sequence_outcomes") == [
+        {
+            "bundle_ref": confirmed.get("bundle_ref"),
+            "comparison_outcome": "none_fit",
+            "draft_generated": True,
+            "html_path": confirmed.get("html_path"),
+            "item_ref": "candidate-001",
+            "manifest_path": confirmed.get("manifest_path"),
+            "recommended_action": "create_candidate",
+            "reviewer_bundle_written": True,
+        }
+    ]
 
 
 def _semantic_review_submit_ok(responses: dict[str, dict[str, Any]]) -> bool:
@@ -1704,10 +1772,54 @@ def _semantic_review_submit_ok(responses: dict[str, dict[str, Any]]) -> bool:
         and "semantic_issue_proposal" in prepare.get("required_submit_shape", {})
         and _unassigned_ledger_ok(submit)
         and _shared_identity_refs_remain_audit_only(submit)
-        and _active_semantic_all_batch_ok(submit, batch)
+        and _active_semantic_comparison_gate_ok(submit, responses["batch"], batch)
         and "reviewer_only_html" not in submit
-        and "semantic_issue_proposal" not in response_text
-        and _batch_bundle_files_ok(batch.get("candidate_outcomes", []))
+        and "semantic-proposal-smoke-submit-001" not in response_text
+    )
+
+
+def _active_semantic_comparison_gate_ok(
+    submit: dict[str, Any],
+    batch_response: dict[str, Any],
+    batch: dict[str, Any],
+) -> bool:
+    choice_request = submit.get("operator_choice_request")
+    if not isinstance(choice_request, dict):
+        return False
+    options = choice_request.get("options")
+    if not isinstance(options, list) or not options:
+        return False
+    all_option = options[-1]
+    return (
+        isinstance(all_option, dict)
+        and submit.get("recommended_action") == "split_required"
+        and submit.get("operator_prompt_style") == "native_choice_popup"
+        and choice_request.get("prose_only_choice_allowed") is False
+        and all_option.get("value") == "all"
+        and (
+            _comparison_required_ok(batch_response, batch)
+            or _comparison_provider_blocked_ok(batch_response, batch)
+        )
+    )
+
+
+def _comparison_provider_blocked_ok(
+    response: dict[str, Any],
+    structured: dict[str, Any],
+) -> bool:
+    return (
+        response.get("result", {}).get("isError") is False
+        and structured.get("result_kind") == "reuse_comparison_blocked"
+        and structured.get("failure_stage") == "reuse_comparison"
+        and structured.get("debug_code")
+        in {
+            "comparison_provider_invalid_response",
+            "comparison_provider_unavailable",
+        }
+        and structured.get("draft_generated") is False
+        and structured.get("reviewer_bundle_written") is False
+        and structured.get("writes_files") is False
+        and structured.get("manual_draft_allowed") is False
     )
 
 

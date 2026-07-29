@@ -46,27 +46,37 @@
       "files": [
         {
           "path": "src/kcs_adapters/mcp_desktop.py",
-          "file_hash": "82d02d81e9f421d085b3ed21a332231a313d49a8832a998a5ce6bc434e4a45fc",
+          "file_hash": "845cb5ee8c963dd54e0d9aa50ebc301ec18a1153370f1b07057b79402002f600",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_tool_schemas.py",
-          "file_hash": "2a50d57860688e06aa11012692fe6271b0ef3f2d49af86a239a65fe17e266880",
+          "file_hash": "97d994bd8704dfe80025ea66fc224ac1268adb2cad81d101168b3bf7292ca496",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_tool_results.py",
-          "file_hash": "50a723c68aaec40272a4c295dce076bea23ca2a9d1693d410daa9c9c90f5a7e7",
+          "file_hash": "584084c9fdc405f75132e94d6f231f7fc1ecb842852db8cc2bf29fb5482ca5ac",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_mcp_adapter.py",
-          "file_hash": "546c753d25b69c349416eb9435e7615876af1f92a2ca8b79777e5fc120d0d77b",
+          "file_hash": "b939d022f1fe0a9629568d39d8279848a2e8e7c4f18e28c060ce35918c4afb56",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/operator_authoring_controller.py",
+          "file_hash": "2974be25cb5ca26abc178916c038ad76857bb69aef6157e5a80fd5a563765603",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/operator_authoring_cli.py",
+          "file_hash": "65ba68805b4a32f4a80615daa318e231a4b9dc3be1acc50e630d53cf449ffa1b",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_authoring_tools.py",
-          "file_hash": "eff38f04cf7ac49b9f0be53cce128fea8e5d02841067a8b7e48d0f2f75250dd1",
+          "file_hash": "b66f1e81f96345564283c7b44543a7708d617d1715ab069090f9e7b179ed8a2e",
           "valid_until_changed": true
         },
         {
@@ -76,12 +86,12 @@
         },
         {
           "path": "src/kcs_adapters/desktop_tool_descriptors.py",
-          "file_hash": "852d3c0197f790060c86ee8093fd9f5df48f9a3a56004dddd3c506970377f880",
+          "file_hash": "18eefa9024e4badeea5eec616d27ad9cb774dbabbde8067f4dd549efc95e7fa5",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_tool_names.py",
-          "file_hash": "549c3374dca8a8b1c722d1b582f841c34d99a64af3ca3867391e52a98a877069",
+          "file_hash": "7003cd69d5385966c00adbb5aa604862bb2a15b7e729e1b577f05cbfe0dacca2",
           "valid_until_changed": true
         }
       ],
@@ -90,7 +100,9 @@
         "tests/kcs_adapters/test_desktop_mcp_adapter.py",
         "tests/kcs_adapters/test_desktop_protocol_results.py",
         "tests/kcs_adapters/test_desktop_authoring_tools.py",
-        "tests/kcs_adapters/test_desktop_control_tools.py"
+        "tests/kcs_adapters/test_desktop_control_tools.py",
+        "tests/kcs_adapters/test_operator_authoring_controller.py",
+        "tests/kcs_adapters/test_operator_authoring_cli.py"
       ]
     },
     {
@@ -130,12 +142,12 @@
         },
         {
           "path": "src/kcs_adapters/desktop_protocol.py",
-          "file_hash": "53884d9e9a4eacc0f2a7e30638086342e0983a91207ef83da4b7773d7f8f6f1f",
+          "file_hash": "b2386833444818c709d6293adeb861ff86edfd8902e6a772e0578df4ea456939",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_stdio_transport.py",
-          "file_hash": "2c668bb2e913fe65c9f1c56baeed1a23c5c0ede2a65ba1a286a45b20036faf9f",
+          "file_hash": "e07ac0e7a7d338a7871590fa08ba51fc804f11daab0fc3d45b870989e2e3396f",
           "valid_until_changed": true
         },
         {
@@ -297,17 +309,17 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_semantic_candidate_contract.py",
-          "file_hash": "8624a12c95606387887d93dbbc93134c51aa9cfda1b4acf26f1280d8c4082fd6",
+          "file_hash": "bdd7477c477b627fb56e981adc78e5bd5924b23c02563bf38d7b7982eb9c52d1",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_semantic_review.py",
-          "file_hash": "f4b8062b4193365bf3ed3b5d8971d4622b6ae69236ffe02ad419a5ca69587c23",
+          "file_hash": "4f74cad021eef17cb64b3406cb12d23dbda7b686312219812984b2b93cc1c7ab",
           "valid_until_changed": true
         },
         {
           "path": "src/kcs_adapters/desktop_semantic_review_submission.py",
-          "file_hash": "ffc37376414ad1b3acbc84dcc75d2ccb2fcd1d8497732738a5933f57d8bdc057",
+          "file_hash": "4b28f756300ef3d348e4ed14cf4836943ce4e8ca235d63a7ff293e4599fcf51f",
           "valid_until_changed": true
         },
         {
@@ -378,7 +390,12 @@
       "files": [
         {
           "path": "src/kcs_adapters/desktop_draft_tool.py",
-          "file_hash": "d20abffa5f1f9d4b1ee2f408dc2433845803ef067e2bf5572f77bb464bc03189",
+          "file_hash": "4f1cacb0007b1ec6af2bafa3055d0737255ee8fd680bcf5fa7f65b107f1ae3e8",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/desktop_reuse_comparison.py",
+          "file_hash": "4fd0e839d30d9fcef0f03896772c1cf682aa37e8fb080cf00ecf35bef940922c",
           "valid_until_changed": true
         },
         {
@@ -388,7 +405,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_workflow.py",
-          "file_hash": "8d28034647c5da20bed09dd26741061738af49046dba283de858ea29e38bf988",
+          "file_hash": "ebdef5429449f8be8493871a75606d64d0fda63cbb1b9b5cbfca7bee60d52410",
           "valid_until_changed": true
         },
         {
@@ -398,7 +415,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_authoring_pipeline.py",
-          "file_hash": "2d9cd9b09ab4ad1a0f64620ff105178cd92ebad5ee09b34836988d9e95a2c247",
+          "file_hash": "ad6b2a57282bcf9104f730a573b4826328f9071a99991606513c190043ea8971",
           "valid_until_changed": true
         },
         {
@@ -413,7 +430,7 @@
         },
         {
           "path": "src/kcs_adapters/desktop_workflow_results.py",
-          "file_hash": "d41a1c161c59d1bc5c2386bb3b8601f36ec5f6519bafddf7e09b8183bcf452e3",
+          "file_hash": "e3edb683fdce1f7d297124d8e56a52739dbfb8710abface44b293ac16695e1c5",
           "valid_until_changed": true
         },
         {
@@ -425,6 +442,8 @@
       "related_tests": [
         "tests/kcs_adapters/test_desktop_draft_batch.py",
         "tests/kcs_adapters/test_desktop_draft_tool.py",
+        "tests/kcs_adapters/test_desktop_reuse_comparison.py",
+        "tests/kcs_adapters/test_desktop_reuse_sequence_handoff.py",
         "tests/kcs_adapters/test_desktop_workflow.py",
         "tests/kcs_adapters/test_desktop_operator_selection.py",
         "tests/kcs_adapters/test_desktop_draft_output.py",
@@ -511,16 +530,19 @@
     },
     {
       "id": "cli_ingest_readiness",
-      "label": "CLI, Ingest, And Readiness",
+      "label": "CLI, Ingest, Local Public Evidence, And Readiness",
       "risk": "medium",
       "owns": [
         "CLI entrypoint behavior",
         "JSON payload loading",
         "Zendesk ingest helpers",
+        "provider-neutral bounded public comparison evidence contract and acceptance gate",
+        "loopback-only local public RAG evidence adapter",
         "readiness checks and safe error surfaces"
       ],
       "must_not_own": [
         "Desktop-specific state",
+        "KCS article identity",
         "provider trust decisions",
         "renderer presentation policy",
         "reviewer bundle writing"
@@ -528,6 +550,7 @@
       "must_preserve": [
         "CLI errors remain value-safe",
         "input loading does not bypass packet validation",
+        "RAG hits and excerpts remain unclassified comparison evidence",
         "readiness checks do not become runtime publication approval"
       ],
       "contract_edges": [
@@ -536,6 +559,7 @@
       ],
       "risk_areas": [
         "CLI and ingest helpers can bypass the same validators used by Desktop",
+        "RAG metadata or excerpts can be mistaken for confirmed KCS identity",
         "readiness checks can be mistaken for approval to publish"
       ],
       "files": [
@@ -563,6 +587,16 @@
           "path": "src/kcs_core/errors.py",
           "file_hash": "20b695a504669fd518fe1ae1e3abc7eeb8328c05666950f9d95d3119b3bd47e9",
           "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_core/reuse_comparison.py",
+          "file_hash": "affe31b463ca1674fe38d38863ddab2961b98bf0373f2da1bb71c6d4417c63ca",
+          "valid_until_changed": true
+        },
+        {
+          "path": "src/kcs_adapters/local_public_rag.py",
+          "file_hash": "d5047c749fe102ee60835b9fda8f02d7546d7501939643b57ca9bd026722427d",
+          "valid_until_changed": true
         }
       ],
       "related_tests": [
@@ -571,7 +605,9 @@
         "tests/kcs_core/test_readiness.py",
         "tests/kcs_core/test_zendesk_ingest.py",
         "tests/kcs_core/test_validation.py",
-        "tests/kcs_core/test_safety.py"
+        "tests/kcs_core/test_safety.py",
+        "tests/kcs_core/test_reuse_comparison.py",
+        "tests/kcs_adapters/test_local_public_rag.py"
       ]
     },
     {
@@ -581,17 +617,18 @@
       "owns": [
         "reviewer packet rendering",
         "Zendesk HTML rendering",
-        "current markup-quality checks"
+        "source-backed markup-quality checks",
+        "compact approved markup patterns"
       ],
       "must_not_own": [
-        "KCS-15 style/markup parity expansion",
         "KCS action decisions",
         "semantic-review candidate validation",
-        "Desktop transport"
+        "Desktop transport",
+        "automatic inference from evidence absent in rendered source"
       ],
       "must_preserve": [
-        "current renderer behavior remains stable during KCS-14 refactor",
-        "KCS-15 source-doc style parity remains deferred",
+        "renderer behavior changes only through an approved behavior slice",
+        "style and markup findings remain traceable to the KCS source pack",
         "renderer does not invent resolution details"
       ],
       "contract_edges": [
@@ -599,7 +636,7 @@
         "reviewer_bundle_output"
       ],
       "risk_areas": [
-        "formatting refactor can accidentally become KCS-15 behavior work",
+        "source-parity changes can add or remove reviewer blockers",
         "presentation helpers can leak decision or validation knowledge"
       ],
       "files": [
@@ -610,7 +647,7 @@
         },
         {
           "path": "src/kcs_adapters/zendesk_markup_quality.py",
-          "file_hash": "161258a5f29bfb3e0e63da6f5fa76dd40540f38b9fa47fcaa08f1a865d04b396",
+          "file_hash": "520da6fa5f7ee3c72d1778ac978b6812789d71290483d8538f7c03be4c6600ac",
           "valid_until_changed": true
         },
         {
@@ -621,6 +658,11 @@
         {
           "path": "src/kcs_adapters/kcs_article_style_refs.py",
           "file_hash": "7f61be8f30795db34bcc5b8f4032d7e83c5c9acc9bd80308db63b76be0a61d94",
+          "valid_until_changed": true
+        },
+        {
+          "path": "evals/kcs_markup_patterns_v1.jsonl",
+          "file_hash": "b9ea1d37cfe9e330ec9c7523f324156c1e5c4b0ea44cf4a3885339762788c9f9",
           "valid_until_changed": true
         }
       ],
@@ -693,7 +735,8 @@
         "Desktop log check entrypoints",
         "MCPB stdio smoke scripts",
         "local model/client rebaseline evidence harnesses",
-        "metadata-only synthetic trace export to loopback observability"
+        "metadata-only synthetic trace export to loopback observability",
+        "optional value-safe live draft-run accounting and external export"
       ],
       "must_not_own": [
         "runtime KCS decisions",
@@ -704,7 +747,8 @@
       "must_preserve": [
         "log tooling reports compact value-safe metrics only",
         "manual/Desktop checks remain classified as manual or local-runtime checks",
-        "smoke scripts do not become architecture-planning harnesses"
+        "smoke scripts do not become architecture-planning harnesses",
+        "live accounting remains disabled by default and fail-open"
       ],
       "contract_edges": [
         "desktop_tool_surface",
@@ -717,6 +761,11 @@
       ],
       "files": [
         {
+          "path": "src/kcs_adapters/draft_run_accounting.py",
+          "file_hash": "5d01fb1c0e5e03fd3af390fe49c7df99bdeaf9b0463a30ff499a327c1813d55d",
+          "valid_until_changed": true
+        },
+        {
           "path": "src/kcs_adapters/smoke_accounting.py",
           "file_hash": "7edb08c91db9dbb818be9e40a24335673353e0df079afeb7875e0bf1db4bbb3b",
           "valid_until_changed": true
@@ -728,12 +777,12 @@
         },
         {
           "path": "scripts/check_claude_kcs_desktop_log.py",
-          "file_hash": "30bd91f4e0759824192ff51d555e3c8f20c9a28c9f8e4a6daac3922bf949b25e",
+          "file_hash": "67715c111acad53202419beaacb301f4b8018c0aaadbe46cfc26286df35031b4",
           "valid_until_changed": true
         },
         {
           "path": "scripts/smoke_kcs_mcpb_stdio.py",
-          "file_hash": "51a3115197146eda7c41c18de232b001d15fea70871b10a240ddc2c51bafdc1f",
+          "file_hash": "899c1f18337df50cd267694f641a9cdb50c716b57c1804f3c11f864ab2a3c3d4",
           "valid_until_changed": true
         },
         {
@@ -750,13 +799,20 @@
           "path": "scripts/kcs14_langfuse_rebaseline.py",
           "file_hash": "859a4a1cb83b332b12e5046518728a6436d2ccd1a3ff59a597f26541e155ea8f",
           "valid_until_changed": true
+        },
+        {
+          "path": "scripts/kcs14_langfuse_draft_run.py",
+          "file_hash": "1927011726b6cf512e02de89a4aaedd903663320359894cbc594bfbf2341b455",
+          "valid_until_changed": true
         }
       ],
       "related_tests": [
         "tests/kcs_adapters/test_smoke_accounting.py",
         "tests/kcs_adapters/test_mcpb_package.py",
         "tests/kcs_adapters/test_semantic_projection_rebaseline.py",
-        "tests/kcs_adapters/test_kcs14_langfuse_rebaseline.py"
+        "tests/kcs_adapters/test_kcs14_langfuse_rebaseline.py",
+        "tests/kcs_adapters/test_draft_run_accounting.py",
+        "tests/kcs_adapters/test_kcs14_langfuse_draft_run.py"
       ]
     },
     {
@@ -808,17 +864,17 @@
         },
         {
           "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/README.md",
-          "file_hash": "7c29b3f3f85898f204a64918de9bfdb436fcdd0296376095607f6bb324917ff7",
+          "file_hash": "bde49513f3c02b16c582bb6b98d804aec138b671eebd5558491436db03b24228",
           "valid_until_changed": true
         },
         {
           "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/manifest.json",
-          "file_hash": "3706a7ea890f1d1551f3dc36dd5f84ecae1738839531f509f4206dafbd1d2337",
+          "file_hash": "e83a55b2764d26bada2825d486f2f498e9541a6a24859039716b2832ebe9629c",
           "valid_until_changed": true
         },
         {
           "path": "packaging/claude-desktop/kcs-authoring-mvp-validator-control/server/index.js",
-          "file_hash": "ee824932ef3dddfd0dcdc95eec921f1444ce29274f7561f9d1fbfdadd2fd9eba",
+          "file_hash": "303ef246635678f97e0fd48dc4c8d4c31974692ed4a83c485d2ebb720ba2a3d0",
           "valid_until_changed": true
         },
         {
@@ -838,12 +894,12 @@
         },
         {
           "path": "packaging/cowork/kcs-authoring/skills/kcs-authoring-control/SKILL.md",
-          "file_hash": "8b6d262ec06d2f00610b69faec3fdb6af77c97eb446529479200e279a54fbd41",
+          "file_hash": "99ac8de06fe682227a9bb0b774db2a62c89df1f588a2739bb674c6b3deae708d",
           "valid_until_changed": true
         },
         {
           "path": "packaging/cowork/kcs-authoring/skills/kcs-authoring-control/references/tool-surface.md",
-          "file_hash": "af906d43bc1d9fea1e3ae28088b98f8de426ab7fd367545f3a2722a7d256cf9c",
+          "file_hash": "56802aa1e52140a1cc0957d44f8d809d814ea5f76b03f138240513567057485f",
           "valid_until_changed": true
         }
       ],
@@ -886,7 +942,7 @@
         },
         {
           "path": "src/kcs_core/__init__.py",
-          "file_hash": "ca8fee2e58cc36ff43cecd9bd2e5d57a362b77f50f37efc833f37edc29a8ea3d",
+          "file_hash": "98c1762c5cb0c9916dc73cb65f66e8cd43da88c3874c1a4da2067658a9bc2d8b",
           "valid_until_changed": true
         }
       ],
@@ -901,7 +957,7 @@
       "label": "Engineering Policy Tests",
       "risk": "medium",
       "owns": [
-        "KCS-14 deterministic policy checks",
+        "KCS-14/KCS-15 deterministic policy checks",
         "documentation and process guardrail tests",
         "code-review graph coverage checks"
       ],
@@ -947,8 +1003,8 @@
           "valid_until_changed": true
         },
         {
-          "path": "tests/policy/test_kcs14_docs_policy.py",
-          "file_hash": "3e0c795fe61ca660604bbe260d5ae143ffb3e3e750251c12db7406d4fafcd31e",
+          "path": "tests/policy/test_engineering_process_docs_policy.py",
+          "file_hash": "2250cc0825eaeffdb1d0ce7d9e784ce91e67226e813780b16e99c95b5a997c69",
           "valid_until_changed": true
         },
         {
@@ -958,7 +1014,7 @@
         },
         {
           "path": "tests/policy/test_kcs14_freeze_snapshots.py",
-          "file_hash": "6cad07323660850a730f3c733708875876ecece221d1bd01b77cbfc95ffbde87",
+          "file_hash": "10bc652cbff5777c2bc4ba2b556dea6756e1b4ff4620650f2a1d2844b752b1df",
           "valid_until_changed": true
         },
         {
@@ -967,13 +1023,18 @@
           "valid_until_changed": true
         },
         {
+          "path": "tests/policy/test_kcs15_source_pack_policy.py",
+          "file_hash": "7be5b8421afb90dd4a0b1a6a934dab7f5e7bfa74e9706050505562d14f723a80",
+          "valid_until_changed": true
+        },
+        {
           "path": "tests/policy/test_review_context_policy.py",
-          "file_hash": "7fbe1c247c7f0c33310036ffd40d570c5f40ca8e55f5112746dcb8f4e52f2734",
+          "file_hash": "633716962b469c7cc8b79ff6eae37e7d27b0f4d9e0b46ad19388c75d07c99ee8",
           "valid_until_changed": true
         },
         {
           "path": "tests/policy/test_tool_entrypoints.py",
-          "file_hash": "e558bdd4df9b6d9ff401cbea061ea46be456fb756f6c3f853916301d3536fd50",
+          "file_hash": "b5fc1963cc2157d568ade2ef44fd6fc7d979db8b3ab9b91a270123741508a4f0",
           "valid_until_changed": true
         }
       ],
@@ -981,10 +1042,11 @@
         "tests/policy/test_code_review_graph_policy.py",
         "tests/policy/test_complexity_measurement.py",
         "tests/policy/test_functional_test_policy.py",
-        "tests/policy/test_kcs14_docs_policy.py",
+        "tests/policy/test_engineering_process_docs_policy.py",
         "tests/policy/test_kcs14_5_release_docs_policy.py",
         "tests/policy/test_kcs14_freeze_snapshots.py",
         "tests/policy/test_kcs14_legacy_semantic_island.py",
+        "tests/policy/test_kcs15_source_pack_policy.py",
         "tests/policy/test_review_context_policy.py",
         "tests/policy/test_tool_entrypoints.py"
       ]

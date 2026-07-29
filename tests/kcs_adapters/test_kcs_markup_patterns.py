@@ -11,19 +11,23 @@ from kcs_adapters.kcs_markup_patterns import (
 def test_markup_patterns_are_safe_bounded_source_of_truth_snippets() -> None:
     patterns = load_kcs_markup_patterns()
 
-    assert len(patterns) >= 8
-    assert len({pattern.pattern_id for pattern in patterns}) == len(patterns)
-    pattern_ids = {pattern.pattern_id for pattern in patterns}
-    assert {
+    assert tuple(pattern.pattern_id for pattern in patterns) == (
         "resolution_container",
         "technical_symptoms_numbered_list",
+        "gui_cli_tabs",
+        "advanced_accordion",
+        "internaldata_note",
         "linux_shell_trigger",
         "windows_command_trigger",
-        "powershell_trigger",
         "config_text_trigger",
+        "warning_and_note_triggers",
+        "powershell_trigger",
+        "resizable_image",
+        "style_guide_tabs",
         "style_guide_accordion",
         "style_guide_table",
-    }.issubset(pattern_ids)
+    )
+    assert len({pattern.pattern_id for pattern in patterns}) == len(patterns)
     for pattern in patterns:
         serialized = str(pattern.to_json_dict()).casefold()
         assert (
@@ -39,6 +43,18 @@ def test_markup_patterns_are_safe_bounded_source_of_truth_snippets() -> None:
         assert "ticket.final.clean.md" not in serialized
         assert ".private/" not in serialized
         assert "authorization: bearer" not in serialized
+
+    config_text = next(
+        pattern for pattern in patterns if pattern.pattern_id == "config_text_trigger"
+    )
+    assert any(
+        "PLESK_INFO for white/gray Plesk errors and messages" in item
+        for item in config_text.guidance
+    )
+    assert any(
+        "do not infer the Plesk presentation trigger" in item
+        for item in config_text.guidance
+    )
 
 
 def test_markup_pattern_prompt_is_html_specific_and_bounded() -> None:

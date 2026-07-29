@@ -22,7 +22,7 @@
     "validator",
     "claude-desktop"
   ],
-  "long_description": "Local KCS Authoring Workflow adapter for Claude Desktop. Use only the listed KCS Authoring tools. If a legacy instruction requires support_get_behavior_instructions, call it at most once, use its returned route, and continue with KCS tools. Do not report Plesk Support Assistant Local as missing. Use kcs_draft_ticket for /draft <ticket_ref>. Use kcs_register_clean_ticket only when sanitized ticket text is visible and no ticket_ref exists. Semantic review is bounded through kcs_prepare_semantic_review and kcs_submit_semantic_review. During semantic review, use only bounded excerpts and return only the exact fields requested by the current packet. Python validates the submission; the operator selects scope; Python owns the final KCS action. Do not choose for the operator, draft manually, or publish. No Zendesk writes, Help Center publication, Claude CLI/Code, API key, or external semantic-provider setup is required.",
+  "long_description": "Local KCS Authoring Workflow adapter for Claude Desktop. Use only the listed KCS Authoring tools. If a legacy instruction requires support_get_behavior_instructions, call it at most once, use its returned route, and continue with KCS tools. Do not report Plesk Support Assistant Local as missing. Use kcs_draft_ticket for /draft <ticket_ref>. Use kcs_register_clean_ticket only when sanitized ticket text is visible and no ticket_ref exists. Semantic review is bounded through kcs_prepare_semantic_review and kcs_submit_semantic_review. During semantic review, use only bounded excerpts and return only the exact fields requested by the current packet. Python validates the submission; the operator selects scope; Python owns the final KCS action. Do not choose for the operator, draft manually, or publish. Before drafting, bounded public reuse comparison is presented through kcs_confirm_reuse_comparison; Claude compares only returned accepted ticket facts and cited public excerpts, asks one operator question, and submits only the operator-confirmed closed-enum outcome. No Zendesk writes, Help Center publication, Claude CLI/Code, API key, or external semantic-provider setup is required.",
   "manifest_version": "0.3",
   "name": "kcs-authoring-mvp-validator-control",
   "prompts_generated": false,
@@ -33,7 +33,9 @@
         "${__dirname}/server/index.js"
       ],
       "command": "node",
-      "env": {}
+      "env": {
+        "KCS_DRAFT_RUN_REPORT_DIR": "${user_config.draft_run_report_directory}"
+      }
     },
     "type": "node"
   },
@@ -51,11 +53,15 @@
       "name": "kcs_draft_article"
     },
     {
+      "description": "Submit only the operator-confirmed outcome after reuse_comparison_required. Copy comparison_ref exactly; reuse or update also requires one displayed candidate_ref. Do not include ticket facts, excerpts, URLs, recommendations, or free-form text.",
+      "name": "kcs_confirm_reuse_comparison"
+    },
+    {
       "description": "Call only after semantic_review_required. Returns bounded excerpts and submit instructions for item identification.",
       "name": "kcs_prepare_semantic_review"
     },
     {
-      "description": "Submit semantic_issue_proposal_v1 from the prepared packet. No article draft, HTML, item, item_candidates, or raw ticket text.",
+      "description": "Submit semantic_issue_proposal_v1 from the prepared packet. No article draft, HTML, item, item_candidates, or raw ticket text. After a multi-item selection, if the operator says an issue was missed or merged, submit one amended proposal with the returned operator_selection_ref. Operator prose is steering context, never evidence.",
       "name": "kcs_submit_semantic_review"
     },
     {
@@ -64,5 +70,13 @@
     }
   ],
   "tools_generated": false,
+  "user_config": {
+    "draft_run_report_directory": {
+      "description": "Optional local directory for value-safe /draft diagnostic reports. Leave unset for normal authoring.",
+      "required": false,
+      "title": "Draft run accounting directory",
+      "type": "directory"
+    }
+  },
   "version": "0.1.0"
 }

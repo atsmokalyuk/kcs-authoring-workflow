@@ -30,16 +30,43 @@ Required behavior:
   - tests / evals;
   - acceptance criteria;
   - review checklist.
+- For a material feature or slice, create or update the authoritative tracked
+  plan under `docs/internal/engineering-process/slice-plans/` before requesting
+  or acting on Delivery authorization. Chat is a compact decision surface, not
+  the authoritative design record.
+- If the operator selects or authorizes a material slice before the tracked
+  plan is written, record the selected boundary and exact authorization in the
+  plan before implementation. Apply later operator corrections to the plan
+  before continuing Delivery.
 - Ask concise questions for material unknowns.
-- Wait for operator confirmation before changing runtime behavior, data
-  handling, privacy boundaries, schemas/contracts, persistence, integrations,
-  or public/reviewer output.
+- Use the role-neutral Design Uncertainty and Decision Readiness protocol when
+  the operator is unsure or lacks enough visible evidence. The operator steers
+  or approves the result of autonomous research; the operator does not have to
+  diagnose the uncertainty first.
+- Record outcome agreement, design selection, and Delivery authorization
+  independently before changing runtime behavior, data handling, privacy
+  boundaries, schemas/contracts, persistence, integrations, or public/reviewer
+  output. Design selection does not authorize Delivery.
+- If the proposed design relies on an existing runtime or API, resolve the
+  exact endpoint/mode/response-shape feasibility before substantial
+  implementation. Use fresh tracked operational evidence or a bounded safe
+  smoke; docs, fixtures, or a neighboring endpoint prove only nominal behavior.
 
 ### Builder / Implementation Mode
 
 Use this mode after the slice is agreed or when the task is a direct
 implementation request with clear scope.
 
+- Before a behavior-changing batch, confirm that the outcome is agreed, the
+  design is selected, the Operator Decision Readiness packet is complete, and
+  Delivery is explicitly authorized. For a material slice, also confirm that
+  these facts, acceptance gates, unchanged contracts, and stop conditions are
+  present in its tracked slice plan. Otherwise return to Architect mode.
+- Interpret `go next`, `continue`, `looks good`, and similar positive wording
+  only inside the already selected and authorized slice. Do not use them as
+  approval for a new behavior, UX, integration, or contract change.
+- Treat an isolated adapter, prototype, or feasibility success as evidence for
+  the parent design. It does not select the parent UX or authorize integration.
 - Implement the smallest safe slice.
 - Preserve existing contracts unless the operator explicitly authorizes a
   contract change.
@@ -49,6 +76,11 @@ implementation request with clear scope.
   validation, decisions, rendering, persistence, and failure behavior.
 - Avoid unrelated cleanup, broad refactors, dependency churn, or prompt
   framework additions.
+- Before closeout, apply the compact Ousterhout gate to material
+  implementation, refactor, deployment, and integration slices. Record
+  `not triggered` only for a small leaf change with no ownership, interface,
+  dependency, persistence, failure, deployment-boundary, or material internal
+  complexity change.
 
 ### Bugfix / Forensic Mode
 
@@ -77,6 +109,12 @@ The review must distinguish blockers from warnings.
 Blockers include behavior regressions, unsafe data handling, broken contracts,
 missing tests for changed behavior, private artifact touches, and README/docs
 claims that contradict actual behavior.
+
+For every material implementation review, resolve the `Active Slice Plan`
+named in the review packet before reviewing source details. Treat a missing
+plan, nonexistent path, unauthorized changed phase, locked-phase touch, or
+material plan/diff mismatch as a blocker. The reviewer owns semantic alignment;
+policy tests may enforce only the packet and plan-reference shape.
 
 Warnings include naming cleanup, small doc clarity issues, low-risk test gaps,
 or follow-up hardening that does not block the current slice.
@@ -155,6 +193,8 @@ Use `gpt-5.3-codex-spark` as the default reviewer before commits.
 
 The review must check at minimum:
 
+- Active Slice Plan path, authorized phase, locked phases, and plan/diff
+  alignment for a material change;
 - diff sanity and unintended file touches;
 - missing or insufficient tests;
 - naming and import cleanup;
@@ -170,6 +210,11 @@ For documentation changes, also check:
 - whether the changed document is still current;
 - whether related docs or README references need updates;
 - whether terminology and scope match the active product/engineering plan.
+
+For a triggered Ousterhout review, record the trigger, complexity hidden,
+ownership and what the module must not know, interface depth/caller cognitive
+load, information leakage/change amplification, whether complexity was removed
+or only moved, residual risk, and `pass` / `revise` / `reject` verdict.
 
 ## AI-Assisted Code Quality Gates
 

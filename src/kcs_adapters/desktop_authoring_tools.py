@@ -9,12 +9,16 @@ from typing import Any
 from kcs_adapters import desktop_authoring_pipeline as _desktop_authoring_pipeline
 from kcs_adapters import desktop_draft_tool as _desktop_draft_tool
 from kcs_adapters import desktop_payload as _desktop_payload
+from kcs_adapters import desktop_reuse_comparison as _desktop_reuse_comparison
 from kcs_adapters import desktop_ticket_ref as _desktop_ticket_ref
 from kcs_adapters import desktop_workflow_results as _desktop_workflow_results
 from kcs_adapters.desktop_stdio_transport import McpArgumentError
 from kcs_adapters.desktop_workflow import (
     ApprovedSummaryPipelineStageError,
     DesktopDraftWorkflow,
+    ReuseComparisonExpiredError,
+    ReuseComparisonInvalidError,
+    ReuseComparisonUnavailableError,
     SemanticReviewBoundaryAmbiguousError,
     SemanticReviewExpiredError,
     SemanticReviewInvalidError,
@@ -157,6 +161,70 @@ class DesktopAuthoringTools:
             draft_arguments["debug"] = arguments["debug"]
         return self._draft_article_tool.draft_article(draft_arguments)
 
+    def prepare_ticket_reuse_comparison(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        """Start ticket comparison without exposing an authoring-capable path."""
+
+        try:
+            _require_args(
+                arguments,
+                frozenset({"ticket_ref"}),
+                required=frozenset({"ticket_ref"}),
+            )
+        except McpArgumentError:
+            return {
+                "auto_publish_allowed": False,
+                "debug_code": "draft_article_args_invalid",
+                "draft_generated": False,
+                "failure_stage": "input_validation",
+                "manual_draft_allowed": False,
+                "network_calls": False,
+                "ok": False,
+                "pipeline_ok": False,
+                "public_output_approved": False,
+                "ready_for_real_ticket_use": False,
+                "result_kind": "draft_article_authoring",
+                "reviewer_bundle_written": False,
+                "schema_version": self._schema_version,
+                "validation_ok": False,
+                "writes_files": False,
+            }
+        return self._draft_article_tool.prepare_ticket_reuse_comparison(arguments)
+
+    def confirm_reuse_comparison(
+        self,
+        arguments: Mapping[str, Any],
+    ) -> JsonDict:
+        try:
+            _require_args(
+                arguments,
+                frozenset({"candidate_ref", "comparison_ref", "outcome"}),
+                required=frozenset({"comparison_ref", "outcome"}),
+            )
+            return self._draft_article_tool.confirm_reuse_comparison(arguments)
+        except ReuseComparisonExpiredError:
+            debug_code = "reuse_comparison_expired"
+        except ReuseComparisonUnavailableError:
+            debug_code = "reuse_comparison_unavailable"
+        except ReuseComparisonInvalidError:
+            debug_code = "reuse_comparison_invalid"
+        except McpArgumentError:
+            self._draft_workflow.clear_pending_reuse_comparison()
+            debug_code = "reuse_comparison_invalid"
+        pending = self._draft_workflow.pending_reuse_comparison
+        correction_allowed = (
+            pending is not None
+            and arguments.get("comparison_ref") == pending.comparison_ref
+        )
+        return _desktop_reuse_comparison.reuse_comparison_submit_failure_result(
+            comparison_ref=(pending.comparison_ref if pending is not None else None),
+            correction_allowed=correction_allowed,
+            debug_code=debug_code,
+            schema_version=self._schema_version,
+        )
+
     def prepare_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
         try:
             _require_args(
@@ -180,6 +248,7 @@ class DesktopAuthoringTools:
 
     def submit_semantic_review(self, arguments: Mapping[str, Any]) -> JsonDict:
         correction: JsonDict | None = None
+        terminal_cause_debug_code: str | None = None
         try:
             _require_semantic_submit_args(arguments)
             return self._draft_article_tool.submit_semantic_review(arguments)
@@ -197,6 +266,7 @@ class DesktopAuthoringTools:
         except SemanticReviewSubmissionInvalidError as exc:
             correction = exc.correction
             debug_code = exc.debug_code
+            terminal_cause_debug_code = exc.terminal_cause_debug_code
         except (ContractValidationError, McpArgumentError) as exc:
             _terminalize_invalid_semantic_submit_shape(
                 self._draft_workflow,
@@ -207,6 +277,7 @@ class DesktopAuthoringTools:
             correction=correction,
             debug_code=debug_code,
             schema_version=self._schema_version,
+            terminal_cause_debug_code=terminal_cause_debug_code,
         )
 
     def support_get_behavior_instructions(
@@ -232,7 +303,13 @@ class DesktopAuthoringTools:
 def _require_semantic_submit_args(arguments: Mapping[str, Any]) -> None:
     _require_args(
         arguments,
-        frozenset({"semantic_issue_proposal", "semantic_review_ref"}),
+        frozenset(
+            {
+                "operator_selection_ref",
+                "semantic_issue_proposal",
+                "semantic_review_ref",
+            }
+        ),
         required=frozenset({"semantic_issue_proposal", "semantic_review_ref"}),
     )
 

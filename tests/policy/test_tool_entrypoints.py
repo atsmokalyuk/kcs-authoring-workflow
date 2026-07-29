@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TOOL_DOC = ROOT / "docs" / "internal" / "engineering-process" / "tool-entrypoints.md"
 
 REQUIRED_COMMANDS = (
-    "uv run pytest tests/policy/test_kcs14_docs_policy.py -q",
+    "uv run pytest tests/policy/test_engineering_process_docs_policy.py -q",
     "uv run pytest tests/policy/test_review_context_policy.py -q",
     "uv run pytest tests/policy/test_code_review_graph_policy.py -q",
     "uv run pytest tests/policy/test_kcs14_freeze_snapshots.py -q",
@@ -26,6 +26,7 @@ REQUIRED_COMMANDS = (
     "uv run python scripts/smoke_claude_desktop_ui_prompt.py --help",
     "uv run python scripts/rebaseline_semantic_issue_projection.py --help",
     "uv run python scripts/kcs14_langfuse_rebaseline.py --help",
+    "uv run python scripts/kcs14_langfuse_draft_run.py --help",
     "uv run --extra dev python scripts/measure_complexity.py --help",
     (
         "uv run --extra dev python scripts/measure_complexity.py "
@@ -50,6 +51,7 @@ HELP_COMMANDS = (
     [sys.executable, "scripts/smoke_claude_desktop_ui_prompt.py", "--help"],
     [sys.executable, "scripts/rebaseline_semantic_issue_projection.py", "--help"],
     [sys.executable, "scripts/kcs14_langfuse_rebaseline.py", "--help"],
+    [sys.executable, "scripts/kcs14_langfuse_draft_run.py", "--help"],
     [
         "uv",
         "run",

@@ -235,12 +235,6 @@ _GUI_PATH_RE = re.compile(
     r"[A-Z][A-Za-z0-9 &/+-]+",
     re.I,
 )
-_PLESK_INFO_ERROR_TRIGGER_RE = re.compile(
-    r"\bPLESK_INFO:\s*(?:[45]\d\d\b|[^<\n]*(?:bad gateway|error|fail(?:ed|ure|s)?|"
-    r"cannot|unable|denied|timeout|unavailable|not found|forbidden|exception|"
-    r"warning|fatal|critical))",
-    re.I,
-)
 _RAW_WINDOWS_PLESK_PATH_RE = re.compile(
     r"\b[A-Z]:\\(?:Program Files(?: \(x86\))?\\Plesk|Plesk|Inetpub\\vhosts|Windows)"
     r"\\[^\s<>\"]*",
@@ -817,15 +811,6 @@ def _risky_step_findings(source_html: str) -> tuple[KcsZendeskMarkupFinding, ...
 def _wording_findings(source_html: str) -> tuple[KcsZendeskMarkupFinding, ...]:
     findings: list[KcsZendeskMarkupFinding] = []
     public_plain = _strip_html_text(_remove_internaldata(source_html))
-    if _PLESK_INFO_ERROR_TRIGGER_RE.search(source_html):
-        findings.append(
-            _finding(
-                "plesk_info_used_for_error_message",
-                "blocker",
-                "Use PLESK_ERROR for Plesk GUI/Panel error messages; reserve "
-                "PLESK_INFO for informational output.",
-            )
-        )
     if _WEAK_CONFIDENCE_RE.search(public_plain) or _NOT_CLEAR_RE.search(public_plain):
         findings.append(
             _finding(

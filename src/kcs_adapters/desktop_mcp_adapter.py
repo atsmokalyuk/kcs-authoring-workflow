@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ from kcs_adapters.desktop_tool_descriptors import (
 from kcs_adapters.desktop_tool_names import (
     TOOL_AUTHOR_APPROVED_SUMMARY,
     TOOL_AUTHOR_TICKET,
+    TOOL_CONFIRM_REUSE_COMPARISON,
     TOOL_DRAFT_ARTICLE,
     TOOL_DRAFT_TICKET,
     TOOL_GET_MCP_READINESS,
@@ -38,8 +40,13 @@ from kcs_adapters.desktop_workflow import (
     DesktopDraftWorkflow,
     semantic_provider_from_environment,
 )
+from kcs_adapters.draft_run_accounting import (
+    DraftRunAccounting,
+    draft_run_accounting_from_environment,
+)
 from kcs_core.errors import ContractValidationError
 from kcs_core.json_payload import JsonDict
+from kcs_core.reuse_comparison import ReuseComparisonEvidenceProvider
 from kcs_core.semantic_extraction import SemanticExtractionProvider
 
 MCP_TOOL_RESULT_SCHEMA_VERSION = "kcs_mcp_tool_result_v1"
@@ -65,8 +72,10 @@ class KcsDesktopMcpAdapter:
         semantic_extraction_provider: DraftArticleSemanticExtractionProvider
         | None
         | object = _DEFAULT_SEMANTIC_EXTRACTION_PROVIDER,
+        reuse_comparison_provider: ReuseComparisonEvidenceProvider | None = None,
         selection_ttl_seconds: float = _DRAFT_SELECTION_TTL_SECONDS,
         visible_tools: Iterable[str] | None = None,
+        draft_run_accounting: DraftRunAccounting | None = None,
     ) -> None:
         self._tools: tuple[McpToolDescriptor, ...] | None = None
         self._reviewer_bundle_root = (
@@ -82,6 +91,7 @@ class KcsDesktopMcpAdapter:
         self._draft_workflow = DesktopDraftWorkflow(
             provider=semantic_provider,
             selection_ttl_seconds=selection_ttl_seconds,
+            reuse_comparison_provider=reuse_comparison_provider,
         )
         self._authoring_tools = _desktop_authoring_tools.DesktopAuthoringTools(
             draft_workflow=self._draft_workflow,
@@ -89,6 +99,11 @@ class KcsDesktopMcpAdapter:
             schema_version=MCP_TOOL_RESULT_SCHEMA_VERSION,
         )
         self._visible_tools = frozenset(visible_tools) if visible_tools else None
+        self._draft_run_accounting = (
+            draft_run_accounting
+            if draft_run_accounting is not None
+            else draft_run_accounting_from_environment()
+        )
         self._handlers: dict[str, Any] = {
             TOOL_GET_POLICY_SUMMARY: self._get_policy_summary,
             TOOL_GET_MCP_READINESS: self._get_readiness,
@@ -109,6 +124,9 @@ class KcsDesktopMcpAdapter:
             ),
             TOOL_DRAFT_TICKET: self._authoring_tools.draft_ticket,
             TOOL_DRAFT_ARTICLE: self._authoring_tools.draft_article,
+            TOOL_CONFIRM_REUSE_COMPARISON: (
+                self._authoring_tools.confirm_reuse_comparison
+            ),
             TOOL_PREPARE_SEMANTIC_REVIEW: (
                 self._authoring_tools.prepare_semantic_review
             ),
@@ -132,6 +150,28 @@ class KcsDesktopMcpAdapter:
             self._tools = tools
         return self._tools
 
+    @property
+    def reuse_comparison_enabled(self) -> bool:
+        """Return whether direct entrypoints have a deterministic comparison gate."""
+
+        return self._draft_workflow.reuse_comparison_enabled
+
+    def begin_operator_reuse_comparison(
+        self,
+        ticket_ref: str,
+    ) -> McpToolResult:
+        """Enter the write-incapable comparison-only ticket path."""
+
+        try:
+            result = self._authoring_tools.prepare_ticket_reuse_comparison(
+                {"ticket_ref": ticket_ref}
+            )
+        except ContractValidationError:
+            return _desktop_mcp_results.tool_error("validation_failed")
+        except Exception:  # pragma: no cover - defensive adapter boundary
+            return _desktop_mcp_results.tool_error("tool_failed")
+        return McpToolResult(ok=True, result=result)
+
     def call_tool(
         self, name: str, arguments: Mapping[str, Any] | None = None
     ) -> McpToolResult:
@@ -141,14 +181,56 @@ class KcsDesktopMcpAdapter:
         handler = self._handlers.get(name)
         if handler is None:
             return _desktop_mcp_results.tool_error("tool_unavailable")
+        started_ns = (
+            time.monotonic_ns()
+            if self._draft_run_accounting is not None
+            else None
+        )
         try:
-            return McpToolResult(ok=True, result=handler(arguments))
+            result = McpToolResult(ok=True, result=handler(arguments))
         except (McpArgumentError, _desktop_draft_arguments.DraftArticleArgumentError):
+            self._observe_draft_tool(
+                name=name,
+                arguments=arguments,
+                result=_desktop_mcp_results.tool_error("validation_failed"),
+                started_ns=started_ns,
+            )
             raise
         except ContractValidationError:
-            return _desktop_mcp_results.tool_error("validation_failed")
+            result = _desktop_mcp_results.tool_error("validation_failed")
         except Exception:  # pragma: no cover - defensive adapter boundary
-            return _desktop_mcp_results.tool_error("tool_failed")
+            result = _desktop_mcp_results.tool_error("tool_failed")
+        self._observe_draft_tool(
+            name=name,
+            arguments=arguments,
+            result=result,
+            started_ns=started_ns,
+        )
+        return result
+
+    def _observe_draft_tool(
+        self,
+        *,
+        name: str,
+        arguments: Mapping[str, Any],
+        result: McpToolResult,
+        started_ns: int | None,
+    ) -> None:
+        accounting = self._draft_run_accounting
+        if accounting is None or started_ns is None:
+            return
+        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
+        try:
+            accounting.observe_tool_call(
+                tool_name=name,
+                arguments=arguments,
+                result_ok=result.ok,
+                result=result.result,
+                error_code=result.error_code,
+                duration_ms=duration_ms,
+            )
+        except Exception:
+            return
 
     def _get_policy_summary(self, arguments: Mapping[str, Any]) -> JsonDict:
         _require_args(arguments, _NO_ARGS, required=_NO_ARGS)

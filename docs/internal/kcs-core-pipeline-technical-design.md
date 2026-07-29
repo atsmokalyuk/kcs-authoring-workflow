@@ -160,14 +160,16 @@ Rules:
   shape, coverage shape, and whole-proposal shape; an unregistered internal
   code is collapsed to the generic terminal code. Observation shape,
   non-extractive observation text, and explicit speaker incompatibility have
-  static one-retry corrections that restate the already prepared contract
-  without echoing or repairing submitted values. The same per-review correction
-  budget remains single-use.
+  bounded corrections that restate the already prepared contract without
+  echoing or repairing submitted values. A review may use one structural
+  correction followed by one grounding correction; neither stage may repeat,
+  grounding cannot reopen structure, and the total is capped at two.
 - Resolution and verification observations preserve executable detail present
   in the approved excerpts; downstream Python evidence/readiness checks still
   block incomplete procedures.
-- The one-use schema-correction retry remains bound to the same review ref and
-  applies only to bounded observation-shape correction.
+- Every correction remains bound to the same review ref. Grounding feedback may
+  expose only closed observation field paths, never submitted text or source
+  excerpts.
 
 ## Planned End-to-End Flow
 
@@ -446,6 +448,45 @@ KCS identities. GUI wording should be preferred in later rendered output. CLI
 steps may be added when they are missing or more optimal, but they should not
 force a separate article when the underlying cause-resolution or
 question-answer identity is the same.
+
+### KCS-15.2 Bounded Reuse Comparison Evidence
+
+The pre-draft comparison uses a provider-neutral
+`ReuseComparisonEvidenceProvider` port. It accepts already validated bounded
+symptoms plus an optional priority-bearing public article reference. The caller
+may set that priority-bearing reference only when accepted, source-grounded
+ticket evidence says the article helped, resolved, or partially helped with the
+issue. A URL-only, merely mentioned, unconfirmed, or confirmed-not-helpful
+article is not promoted. The provider returns only reusable Plesk Support/KB
+article metadata and bounded cited excerpts. Public `docs.plesk.com` manuals,
+release notes, and changelogs may remain searchable supporting evidence, but
+they are outside the reuse/update candidate contract.
+
+The initial local adapter translates the existing loopback `/api/snippets`
+schema into `reuse_comparison_evidence_v1`. Runtime wrapper fields, local index
+references, query tails, chunk IDs, vectors, rendered Markdown, runtime
+citations, and retrieval IDs stay behind the adapter. Transport or schema
+variation fails closed with value-safe statuses.
+
+All provider results then pass the same core-owned acceptance gate. The gate
+validates public origins, status/origin combinations, explicit URL/source-ID
+consistency, sequential candidate ranks, count/character limits, citations,
+known credential/private-path patterns, and independently recomputed
+whitespace-token counts. Provider-declared counts and adapter-local checks are
+not trusted by themselves.
+
+If the accepted helpful or partially helpful ticket article is present in
+returned evidence, it is ordered before search-only candidates. If its context
+is missing, the evidence result blocks silent substitution by another hit. The
+provider and adapter do not infer the ticket/article relation or decide whether
+an article is identical, complete, outdated, reusable, or ready to update. They
+must not know Desktop state, Claude prompts, drafting, rendering, persistence,
+or publication.
+
+KCS-15.2b1 defines this evidence boundary only. The separately authorized
+KCS-15.2b2 Phase B Desktop workflow consumes it through an opaque,
+operator-confirmed pre-draft comparison state; the evidence packet itself
+still cannot assign KCS identity or action.
 
 ## KCS Action Decision
 

@@ -20,6 +20,7 @@ these MCP tools:
 - `kcs_register_clean_ticket`
 - `kcs_draft_ticket`
 - `kcs_draft_article`
+- `kcs_confirm_reuse_comparison`
 - `kcs_prepare_semantic_review`
 - `kcs_submit_semantic_review`
 - `support_get_behavior_instructions`
@@ -50,9 +51,8 @@ kind of article the user wants; the default is a reviewer-only KCS knowledge
 base article. Do not ask what language to use; default to English unless the
 operator explicitly requests another language. Do not ask the operator to
 choose between reuse search and manual drafting before the first tool call;
-call the tool and show its controlled status. Do not invent reuse/search proof.
-If no explicit reuse/search proof is available, the tool marks reuse search as
-skipped for the MVP and continues with reviewer-only drafting. Do not pass
+call the tool and follow its controlled comparison state. Do not invent
+reuse/search proof or bypass a returned comparison. Do not pass
 uploaded filenames, local paths, Claude upload paths, structured `item`,
 `item_candidates`, reference article bodies, or field aliases. If the operator
 says the content is not sanitized or approved, stop and ask for sanitized input
@@ -134,6 +134,23 @@ selection and wait for the operator. Submit only its exact `submit_arguments`.
 Unassigned evidence remains in the outcome ledger and must never create a
 separate operator checkpoint.
 
+If a draft entrypoint returns `result_kind=reuse_comparison_required`, no draft
+or reviewer bundle exists yet. Compare only the returned
+`accepted_ticket_facts` with the bounded cited public excerpts. Present one
+concise evidence-based recommendation that states covered and missing
+knowledge, then ask exactly one operator question using only `reuse`, `update`,
+`none_fit`, or `need_more_evidence`. Do not call
+`kcs_confirm_reuse_comparison` before the operator answers.
+
+After the answer, call `kcs_confirm_reuse_comparison` with the returned
+`comparison_ref` and the exact operator outcome. For `reuse` or `update`, also
+copy one displayed `candidate_ref`; for `none_fit` or `need_more_evidence`,
+omit it. Never submit ticket facts, excerpts, URLs, recommendations, drafts,
+HTML, or free-form text. The comparison ref is single-use; if it is expired,
+invalid, or replayed, report the controlled restart state rather than
+reconstructing the call. For an operator-selected batch, complete these
+comparisons sequentially, one issue and one question at a time.
+
 During semantic review, use only bounded excerpts and return only the exact
 fields requested by the current packet. Python validates the submission; the
 operator selects scope; Python owns the final KCS action. Do not choose for the
@@ -166,6 +183,8 @@ Use:
 
 - `kcs_draft_article` as the primary operator-facing wrapper for normal
   "draft article" prompts.
+- `kcs_confirm_reuse_comparison` only after the operator answers the bounded
+  comparison question.
 - `kcs_prepare_semantic_review` only as the bounded follow-up when
   `kcs_draft_article` returns `workflow_state=semantic_review_required`.
 - `kcs_submit_semantic_review` only to submit strict semantic item

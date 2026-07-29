@@ -144,16 +144,56 @@ def test_zendesk_markup_quality_flags_style_guide_markup_issues() -> None:
         "<h2>Related articles</h2><p>See more articles.</p>"
     )
 
+    rule_ids = _rule_ids(source)
+
     assert {
         "source_title_missing_error_or_issue_detail",
         "environment_scope_too_broad",
         "resolution_plesk_login_howto_link_missing",
         "resolution_reusable_howto_missing_link",
-        "plesk_info_used_for_error_message",
         "gui_path_not_bold",
         "related_articles_section_present",
         "language_confidence_weak",
-    }.issubset(_rule_ids(source))
+    }.issubset(rule_ids)
+    assert "plesk_info_used_for_error_message" not in rule_ids
+
+
+def test_zendesk_markup_quality_accepts_error_like_plesk_info_content() -> None:
+    source = (
+        "<h1>Product task fails in Plesk due to custom configuration file</h1>"
+        "<h2>Applicable to</h2><ul><li>Plesk for Linux</li></ul>"
+        "<h2>Symptoms</h2><ol>"
+        "<li>PLESK_INFO: ERROR: PleskFatalException. Unable to connect to "
+        "database: access denied.</li></ol>"
+        "<h2>Cause</h2>"
+        "<p>The custom configuration file /etc/product/conf.d/custom.conf "
+        "overrides the product service configuration.</p>"
+        "<h2>Resolution</h2><div class=\"resolution\"><ol>"
+        "<li><a href=\"https://support.plesk.com/hc/en-us/articles/"
+        "12377512781975-How-to-connect-to-a-Plesk-server-via-SSH\">"
+        "Connect to the Plesk server via SSH.</a></li>"
+        "<li>Run rpm -qf /etc/product/conf.d/custom.conf "
+        "to verify that the file is not owned by any package.</li>"
+        "<li>Run cat /etc/product/conf.d/custom.conf "
+        "to review the file content.</li>"
+        "<li>Run mkdir -p /root/kcs-case-backup to create a backup "
+        "directory.</li>"
+        "<li>Run cp -a /etc/product/conf.d/custom.conf "
+        "/root/kcs-case-backup/ to back up the configuration file.</li>"
+        "<li>Run mv /etc/product/conf.d/custom.conf "
+        "/etc/product/conf.d/custom.conf.disabled to disable the configuration "
+        "file.</li>"
+        "<li>Run systemctl restart product-service.</li>"
+        "<li>Open the affected Plesk page and confirm the task succeeds.</li>"
+        "</ol></div>"
+    )
+
+    report = review_kcs_zendesk_markup_source(source)
+
+    assert report.ok is True
+    assert "plesk_info_used_for_error_message" not in {
+        finding.rule_id for finding in report.findings
+    }
 
 
 def test_zendesk_markup_quality_flags_language_style_issues() -> None:

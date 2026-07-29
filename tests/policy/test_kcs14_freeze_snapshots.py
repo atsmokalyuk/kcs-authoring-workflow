@@ -120,6 +120,14 @@ DESKTOP_TOOL_SNAPSHOT = (
         False,
     ),
     (
+        "kcs.confirm_reuse_comparison",
+        "kcs_confirm_reuse_comparison",
+        ("candidate_ref", "comparison_ref", "outcome"),
+        ("comparison_ref", "outcome"),
+        False,
+        False,
+    ),
+    (
         "kcs.prepare_semantic_review",
         "kcs_prepare_semantic_review",
         ("semantic_review_ref",),
@@ -131,6 +139,7 @@ DESKTOP_TOOL_SNAPSHOT = (
         "kcs.submit_semantic_review",
         "kcs_submit_semantic_review",
         (
+            "operator_selection_ref",
             "semantic_issue_proposal",
             "semantic_review_ref",
         ),
@@ -236,6 +245,7 @@ REJECTED_ACTIVE_SEMANTIC_SCHEMA_TERMS = (
 )
 
 TOOL_OUTPUT_SUCCESS_KEYS = (
+    "accepted_ticket_facts",
     "allowed_source_refs",
     "approved_summary_source",
     "article_type",
@@ -259,6 +269,11 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "clean_ticket_storage_hint",
     "clean_ticket_storage_ref",
     "clean_ticket_store_ref",
+    "comparison_candidates",
+    "comparison_outcome",
+    "comparison_outcomes",
+    "comparison_ref",
+    "comparison_sequence_outcomes",
     "completed_count",
     "coverage_record_field_names",
     "customer_replies",
@@ -295,6 +310,7 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "next_tool_name",
     "ok",
     "open_questions",
+    "operator_boundary_correction",
     "operator_choice_confirmed",
     "operator_choice_options",
     "operator_choice_request",
@@ -363,6 +379,7 @@ TOOL_OUTPUT_SUCCESS_KEYS = (
     "submit_tool",
     "task",
     "terminal_blocked_count",
+    "terminal_cause_debug_code",
     "ticket_ref",
     "tool_count",
     "tools",
@@ -666,7 +683,11 @@ def test_rejected_semantic_experiments_stay_off_active_submit_surface() -> None:
     )
     properties = frozenset(descriptor.input_schema.get("properties", {}))
 
-    assert properties == {"semantic_issue_proposal", "semantic_review_ref"}
+    assert properties == {
+        "operator_selection_ref",
+        "semantic_issue_proposal",
+        "semantic_review_ref",
+    }
     assert properties.isdisjoint(REJECTED_ACTIVE_SEMANTIC_SUBMIT_FIELDS)
     for schema_term in REJECTED_ACTIVE_SEMANTIC_SCHEMA_TERMS:
         assert schema_term not in descriptor.description

@@ -29,10 +29,11 @@ policy -> spec -> tests -> implementation -> validation -> review
 The model is not "AI writes code and humans inspect the diff." The model is:
 
 ```text
-human and agent clarify the slice
+human and agent clarify the requested outcome
 agent drafts a bounded spec
-human confirms material assumptions
-agent implements only the agreed slice
+agent prepares decision-ready design evidence
+human selects the design and separately authorizes Delivery
+agent implements only the selected and authorized slice
 tests/evals prove the behavior
 review checks contracts, privacy, failure behavior, and drift
 ```
@@ -49,8 +50,10 @@ slice with goal, user/operator, allowed inputs, forbidden inputs, output
 contract, failure behavior, tests/evals, acceptance criteria, and review
 checklist.
 
-Tests and evals are executable guardrails. They are not the only authority, but
-they are the proof that expected behavior remains true.
+Tests, bounded trials, and named human reviews are guardrails matched to the
+kind of acceptance criterion. Deterministic behavior should use executable
+tests. Model-mediated stability needs a predeclared bounded trial. Judgment-
+based properties need a named human-review gate with stated evidence.
 
 Source code is the deterministic runtime owner. AI may assist with drafting or
 semantic reasoning only inside bounded contracts; code owns validation,
@@ -60,9 +63,12 @@ decisions, rendering, persistence, and failure behavior.
 
 This project uses BDD-shaped pytest by default.
 
-Acceptance criteria should be translated into executable pytest tests that read
-as `Given / When / Then`, but remain ordinary Python tests unless a dedicated
-BDD runner becomes necessary.
+Deterministically testable acceptance criteria should be translated into
+executable pytest tests that read as `Given / When / Then`, but remain ordinary
+Python tests unless a dedicated BDD runner becomes necessary. Do not force
+model-mediated or judgment-based criteria into dishonest deterministic tests;
+map them to the bounded-model-trial or human-review gates defined by this
+playbook.
 
 Default mapping:
 
@@ -81,7 +87,9 @@ For now:
 ```text
 spec-first playbook defines the slice
 acceptance criteria define expected behavior
-BDD-shaped pytest proves the behavior
+BDD-shaped pytest proves deterministic behavior
+bounded trials evaluate model-mediated stability
+named human reviews evaluate judgment-based properties
 golden fixtures protect stable output
 forbidden-path tests protect safety boundaries
 ```
@@ -110,12 +118,15 @@ Before implementation:
 2. Read the relevant files in `docs/internal/engineering-process/spec-first-engineering-playbook/`.
 3. Draft or update the slice spec.
 4. Ask concise clarifying questions for material unknowns.
-5. Wait for operator confirmation when the slice affects runtime behavior,
-   data handling, privacy boundaries, schemas/contracts, persistence,
-   integrations, or public/reviewer output.
-6. Implement only the agreed slice.
-7. Run targeted validation.
-8. Report changed files, unchanged contracts, validation run, and open risks.
+5. Record outcome agreement, design selection, and Delivery authorization as
+   three independent facts when the slice affects runtime behavior, data
+   handling, privacy boundaries, schemas/contracts, persistence, integrations,
+   or public/reviewer output.
+6. Keep Delivery locked until the operator has sufficient visible evidence,
+   selects the design, and separately authorizes Delivery.
+7. Implement only the selected and authorized slice.
+8. Run targeted validation.
+9. Report changed files, unchanged contracts, validation run, and open risks.
 
 ## Review Questions
 

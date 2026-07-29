@@ -6,6 +6,15 @@ This file records repeated findings that may move from prose guidance to a
 stronger enforcement layer. It is a review/process artifact, not a runtime
 product contract.
 
+This registry tracks local enforcement maturity. It does not prove that a rule
+is portable. Cross-project evidence and extraction readiness are tracked
+separately in
+`docs/internal/engineering-process/engineering-rule-portability.md`.
+
+An implemented policy test may remain project-specific. A portable
+judgment-based rule may remain a review gate. Do not infer one ladder's status
+from the other.
+
 ## Promotion Cadence
 
 ```text
@@ -288,6 +297,102 @@ Status:
 | KCS14-PROMO-010 | Frozen-path implementation changes must be detected and stale snapshot or graph evidence must fail deterministic policy checks | Slice 9 Targets 2-3, repeated KCS-14.5 frozen-path changes | freeze snapshot, graph hash, and post-commit freeze/graph checks | KCS-14.5 | implemented |
 | KCS14-PROMO-011 | Durable review notes must not record absolute local artifact paths; use an opaque basename plus value-safe hash/count/verdict | M3 aggregate closeout review, 13 repeated paths | review-context policy test | KCS-14.5 M3 closeout | implemented |
 | KCS14-PROMO-013 | M3 canaries must run in fail-closed order: legacy baseline, medium, continuation, then complex only after the first two stages are stable | M2 closeout and M3 staged canary gate | ordered documentation policy test | KCS-14.5 M2 closeout | implemented |
+| KCS14-PROMO-014 | Material implementation, refactor, deployment, or integration closeout needs a compact Ousterhout review record or a concrete leaf-change `not triggered` reason | KCS-14 design-review usage and KCS-15.2a closeout audit | review gate plus deterministic record-shape anchor | KCS-15 process hardening | implemented |
+| KCS14-PROMO-015 | An existing runtime/API dependency needs exact endpoint/mode/response-shape operational evidence before substantial implementation; fixtures and adjacent endpoints are insufficient | KCS-15.2b1 `/api/snippets` pre-implementation correction | clarification/playbook/review gate plus policy anchor | KCS-15.2b1 | implemented |
+| KCS14-PROMO-016 | Configuration declared at a launcher or intermediate wrapper must not be treated as effective at the terminal runtime; prove propagation with a value-safe effective-config or derived-effect preflight on the current live process | PAUX-7103 source/installed-wrapper accounting smokes passed, but Claude Desktop did not propagate `launchctl` values to its MCPB connector and the real run remained unobserved | extend installed-runtime identity gate plus deterministic wording anchor | PAUX-7103 | implemented |
+
+## Exact Integration Feasibility Promotion Detail
+
+Finding code:
+
+- see the exact-integration feasibility row above.
+
+Rule / finding:
+
+- KCS-15.2a had proven local RAG readiness and metadata search, while the new
+  KCS-15.2b1 design depended on the distinct `/api/snippets` endpoint and its
+  wrapper, bounds, and public-excerpt shape.
+- The first implementation plan placed the live check near validation. The
+  operator correction moved it before substantial adapter work.
+- The bounded smoke confirmed the live schema and bounds and exposed two
+  nominal/operational differences: supported status CLI arguments and the
+  top-level result wrapper.
+
+Can be checked mechanically:
+
+- presence of the exact-path gate in tracked process docs: yes;
+- whether a particular smoke is safe, fresh, and decision-relevant: reviewer-owned.
+
+Decision:
+
+- embed the gate in the existing clarification, feature, and review paths;
+- do not add a new workflow layer or treat one smoke as stability evidence.
+
+Status:
+
+- implemented.
+
+## Compact Ousterhout Closeout Promotion Detail
+
+Finding code:
+
+- see the implemented promotions row above.
+
+Rule / finding:
+
+- Ousterhout principles were authoritative for code movement and required as a
+  deployment design lens, but material feature closeouts did not consistently
+  leave auditable evidence that the review occurred.
+- A triggered closeout must record complexity hidden, ownership, interface
+  depth/caller cognitive load, information leakage/change amplification,
+  whether complexity was removed or moved, residual risk, and verdict.
+- A small leaf change may record `not triggered` only with a concrete boundary
+  and unchanged-internal-complexity reason; it uses the two-field short form
+  rather than the full reviewed record.
+
+Seen in:
+
+- KCS-14 code-map and refactor reviews established the stable design lens.
+- KCS-15.2a satisfied the principles through an isolated adapter boundary, but
+  its first closeout had no explicit Ousterhout record.
+
+Can be checked mechanically:
+
+- record shape and required vocabulary: yes;
+- module depth, information leakage, cognitive load, or design quality: no.
+
+False-positive risk:
+
+- low with the leaf-change exception; high if every source edit is treated as
+  proof that a material design review triggered. A large internal complexity
+  change remains reviewed even when its external boundary is stable.
+
+Promotion target:
+
+- compact named-human-review gate;
+- deterministic policy anchor for required process text only.
+
+Decision:
+
+- implement in the existing Builder, playbook, review checklist, and review
+  packet protocol; do not create a new workflow or design-scoring tool.
+
+Owner slice:
+
+- KCS-15 process hardening.
+
+Validation:
+
+- `tests/policy/test_engineering_process_docs_policy.py` anchors the trigger, record shape,
+  leaf exception, and review-only judgment boundary.
+
+Approval:
+
+- operator approved the trigger-based gate after the KCS-15.2a closeout audit.
+
+Status:
+
+- implemented.
 
 ## Durable Review Artifact Reference Promotion Detail
 

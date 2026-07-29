@@ -665,6 +665,8 @@ def _approved_summary_pipeline_reuse_status(
 def _explicit_existing_article_match(
     arguments: Mapping[str, Any],
 ) -> dict[str, Any] | None:
+    if approved_summary_reuse_was_checked(arguments):
+        return None
     item = _desktop_payload.approved_summary_optional_item_object(arguments)
     if item is None:
         return None

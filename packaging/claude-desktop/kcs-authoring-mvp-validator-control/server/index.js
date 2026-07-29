@@ -200,6 +200,11 @@ function resolveRuntime() {
 }
 
 const runtime = resolveRuntime();
+const draftRunReportDir =
+  process.env.KCS_DRAFT_RUN_REPORT_DIR || "";
+const draftRunAccountingMode =
+  process.env.KCS_DRAFT_RUN_ACCOUNTING ||
+  (draftRunReportDir ? "local-json" : "");
 
 const childEnv = {
   APPDATA: process.env.APPDATA || "",
@@ -237,6 +242,8 @@ const childEnv = {
     process.env.KCS_AUTHORING_APPROVED_SEMANTIC_PROVIDER_REF || "",
   KCS_AUTHORING_SEMANTIC_PROVIDER:
     process.env.KCS_AUTHORING_SEMANTIC_PROVIDER || "",
+  KCS_DRAFT_RUN_ACCOUNTING: draftRunAccountingMode,
+  KCS_DRAFT_RUN_REPORT_DIR: draftRunReportDir,
   LANG: process.env.LANG || "C.UTF-8",
   LC_ALL: process.env.LC_ALL || "",
   LOCALAPPDATA: process.env.LOCALAPPDATA || "",

@@ -41,6 +41,7 @@ part of the release documentation surface.
 | Reviewer artifacts remain local and reviewer-only. | Active | No public output, auto-publish, Zendesk write, Help Center write, or customer reply. |
 | The KCS tool route remains the existing six-tool surface. | Active | No development MCP surface or workflow tool is added. |
 | Langfuse is an external, optional, value-safe engineering observer. | Active | It receives only allowlisted counts, hashes, booleans, enums, and verdicts with null input/output; it never becomes a workflow layer. |
+| The M4 change gate is scoped to KCS-14.5 semantic ownership, provider/evaluation, and incident control-surface work. | Active | Independently approved work outside those surfaces may proceed only when it leaves the retained incident safety contracts unchanged. |
 
 ## Experiment And Runtime Decisions
 

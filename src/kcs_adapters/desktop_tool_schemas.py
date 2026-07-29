@@ -190,6 +190,35 @@ def draft_ticket_input_schema() -> JsonDict:
     )
 
 
+def confirm_reuse_comparison_input_schema() -> JsonDict:
+    return object_schema(
+        properties={
+            "candidate_ref": {
+                "type": "string",
+                "description": (
+                    "Required for reuse or update; copy one opaque candidate_ref "
+                    "from the pending comparison. Omit for none_fit or "
+                    "need_more_evidence."
+                ),
+            },
+            "comparison_ref": {
+                "type": "string",
+                "description": "Opaque comparison ref from the previous result.",
+            },
+            "outcome": {
+                "type": "string",
+                "enum": [
+                    "reuse",
+                    "update",
+                    "none_fit",
+                    "need_more_evidence",
+                ],
+            },
+        },
+        required=["comparison_ref", "outcome"],
+    )
+
+
 def prepare_semantic_review_input_schema() -> JsonDict:
     return object_schema(
         properties={
@@ -205,6 +234,15 @@ def prepare_semantic_review_input_schema() -> JsonDict:
 def submit_semantic_review_input_schema() -> JsonDict:
     return object_schema(
         properties={
+            "operator_selection_ref": {
+                "type": "string",
+                "description": (
+                    "Opaque active selection ref. Include only after the "
+                    "operator says the accepted multi-item list missed or "
+                    "merged an issue. This permits one amended proposal over "
+                    "the same prepared excerpts."
+                ),
+            },
             "semantic_issue_proposal": {
                 "type": "object",
                 "description": (
@@ -337,6 +375,7 @@ def tool_output_schema() -> JsonDict:
 
 
 _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
+    "accepted_ticket_facts": {"type": "array"},
     "allowed_source_refs": {"type": "array"},
     "auto_publish_allowed": {"type": "boolean"},
     "automatic_item_retry_allowed": {"type": "boolean"},
@@ -354,6 +393,11 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "byte_length": {"type": "integer"},
     "candidate_outcomes": {"type": "array"},
     "candidate_origin": {"type": "string"},
+    "comparison_candidates": {"type": "array"},
+    "comparison_outcome": {"type": "string"},
+    "comparison_outcomes": {"type": "array"},
+    "comparison_ref": {"type": "string"},
+    "comparison_sequence_outcomes": {"type": "array"},
     "case_ref": {"type": "string"},
     "checks": {"type": "array"},
     "clean_ticket_sha256": {"type": "string"},
@@ -401,6 +445,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "operator_choice_request": {"type": "object"},
     "operator_choice_submit_options": {"type": "array"},
     "operator_evidence_provenance": {"type": "string"},
+    "operator_boundary_correction": {"type": "object"},
     "operator_followup": {"type": "object"},
     "operator_prompt": {"type": "string"},
     "operator_prompt_style": {"type": "string"},
@@ -463,6 +508,7 @@ _SUCCESS_OUTPUT_PROPERTIES: JsonDict = {
     "submit_arguments": {"type": "object"},
     "submit_tool": {"type": "string"},
     "task": {"type": "string"},
+    "terminal_cause_debug_code": {"type": "string"},
     "terminal_blocked_count": {"type": "integer"},
     "tool_count": {"type": "integer"},
     "tools": {"type": "array"},
@@ -556,6 +602,7 @@ def _copy_safe_schema_children(schema: Mapping[str, Any], result: JsonDict) -> N
 __all__ = [
     "approved_summary_input_schema",
     "approved_ticket_input_schema",
+    "confirm_reuse_comparison_input_schema",
     "desktop_input_schema",
     "draft_article_environment_schema",
     "draft_article_input_schema",

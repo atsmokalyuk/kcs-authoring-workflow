@@ -652,6 +652,9 @@ def _assert_desktop_initialize_instructions(instructions: str) -> None:
             "item/item_candidates",
             "kcs_prepare_semantic_review",
             "kcs_submit_semantic_review",
+            "reuse_comparison_required",
+            "kcs_confirm_reuse_comparison",
+            "exactly one operator question",
             "do not normalize or strip it",
         ),
     )
@@ -839,6 +842,7 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
         "kcs_register_clean_ticket",
         "kcs_draft_ticket",
         "kcs_draft_article",
+        "kcs_confirm_reuse_comparison",
         "kcs_prepare_semantic_review",
         "kcs_submit_semantic_review",
         "support_get_behavior_instructions",
@@ -848,13 +852,16 @@ def test_tools_list_desktop_mode_exposes_aliases_only_with_safe_annotations() ->
         "kcs_register_clean_ticket",
         "kcs_draft_article",
     ]
-    assert len(tools) == 6
+    assert len(tools) == 7
     for tool in tools:
         _assert_desktop_tool_contract(tool)
 
     tools_by_name = _tools_by_name(tools)
     _assert_register_clean_ticket_tool(tools_by_name["kcs_register_clean_ticket"])
     _assert_draft_article_tool(tools_by_name["kcs_draft_article"])
+    _assert_confirm_reuse_comparison_tool(
+        tools_by_name["kcs_confirm_reuse_comparison"]
+    )
     _assert_prepare_semantic_review_tool(
         tools_by_name["kcs_prepare_semantic_review"]
     )
@@ -1002,6 +1009,30 @@ def _assert_prepare_semantic_review_tool(tool: Mapping[str, Any]) -> None:
     _assert_tool_annotations(tool, read_only=True, idempotent=True)
 
 
+def _assert_confirm_reuse_comparison_tool(tool: Mapping[str, Any]) -> None:
+    _assert_text_includes(
+        tool["description"],
+        (
+            "operator-confirmed outcome",
+            "Copy comparison_ref exactly",
+            "Do not include ticket facts",
+        ),
+    )
+    schema = tool["inputSchema"]
+    _assert_schema_shape(
+        schema,
+        properties={"candidate_ref", "comparison_ref", "outcome"},
+        required=["comparison_ref", "outcome"],
+    )
+    assert schema["properties"]["outcome"]["enum"] == [
+        "reuse",
+        "update",
+        "none_fit",
+        "need_more_evidence",
+    ]
+    _assert_tool_annotations(tool, read_only=False, idempotent=False)
+
+
 def _assert_draft_ticket_tool(tool: Mapping[str, Any]) -> None:
     assert "Use immediately" in tool["description"]
     assert "/draft <ticket_ref>" in tool["description"]
@@ -1022,8 +1053,11 @@ def _assert_submit_semantic_review_tool(tool: Mapping[str, Any]) -> None:
     assert "Submit semantic_issue_proposal_v1" in tool["description"]
     assert "candidate_semantic_extraction_v1" not in tool["description"]
     assert "No article draft" in tool["description"]
+    assert "operator says an issue was missed or merged" in tool["description"]
+    assert "operator prose is steering context, never evidence" in tool["description"]
     schema = tool["inputSchema"]
     assert set(schema["properties"]) == {
+        "operator_selection_ref",
         "semantic_issue_proposal",
         "semantic_review_ref",
     }
@@ -2805,6 +2839,7 @@ def test_validated_semantic_proposal_reaches_operator_selection(
         "kcs_submit_semantic_review"
     ]
     assert set(submit_tool["inputSchema"]["properties"]) == {
+        "operator_selection_ref",
         "semantic_issue_proposal",
         "semantic_review_ref",
     }
@@ -2923,6 +2958,247 @@ def test_validated_semantic_proposal_reaches_operator_selection(
         "issue-002",
     ]
     assert all(outcome["attempted"] is True for outcome in batch["candidate_outcomes"])
+
+
+def test_operator_can_amend_semantic_item_boundaries_once_before_selection(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_issue_proposal_packet(
+        tmp_path, monkeypatch
+    )
+    initial = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "semantic_issue_proposal": _two_issue_proposal(
+                packet, semantic_review_ref
+            ),
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert initial is not None
+    initial_selection = initial["result"]["structuredContent"]
+    initial_selection_ref = initial_selection["operator_selection_ref"]
+    assert initial_selection["operator_boundary_correction"] == {
+        "available": True,
+        "max_amendments": 1,
+        "operator_prose_is_evidence": False,
+        "operator_selection_ref": initial_selection_ref,
+        "semantic_review_ref": semantic_review_ref,
+        "submit_tool": "kcs_submit_semantic_review",
+        "uses_same_prepared_excerpts": True,
+    }
+    initial_text = initial["result"]["content"][0]["text"]
+    assert "operator says this list missed an issue or merged" in initial_text
+    assert "operator's prose only as steering context" in initial_text
+    assert "operator prose" not in json.dumps(initial_selection, sort_keys=True)
+
+    amended_proposal = deepcopy(
+        _two_issue_proposal(packet, semantic_review_ref)
+    )
+    amended_proposal["extraction_source_ref"] = "semantic-proposal-amended-001"
+    issues = amended_proposal["issues"]
+    assert isinstance(issues, list)
+    third_issue = deepcopy(issues[0])
+    third_issue["issue_ref"] = "issue-003"
+    third_issue["summary"]["text"] = "A missed third operation returns no result"
+    issues.append(third_issue)
+
+    amended = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "operator_selection_ref": initial_selection_ref,
+            "semantic_issue_proposal": amended_proposal,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert amended is not None
+    amended_selection = amended["result"]["structuredContent"]
+    assert amended["result"]["isError"] is False
+    assert amended_selection["recommended_action"] == "split_required"
+    assert amended_selection["operator_selection_ref"] != initial_selection_ref
+    assert [
+        item["item_ref"] for item in amended_selection["item_candidates"]
+    ] == ["issue-001", "issue-002", "issue-003"]
+    assert "operator_boundary_correction" not in amended_selection
+
+    repeated = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "operator_selection_ref": amended_selection["operator_selection_ref"],
+            "semantic_issue_proposal": amended_proposal,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert repeated is not None
+    repeated_status = repeated["result"]["structuredContent"]
+    assert repeated_status["debug_code"] == "semantic_review_unavailable"
+
+
+def test_invalid_operator_boundary_amendment_preserves_existing_selection(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_issue_proposal_packet(
+        tmp_path, monkeypatch
+    )
+    initial = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "semantic_issue_proposal": _two_issue_proposal(
+                packet, semantic_review_ref
+            ),
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert initial is not None
+    selection = initial["result"]["structuredContent"]
+    invalid_proposal = deepcopy(
+        _two_issue_proposal(packet, semantic_review_ref)
+    )
+    invalid_issues = invalid_proposal["issues"]
+    assert isinstance(invalid_issues, list)
+    invalid_cause_evidence = invalid_issues[0]["cause_evidence"]
+    assert isinstance(invalid_cause_evidence, list)
+    invalid_cause_evidence[0]["source_refs"] = []
+
+    rejected = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "operator_selection_ref": selection["operator_selection_ref"],
+            "semantic_issue_proposal": invalid_proposal,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert rejected is not None
+    rejected_status = rejected["result"]["structuredContent"]
+    assert rejected_status["debug_code"] == "semantic_observation_shape_invalid"
+    assert rejected_status["semantic_submission_correction"]["retry_allowed"] is True
+
+    first_option = selection["operator_choice_request"]["options"][0]
+    continued = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        first_option["submit_arguments"],
+    )
+
+    assert continued is not None
+    continued_status = continued["result"]["structuredContent"]
+    assert continued_status.get("debug_code") != "operator_selection_invalid"
+
+
+def test_operator_boundary_amendment_cannot_skip_revised_selection(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_issue_proposal_packet(
+        tmp_path, monkeypatch
+    )
+    initial = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "semantic_issue_proposal": _two_issue_proposal(
+                packet, semantic_review_ref
+            ),
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert initial is not None
+    selection = initial["result"]["structuredContent"]
+    rejected = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "operator_selection_ref": selection["operator_selection_ref"],
+            "semantic_issue_proposal": _unassigned_proposal(
+                packet, semantic_review_ref
+            ),
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert rejected is not None
+    rejected_status = rejected["result"]["structuredContent"]
+    assert rejected_status["debug_code"] == "semantic_review_submission_invalid"
+    assert rejected_status["draft_generated"] is False
+    assert rejected_status["reviewer_bundle_written"] is False
+
+    first_option = selection["operator_choice_request"]["options"][0]
+    continued = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        first_option["submit_arguments"],
+    )
+
+    assert continued is not None
+    assert (
+        continued["result"]["structuredContent"].get("debug_code")
+        != "operator_selection_invalid"
+    )
+
+
+def test_operator_boundary_amendment_rejects_mismatched_selection_ref(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_issue_proposal_packet(
+        tmp_path, monkeypatch
+    )
+    initial = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "semantic_issue_proposal": _two_issue_proposal(
+                packet, semantic_review_ref
+            ),
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert initial is not None
+    selection = initial["result"]["structuredContent"]
+    rejected = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "operator_selection_ref": "operator-selection-stale",
+            "semantic_issue_proposal": _two_issue_proposal(
+                packet, semantic_review_ref
+            ),
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert rejected is not None
+    assert (
+        rejected["result"]["structuredContent"]["debug_code"]
+        == "semantic_review_invalid"
+    )
+
+    first_option = selection["operator_choice_request"]["options"][0]
+    continued = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_DRAFT_ARTICLE),
+        first_option["submit_arguments"],
+    )
+
+    assert continued is not None
+    assert (
+        continued["result"]["structuredContent"].get("debug_code")
+        != "operator_selection_invalid"
+    )
 
 
 def _unassigned_proposal(
@@ -3515,6 +3791,60 @@ def test_schema_correction_budget_is_independent_and_bounded(
     assert second_result["reviewer_bundle_written"] is False
 
 
+def test_exhausted_semantic_correction_preserves_bounded_terminal_cause(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport, semantic_review_ref, packet = _prepared_issue_proposal_packet(
+        tmp_path, monkeypatch
+    )
+    proposal = _unassigned_proposal(packet, semantic_review_ref)
+    coverage_records = proposal["coverage_records"]
+    assert isinstance(coverage_records, list)
+    coverage_record = coverage_records[0]
+    assert isinstance(coverage_record, dict)
+    coverage_record["reason_code"] = "model_selected_reason"
+
+    first = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "semantic_issue_proposal": proposal,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+    assert first is not None
+    assert first["result"]["structuredContent"]["debug_code"] == (
+        "semantic_coverage_reason_invalid"
+    )
+
+    coverage_record["reason_code"] = "administrative_or_duplicate"
+    source_refs = proposal["source_refs"]
+    assert isinstance(source_refs, list)
+    source_refs.append("excerpt-not-prepared")
+    second = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        {
+            "semantic_issue_proposal": proposal,
+            "semantic_review_ref": semantic_review_ref,
+        },
+    )
+
+    assert second is not None
+    second_result = second["result"]["structuredContent"]
+    assert second_result["debug_code"] == "semantic_issue_submission_invalid"
+    assert second_result["terminal_cause_debug_code"] == (
+        "semantic_issue_top_level_source_refs_mismatch"
+    )
+    assert "semantic_submission_correction" not in second_result
+    assert second_result.get("next_required_action") is None
+    assert second_result["reviewer_bundle_written"] is False
+    second_text = second["result"]["content"][0]["text"]
+    assert "semantic_issue_top_level_source_refs_mismatch" in second_text
+    assert "No bounded correction is available" in second_text
+
+
 @pytest.mark.parametrize(
     ("invalid_shape", "expected_debug_code", "expected_field"),
     [
@@ -3804,7 +4134,7 @@ def test_terminal_semantic_validation_classes_are_operator_visible(
     assert structured["reviewer_bundle_written"] is False
 
 
-def test_observation_shape_gets_one_bounded_correction_and_can_retry(
+def test_structure_then_grounding_each_get_one_bounded_correction(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -3816,8 +4146,18 @@ def test_observation_shape_gets_one_bounded_correction_and_can_retry(
     assert isinstance(issues, list)
     issue = issues[0]
     assert isinstance(issue, dict)
+    valid_summary = issue["summary"]
+    assert isinstance(valid_summary, dict)
     valid_resolution_evidence = issue["resolution_evidence"]
+    symptoms = issue["symptoms"]
+    assert isinstance(symptoms, list)
+    symptom = symptoms[0]
+    assert isinstance(symptom, dict)
+    exact_symptom_text = symptom["text"]
+    exact_symptom_source_refs = symptom["source_refs"]
+    issue["summary"] = {**valid_summary, "unexpected": "field"}
     issue["resolution_evidence"] = "not-an-observation-list"
+    symptom["source_refs"] = []
     arguments = {
         "semantic_issue_proposal": proposal,
         "semantic_review_ref": semantic_review_ref,
@@ -3834,15 +4174,27 @@ def test_observation_shape_gets_one_bounded_correction_and_can_retry(
     assert blocked["debug_code"] == "semantic_observation_shape_invalid"
     assert blocked["semantic_submission_correction"] == {
         **semantic_submission_correction("semantic_observation_shape_invalid"),
+        "field_paths": [
+            "issues[0].summary",
+            "issues[0].resolution_evidence",
+            "issues[0].symptoms",
+        ],
         "retry_allowed": True,
     }
     assert blocked["semantic_submission_correction"]["field_name"] == (
         "observation_fields"
     )
+    correction_text = first["result"]["content"][0]["text"]
+    assert "issues[0].summary" in correction_text
+    assert "issues[0].symptoms" in correction_text
+    assert "issues[0].resolution_evidence" in correction_text
     assert blocked["draft_generated"] is False
     assert blocked["reviewer_bundle_written"] is False
 
+    issue["summary"] = valid_summary
     issue["resolution_evidence"] = valid_resolution_evidence
+    symptom["source_refs"] = exact_symptom_source_refs
+    symptom["text"] = "The synthetic operation did not work."
     second = _call_tool(
         transport,
         claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
@@ -3850,9 +4202,55 @@ def test_observation_shape_gets_one_bounded_correction_and_can_retry(
     )
 
     assert second is not None
-    continued = second["result"]["structuredContent"]
+    second_blocked = second["result"]["structuredContent"]
+    assert second_blocked["debug_code"] == (
+        "semantic_observation_text_not_extractive"
+    )
+    assert second_blocked["semantic_submission_correction"] == {
+        **semantic_submission_correction(
+            "semantic_observation_text_not_extractive"
+        ),
+        "field_paths": ["issues[0].symptoms"],
+        "retry_allowed": True,
+    }
+
+    symptom["text"] = exact_symptom_text
+    third = _call_tool(
+        transport,
+        claude_desktop_tool_alias(TOOL_SUBMIT_SEMANTIC_REVIEW),
+        arguments,
+    )
+
+    assert third is not None
+    continued = third["result"]["structuredContent"]
     assert continued.get("debug_code") != "semantic_issue_submission_invalid"
     assert "semantic_submission_correction" not in continued
+
+
+@pytest.mark.parametrize(
+    ("used_stages", "next_stage", "allowed"),
+    [
+        ((), "structure", True),
+        ((), "grounding", True),
+        (("structure",), "grounding", True),
+        (("structure",), "structure", False),
+        (("grounding",), "grounding", False),
+        (("grounding",), "structure", False),
+        (("structure", "grounding"), None, False),
+    ],
+)
+def test_semantic_correction_stage_transition_is_bounded(
+    used_stages: tuple[str, ...],
+    next_stage: str | None,
+    allowed: bool,
+) -> None:
+    assert (
+        desktop_workflow._semantic_correction_stage_allowed(  # noqa: SLF001
+            used_stages,
+            next_stage,
+        )
+        is allowed
+    )
 
 
 def test_paraphrased_observation_gets_one_exact_copy_correction(
@@ -3890,6 +4288,7 @@ def test_paraphrased_observation_gets_one_exact_copy_correction(
     assert blocked["debug_code"] == "semantic_observation_text_not_extractive"
     assert blocked["semantic_submission_correction"] == {
         **semantic_submission_correction("semantic_observation_text_not_extractive"),
+        "field_paths": ["issues[0].symptoms"],
         "retry_allowed": True,
     }
     assert blocked["draft_generated"] is False
@@ -6697,11 +7096,17 @@ def test_tool_result_builder_rejects_forbidden_output_surfaces() -> None:
         "attachment_url",
         "attachmentUrl",
         "audio",
+        "audio_blob",
+        "audio_src",
+        "audios",
         "draft_artifact",
         "draftArtifact",
         "embedded_resource",
         "embeddedResource",
         "image",
+        "image_base64",
+        "image_uri",
+        "images",
         "local_path",
         "localPath",
         "raw_validation_payload",
@@ -6725,6 +7130,33 @@ def test_tool_result_builder_rejects_nested_forbidden_surfaces(
                 ok=True,
                 result={
                     "checks": [{forbidden_key: "safe-ref"}],
+                    "ok": True,
+                    "result_kind": "policy_summary",
+                    "schema_version": "kcs_mcp_tool_result_v1",
+                },
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    "media_value",
+    [
+        "data:audio/mpeg;base64,AAAA",
+        "data:image/png;base64,AAAA",
+    ],
+)
+def test_tool_result_builder_rejects_media_data_uri_values(
+    media_value: str,
+) -> None:
+    descriptor = KcsDesktopMcpAdapter().list_tools()[0]
+
+    with pytest.raises(ContractValidationError):
+        mcp_desktop._mcp_tool_response(  # noqa: SLF001
+            descriptor=descriptor,
+            result=McpToolResult(
+                ok=True,
+                result={
+                    "checks": [{"value": media_value}],
                     "ok": True,
                     "result_kind": "policy_summary",
                     "schema_version": "kcs_mcp_tool_result_v1",

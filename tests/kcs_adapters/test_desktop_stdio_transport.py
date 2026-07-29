@@ -41,6 +41,24 @@ class _FakeAdapter:
         )
 
 
+class _SchemaInvalidResultAdapter(_FakeAdapter):
+    def call_tool(
+        self,
+        name: str,
+        arguments: Mapping[str, object] | None = None,
+    ) -> McpToolResult:
+        del name, arguments
+        return McpToolResult(
+            ok=True,
+            result={
+                "ok": True,
+                "result_kind": "policy_summary",
+                "schema_version": "kcs_mcp_tool_result_v1",
+                "unexpected_result_field": True,
+            },
+        )
+
+
 def _initialize(transport: desktop_stdio_transport.McpStdioTransport) -> None:
     response = transport.handle_message(
         {
@@ -87,6 +105,7 @@ def test_stdio_transport_factory_receives_desktop_visible_tools() -> None:
         "kcs_register_clean_ticket",
         "kcs_draft_ticket",
         "kcs_draft_article",
+        "kcs_confirm_reuse_comparison",
         "kcs_prepare_semantic_review",
         "kcs_submit_semantic_review",
         "support_get_behavior_instructions",
@@ -109,3 +128,47 @@ def test_stdio_transport_canonical_mode_uses_all_tools_and_canonical_names() -> 
         for tool in response["result"]["tools"]
     )
     assert all("outputSchema" in tool for tool in response["result"]["tools"])
+
+
+def test_stdio_transport_logs_closed_tool_result_boundary_reason(capsys) -> None:
+    transport = desktop_stdio_transport.McpStdioTransport(
+        adapter=_SchemaInvalidResultAdapter(),
+        tool_name_style=TOOL_NAME_STYLE_CANONICAL,
+    )
+    _initialize(transport)
+
+    response = transport.handle_message(
+        {
+            "id": "call",
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {"name": TOOL_GET_POLICY_SUMMARY, "arguments": {}},
+        }
+    )
+
+    assert response is not None
+    assert response["result"]["structuredContent"]["error_code"] == (
+        "tool_result_invalid"
+    )
+    assert capsys.readouterr().err.strip() == (
+        "[kcs-authoring-mvp] tool_result_boundary_failure "
+        "code=schema_mismatch tool=kcs.get_policy_summary"
+    )
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("MCP tool result contains unsafe value", "unsafe_value"),
+        ("MCP tool result is too large", "too_large"),
+        ("MCP tool result schema mismatch", "schema_mismatch"),
+        ("private diagnostic detail", "invalid"),
+    ],
+)
+def test_tool_result_boundary_reason_is_closed(
+    message: str,
+    expected: str,
+) -> None:
+    assert desktop_stdio_transport._tool_result_boundary_debug_code(
+        desktop_stdio_transport.ContractValidationError(message)
+    ) == expected
