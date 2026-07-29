@@ -925,10 +925,16 @@ product runtime coupling.
 ## 2026-07-28 Auxiliary Live Accounting Implementation Checkpoint
 
 Status: source implementation, installed-package validation, terminal-process
-effective-configuration proof, and bounded Desktop attempts complete in the
-isolated `feature/PAUX-7103-langfuse-live-run-accounting` worktree. No
-post-fix model-mediated tool call completed, so the first live workflow report
-remains pending.
+effective-configuration proof, aggregate validation, and bounded Desktop
+attempts complete in the isolated
+`feature/PAUX-7103-langfuse-live-run-accounting` worktree. No post-fix
+model-mediated tool call completed, so the first live workflow report remains
+pending.
+
+Integration dependency: this branch is stacked on KCS-15.2b2 closeout commit
+`845f2cd`, not directly on `main`. Integrate it only after that base or by a
+controlled ordered cherry-pick of the PAUX-7103 accounting commit series. A
+direct PR against the current `main` would include the unmerged KCS-15 stack.
 
 Implemented surfaces:
 
@@ -955,7 +961,8 @@ Preserved surfaces:
 
 Validation evidence:
 
-- full default suite: `1665 passed, 2 skipped`;
+- full default suite after the installed-configuration correction:
+  `1666 passed, 2 skipped`;
 - pinned Langfuse 4.7.0 real-SDK metadata capture plus existing synthetic
   exporter suite: `60 passed`;
 - Desktop adapter and stdio characterization subset: `218 passed`;
