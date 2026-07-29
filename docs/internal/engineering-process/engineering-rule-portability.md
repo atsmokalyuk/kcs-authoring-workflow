@@ -2,7 +2,7 @@
 
 Status: authoritative pre-extraction lifecycle and candidate registry.
 
-Date: 2026-07-22
+Date: 2026-07-29
 
 ## Purpose
 
@@ -127,6 +127,76 @@ materially different external domain.
 | KCS-16b | Extract approved generic assets and preserve project-local contracts in their repositories | Copy KCS, support, privacy, or LED domain rules into generic assets |
 | KCS-17 | Prepare the export manifest, compatibility boundary, evidence handoff, and initiation decision for a separate personal agentic engineering kit project | Implement or release the kit, own agent-role orchestration, or claim integration success inside the KCS repository |
 | Separate kit project | Assign extracted assets to beta roles, implement orchestration, run the end-to-end integration gate, and package a stable kit only after the gate passes | Treat KCS-specific contracts as portable or publish a stable kit before integration evidence |
+
+## Portfolio Coverage Gate
+
+Individual rule maturity does not prove that the future kit covers the full
+Discovery-Design-Delivery workflow. The matrix below is a capability inventory,
+not a score and not a target for creating more rules. It prevents KCS-16b from
+extracting a mature but incomplete subset without making the omitted work
+visible.
+
+Coverage status means:
+
+- `covered`: one or more explicit rules and an accountable owner address the
+  capability. This does not promote those rules on the portability ladder.
+- `partial`: relevant rules or owners address only part of the capability.
+- `gap`: no current rule or owner sufficiently addresses the capability.
+
+Coverage does not measure cross-project evidence; that remains solely on the
+portability ladder. The matrix records the current portfolio baseline. Its
+initial disposition is `unclassified`, which is not a final disposition. A
+reviewed final extraction disposition must be one of:
+
+- `covered-by-portable-rule`;
+- `human-owned`;
+- `platform-owned`;
+- `project-specific`;
+- `explicitly-out-of-kit-scope`;
+- `evidence-gap`.
+
+A capability does not need a new rule when a human, platform, project-specific
+contract, or explicit scope boundary owns it more honestly. Updating this
+matrix does not change any candidate's enforcement or portability status.
+
+| Capability ID | Family | Required capability | Current coverage | Current owner and related candidates | Current disposition | Next evidence or disposition decision |
+| --- | --- | --- | --- | --- | --- | --- |
+| DDD-DISC-01 | Discovery | Identify the target user, desired outcome, current expensive gap, and cost of error | partial | Operator and Discovery workflow; `ENG-PORT-DISC-001`, `ENG-PORT-DISC-004` | `unclassified` | KCS-15 and external trials must show that value and error cost changed scope or priority, or classify the missing decision as human-owned |
+| DDD-DISC-02 | Discovery | Model the current workflow and separate confirmed, provisional, unknown, and rejected evidence | covered | Discovery workflow; `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`, `ENG-PORT-DISC-005`, `ENG-PORT-DISC-006` | `unclassified` | Record cross-project corrections, evidence-gathering overhead, and unresolved assumptions |
+| DDD-DISC-03 | Discovery | Identify domain, data, physical, legal, privacy, and feasibility constraints before solution design | partial | Domain expert, operator, and Discovery workflow; `ENG-PORT-DISC-003`, `ENG-PORT-DEL-007` | `unclassified` | LED and `plesk_support` trials must record which constraints changed or stopped a proposed design and which constraints remain project-specific |
+| DDD-DISC-04 | Discovery | Establish a measurable baseline, bounded hypothesis, controlled experiment, result, and correction log | covered | Discovery and evaluation workflow; `ENG-PORT-DISC-003` | `unclassified` | Complete the external controlled experiment and record corrections, cost, and stop/iterate/expand verdict |
+| DDD-DISC-05 | Discovery | Ask the smallest material question batch and obtain explicit operator steering for unresolved decisions | covered | Operator and Discovery workflow; `ENG-PORT-DISC-004`, `ENG-PORT-DISC-005` | `unclassified` | Measure avoidable questions, missed material forks, operator burden, and decision latency externally |
+| DDD-DES-01 | Design | Assign deterministic logic, AI proposals, human decisions, and side effects to explicit owners | covered | Designer and architecture review; `ENG-PORT-DES-004`, `ENG-PORT-DES-011` | `unclassified` | Verify ownership prevents a bypass or late responsibility correction in another system |
+| DDD-DES-02 | Design | Declare changed and unchanged contracts, compatibility boundaries, and behavior-drift evidence | covered | Slice designer and reviewer; `ENG-PORT-DES-002`, `ENG-PORT-DES-003`, `ENG-PORT-DES-006` | `unclassified` | Compare drift findings, review-only risks, and evidence overhead across projects |
+| DDD-DES-03 | Design | Compare architecture options and model data, state, persistence, lifecycle, and failure trade-offs | partial | Designer and platform owner; `ENG-PORT-DES-005`, `ENG-PORT-DES-007`, `ENG-PORT-DES-009`, `ENG-PORT-DES-010` | `unclassified` | KCS-15 must show whether option selection and state/persistence trade-offs are explicit enough; otherwise retain an evidence-gap or project-specific owner |
+| DDD-DES-04 | Design | Map acceptance criteria, failure modes, and supported state transitions to deterministic, model, or human evidence gates | covered | Designer, evaluator, and reviewer; `ENG-PORT-DES-001`, `ENG-PORT-DES-008` | `unclassified` | Record transition omissions, false confidence, test burden, and human-review residuals externally |
+| DDD-DES-05 | Design | Address privacy, security, reliability, performance, observability, and operator cognitive load at the selected boundary | partial | Security, privacy, platform, observability, and UX owners; `ENG-PORT-DES-011`, `ENG-PORT-DES-012`, `ENG-PORT-DEL-006`, `ENG-PORT-DEL-007` | `unclassified` | Give each named concern its own disposition and rationale; collect evidence for any claimed portable part |
+| DDD-DEL-01 | Delivery | Implement controlled slices through supported entrypoints with compact context and explicit handoffs | covered | Builder and repository workflow; `ENG-PORT-DEL-001`, `ENG-PORT-DEL-002`, `ENG-PORT-DEL-008` | `unclassified` | Compare stale-context corrections, unauthorized continuation, and process overhead in external work |
+| DDD-DEL-02 | Delivery | Validate with tests, review, drift checks, residual risks, and maintainability evidence | covered | Builder and reviewer; `ENG-PORT-DEL-003`, `ENG-PORT-DEL-004`, `ENG-PORT-DEL-005` | `unclassified` | Record defects found, false positives, review effort, and which checks remain judgment-only |
+| DDD-DEL-03 | Delivery | Evaluate model-mediated behavior with safe fixtures, declared trial conditions, observability, and provenance | covered | Evaluation and observability owner; `ENG-PORT-DEL-006`, `ENG-PORT-DEL-007`, `ENG-PORT-DEL-009`, `ENG-PORT-DEL-012` | `unclassified` | Complete representative-case and cross-project trials without promoting synthetic success into an operational claim |
+| DDD-DEL-04 | Delivery | Control build, deployment, migration, activation, rollback, and runtime feedback | partial | Platform and deployment owner; `ENG-PORT-DEL-009`, `ENG-PORT-DEL-011` | `unclassified` | Give each named lifecycle concern its own disposition and rationale before deciding which parts belong in the kit |
+| DDD-DEL-05 | Delivery | Convert corrections and repeated findings into reviewed promotions, portability evidence, extraction decisions, and integration feedback | partial | Retrospective, KCS-16 owner, and separate kit project; `ENG-PORT-DEL-003` and this registry | `unclassified` | KCS-15 retrospective must classify candidates; KCS-17 must define the value-safe feedback handoff from the separate kit project |
+
+### KCS-16b Extraction Readiness
+
+KCS-16b must not start while a required capability remains unclassified or has
+the final disposition `evidence-gap`. Before extraction:
+
+1. Every matrix row has a reviewed final disposition, a short rationale, and
+   the effect on the claimed kit scope. Composite rows must record separate
+   dispositions for materially different named concerns; one umbrella
+   disposition is insufficient.
+2. Every rule selected for extraction independently satisfies the portability
+   evidence and `extraction-review-ready` requirements above.
+3. Discovery, Design, and Delivery each have explicit inputs, outputs, and
+   human, agent, or platform ownership at their handoff boundaries.
+4. The extraction scope states whether deployment and operations are included,
+   platform-owned, project-specific, or explicitly out of kit scope.
+
+`partial` or `gap` coverage does not require framework growth and does not block
+extraction after an honest non-rule disposition is approved. It blocks only
+when the capability is required for the claimed kit scope and remains an
+`evidence-gap`.
 
 ## Candidate Registry
 

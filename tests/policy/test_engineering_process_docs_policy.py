@@ -164,6 +164,49 @@ def test_engineering_rule_portability_registry_structure_and_links() -> None:
     assert registry_path in promotions
 
 
+def test_engineering_rule_portability_has_portfolio_coverage_gate() -> None:
+    registry = (
+        ROOT / "docs/internal/engineering-process/engineering-rule-portability.md"
+    ).read_text(encoding="utf-8")
+
+    assert "## Portfolio Coverage Gate" in registry
+    assert "### KCS-16b Extraction Readiness" in registry
+    rows = [
+        [part.strip() for part in line.strip().strip("|").split("|")]
+        for line in registry.splitlines()
+        if line.startswith("| DDD-")
+    ]
+    assert len(rows) == 15
+    assert len({row[0] for row in rows}) == 15
+    rows_by_id = {row[0]: row for row in rows}
+    for row in rows:
+        assert len(row) == 7
+        capability_id, family, _, coverage, _, disposition, _ = row
+        family_code = capability_id.split("-")[1]
+        assert family == {"DISC": "Discovery", "DES": "Design", "DEL": "Delivery"}[
+            family_code
+        ]
+        assert coverage in {"covered", "partial", "gap"}
+        assert disposition == "`unclassified`"
+    for family in ("DISC", "DES", "DEL"):
+        assert sum(row[0].startswith(f"DDD-{family}-") for row in rows) == 5
+    for disposition in (
+        "covered-by-portable-rule",
+        "human-owned",
+        "platform-owned",
+        "project-specific",
+        "explicitly-out-of-kit-scope",
+        "evidence-gap",
+    ):
+        assert f"`{disposition}`" in registry
+    assert "does not change any candidate's enforcement or portability status" in (
+        registry
+    )
+    assert "KCS-16b must not start" in registry
+    assert "each named concern" in rows_by_id["DDD-DES-05"][-1]
+    assert "each named lifecycle concern" in rows_by_id["DDD-DEL-04"][-1]
+
+
 def test_design_uncertainty_protocol_required_anchors() -> None:
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     process_root = ROOT / "docs/internal/engineering-process"
