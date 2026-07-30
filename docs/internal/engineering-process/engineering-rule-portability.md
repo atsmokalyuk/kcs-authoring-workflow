@@ -2,7 +2,7 @@
 
 Status: authoritative pre-extraction lifecycle and candidate registry.
 
-Date: 2026-07-29
+Date: 2026-07-30
 
 ## Purpose
 
@@ -92,6 +92,42 @@ Definitions:
 An enforcement status never implies a portability status. A KCS-specific
 freeze check may be deterministic but not portable. A portable Discovery
 question may remain a human-review rule permanently.
+
+## External Trial Contract Gate
+
+A rule must not move to `external-trial-active` until the owning external
+project or independent subsystem has a tracked Trial Contract for the exact
+formulation being tested. This keeps the candidate registry compact while
+making cross-project evidence comparable and attributable.
+
+| Field | Required content |
+| --- | --- |
+| `Rule ID` | Exact `ENG-PORT-*` identifier from this registry |
+| `Revision` | Rule-level revision when available; otherwise the KCS repository source commit that freezes the tested wording |
+| `Stage` | Discovery, Design, or Delivery; must match the rule `Family` in this registry |
+| `Trigger` | Observable condition under which the rule applies |
+| `Invariant` | Project-neutral behavior, decision, or boundary the rule requires |
+| `Owner / decision authority` | Human, agent role, platform, or combination responsible for applying the rule and deciding unresolved judgment |
+| `Failure or stop behavior` | Required response when evidence is missing, the invariant fails, or authority is unavailable |
+| `Required evidence` | Value-safe observations needed to evaluate effectiveness, corrections, overhead, false positives, and limitations |
+| `Permitted enforcement type` | One or more honest levels from the enforcement ladder; judgment-only review gates are allowed |
+
+The Trial Contract may remain in the external project's tracked evidence area.
+The KCS registry records only its link or value-safe evidence summary when
+reviewing a status change. The contract's Stage, Trigger, Invariant, authority,
+and failure or stop semantics must remain project-neutral. A contract must:
+
+- keep project bindings, thresholds, endpoints, identifiers, fixtures, domain
+  data, and product behavior in a separate project binding or evidence record;
+- describe required evidence by portable category and reference the local
+  binding instead of embedding its project values;
+- name both the rule ID and the exact revision or source commit;
+- create a new revision reference when the tested formulation changes;
+- preserve human judgment when deterministic enforcement would be dishonest.
+
+Recording a Trial Contract does not promote a rule by itself. Promotion to
+`external-trial-active` also requires that the external trial has actually
+started collecting the evidence declared by that contract.
 
 ## Evidence Required From Another Project
 

@@ -164,6 +164,41 @@ def test_engineering_rule_portability_registry_structure_and_links() -> None:
     assert registry_path in promotions
 
 
+def test_external_trial_contract_gate_is_structurally_defined() -> None:
+    registry = (
+        ROOT / "docs/internal/engineering-process/engineering-rule-portability.md"
+    ).read_text(encoding="utf-8")
+    contract_section = registry.split("## External Trial Contract Gate", 1)[1].split(
+        "## Evidence Required From Another Project", 1
+    )[0]
+    field_rows = [
+        tuple(part.strip() for part in line.strip().strip("|").split("|", 1))
+        for line in contract_section.splitlines()
+        if line.startswith("| `")
+    ]
+    fields = {field.strip("`") for field, _ in field_rows}
+
+    assert len(field_rows) == 9
+    assert len(fields) == len(field_rows)
+    assert all(required_content for _, required_content in field_rows)
+    assert fields == {
+        "Rule ID",
+        "Revision",
+        "Stage",
+        "Trigger",
+        "Invariant",
+        "Owner / decision authority",
+        "Failure or stop behavior",
+        "Required evidence",
+        "Permitted enforcement type",
+    }
+    assert "must not move to `external-trial-active`" in contract_section
+    assert "exact revision or source commit" in contract_section
+    assert "does not promote a rule by itself" in contract_section
+    assert "separate project binding or evidence record" in contract_section
+    assert "must match the rule `Family`" in contract_section
+
+
 def test_engineering_rule_portability_has_portfolio_coverage_gate() -> None:
     registry = (
         ROOT / "docs/internal/engineering-process/engineering-rule-portability.md"
