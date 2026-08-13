@@ -1,7 +1,10 @@
 # Pre-KCS-16 DDD Evidence Review
 
-Status: authoritative source-owned evidence intake and disposition record;
-KCS-16 extraction has not started.
+Status: authoritative source-owned evidence intake and disposition record. At
+this record's close, KCS-16 extraction has not started. Current extraction and
+advisory treatment is recorded in
+`engineering-playbook/ddd-universal-core.json`; this review's evidence and
+limitations remain unchanged.
 
 Date: 2026-08-13
 

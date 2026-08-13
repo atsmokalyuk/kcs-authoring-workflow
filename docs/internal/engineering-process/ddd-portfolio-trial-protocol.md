@@ -139,16 +139,143 @@ end-to-end integration gate owned by the separate toolkit project.
 
 ## Current Campaigns
 
-| Campaign | Project class | Source revision under test | Local state | Formal active rules | Source status effect |
+| Campaign | Project class | Source revision under test | Local state | Formal rule states | Source status effect |
 | --- | --- | --- | --- | --- | --- |
-| `DDD-LED-CAMPAIGN-01` | Greenfield scientific feasibility and controlled physical evidence | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring; D-212/Checkpoint 144 reconcile the current eight contracts without rewriting the historical three-contract baseline | `ENG-PORT-DISC-002`, `003`; `ENG-PORT-DES-001`, `004`, `007`; `ENG-PORT-DEL-006`, `008`, `012` | source-reviewed statuses apply only to exact rules; physical-result-dependent contracts remain open |
+| `DDD-LED-CAMPAIGN-01` | Greenfield scientific feasibility and controlled physical evidence | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring; D-213/Checkpoint 145 preserve the eight-contract campaign and independently pause the three contracts blocked by the absent physical event | active: `ENG-PORT-DISC-002`; `ENG-PORT-DES-004`, `007`; `ENG-PORT-DEL-008`, `012`; paused: `ENG-PORT-DISC-003`; `ENG-PORT-DES-001`; `ENG-PORT-DEL-006` | the pause is not a failed experiment, local closeout, or upstream verdict; all source-owned portability statuses remain unchanged |
 | `DDD-AIE-CAMPAIGN-01` | API engineering toolkit implementation and reference-project evaluation | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring of all 30; the Pack is adopted and no exact unfinished task is active | none; two future contracts are proposed; RP-B9 and `ENG-PORT-DEL-010` evidence are retrospective | target records change no status; source reviews in `pre-kcs-16-ddd-evidence-review.md` own later dispositions |
-| `DDD-PS-CAMPAIGN-01` | Existing support-tool material integration and privacy-sensitive external feasibility | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring; implementation not started and an external capability blocker remains | `ENG-PORT-DISC-002`, `006`; `ENG-PORT-DES-001`, `002`, `007`, `011`; `ENG-PORT-DEL-008`; `ENG-PORT-DEL-007` is paused | source-reviewed active contracts affect exact rules only; no automatic completion or cross-project promotion |
+| `DDD-PS-CAMPAIGN-01` | Existing support-tool material integration and privacy-sensitive external feasibility | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring; GG-006 at `60acfecc401c8080483eaac11890082e175b0bc4` records pre-implementation rule evidence, while exact capability and Design approval remain blocked | active: `ENG-PORT-DISC-002`, `006`; `ENG-PORT-DES-001`, `002`, `007`, `011`; `ENG-PORT-DEL-008`; paused: `ENG-PORT-DEL-007` | local contracts remain active; source reviews independently promote `ENG-PORT-DISC-006`, `ENG-PORT-DES-002`, and `ENG-PORT-DES-011` without claiming operational closeout |
 | `DDD-UT-CAMPAIGN-01` | Completed standalone engineering-Discovery investigation with bounded deterministic, agent-mediated, and hidden-holdout comparisons | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | closed retrospective review under terminal decision 0077 | none; qualifying prior use is retrospective only | no automatic change; value-safe evidence is eligible for source review |
 
 Target projects own their local bindings and evidence. This source owns the
 campaign inventory, portability review, extraction decision, and export
 boundary.
+
+## Source-Owned Trial Intake
+
+### SR-LED-PAUSE-145
+
+- **Review date:** 2026-08-13.
+- **Rules and revision:** `ENG-PORT-DISC-003`, `ENG-PORT-DES-001`, and
+  `ENG-PORT-DEL-006` at
+  `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66`.
+- **External identity and evidence:** LED reports `Git unavailable`; D-213,
+  Checkpoint 145, the eight-contract validator, and the value-safe packet at
+  `LED/docs/internal/portability-evidence/kcs-source-review-packet-checkpoint-145.md`
+  consistently record the local state transition. The source independently
+  confirmed the exact eight-contract revision with the LED structural
+  validator.
+- **Observed blocker:** no traceable physical sample identity, manufacture
+  record, instrument and measurement context, observed coordinates,
+  measurement-file references, or named measurement and chief-technologist
+  review exists. No synthetic, fixture, blank-form, or deterministic result
+  was admitted as the physical outcome.
+- **Local disposition:** `ETC-LED-DISC-003-r1`, `ETC-LED-DES-001-r1`, and
+  `ETC-LED-DEL-006-r1` are independently `paused-local-trial`; the other five
+  LED contracts remain active. The absence of the event is not a physical
+  `FAIL`, a completed local trial, or a per-rule verdict.
+- **Corrections and limitations:** two stale LED binding filenames were
+  corrected without changing the experiment, gate, rule formulation, or
+  authority boundary. Physical behavior, decision impact after observation,
+  stakeholder effort, and each final
+  `retain/revise/reject/propose-for-extraction-review` verdict remain unknown.
+- **Source disposition:** retain `external-trial-active` for all three exact
+  rules. A paused external workflow state does not silently demote or promote
+  the source-owned portability status, and this intake provides no extraction
+  authority.
+- **Resume gate:** require the already authorized item's identity and frozen
+  proposal linkage; manufacture record and deviations; instrument, context,
+  and measurement provenance; authentic observed coordinates and local file
+  references; named measurement and chief-technologist review; and effort when
+  known. A different item, input, condition, criterion, or contract revision
+  requires a new or revised prospective contract rather than closure of r1.
+
+### SR-PS-GG006-60ACF
+
+- **Review date:** 2026-08-13.
+- **Rules and source formulation:** `ENG-PORT-DISC-006`,
+  `ENG-PORT-DES-002`, and `ENG-PORT-DES-011` at
+  `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66`.
+- **External identity and evidence:** `plesk_support` commit
+  `60acfecc401c8080483eaac11890082e175b0bc4` durably contains the three exact
+  contracts, detailed GG-006 record, corrected Design map, value-safe source
+  packet, and structural policy test. The detailed record describes the
+  inspected parent snapshot `73234ca9`; the enclosing evidence commit is
+  independently verified here and does not rewrite that recorded baseline.
+- **Validation:** the source reran the committed structural evidence test and
+  observed `5 passed`. The external handoff also records `75 passed, 102
+  subtests passed` for its focused suite. Three unrelated untracked local files
+  are outside the evidence commit and were not admitted.
+- **`ENG-PORT-DISC-006` disposition:** `retain`. Exact output-validation
+  capability remains `UNKNOWN`; generic health, imported schema, fixture, and
+  catalog evidence do not prove the required operation. The dependent Design
+  and egress remain stopped.
+- **`ENG-PORT-DES-002` disposition:** `retain`. The trial found a concrete
+  conflict between the proposed narrow egress and the current no-egress
+  authority before implementation, while the declared adjacent contracts
+  remained unchanged.
+- **`ENG-PORT-DES-011` disposition:** accept the local `revise` decision for
+  the target Design, not for the upstream formulation. Executable direct
+  finalization and manual-backfill paths bypass the proposed semantic-review
+  dependency, so the target claim was correctly narrowed to a future
+  server-bound main-finalization gate covering both write targets. The current
+  generic rule already requires supported-entrypoint mapping and claim
+  restriction when reachability is not guaranteed; no KCS-16a wording change
+  is justified by this intake.
+- **Initial source disposition:** retain `external-trial-active` while checking
+  whether incomplete local contracts blocked promotion. Operator review then
+  identified that all three rules materially helped, and the source re-read the
+  authoritative gate: local completion is not required when substantive
+  cross-project evidence is already recorded. The independent promotion
+  decisions are in `SR-DISC006-01`, `SR-DES002-01`, and `SR-DES011-01` below.
+- **Prospective local gates:** `ENG-PORT-DISC-006` still requires the configured staging
+  target and project, confirmed blocking output-PII subscription, and one
+  bounded smoke of the exact output-validation operation. `ENG-PORT-DES-002`
+  requires the final authorized Design disposition and independent local
+  closeout after the changed/unchanged boundary is resolved.
+  `ENG-PORT-DES-011` requires approval and closeout of the corrected
+  entrypoint/gate map, with final overhead, false-positive, limitation, and
+  verdict evidence. Any future runtime-enforcement claim requires its own
+  proportional proof.
+
+### SR-PS-CAMPAIGN-AUDIT-60ACF
+
+- **Review date and authority:** 2026-08-13; operator-authorized source audit
+  of the complete `DDD-PS-CAMPAIGN-01` snapshot in `plesk_support` commit
+  `60acfecc401c8080483eaac11890082e175b0bc4`.
+- **Already extracted rules:** `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`,
+  `ENG-PORT-DES-004`, `ENG-PORT-DES-007`, and `ENG-PORT-DEL-008` receive
+  prospective usefulness or limitation evidence only. Nothing in GG-006
+  contradicts their wording, source reviews, authority boundaries, or open
+  limitations, so no status or formulation change is required.
+- **`ENG-PORT-DES-001`:** retain `external-trial-active`. Its exact prospective
+  contract and acceptance map exist, but the committed snapshot does not
+  attribute a separate per-rule decision effect, correction, overhead, false
+  confidence, limitations, and local verdict. Those fields must not be inferred
+  from shared campaign records or the three-rule GG-006 packet.
+- **`ENG-PORT-DEL-007`:** advance from `portability-candidate` to
+  `external-trial-active`. `ETC-PS-DEL-007-r1` names the exact source revision,
+  trigger, generic invariant, authority, stop behavior, required evidence, and
+  enforcement type. Evidence collection genuinely began: the approved
+  synthetic fixture was withheld before send because destination purpose,
+  project/subscription, and retention/capability evidence remained unresolved,
+  and the contract is explicitly `paused-local-trial` at that safe no-send
+  baseline.
+- **`ENG-PORT-DEL-007` limitations and next gate:** the fixture was not sent,
+  no external privacy or runtime result exists, shared campaign checkpoints do
+  not provide an independent per-rule verdict or complete corrections,
+  overhead, false-positive, and limitation record, and standards alignment is
+  not promotion evidence. Resume only within an approved destination and
+  purpose boundary with exact project/subscription and retention evidence;
+  independently close the per-rule fields before any
+  `cross-project-evidence-recorded` review.
+- **Other rules:** `ENG-PORT-DISC-004` remains retrospective reference guidance
+  with timing and burden unknown. All monitored rules remain at their current
+  source statuses because monitoring or possible future applicability is not a
+  triggered exact trial. `ENG-PORT-DES-005` and `ENG-PORT-DEL-005` remain
+  project-local and outside the universal core.
+- **Source boundary:** this audit neither changes external local states nor
+  claims implementation, exact runtime capability, fixture acceptance, local
+  completion, or KCS-17 authorization.
 
 ## Source-Reviewed Cross-Project Evidence
 
@@ -157,8 +284,95 @@ The authoritative pre-KCS-16 intake and per-rule source dispositions are in
 The following reviews establish cross-project evidence and move exact rules to
 `extraction-review-ready`: `SR-DISC001-01`, `SR-DISC002-01`,
 `SR-DES004-01`, `SR-DES007-01`, `SR-DES010-01`, `SR-DEL008-01`,
-`SR-DEL011-01`, and `SR-DEL012-01`. The status permits KCS-16 consideration;
-it does not approve extraction or skip a triggered KCS-16a stabilization.
+`SR-DEL011-01`, `SR-DEL012-01`, `SR-DISC006-01`, `SR-DES002-01`, and
+`SR-DES011-01`. The status permits KCS-16 consideration; it does not approve
+extraction or skip a triggered KCS-16a stabilization.
+
+### SR-DISC006-01
+
+- **Review date and revision:** 2026-08-13;
+  `ENG-PORT-DISC-006` at
+  `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66`.
+- **KCS context:** KCS-15.2b1 corrected a dependent design after the assumed
+  exact runtime path was absent; a neighboring capability could not substitute
+  for the required operation.
+- **External context:** `plesk_support` GG-006 stopped Design and egress when
+  generic health, imported schema, and catalog evidence could not prove the
+  exact output-validation operation in its configured operating condition.
+- **Material effect and difference:** one context corrected a stale exact-path
+  assumption after integration work; the other prevented substantial work
+  before implementation while external configuration and capability remained
+  unknown. Both exercised the same prove-or-stop invariant through different
+  products and lifecycle points.
+- **Corrections, overhead, and false positives:** KCS required an endpoint and
+  planning correction. GG-006 required one presence/configuration audit,
+  schema-versus-runtime classification, and source review; duration is unknown
+  and zero false positives were observed. It avoided an unsafe fixture send and
+  nominal-evidence promotion.
+- **Limitations:** the external exact operation remains unexecuted, target
+  configuration and subscription are absent, and no runtime usefulness beyond
+  the stop decision is claimed.
+- **Source disposition:** `extraction-review-ready`, then KCS-16
+  `extracted-beta`. The open exact-path smoke remains prospective refinement,
+  not a prerequisite to repeat the already observed cross-project decision
+  effect.
+
+### SR-DES002-01
+
+- **Review date and revision:** 2026-08-13; `ENG-PORT-DES-002` at
+  `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66`.
+- **KCS context:** KCS material slice plans and staged review declare intended
+  changes, locked phases, and unchanged product/data boundaries. In KCS-16 the
+  contract kept KCS-17 assembly, external repositories, runtime behavior, and
+  project-local rules outside the authorized diff.
+- **External context:** `plesk_support` GG-006 declared a narrow egress and
+  main-path change plus adjacent unchanged workflows, then found the current
+  no-egress authority directly conflicted with that intended change before
+  implementation.
+- **Material effect and difference:** one context bounded an authoritative
+  ruleset extraction across repository and phase boundaries; the other stopped
+  a privacy-sensitive integration because its target policy contradicted the
+  proposed change. Both made the changed/unchanged contract operational rather
+  than documentary.
+- **Corrections, overhead, and false positives:** KCS used one durable plan,
+  deterministic scope checks, and staged review. GG-006 retained an explicit
+  policy-and-test change and rejected a broader exception; review duration is
+  unknown and zero false positives were observed.
+- **Limitations:** final external Design authority, implementation drift, and
+  measured reviewer minutes remain open; concrete policy values and product
+  contracts remain target-owned.
+- **Source disposition:** `extraction-review-ready`, then KCS-16
+  `extracted-beta`. The active external contract may still measure downstream
+  drift and overhead without blocking the portable boundary already shown.
+
+### SR-DES011-01
+
+- **Review date and revision:** 2026-08-13; `ENG-PORT-DES-011` at
+  `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66`.
+- **KCS context:** KCS-15.2b2 exposed alternate host actions that could bypass
+  a guarded connector, forcing the claimed privacy enforcement boundary to be
+  narrowed instead of treating model routing as deterministic enforcement.
+- **External context:** `plesk_support` GG-006 mapped supported entrypoints and
+  found executable direct-finalization and manual-backfill paths that bypassed
+  the proposed semantic-review dependency; the target Design was narrowed to a
+  future server-bound gate covering both supported write targets.
+- **Material effect and difference:** one context spans host/model/tool routes;
+  the other spans application API, workflow, and CLI write paths. Each found a
+  materially different bypass and changed the supported claim before Delivery.
+- **Corrections, overhead, and false positives:** both contexts required an
+  entrypoint inventory and Design correction. GG-006 used a source call-graph
+  review and focused tests; duration is unknown and its two bypasses were
+  executable supported paths, with zero known false positives.
+- **Limitations:** no future server gate or corporate runtime capability is
+  proven; adapter-owned entrypoints and enforcement mechanisms remain local.
+- **Wording review:** the current generic formulation already requires mapping
+  supported entrypoints, treating model-controlled behavior as non-enforcement,
+  and restricting a claim when reachability is not guaranteed. The new evidence
+  requires no wording change.
+- **Source disposition:** `extraction-review-ready`, then KCS-16
+  `extracted-beta`. Future enforcement proof remains proportional prospective
+  evidence rather than a prerequisite for extracting the demonstrated Design
+  invariant.
 
 ### SR-DEL010-01
 

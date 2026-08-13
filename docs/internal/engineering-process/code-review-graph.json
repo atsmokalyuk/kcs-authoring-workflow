@@ -1004,7 +1004,12 @@
         },
         {
           "path": "tests/policy/test_engineering_process_docs_policy.py",
-          "file_hash": "801332b4083493099630e2aa0adaf397e212c7775a83ea40cb73f99aee5f05ce",
+          "file_hash": "f7c08039aaf26df3131ab90293cd364144fca86277a8ca4fd4e9cae193f2161f",
+          "valid_until_changed": true
+        },
+        {
+          "path": "tests/policy/test_ddd_universal_core_catalog_policy.py",
+          "file_hash": "995bf6db30f739c29334c00c112c13cc6b89b05831adcc7061eb67555b10d1bb",
           "valid_until_changed": true
         },
         {
@@ -1041,6 +1046,7 @@
       "related_tests": [
         "tests/policy/test_code_review_graph_policy.py",
         "tests/policy/test_complexity_measurement.py",
+        "tests/policy/test_ddd_universal_core_catalog_policy.py",
         "tests/policy/test_functional_test_policy.py",
         "tests/policy/test_engineering_process_docs_policy.py",
         "tests/policy/test_kcs14_5_release_docs_policy.py",

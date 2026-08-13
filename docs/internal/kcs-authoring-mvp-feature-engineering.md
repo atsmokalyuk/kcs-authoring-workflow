@@ -118,17 +118,18 @@ Recommended slice order:
 - Post-KCS-15 process retrospective: decide whether the KCS-14 engineering
   process stayed stable through both a refactor-heavy slice and the KCS-15
   feature-heavy style/markup slice;
-- KCS-16a: engineering process stabilization, only if the retrospective shows
-  unstable specs, weak acceptance tests, poor review packets, unclear tool
-  entrypoints, or recurring agent/review failures;
-- KCS-16b: reusable engineering infrastructure extraction, only after the
-  process is stable and a second project or independent subsystem confirms
-  portability. This slice is not automatic: it starts only if the
-  retrospective shows that the same templates, review packets, tool
-  entrypoints, and gates worked across both refactor-heavy and feature-heavy
-  slices with less manual correction. Extract only generic design/spec
-  workflow pieces; KCS-specific contracts, ticket policy, privacy rules, and
-  article standards stay in this repository;
+- KCS-16a: completed on the KCS-16 branch for the five formulations whose
+  source-owned evidence review identified concrete ambiguity or portability
+  risk. The stabilized wording keeps evidence separate from authority,
+  ownership separate from validation, material planning proportional,
+  duplicate-safety outcomes mechanism-neutral, and evidence level
+  proportional to the completion claim;
+- KCS-16b: completed on the KCS-16 branch as one tested 28-entry catalog under
+  `engineering-playbook/ddd-universal-core.json`. Twelve independently
+  `extraction-review-ready` rules became authoritative `extracted-beta`; all
+  other universal-core entries remain visibly non-authoritative advisory
+  metadata. KCS-specific contracts, ticket policy, privacy rules, article
+  standards, and project-local mechanisms remain in this repository;
 - KCS-17: handoff and initiation boundary for a separate personal agentic
   engineering kit project, only after reusable extraction is stable and useful
   outside the immediate KCS workflow. KCS-17 may produce an export manifest,

@@ -1,0 +1,640 @@
+{
+  "schema_version": "engineering_ddd_catalog_v1",
+  "catalog_revision": "KCS-16-r1",
+  "status": "kcs-16-complete-kcs-17-input-ready",
+  "reviewed_source_repository": "kcs-authoring-mvp",
+  "reviewed_source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+  "active_slice_plan": "docs/internal/engineering-process/slice-plans/kcs-16-ddd-rule-stabilization-and-extraction.md",
+  "evidence_review": "docs/internal/engineering-process/pre-kcs-16-ddd-evidence-review.md",
+  "trial_protocol": "docs/internal/engineering-process/ddd-portfolio-trial-protocol.md",
+  "standards_crosswalk": "docs/internal/engineering-process/ddd-universal-core-standards-crosswalk.md",
+  "kcs17_execution": "locked",
+  "authority_contract": {
+    "authoritative_treatment": "authoritative-extracted-beta",
+    "advisory_treatments": [
+      "advisory-field-evidence-candidate",
+      "advisory-standards-shadow",
+      "advisory-reference-only"
+    ],
+    "loading_rule": "Only entries with authoritative=true and kit_treatment=authoritative-extracted-beta may be loaded or presented as DDD rule authority.",
+    "standards_boundary": "Standards support records an outcome-level alignment only. It does not establish field usefulness, implementation correctness, runtime capability, project applicability, portability evidence, extraction readiness, or conformance.",
+    "profile_adapter_boundary": "Profiles and adapters may bind company, project, domain, repository, tool, runtime, threshold, and ownership details. They must not weaken a triggered core invariant, change upstream portability status, or present local policy as universal authority."
+  },
+  "excluded_project_local_rules": [
+    {
+      "rule_id": "ENG-PORT-DES-005",
+      "reason": "The current ownership-boundary and aggregate-review mechanism is project-local."
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-005",
+      "reason": "The current complexity and coupling sensor policy is project-local."
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "ENG-PORT-DISC-001",
+      "family": "Discovery",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DISC001-01",
+      "supporting_contexts": [
+        "KCS outcome and current-state framing",
+        "support-tool solution-first pilot and corrected run",
+        "standalone engineering investigation terminal problem/solution separation",
+        "API engineering toolkit consumer/problem-before-endpoint review"
+      ],
+      "trigger": "Before architecture or solution commitment when a requested outcome, current operational reality, and proposed solution have not been separated.",
+      "applicability": "Material Discovery or Design work whose solution choice could constrain the problem definition.",
+      "invariant": "Record the requested outcome and demonstrated operational reality independently from any proposed solution before selecting architecture.",
+      "expected_outcome": "Unsupported solution classes can be rejected without losing the underlying need, and solution-first assumptions do not become accepted problem framing.",
+      "authority_boundary": "The evidence owner records current reality; the named human decision owner approves product value, priority, and acceptable error cost.",
+      "stop_or_narrow": "If outcome or current reality is unsupported, keep it provisional or unknown and stop architecture selection at the affected boundary.",
+      "limitations": [
+        "The evidence does not isolate a universal time saving.",
+        "Product value, priority, and error-cost decisions remain human-owned and target-specific."
+      ],
+      "non_goals": [
+        "Selecting product strategy or architecture",
+        "Exporting domain or company policy"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
+    },
+    {
+      "rule_id": "ENG-PORT-DISC-002",
+      "family": "Discovery",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DISC002-01",
+      "supporting_contexts": [
+        "KCS incident causality",
+        "standalone engineering investigation evidence-state trial",
+        "API engineering toolkit fact/proposal/unknown separation",
+        "scientific feasibility evidence-state contract"
+      ],
+      "trigger": "When a material claim will be used to frame, select, authorize, validate, or close work.",
+      "applicability": "Claims whose evidentiary state can change a material decision.",
+      "invariant": "Record each material claim as confirmed, provisional, unknown, or rejected from current evidence. The state records evidence sufficiency only; it does not grant decision authority, and absent evidence remains unknown rather than becoming a default.",
+      "expected_outcome": "Missing evidence and produced output cannot silently become facts, defaults, or decision authority.",
+      "authority_boundary": "The evidence owner classifies the claim; the separately named decision owner decides within their authority after required validation.",
+      "stop_or_narrow": "If a required state cannot be supported, mark it unknown and narrow or stop the dependent decision.",
+      "limitations": [
+        "No expanded basis or lifecycle taxonomy is part of the generic rule.",
+        "Per-rule labeling cost was not measured consistently across contexts."
+      ],
+      "non_goals": [
+        "Defining project-specific evidence labels or sources",
+        "Using evidence state as approval or authority"
+      ],
+      "extraction_review_decision": "approved-kcs-16-after-wording-stabilization"
+    },
+    {
+      "rule_id": "ENG-PORT-DISC-003",
+      "family": "Discovery",
+      "catalog_lane": "standards-backed-shadow",
+      "portability_status": "external-trial-active",
+      "kit_treatment": "advisory-standards-shadow",
+      "authoritative": false,
+      "source_rule_summary": "Connect stakeholder context, workflow, constraints, a measurable baseline, a bounded hypothesis, an adequate evidence method, result, and correction log.",
+      "missing_gate": "The exact scientific-feasibility contract is paused because the authorized physical event and traceable result package are absent. Resume only with the exact authorized sample identity and proposal linkage, manufacture and instrument records, authentic coordinates and local file references, named review, and effort when known; then close corrections, false positives, limitations, local verdict, and source-owned promotion and extraction review.",
+      "standards_support": {
+        "sources": ["ISO/IEC/IEEE 12207:2026", "NIST AI RMF 1.0 Core"],
+        "outcome": "Connect stakeholder context, requirements and constraints to measurable evaluation and correction.",
+        "limitations": "The sources do not require a controlled experiment for every Discovery question; use the smallest evidence method adequate for the material unknown."
+      },
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DISC-004",
+      "family": "Discovery",
+      "catalog_lane": "reference-only",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-reference-only",
+      "authoritative": false,
+      "source_rule_summary": "Ask the smallest material question batch needed for the next decision rather than the entire domain inventory.",
+      "missing_gate": "Track the exact rule revision in another context and record stakeholder burden, follow-up count, false positives, limitations, and a source-owned promotion decision.",
+      "standards_support": null,
+      "advisory_limitations": "Reference guidance only; it carries no claim of external validation, standards conformance, operational authority, or extraction readiness.",
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DISC-005",
+      "family": "Discovery",
+      "catalog_lane": "reference-only",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-reference-only",
+      "authoritative": false,
+      "source_rule_summary": "Let the operator steer evidence gathering while the agent resolves repository-, research-, and feasibility-owned unknowns before escalating operator-owned decisions.",
+      "missing_gate": "Field-test whether the classification reduces avoidable operator diagnosis and questions without hiding material forks, then complete source-owned promotion review.",
+      "standards_support": null,
+      "advisory_limitations": "Reference guidance only; it carries no claim of external validation, standards conformance, operational authority, or extraction readiness.",
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DISC-006",
+      "family": "Discovery",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DISC006-01",
+      "supporting_contexts": [
+        "KCS dependent-design correction after the assumed exact runtime path was absent",
+        "support-tool pre-implementation stop when nominal service evidence could not prove the required operation"
+      ],
+      "trigger": "Before finalizing a material design or starting substantial implementation whose feasibility or correctness depends on an existing external runtime or API capability that is not proven on the current operating path.",
+      "applicability": "Material work whose selected boundary depends on an exact current operation, mode, response contract, and operating condition outside the repository's deterministic control.",
+      "invariant": "Prove the exact operation, mode, response shape, and relevant operating condition with fresh evidence or one bounded safe smoke before relying on the capability. Generic health, neighboring paths, imported schemas, fixtures, and stale documentation are nominal evidence only.",
+      "expected_outcome": "A dependent design is corrected, narrowed, or stopped before substantial work when the exact capability remains unknown; nominal evidence cannot silently become runtime proof.",
+      "authority_boundary": "The accountable capability owner controls access and contract interpretation; the design owner decides whether evidence is sufficient. Deterministic checks may validate provenance and response shape but cannot manufacture external runtime truth.",
+      "stop_or_narrow": "If the exact evidence is unavailable, unsafe, deferred, or inconsistent, keep the capability unknown and stop or narrow the dependent decision. Do not probe alternative paths or send data beyond the authorized boundary.",
+      "limitations": [
+        "One bounded smoke proves only its exact operation and condition, not production reliability or general service readiness.",
+        "Target endpoints, credentials, payloads, project bindings, subscription policy, and safe-access decisions remain adapter-owned; elapsed overhead was not measured consistently."
+      ],
+      "non_goals": [
+        "Prescribing an endpoint, command, schema, fixture, or deployment mechanism",
+        "Requiring a live smoke when the material claim does not depend on a live external capability"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-001",
+      "family": "Design",
+      "catalog_lane": "field-evidence",
+      "portability_status": "external-trial-active",
+      "kit_treatment": "advisory-field-evidence-candidate",
+      "authoritative": false,
+      "source_rule_summary": "Map each observable acceptance criterion and supported outcome-by-context transition to a deterministic, bounded-model, or named human-review gate.",
+      "missing_gate": "The exact scientific-feasibility contract is paused until the authorized physical evidence package and named review exist. Then close the observed branch, acceptance-map corrections, burden, false confidence, limitations, local verdict, and source-owned promotion and extraction review.",
+      "advisory_limitations": "Field evidence exists, but the result-dependent external contract is paused without an authentic physical observation. This descriptor cannot be loaded or presented as rule authority.",
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-002",
+      "family": "Design",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DES002-01",
+      "supporting_contexts": [
+        "KCS material slice planning and staged review across locked phase and repository boundaries",
+        "support-tool pre-implementation discovery of a target authority conflict while adjacent workflows remained unchanged"
+      ],
+      "trigger": "Before Delivery of a material slice that intends to change one or more contracts while preserving adjacent behavior or authority boundaries.",
+      "applicability": "Material work that changes behavior, ownership, interface, dependency, persistence, failure, deployment, policy, or another externally meaningful contract.",
+      "invariant": "State the contracts intended to change and the contracts required to remain unchanged before the material slice enters Delivery.",
+      "expected_outcome": "Design and review can detect authority conflicts, unapproved scope widening, adjacent behavior drift, and false behavior-preservation claims before they become delivered changes.",
+      "authority_boundary": "Named product, policy, data, platform, or other contract owners approve changes within their authority; the slice owner records the boundary and the reviewer verifies the authorized diff against it.",
+      "stop_or_narrow": "If a changed or unchanged contract is missing, conflicts with current authority, or requires a wider unapproved slice, return to Design and keep Delivery locked at the affected boundary.",
+      "limitations": [
+        "Concrete product contracts, policy values, compatibility promises, and approval roles remain target-owned.",
+        "The rule exposes drift and authority conflicts but does not replace implementation validation; reviewer minutes were not measured consistently."
+      ],
+      "non_goals": [
+        "Freezing all surrounding behavior indefinitely",
+        "Treating a file list as a behavior or authority contract"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-003",
+      "family": "Design",
+      "catalog_lane": "standards-backed-shadow",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-standards-shadow",
+      "authoritative": false,
+      "source_rule_summary": "For behavior-preserving work, demonstrate preservation with traceable old/new evidence.",
+      "missing_gate": "Trial the exact rule revision on a non-KCS behavior-preserving change, record overhead and limitations, and complete source-owned promotion and extraction review.",
+      "standards_support": {
+        "sources": ["ISO/IEC 25010:2023", "NIST SSDF 1.1"],
+        "outcome": "Demonstrate behavior preservation with traceable evidence.",
+        "limitations": "A bidirectional old/new map is required only when both directions materially apply; the sources do not prescribe this artifact shape."
+      },
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-004",
+      "family": "Design",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DES004-01",
+      "supporting_contexts": [
+        "KCS runtime and packet ownership",
+        "standalone engineering investigation deterministic/agent/human boundary",
+        "API engineering toolkit human-owned adoption decisions",
+        "scientific feasibility ownership contract"
+      ],
+      "trigger": "When deterministic processing, AI proposals, validation, material decisions, or side effects contribute to one workflow or change.",
+      "applicability": "Material Design work with more than one type of evidence producer, validator, decision maker, or side-effect owner.",
+      "invariant": "Assign deterministic processing, AI proposals, validation, material decisions, and side effects to explicit owners. Ownership identifies responsibility and decision authority; it does not validate content. AI output remains untrusted until the required deterministic validation or named human judgment accepts it.",
+      "expected_outcome": "Evidence producers cannot self-authorize material decisions, and an ownership map cannot be mistaken for proof that AI content is correct.",
+      "authority_boundary": "Validators own their declared evidence gates; named human owners retain material judgment and risk acceptance; side-effect owners enforce the approved outcome.",
+      "stop_or_narrow": "If validation or decision authority is missing or unavailable, stop or narrow the dependent action.",
+      "limitations": [
+        "Ownership did not eliminate false semantic or authority claims in the reviewed contexts.",
+        "Project roles, identities, risk values, and enforcement mechanisms remain target-specific."
+      ],
+      "non_goals": [
+        "Treating AI ownership as validation",
+        "Delegating human residual risk acceptance"
+      ],
+      "extraction_review_decision": "approved-kcs-16-after-wording-stabilization"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-006",
+      "family": "Design",
+      "catalog_lane": "standards-backed-shadow",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-standards-shadow",
+      "authoritative": false,
+      "source_rule_summary": "Characterize compatibility-sensitive declared-unchanged behavior and residual risk before change closure.",
+      "missing_gate": "Trial the exact revision on a compatibility-sensitive surface outside KCS and determine which evidence fields are generic before source-owned promotion review.",
+      "standards_support": {
+        "sources": ["ISO/IEC/IEEE 12207:2026", "NIST SSDF 1.1"],
+        "outcome": "Characterize compatibility-sensitive unchanged behavior and residual risk before change closure.",
+        "limitations": "The local frozen-contract term is not universal; concrete compatibility boundaries and evidence remain target-owned."
+      },
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-007",
+      "family": "Design",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DES007-01",
+      "supporting_contexts": [
+        "KCS ambiguous continuation correction",
+        "standalone engineering investigation expired authority and terminal stop",
+        "API engineering toolkit separated discovery, design, delivery, evaluation, and adoption",
+        "active scientific and support-tool stage contracts"
+      ],
+      "trigger": "At a material transition between outcome framing, design selection, Delivery, evaluation, adoption, promotion, or later work.",
+      "applicability": "Material work where evidence or completion in one stage could be mistaken for authority to enter another.",
+      "invariant": "Track outcome agreement, design selection, and Delivery authorization independently; no state, evidence result, recommendation, or elapsed time implies another state.",
+      "expected_outcome": "Accepted evidence or completed work cannot silently authorize a later stage, product continuation, or portability promotion.",
+      "authority_boundary": "Only the named human decision owner may select, authorize, revoke, adopt, or promote within the authority assigned to that transition.",
+      "stop_or_narrow": "If the exact next-stage authority is absent, keep that stage locked while allowing already authorized evidence work to close within its boundary.",
+      "limitations": [
+        "No common per-transition timing or false-positive stop rate was established.",
+        "Role names and approval systems remain target-specific."
+      ],
+      "non_goals": [
+        "Defining product approval roles",
+        "Turning feasibility or evaluation success into authorization"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-008",
+      "family": "Design",
+      "catalog_lane": "standards-backed-shadow",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-standards-shadow",
+      "authoritative": false,
+      "source_rule_summary": "Prepare a material human decision with context, options, consequences, uncertainty, and residual risk.",
+      "missing_gate": "Field-test decision-readiness completeness and whether decision owners request previously unseen evidence; then complete source-owned promotion review.",
+      "standards_support": {
+        "sources": ["NIST AI RMF 1.0 Core"],
+        "outcome": "Make a material human decision ready with context, options, consequences, uncertainty and residual risk.",
+        "limitations": "UI layout, approver identity, and product risk acceptance remain profile-owned; the framework does not validate the source artifact shape."
+      },
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-009",
+      "family": "Design",
+      "catalog_lane": "reference-only",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-reference-only",
+      "authoritative": false,
+      "source_rule_summary": "Close material work with a compact architecture and maintainability review, while allowing a bounded leaf exception.",
+      "missing_gate": "Record trigger accuracy, leaf exceptions, design corrections, review overhead, and false positives across KCS and a materially different project before source-owned promotion review.",
+      "standards_support": null,
+      "advisory_limitations": "Standards support review and improvement in general but do not establish a universal mandatory post-change architecture gate or the named local record. Reference guidance only; not external validation or authority.",
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-010",
+      "family": "Design",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DES010-01",
+      "supporting_contexts": [
+        "KCS chat-only design correction and tracked plan gate",
+        "standalone engineering investigation tracked experiment decisions",
+        "API engineering toolkit exact revisions, evidence packets, and adoption records"
+      ],
+      "trigger": "Before Delivery begins for material work and when that work is reviewed against its authorized boundary.",
+      "applicability": "Material work that changes ownership, interface, dependency, persistence, failure, deployment, contract, or internal-complexity boundaries. A mechanical leaf exception is permitted only when none changes materially.",
+      "invariant": "Keep a durable authoritative design record containing the selected boundary, independent approval states, acceptance gates, unchanged contracts, and stop conditions; review resolves that record and checks the authorized phase against the change.",
+      "expected_outcome": "Design, authority, and evidence remain reconstructable outside chat, and review can reject work outside the selected and authorized phase.",
+      "authority_boundary": "The named human owner selects and authorizes material work; the reviewer verifies record-to-change alignment and any claimed leaf exception.",
+      "stop_or_narrow": "Missing authority, a missing durable record for material work, or an unsupported leaf exception keeps Delivery locked.",
+      "limitations": [
+        "Small-leaf false-positive rates and per-rule elapsed cost remain unmeasured.",
+        "Artifact format, repository location, and approval system remain target-specific."
+      ],
+      "non_goals": [
+        "Requiring a new plan for every mechanical leaf change",
+        "Making chat an authoritative design store"
+      ],
+      "extraction_review_decision": "approved-kcs-16-after-wording-stabilization"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-011",
+      "family": "Design",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DES011-01",
+      "supporting_contexts": [
+        "KCS host, model, and tool bypass review for a claimed deterministic privacy boundary",
+        "support-tool application, workflow, and command-path review that found executable finalization bypasses"
+      ],
+      "trigger": "When a material deterministic security, privacy, safety, or equivalent invariant is claimed across more than one supported user or system entrypoint.",
+      "applicability": "Claims whose validity depends on every supported path reaching an enforcement owner before the prohibited outcome can occur.",
+      "invariant": "Map every supported entrypoint to its first deterministic enforcement gate and prove that no prohibited outcome can occur before or around that gate. Model-controlled behavior is optional, not enforcement. If reachability cannot be guaranteed, restrict the supported entrypoint or label the behavior best-effort and obtain explicit approval for the weaker contract.",
+      "expected_outcome": "A guarded primary path cannot be mistaken for an end-to-end invariant while another supported path can bypass it, and unsupported universal claims are narrowed before Delivery.",
+      "authority_boundary": "The system owner defines supported entrypoints, the deterministic owner enforces the invariant, and the named human risk owner approves exclusions or a weaker best-effort contract. A model cannot grant deterministic authority to its own routing choice.",
+      "stop_or_narrow": "If an entrypoint is missing, its gate is bypassable, or reachability is unproven, return to Design and restrict the entrypoint or claim before authorizing dependent work.",
+      "limitations": [
+        "Strict reachability proof applies only to a material deterministic invariant; advisory quality goals may use explicitly weaker evidence.",
+        "Target entrypoint inventories, host capabilities, enforcement mechanisms, and accepted residual risks remain adapter-owned; review duration was not measured consistently."
+      ],
+      "non_goals": [
+        "Prescribing a server, connector, user interface, storage, or host-tool mechanism",
+        "Claiming that one protected path proves repository-wide or product-wide enforcement"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
+    },
+    {
+      "rule_id": "ENG-PORT-DES-012",
+      "family": "Design",
+      "catalog_lane": "standards-backed-shadow",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-standards-shadow",
+      "authoritative": false,
+      "source_rule_summary": "Collect proportional human-centred evidence before committing to a material interaction design.",
+      "missing_gate": "Track corrections avoided, evidence level, escalation reasons, overhead, drift, false positives, and decision speed across KCS and another product context before source-owned promotion review.",
+      "standards_support": {
+        "sources": ["ISO 9241-210:2019", "ISO 9241-220:2019"],
+        "outcome": "Collect proportional human-centred evidence before committing to a material interaction design.",
+        "limitations": "The exact prototype-fidelity ladder is optional reference guidance rather than a standards-prescribed procedure."
+      },
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-001",
+      "family": "Delivery",
+      "catalog_lane": "reference-only",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-reference-only",
+      "authoritative": false,
+      "source_rule_summary": "Use supported project-local tool entrypoints instead of ad hoc commands.",
+      "missing_gate": "Compare command errors and manual correction count in another repository with an explicit entrypoint index before source-owned promotion review.",
+      "standards_support": null,
+      "advisory_limitations": "Reference guidance only; commands and repository entrypoints are project-specific and carry no external validation or universal authority.",
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-002",
+      "family": "Delivery",
+      "catalog_lane": "reference-only",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-reference-only",
+      "authoritative": false,
+      "source_rule_summary": "Start material batches from a compact current-state frame and emit visible checkpoints after material review or commit boundaries.",
+      "missing_gate": "Track the exact revision and record context resets, stale-assumption corrections, and operator overhead externally before source-owned promotion review.",
+      "standards_support": null,
+      "advisory_limitations": "Reference guidance only; it carries no claim of external validation, standards conformance, operational authority, or extraction readiness.",
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-003",
+      "family": "Delivery",
+      "catalog_lane": "standards-backed-shadow",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-standards-shadow",
+      "authoritative": false,
+      "source_rule_summary": "Use recurring root causes and review findings to improve process or tooling when the enforcement level is honest.",
+      "missing_gate": "Import value-safe external evidence showing which exact candidates were produced, rejected, or revised, then complete source-owned promotion review.",
+      "standards_support": {
+        "sources": ["NIST SSDF 1.1"],
+        "outcome": "Use recurring root causes and findings to improve process or tooling.",
+        "limitations": "The exact note-to-checklist-to-tool ladder is an optional implementation pattern, not a standards requirement."
+      },
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-004",
+      "family": "Delivery",
+      "catalog_lane": "standards-backed-shadow",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-standards-shadow",
+      "authoritative": false,
+      "source_rule_summary": "Close material behavior or refactor work with validation, drift review, and explicit residual risk.",
+      "missing_gate": "Track the exact revision in a non-KCS material slice and compare detected drift, false positives, overhead, and limitations before source-owned promotion review.",
+      "standards_support": {
+        "sources": ["NIST SSDF 1.1", "NIST AI RMF 1.0 Core"],
+        "outcome": "Close a material change with validation, drift review and explicit residual risk.",
+        "limitations": "Project test suites, thresholds, review tooling, and risk acceptance remain target-owned."
+      },
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-006",
+      "family": "Delivery",
+      "catalog_lane": "field-evidence",
+      "portability_status": "external-trial-active",
+      "kit_treatment": "advisory-field-evidence-candidate",
+      "authoritative": false,
+      "source_rule_summary": "Predeclare proportional conditions and evidence for nondeterministic or model-mediated acceptance.",
+      "missing_gate": "The exact scientific-feasibility contract is paused until the authorized physical evidence package and named review exist; fixtures remain insufficient. Then close uncertainty handling, corrections, overhead, false positives, limitations, local verdict, and source-owned promotion and extraction review.",
+      "advisory_limitations": "Field evidence exists, but the result-dependent external contract is paused without an authentic physical observation. This descriptor cannot be loaded or presented as rule authority.",
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-007",
+      "family": "Delivery",
+      "catalog_lane": "standards-backed-shadow",
+      "portability_status": "external-trial-active",
+      "kit_treatment": "advisory-standards-shadow",
+      "authoritative": false,
+      "source_rule_summary": "Establish provenance and privacy suitability before using sensitive, sanitized, synthetic, or derived fixtures.",
+      "missing_gate": "An exact support-tool contract genuinely stopped an approved synthetic fixture before send because the destination-purpose, project/subscription, and retention boundary remained unresolved. Resume only inside that approved boundary and independently record the per-rule verdict, corrections, overhead, false positives, and limitations before cross-project and extraction review.",
+      "standards_support": {
+        "sources": ["NIST Privacy Framework", "NIST SP 800-188"],
+        "outcome": "Establish provenance and privacy suitability for sensitive, sanitized or derived fixtures.",
+        "limitations": "Data classification, lawful use, allowed content, and fixture-level privacy proof remain target-profile decisions; the sources do not prove a particular fixture private or representative."
+      },
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-008",
+      "family": "Delivery",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DEL008-01",
+      "supporting_contexts": [
+        "KCS bounded adapter with parent design locked",
+        "standalone engineering investigation disposable mechanisms and terminal product stop",
+        "scientific feasibility bounded experiment contracts",
+        "support-tool bounded integration feasibility contracts"
+      ],
+      "trigger": "When an isolated adapter, spike, prototype, experiment, or other enabling slice is proposed or completed for a parent outcome.",
+      "applicability": "Enabling work whose success could otherwise be mistaken for parent design, integration, product, or next-stage approval.",
+      "invariant": "An enabling slice proves only its predeclared bounded feasibility claim; parent design selection and integration or Delivery authorization remain separate and locked.",
+      "expected_outcome": "A successful mechanism cannot inherit or manufacture authority for its parent outcome.",
+      "authority_boundary": "The enabling-slice owner closes the bounded evidence claim; the named parent decision owner separately selects and authorizes parent work.",
+      "stop_or_narrow": "Close the enabling work at its evidence boundary and keep the parent locked when parent selection or authorization is absent.",
+      "limitations": [
+        "The rule requires a compact claim and parent-boundary record.",
+        "Prospective correction and false-positive counts remain open in two contexts."
+      ],
+      "non_goals": [
+        "Selecting parent architecture",
+        "Authorizing parent integration from feasibility success"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-009",
+      "family": "Delivery",
+      "catalog_lane": "standards-backed-shadow",
+      "portability_status": "portability-candidate",
+      "kit_treatment": "advisory-standards-shadow",
+      "authoritative": false,
+      "source_rule_summary": "Establish current source, artifact, and relevant installed-trial provenance before relying on a packaged or deployed trial.",
+      "missing_gate": "Track stale identity and configuration detections, avoided retries, false positives, overhead, and applicability in a materially different packaged or deployed system before source-owned promotion review.",
+      "standards_support": {
+        "sources": ["NIST SSDF 1.1", "SPDX Build Profile", "SLSA provenance v1.2"],
+        "outcome": "Prove current source, build, and artifact identity before relying on an installed trial.",
+        "limitations": "Build provenance alone does not prove installed activation, effective configuration, live capability, client files, service identities, or host-specific preflight."
+      },
+      "extraction_review_decision": "not-approved-advisory-only"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-010",
+      "family": "Delivery",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DEL010-01",
+      "supporting_contexts": [
+        "KCS stateful model/tool continuation corrections",
+        "API engineering toolkit retry and concurrency applicability review"
+      ],
+      "trigger": "When duplicate, re-entrant, retried, or rejected submission could repeat a side effect or corrupt the identity or lifecycle of a logical operation.",
+      "applicability": "Stateful or side-effecting continuations with a material duplicate-safety risk. Stateless or side-effect-free paths need no retry mechanism when the applicability review records that the invariant cannot be violated.",
+      "invariant": "One logical action produces at most one side effect; an exact duplicate receives the same stable outcome or a deterministic no-op; a conflicting or stale submission cannot alter or consume a different current operation; and a rejected submission that changed no state preserves any still-valid operation unless an identity or lifecycle conflict is established.",
+      "expected_outcome": "Retries and duplicates cannot repeat side effects, destroy valid pending work, or let stale submissions interfere with unrelated current work.",
+      "authority_boundary": "The deterministic owner normalizes equivalent accepted inputs and owns the target-appropriate mechanism and any retention bounds; a model, prompt, or transport cannot supply enforcement by instruction.",
+      "stop_or_narrow": "Do not rely on the path operationally until applicable duplicate, conflict, stale, and rejected-submission outcomes are tested; otherwise restrict or narrow the supported operation.",
+      "limitations": [
+        "The external use was retrospective and did not execute one prospective runtime retry/concurrency path.",
+        "No target API, operation-identity, retention, cache, persistence, or transport mechanism is required by the generic rule."
+      ],
+      "non_goals": [
+        "Mandating a storage or replay mechanism",
+        "Requiring retry controls for paths where the invariant cannot be violated"
+      ],
+      "extraction_review_decision": "approved-kcs-16-after-wording-stabilization"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-011",
+      "family": "Delivery",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DEL011-01",
+      "supporting_contexts": [
+        "KCS mixed and uncommitted installed-evidence incident",
+        "API engineering toolkit lost evidence packet and later commit-backed adoption"
+      ],
+      "trigger": "Before declaring material version-controlled work delivered or using it to authorize later material work.",
+      "applicability": "Material repository work with validation or built/installed evidence that must be attributable to an exact intended change.",
+      "invariant": "Isolate the intended change from unrelated or deferred work, review and validate that isolated state, record a durable revision or an explicitly approved no-revision/defer disposition, and keep accepted artifact evidence traceable to the durable content. Mixed or provisional evidence cannot authorize the next material stage.",
+      "expected_outcome": "Delivered content and its evidence are reconstructable, reviewable, and not confused with unrelated or provisional work.",
+      "authority_boundary": "The change owner isolates and validates the work; the named human owner approves any no-revision/defer disposition and later-stage authorization.",
+      "stop_or_narrow": "Keep delivery and the next material stage open when the intended change is mixed, unreviewed, not durably identified without approval, or artifact evidence is not traceable.",
+      "limitations": [
+        "One original external evidence packet remains permanently lost.",
+        "Exact per-rule timing and approved no-revision false positives are unknown."
+      ],
+      "non_goals": [
+        "Prescribing a particular version-control platform",
+        "Forbidding an explicitly approved no-revision or defer path"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
+    },
+    {
+      "rule_id": "ENG-PORT-DEL-012",
+      "family": "Delivery",
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DEL012-01",
+      "supporting_contexts": [
+        "KCS synthetic-to-representative outcome correction",
+        "standalone engineering investigation hidden representative gates",
+        "scientific feasibility physical-case contract"
+      ],
+      "trigger": "Before closing work with a claim about a named incident, noisy input, deployment failure, or parent operational outcome.",
+      "applicability": "Completion claims whose truth depends on more than the mechanism, contract, wiring, or bounded feasibility already tested.",
+      "invariant": "Map the claim to the smallest safe evidence level capable of proving it. Fixtures and synthetic smokes may prove contracts, mechanics, safety, wiring, or feasibility. Representative or real operational evidence is required only when the completion claim depends on that level; it is not a default for every change.",
+      "expected_outcome": "Weaker synthetic evidence cannot close a stronger operational claim, while low-risk work is not burdened with an unnecessary production trial.",
+      "authority_boundary": "The evidence owner classifies what each result proves; the named human decision owner approves the completion claim and required risk level.",
+      "stop_or_narrow": "If the required evidence is unavailable, unsafe, deferred, or fails, narrow the completion claim and keep the stronger outcome open.",
+      "limitations": [
+        "Representative evidence can be materially expensive or unavailable.",
+        "The rule makes no claim that every slice needs a real-production trial."
+      ],
+      "non_goals": [
+        "Making production trials the default",
+        "Using a fixture to prove an operational outcome it does not exercise"
+      ],
+      "extraction_review_decision": "approved-kcs-16-after-wording-stabilization"
+    }
+  ]
+}
