@@ -76,6 +76,82 @@ work modes (KCS-14 slices 1-2).
   Grounds: own your context window; small bounded agents; tools as
   structured outputs; explicit control flow ownership.
 
+#### Organization-Neutral Field Reference: Agentic Delivery Workflow Shapes
+
+Status: advisory architecture input, normalized from an operator-provided
+comparative field report in 2026. The source report was assembled from project
+documentation, task records, review comments, and an observed output example.
+Organization names, internal issue identifiers, private endpoints, personal
+attribution, repository conventions, and team-specific delivery rules are
+intentionally excluded here. The underlying evidence was not independently
+reproduced in this repository.
+
+The report compared three workflow shapes:
+
+1. **Tracked task pipeline.** A staged workflow separates requirement
+   extraction, planning, implementation, self-review, optional specialist
+   checks, and issue-tracker synchronization. Its strongest feature is a
+   human-readable plan produced before implementation. It had been exercised
+   on several real tasks. Reported weaknesses included fixed overhead,
+   occasional plans larger than the changes, and no explicit change boundary,
+   affected-surface inventory, or unknown register.
+2. **Interactive clarification and handoff.** An interactive clarification
+   step gathers missing context, a handoff step normalizes it, and a final step
+   produces a working specification. One reported real-task use produced a
+   concise specification with few manual corrections. Reported weaknesses
+   included required operator presence, transient artifacts that could become
+   stale, and no explicit affected-surface or validation plan.
+3. **Complexity-routed delivery.** A routing step varies planning and review
+   effort by task materiality. The middle route uses planning, adversarial
+   challenge, an explicit human checkpoint, implementation from a bounded
+   handoff, and independent review; the highest-risk route stops for human-led
+   technical framing. This shape directly addressed over-planning, but its
+   implementation evidence was limited to a practitioner description. Its
+   reported gaps included no affected-surface inventory, unknown ownership, or
+   validation plan. A route that skips all gates for apparently trivial work
+   is not accepted as a portable safety rule.
+
+Portable architecture candidates from the comparison:
+
+- separate clarification, design, Delivery, validation, and review concerns;
+- scale ceremony by materiality and boundary impact rather than apply one
+  fixed pipeline to every change;
+- use adversarial plan review when a material design or integration risk
+  triggers it;
+- require a human decision checkpoint before material Delivery;
+- hand implementation the smallest current authoritative context instead of
+  relying on accumulated conversation history;
+- keep planning artifacts only when they remain useful for authorization,
+  implementation, or later review.
+
+Required corrections before adopting any of the three shapes:
+
+- declare changed and unchanged boundaries and affected surfaces;
+- keep a material unknown inventory with resolution ownership;
+- map acceptance criteria to deterministic checks, bounded trials, or named
+  human-review gates;
+- keep outcome agreement, design selection, and Delivery authorization as
+  independent states;
+- preserve explicit stop conditions and failure behavior;
+- retain validation and safety gates for bounded leaf changes even when a
+  separate tracked slice plan is not triggered.
+
+Do not import from the examples:
+
+- vendor-specific model assignments, command names, or tool integrations;
+- issue-tracker status automation or automatic commit behavior;
+- repository directory layouts, branch rules, or commit conventions;
+- fixed numeric complexity levels or unvalidated routing thresholds;
+- a rule that architectural decisions are recorded only above a complexity
+  label;
+- broad gate skipping based only on a task being described as trivial.
+
+This reference may inform architecture selection for the separate agentic
+engineering kit project after the KCS-17 handoff boundary. It does not define a
+later slice, authorize implementation, prove cross-project portability, or
+override the repository's Spec-First DDD, privacy, Git, validation, and review
+contracts.
+
 ### 3. Untrusted Model Output And LLM Security
 
 Primary lens for data boundaries, handoff contracts, and validation gates.
