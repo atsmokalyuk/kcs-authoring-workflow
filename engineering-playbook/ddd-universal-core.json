@@ -103,7 +103,7 @@
       "kit_treatment": "advisory-standards-shadow",
       "authoritative": false,
       "source_rule_summary": "Connect stakeholder context, workflow, constraints, a measurable baseline, a bounded hypothesis, an adequate evidence method, result, and correction log.",
-      "missing_gate": "Close the active scientific feasibility trial with the measured physical result, corrections, overhead, false positives, limitations, and local verdict; then complete source-owned promotion and extraction review.",
+      "missing_gate": "The exact scientific-feasibility contract is paused because the authorized physical event and traceable result package are absent. Resume only with the exact authorized sample identity and proposal linkage, manufacture and instrument records, authentic coordinates and local file references, named review, and effort when known; then close corrections, false positives, limitations, local verdict, and source-owned promotion and extraction review.",
       "standards_support": {
         "sources": ["ISO/IEC/IEEE 12207:2026", "NIST AI RMF 1.0 Core"],
         "outcome": "Connect stakeholder context, requirements and constraints to measurable evaluation and correction.",
@@ -161,8 +161,8 @@
       "kit_treatment": "advisory-field-evidence-candidate",
       "authoritative": false,
       "source_rule_summary": "Map each observable acceptance criterion and supported outcome-by-context transition to a deterministic, bounded-model, or named human-review gate.",
-      "missing_gate": "Close the active scientific feasibility contract with the physical result, acceptance-map corrections, burden, false confidence, limitations, and local verdict; then complete source-owned promotion and extraction review.",
-      "advisory_limitations": "Field evidence exists, but the result-dependent external contract remains open. This descriptor cannot be loaded or presented as rule authority.",
+      "missing_gate": "The exact scientific-feasibility contract is paused until the authorized physical evidence package and named review exist. Then close the observed branch, acceptance-map corrections, burden, false confidence, limitations, local verdict, and source-owned promotion and extraction review.",
+      "advisory_limitations": "Field evidence exists, but the result-dependent external contract is paused without an authentic physical observation. This descriptor cannot be loaded or presented as rule authority.",
       "extraction_review_decision": "not-approved-advisory-only"
     },
     {
@@ -435,8 +435,8 @@
       "kit_treatment": "advisory-field-evidence-candidate",
       "authoritative": false,
       "source_rule_summary": "Predeclare proportional conditions and evidence for nondeterministic or model-mediated acceptance.",
-      "missing_gate": "Close the active scientific feasibility contract with the physical observation, uncertainty handling, corrections, overhead, false positives, limitations, and local verdict; then complete source-owned promotion and extraction review.",
-      "advisory_limitations": "Field evidence exists, but the result-dependent external contract remains open. This descriptor cannot be loaded or presented as rule authority.",
+      "missing_gate": "The exact scientific-feasibility contract is paused until the authorized physical evidence package and named review exist; fixtures remain insufficient. Then close uncertainty handling, corrections, overhead, false positives, limitations, local verdict, and source-owned promotion and extraction review.",
+      "advisory_limitations": "Field evidence exists, but the result-dependent external contract is paused without an authentic physical observation. This descriptor cannot be loaded or presented as rule authority.",
       "extraction_review_decision": "not-approved-advisory-only"
     },
     {

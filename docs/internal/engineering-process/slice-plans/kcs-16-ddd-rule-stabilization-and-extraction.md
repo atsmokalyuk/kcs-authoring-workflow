@@ -312,9 +312,56 @@ advisory field-evidence candidates, 12 advisory standards-backed shadow
 entries, five advisory reference-only entries, and two explicitly excluded
 project-local rules. KCS-17 execution remains locked.
 
-External-trial follow-up remains independent: tracked LED closeout is still
-required for `ENG-PORT-DISC-003`, `ENG-PORT-DES-001`, and
-`ENG-PORT-DEL-006`; tracked `plesk_support` closeout is still required for
-`ENG-PORT-DISC-006`, `ENG-PORT-DES-002`, and `ENG-PORT-DES-011`. The operator
-started those external closeout tasks on 2026-08-13; no result or source-owned
-promotion is inferred here.
+External-trial follow-up remains independent. LED D-213/Checkpoint 145 was
+admitted under source review `SR-LED-PAUSE-145`: `ENG-PORT-DISC-003`,
+`ENG-PORT-DES-001`, and `ENG-PORT-DEL-006` remain
+`external-trial-active`, while their exact local contracts are paused because
+the authorized physical event and traceable evidence package are absent. This
+is not a failure, closeout, promotion, or extraction decision; the resume gate
+is recorded in the source protocol and advisory catalog. Tracked
+`plesk_support` closeout remains required for `ENG-PORT-DISC-006`,
+`ENG-PORT-DES-002`, and `ENG-PORT-DES-011`; the operator-provided handoff is
+not source-admissible until its evidence is committed durably. KCS-17 remains
+locked.
+
+### Post-closeout LED blocker intake
+
+On 2026-08-13, the source admitted LED D-213/Checkpoint 145 as a bounded
+blocker intake under `SR-LED-PAUSE-145`. The source independently reran the LED
+eight-contract structural validator at the reviewed source revision; it
+reported `EXTERNAL_TRIAL_CONTRACTS_PASS` for all eight exact contracts.
+
+The intake changes only current evidence state and missing gates:
+
+- `ETC-LED-DISC-003-r1`, `ETC-LED-DES-001-r1`, and
+  `ETC-LED-DEL-006-r1` are `paused-local-trial` because the authentic physical
+  event and traceable evidence package are absent;
+- five other LED contracts remain active;
+- no physical `FAIL`, completed trial, final local verdict, upstream status
+  change, promotion, extraction decision, or KCS-17 authorization is inferred;
+- the exact resume evidence and the new/revised-contract stop condition are
+  recorded in the source protocol and advisory catalog.
+
+Unchanged contracts: 28-entry membership, `11/12/5` catalog lanes, nine
+authoritative extracted rules, two project-local exclusions, all candidate
+formulations, all portability statuses, standards claims, loading contract,
+profile/adapter boundary, and KCS-17 lock.
+
+Validation on the final intake content:
+
+- focused catalog, documentation, and graph policy suite: `37 passed`;
+- full policy suite: `80 passed`;
+- full repository suite: `1679 passed, 2 skipped`;
+- Ruff lint and format checks for both changed Python policy tests: passed;
+- JSON parsing, graph-hash validation, and `git diff --cached --check`: passed.
+
+Strict staged-only review: PASS with no blockers or warnings. The reviewer
+confirmed plan/diff alignment, exact campaign state, value-safe source
+traceability despite LED `Git unavailable`, advisory/authority separation,
+unchanged status and catalog counts, bounded standards claims, unchanged
+project-local exclusions, KCS-17 lock, and graph hashes.
+
+Ousterhout gate: `not triggered`. This is a bounded source-owned evidence-state
+and advisory missing-gate update; it changes no catalog schema or consumer
+interface, ownership or authority boundary, dependency, persistence, failure,
+deployment, algorithm, control flow, or material internal complexity.

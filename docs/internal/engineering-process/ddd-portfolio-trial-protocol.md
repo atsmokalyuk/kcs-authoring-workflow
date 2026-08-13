@@ -139,9 +139,9 @@ end-to-end integration gate owned by the separate toolkit project.
 
 ## Current Campaigns
 
-| Campaign | Project class | Source revision under test | Local state | Formal active rules | Source status effect |
+| Campaign | Project class | Source revision under test | Local state | Formal rule states | Source status effect |
 | --- | --- | --- | --- | --- | --- |
-| `DDD-LED-CAMPAIGN-01` | Greenfield scientific feasibility and controlled physical evidence | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring; D-212/Checkpoint 144 reconcile the current eight contracts without rewriting the historical three-contract baseline | `ENG-PORT-DISC-002`, `003`; `ENG-PORT-DES-001`, `004`, `007`; `ENG-PORT-DEL-006`, `008`, `012` | source-reviewed statuses apply only to exact rules; physical-result-dependent contracts remain open |
+| `DDD-LED-CAMPAIGN-01` | Greenfield scientific feasibility and controlled physical evidence | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring; D-213/Checkpoint 145 preserve the eight-contract campaign and independently pause the three contracts blocked by the absent physical event | active: `ENG-PORT-DISC-002`; `ENG-PORT-DES-004`, `007`; `ENG-PORT-DEL-008`, `012`; paused: `ENG-PORT-DISC-003`; `ENG-PORT-DES-001`; `ENG-PORT-DEL-006` | the pause is not a failed experiment, local closeout, or upstream verdict; all source-owned portability statuses remain unchanged |
 | `DDD-AIE-CAMPAIGN-01` | API engineering toolkit implementation and reference-project evaluation | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring of all 30; the Pack is adopted and no exact unfinished task is active | none; two future contracts are proposed; RP-B9 and `ENG-PORT-DEL-010` evidence are retrospective | target records change no status; source reviews in `pre-kcs-16-ddd-evidence-review.md` own later dispositions |
 | `DDD-PS-CAMPAIGN-01` | Existing support-tool material integration and privacy-sensitive external feasibility | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring; implementation not started and an external capability blocker remains | `ENG-PORT-DISC-002`, `006`; `ENG-PORT-DES-001`, `002`, `007`, `011`; `ENG-PORT-DEL-008`; `ENG-PORT-DEL-007` is paused | source-reviewed active contracts affect exact rules only; no automatic completion or cross-project promotion |
 | `DDD-UT-CAMPAIGN-01` | Completed standalone engineering-Discovery investigation with bounded deterministic, agent-mediated, and hidden-holdout comparisons | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | closed retrospective review under terminal decision 0077 | none; qualifying prior use is retrospective only | no automatic change; value-safe evidence is eligible for source review |
@@ -149,6 +149,45 @@ end-to-end integration gate owned by the separate toolkit project.
 Target projects own their local bindings and evidence. This source owns the
 campaign inventory, portability review, extraction decision, and export
 boundary.
+
+## Source-Owned Blocker Intake
+
+### SR-LED-PAUSE-145
+
+- **Review date:** 2026-08-13.
+- **Rules and revision:** `ENG-PORT-DISC-003`, `ENG-PORT-DES-001`, and
+  `ENG-PORT-DEL-006` at
+  `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66`.
+- **External identity and evidence:** LED reports `Git unavailable`; D-213,
+  Checkpoint 145, the eight-contract validator, and the value-safe packet at
+  `LED/docs/internal/portability-evidence/kcs-source-review-packet-checkpoint-145.md`
+  consistently record the local state transition. The source independently
+  confirmed the exact eight-contract revision with the LED structural
+  validator.
+- **Observed blocker:** no traceable physical sample identity, manufacture
+  record, instrument and measurement context, observed coordinates,
+  measurement-file references, or named measurement and chief-technologist
+  review exists. No synthetic, fixture, blank-form, or deterministic result
+  was admitted as the physical outcome.
+- **Local disposition:** `ETC-LED-DISC-003-r1`, `ETC-LED-DES-001-r1`, and
+  `ETC-LED-DEL-006-r1` are independently `paused-local-trial`; the other five
+  LED contracts remain active. The absence of the event is not a physical
+  `FAIL`, a completed local trial, or a per-rule verdict.
+- **Corrections and limitations:** two stale LED binding filenames were
+  corrected without changing the experiment, gate, rule formulation, or
+  authority boundary. Physical behavior, decision impact after observation,
+  stakeholder effort, and each final
+  `retain/revise/reject/propose-for-extraction-review` verdict remain unknown.
+- **Source disposition:** retain `external-trial-active` for all three exact
+  rules. A paused external workflow state does not silently demote or promote
+  the source-owned portability status, and this intake provides no extraction
+  authority.
+- **Resume gate:** require the already authorized item's identity and frozen
+  proposal linkage; manufacture record and deviations; instrument, context,
+  and measurement provenance; authentic observed coordinates and local file
+  references; named measurement and chief-technologist review; and effort when
+  known. A different item, input, condition, criterion, or contract revision
+  requires a new or revised prospective contract rather than closure of r1.
 
 ## Source-Reviewed Cross-Project Evidence
 

@@ -1004,12 +1004,12 @@
         },
         {
           "path": "tests/policy/test_engineering_process_docs_policy.py",
-          "file_hash": "5649ac179ec470a3fa627afc58cc1869b81278b4a88ac64676e181956fe52e06",
+          "file_hash": "afe76bcb77699265db2e94d2d0848d7a89a764a32d437189b38834b57c955500",
           "valid_until_changed": true
         },
         {
           "path": "tests/policy/test_ddd_universal_core_catalog_policy.py",
-          "file_hash": "a4c6500abc6269473392daeba8b97fdafadeb51688ef0dd5fdc07c2dfb5262ea",
+          "file_hash": "b28f10742aeafa56bcf00855e9d477b86fc4ef31d913a4f1497db016dd81bf8d",
           "valid_until_changed": true
         },
         {

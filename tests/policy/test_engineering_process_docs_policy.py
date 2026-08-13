@@ -292,6 +292,24 @@ def test_pre_kcs16_ddd_source_review_and_statuses_are_consistent() -> None:
     assert "KCS-16 extraction has not started" in review
     assert "Nine rules are `extraction-review-ready`" in review
     assert "No repeated trial" in protocol
+    assert "### SR-LED-PAUSE-145" in protocol
+    assert "the other five\n  LED contracts remain active" in protocol
+    assert "absence of the event is not a physical\n  `FAIL`" in protocol
+    assert "retain `external-trial-active` for all three exact\n  rules" in protocol
+    for contract_id in (
+        "ETC-LED-DISC-003-r1",
+        "ETC-LED-DES-001-r1",
+        "ETC-LED-DEL-006-r1",
+    ):
+        assert contract_id in protocol
+    for rule_id in (
+        "ENG-PORT-DISC-003",
+        "ENG-PORT-DES-001",
+        "ENG-PORT-DEL-006",
+    ):
+        row = next(row for row in rows if row[0] == rule_id)
+        assert "`paused-local-trial`" in row[3]
+        assert row[4] == "external-trial-active"
     for review_id in (
         "SR-DISC001-01",
         "SR-DISC002-01",

@@ -255,6 +255,28 @@ def test_catalog_statuses_match_source_registry_treatment_independently() -> Non
         assert rule["portability_status"] == registry_statuses[rule_id]
 
 
+def test_paused_led_contracts_remain_advisory_with_exact_resume_gates() -> None:
+    rules = _rules_by_id(_load_catalog())
+    paused_rule_ids = {
+        "ENG-PORT-DISC-003",
+        "ENG-PORT-DES-001",
+        "ENG-PORT-DEL-006",
+    }
+
+    for rule_id in paused_rule_ids:
+        rule = rules[rule_id]
+        assert rule["authoritative"] is False
+        assert rule["portability_status"] == "external-trial-active"
+        assert "paused" in rule["missing_gate"].lower()
+        assert "physical" in rule["missing_gate"].lower()
+        assert "named review" in rule["missing_gate"].lower()
+
+    assert (
+        "fixtures remain insufficient"
+        in rules["ENG-PORT-DEL-006"]["missing_gate"].lower()
+    )
+
+
 def test_shadow_support_is_exact_outcome_level_and_bounded() -> None:
     catalog = _load_catalog()
     rules = _rules_by_id(catalog)
