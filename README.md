@@ -18,6 +18,12 @@ compatibility.
 
 The local Claude Desktop workflow is implemented through KCS-15.2b2.
 
+The earlier KCS-14.5 strict multi-issue stability target is closed: controlled
+attempts did not establish stable candidate identity from fresh model calls.
+The current workflow therefore retains deterministic Python validation and
+operator-confirmed scope boundaries without claiming stable model-owned issue
+partitioning.
+
 One representative, approved noisy ticket completed the full installed flow:
 five separate KCS items were identified, selected by the operator, compared
 with public articles, and routed to their appropriate outcomes. This proves
