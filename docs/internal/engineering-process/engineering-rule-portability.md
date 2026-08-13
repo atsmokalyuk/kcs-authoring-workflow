@@ -2,7 +2,7 @@
 
 Status: authoritative pre-extraction lifecycle and candidate registry.
 
-Date: 2026-07-30
+Date: 2026-08-13
 
 ## Purpose
 
@@ -178,6 +178,30 @@ not a score and not a target for creating more rules. It prevents KCS-16b from
 extracting a mature but incomplete subset without making the omitted work
 visible.
 
+The source-owned standards crosswalk and universal-core boundary are recorded
+in `docs/internal/engineering-process/ddd-universal-core-standards-crosswalk.md`.
+The active pre-KCS-16 cleanup and PR boundary is recorded in
+`docs/internal/engineering-process/slice-plans/pre-kcs-16-ddd-portfolio-pr-readiness.md`.
+That review finds the 28 candidates other than `ENG-PORT-DES-005` and
+`ENG-PORT-DEL-005` sufficiently representative for the declared
+Discovery-Design-controlled Delivery scope. The 28 form one core catalog with
+different evidence strengths: field-evidence candidates, standards-backed
+shadow rules, and reference-only guidance. This portfolio decision does not
+promote any candidate or approve extraction.
+
+The extraction gate below applies only to authoritative rule assets.
+Standards-backed shadow and reference-only entries may be carried through
+KCS-16/KCS-17 solely as visibly non-normative catalog descriptors; that is an
+advisory packaging path, not extraction. They must not be loaded as rule
+authority until their independent portability and extraction gates are met.
+
+Company, domain, regulatory, platform, repository, delivery, and operations
+requirements that fall outside the generic outcomes belong in target profiles
+and adapters. A profile binds applicability, owners, thresholds, and local
+policy; an adapter binds repositories, tools, APIs, runtimes, deployment, and
+evidence collection. Neither may silently weaken a triggered core invariant or
+change an upstream portability status.
+
 Coverage status means:
 
 - `covered`: one or more explicit rules and an accountable owner address the
@@ -234,6 +258,10 @@ the final disposition `evidence-gap`. Before extraction:
    human, agent, or platform ownership at their handoff boundaries.
 4. The extraction scope states whether deployment and operations are included,
    platform-owned, project-specific, or explicitly out of kit scope.
+5. Every selected asset records its kit treatment independently from its
+   portability status: beta candidate, standards-backed shadow, or
+   reference-only. Standards alignment alone must not be represented as
+   cross-project evidence.
 
 `partial` or `gap` coverage does not require framework growth and does not block
 extraction after an honest non-rule disposition is approved. It blocks only

@@ -226,9 +226,10 @@ def test_engineering_rule_portability_has_portfolio_coverage_gate() -> None:
         assert len(row) == 7
         capability_id, family, _, coverage, _, disposition, _ = row
         family_code = capability_id.split("-")[1]
-        assert family == {"DISC": "Discovery", "DES": "Design", "DEL": "Delivery"}[
-            family_code
-        ]
+        assert (
+            family
+            == {"DISC": "Discovery", "DES": "Design", "DEL": "Delivery"}[family_code]
+        )
         assert coverage in {"covered", "partial", "gap"}
         recorded_dispositions = set(re.findall(r"`([^`]+)`", disposition))
         assert recorded_dispositions
@@ -251,9 +252,9 @@ def test_engineering_rule_portability_has_portfolio_coverage_gate() -> None:
     assert "KCS-16b must not start" in registry
     assert "privacy/security risk" in rows_by_id["DDD-DES-05"][-2]
     assert "reliability/performance/observability" in rows_by_id["DDD-DES-05"][-2]
-    assert "build/deployment/migration/activation/rollback" in rows_by_id[
-        "DDD-DEL-04"
-    ][-2]
+    assert (
+        "build/deployment/migration/activation/rollback" in rows_by_id["DDD-DEL-04"][-2]
+    )
 
 
 def test_pre_kcs16_ddd_source_review_and_statuses_are_consistent() -> None:
@@ -303,6 +304,94 @@ def test_pre_kcs16_ddd_source_review_and_statuses_are_consistent() -> None:
         "SR-DEL010-01",
     ):
         assert review_id in protocol or review_id in review
+
+
+def test_ddd_universal_core_boundary_and_lanes_are_consistent() -> None:
+    process_root = ROOT / "docs/internal/engineering-process"
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    registry = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+    protocol = (process_root / "ddd-portfolio-trial-protocol.md").read_text(
+        encoding="utf-8"
+    )
+    crosswalk = (process_root / "ddd-universal-core-standards-crosswalk.md").read_text(
+        encoding="utf-8"
+    )
+    plan = (
+        process_root / "slice-plans/pre-kcs-16-ddd-portfolio-pr-readiness.md"
+    ).read_text(encoding="utf-8")
+    lane_rows = [
+        line
+        for line in crosswalk.splitlines()
+        if line.startswith(
+            (
+                "| Field-evidence lane",
+                "| Standards-backed shadow lane",
+                "| Reference-only lane",
+            )
+        )
+    ]
+    lane_rule_sets = [
+        set(re.findall(r"`(ENG-PORT-(?:DISC|DES|DEL)-\d{3})`", row))
+        for row in lane_rows
+    ]
+    expected_lanes = [
+        {
+            "ENG-PORT-DISC-001",
+            "ENG-PORT-DISC-002",
+            "ENG-PORT-DES-001",
+            "ENG-PORT-DES-004",
+            "ENG-PORT-DES-007",
+            "ENG-PORT-DES-010",
+            "ENG-PORT-DEL-006",
+            "ENG-PORT-DEL-008",
+            "ENG-PORT-DEL-010",
+            "ENG-PORT-DEL-011",
+            "ENG-PORT-DEL-012",
+        },
+        {
+            "ENG-PORT-DISC-003",
+            "ENG-PORT-DISC-006",
+            "ENG-PORT-DES-002",
+            "ENG-PORT-DES-003",
+            "ENG-PORT-DES-006",
+            "ENG-PORT-DES-008",
+            "ENG-PORT-DES-011",
+            "ENG-PORT-DES-012",
+            "ENG-PORT-DEL-003",
+            "ENG-PORT-DEL-004",
+            "ENG-PORT-DEL-007",
+            "ENG-PORT-DEL-009",
+        },
+        {
+            "ENG-PORT-DISC-004",
+            "ENG-PORT-DISC-005",
+            "ENG-PORT-DES-009",
+            "ENG-PORT-DEL-001",
+            "ENG-PORT-DEL-002",
+        },
+    ]
+
+    assert len(lane_rows) == 3
+    assert lane_rule_sets == expected_lanes
+    assert len(set().union(*lane_rule_sets)) == 28
+    assert all(
+        left.isdisjoint(right)
+        for index, left in enumerate(lane_rule_sets)
+        for right in lane_rule_sets[index + 1 :]
+    )
+    assert "`ENG-PORT-DES-005`" in crosswalk
+    assert "`ENG-PORT-DEL-005`" in crosswalk
+    assert "does not start\nKCS-16 or KCS-17" in crosswalk
+    assert "silently weaken or bypass" in crosswalk
+    assert "ddd-universal-core-standards-crosswalk.md" in agents
+    assert "ddd-universal-core-standards-crosswalk.md" in registry
+    assert "ddd-universal-core-standards-crosswalk.md" in protocol
+    assert "not an extracted rule" in crosswalk
+    assert "advisory packaging path, not extraction" in registry
+    assert "Delivery authorized by the operator" in plan
+    assert "Push and PR creation remain\nseparately approval-gated" in plan
 
 
 def test_design_uncertainty_protocol_required_anchors() -> None:
@@ -512,9 +601,9 @@ def test_installed_runtime_identity_gate_is_tracked() -> None:
     assert "ENG-PORT-DEL-009" in portability
     assert "another worktree/process/deployment does not transfer" in portability
     assert "parent-process configuration does not prove" in portability
-    assert "KCS14-PROMO-016" in (
-        process_root / "promotion-candidates.md"
-    ).read_text(encoding="utf-8")
+    assert "KCS14-PROMO-016" in (process_root / "promotion-candidates.md").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_duplicate_continuation_gate_is_tracked() -> None:

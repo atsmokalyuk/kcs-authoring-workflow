@@ -165,6 +165,9 @@ Authoritative layers:
 - `docs/internal/engineering-process/ddd-portfolio-trial-protocol.md`:
   authoritative cross-project campaign routing, canonical local trial states,
   retrospective admission, and source-owned portability review.
+- `docs/internal/engineering-process/ddd-universal-core-standards-crosswalk.md`:
+  authoritative 28-rule universal-core boundary, standards-backed shadow
+  dispositions, and target profile/adapter separation.
 - `docs/internal/engineering-process/functional-test-from-behavior.md`:
   functional acceptance test convention, fixture tiers, provenance checks, and
   refactor-safety test expectations.

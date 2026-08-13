@@ -50,8 +50,8 @@ value-safe effects and limitations.
 ## Source Review Dispositions
 
 Each review below compares materially different contexts and records decision
-effect, corrections, overhead, false positives, and limitations. A
-Each `extraction-review-ready` decision below first satisfies
+effect, corrections, overhead, false positives, and limitations. Each
+`extraction-review-ready` decision below first satisfies
 `cross-project-evidence-recorded`. It permits KCS-16 consideration but is not
 an extraction decision.
 
@@ -112,6 +112,18 @@ and value-safe trial feedback. The extraction excludes domain truth, product
 decisions, project repositories and layouts, privacy/security policy values,
 API mechanisms, runtime/deployment implementations, platform operations, and
 external-project bindings.
+
+The subsequent standards crosswalk in
+`docs/internal/engineering-process/ddd-universal-core-standards-crosswalk.md`
+records a 28-rule universal-core catalog for this scope. It preserves distinct
+field-evidence, standards-backed shadow, and reference-only treatments and
+excludes the two current project-local mechanisms. Company and project
+specificity is expected to enter later through profiles and adapters rather
+than by expanding or weakening the generic core. This portfolio boundary does
+not alter the nine `extraction-review-ready` decisions in this evidence review.
+Only rules that pass that existing gate may become authoritative extracted
+beta assets; shadow and reference entries remain non-extracted catalog
+descriptors.
 
 Nine rules are `extraction-review-ready` after this review. Before KCS-16b:
 

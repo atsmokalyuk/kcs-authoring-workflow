@@ -5,10 +5,16 @@ Discovery-Design-Delivery ruleset.
 
 ## Purpose
 
-Ensure that external projects field-test the complete candidate portfolio
-through one consistent protocol before generic extraction or toolkit export.
-This protocol complements the per-rule portability lifecycle in
-`engineering-rule-portability.md`; it does not weaken its evidence gates.
+Ensure that external projects monitor the complete imported candidate
+portfolio and field-test genuinely triggered rules through one consistent
+protocol. This protocol complements the per-rule portability lifecycle in
+`engineering-rule-portability.md`; it does not weaken its evidence gates or
+make field evidence the only possible kit treatment.
+
+The separate source-owned standards and universal-core disposition is recorded
+in `ddd-universal-core-standards-crosswalk.md`. A standards-backed shadow or
+reference-only kit treatment does not create historical trial evidence or move
+a candidate on the portability ladder.
 
 ## Two Trial Levels
 
@@ -126,8 +132,10 @@ Before extraction review, every rule receives a reviewed portfolio disposition:
 
 The toolkit export contains only separately approved generic assets. A rule is
 not exported merely because it was imported, monitored, locally mandatory, or
-tested once. The extracted set must still pass the end-to-end integration gate
-owned by the separate toolkit project.
+tested once. A standards-backed shadow asset must remain visibly distinct from
+a field-evidence beta asset and cannot claim
+`cross-project-evidence-recorded`. The selected set must still pass the
+end-to-end integration gate owned by the separate toolkit project.
 
 ## Current Campaigns
 
