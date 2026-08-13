@@ -125,7 +125,7 @@ Recommended slice order:
   duplicate-safety outcomes mechanism-neutral, and evidence level
   proportional to the completion claim;
 - KCS-16b: completed on the KCS-16 branch as one tested 28-entry catalog under
-  `engineering-playbook/ddd-universal-core.json`. Nine independently
+  `engineering-playbook/ddd-universal-core.json`. Twelve independently
   `extraction-review-ready` rules became authoritative `extracted-beta`; all
   other universal-core entries remain visibly non-authoritative advisory
   metadata. KCS-specific contracts, ticket policy, privacy rules, article

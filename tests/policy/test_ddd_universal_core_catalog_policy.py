@@ -15,9 +15,12 @@ CANONICAL_RULE_ID_RE = re.compile(r"ENG-PORT-(?:DISC|DES|DEL)-\d{3}\Z")
 EXPECTED_EXTRACTED = {
     "ENG-PORT-DISC-001",
     "ENG-PORT-DISC-002",
+    "ENG-PORT-DISC-006",
+    "ENG-PORT-DES-002",
     "ENG-PORT-DES-004",
     "ENG-PORT-DES-007",
     "ENG-PORT-DES-010",
+    "ENG-PORT-DES-011",
     "ENG-PORT-DEL-008",
     "ENG-PORT-DEL-010",
     "ENG-PORT-DEL-011",
@@ -31,12 +34,9 @@ EXPECTED_FIELD_ADVISORY = {
 
 EXPECTED_SHADOW = {
     "ENG-PORT-DISC-003",
-    "ENG-PORT-DISC-006",
-    "ENG-PORT-DES-002",
     "ENG-PORT-DES-003",
     "ENG-PORT-DES-006",
     "ENG-PORT-DES-008",
-    "ENG-PORT-DES-011",
     "ENG-PORT-DES-012",
     "ENG-PORT-DEL-003",
     "ENG-PORT-DEL-004",
@@ -62,13 +62,6 @@ EXPECTED_SHADOW_OUTCOMES = {
         "Connect stakeholder context, requirements and constraints to measurable "
         "evaluation and correction."
     ),
-    "ENG-PORT-DISC-006": (
-        "Verify a material external capability in conditions relevant to the "
-        "intended design."
-    ),
-    "ENG-PORT-DES-002": (
-        "Identify, control and evaluate intended changes against the existing baseline."
-    ),
     "ENG-PORT-DES-003": ("Demonstrate behavior preservation with traceable evidence."),
     "ENG-PORT-DES-006": (
         "Characterize compatibility-sensitive unchanged behavior and residual "
@@ -77,10 +70,6 @@ EXPECTED_SHADOW_OUTCOMES = {
     "ENG-PORT-DES-008": (
         "Make a material human decision ready with context, options, consequences, "
         "uncertainty and residual risk."
-    ),
-    "ENG-PORT-DES-011": (
-        "Ensure a claimed deterministic invariant is evaluatable and cannot be "
-        "bypassed through supported entrypoints."
     ),
     "ENG-PORT-DES-012": (
         "Collect proportional human-centred evidence before committing to a "
@@ -275,6 +264,48 @@ def test_paused_led_contracts_remain_advisory_with_exact_resume_gates() -> None:
         "fixtures remain insufficient"
         in rules["ENG-PORT-DEL-006"]["missing_gate"].lower()
     )
+
+
+def test_support_tool_intake_promotes_only_independently_reviewed_rules() -> None:
+    rules = _rules_by_id(_load_catalog())
+    promoted_rule_ids = {
+        "ENG-PORT-DISC-006": "SR-DISC006-01",
+        "ENG-PORT-DES-002": "SR-DES002-01",
+        "ENG-PORT-DES-011": "SR-DES011-01",
+    }
+
+    for rule_id, review_id in promoted_rule_ids.items():
+        rule = rules[rule_id]
+        assert rule["authoritative"] is True
+        assert rule["portability_status"] == "extracted-beta"
+        assert rule["kit_treatment"] == "authoritative-extracted-beta"
+        assert rule["source_review_id"] == review_id
+        assert len(rule["supporting_contexts"]) >= 2
+        assert rule["extraction_review_decision"] == "approved-kcs-16"
+
+    assert "nominal evidence only" in rules["ENG-PORT-DISC-006"]["invariant"].lower()
+    assert (
+        "required to remain unchanged" in rules["ENG-PORT-DES-002"]["invariant"].lower()
+    )
+    assert (
+        "model-controlled behavior is optional"
+        in rules["ENG-PORT-DES-011"]["invariant"].lower()
+    )
+
+
+def test_support_tool_fixture_trial_advances_only_to_active_advisory() -> None:
+    rule = _rules_by_id(_load_catalog())["ENG-PORT-DEL-007"]
+
+    assert rule["authoritative"] is False
+    assert rule["catalog_lane"] == "standards-backed-shadow"
+    assert rule["kit_treatment"] == "advisory-standards-shadow"
+    assert rule["portability_status"] == "external-trial-active"
+    assert rule["extraction_review_decision"] == "not-approved-advisory-only"
+    assert (
+        "stopped an approved synthetic fixture before send"
+        in rule["missing_gate"].lower()
+    )
+    assert "per-rule verdict" in rule["missing_gate"].lower()
 
 
 def test_shadow_support_is_exact_outcome_level_and_bounded() -> None:

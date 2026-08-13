@@ -29,8 +29,8 @@ portability maturity. The catalog contains three operational strengths:
 
 | Core lane | Rules | Intended kit treatment |
 | --- | --- | --- |
-| Field-evidence lane | `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`, `ENG-PORT-DES-001`, `ENG-PORT-DES-004`, `ENG-PORT-DES-007`, `ENG-PORT-DES-010`, `ENG-PORT-DEL-006`, `ENG-PORT-DEL-008`, `ENG-PORT-DEL-010`, `ENG-PORT-DEL-011`, `ENG-PORT-DEL-012` | Nine independently ready rules are authoritative `extracted-beta`; `ENG-PORT-DES-001` and `ENG-PORT-DEL-006` remain non-authoritative field-evidence candidates until their existing per-rule gates close |
-| Standards-backed shadow lane | `ENG-PORT-DISC-003`, `ENG-PORT-DISC-006`, `ENG-PORT-DES-002`, `ENG-PORT-DES-003`, `ENG-PORT-DES-006`, `ENG-PORT-DES-008`, `ENG-PORT-DES-011`, `ENG-PORT-DES-012`, `ENG-PORT-DEL-003`, `ENG-PORT-DEL-004`, `ENG-PORT-DEL-007`, `ENG-PORT-DEL-009` | KCS-16 may carry a neutralized descriptor only as non-normative shadow catalog metadata; it is not an extracted rule. Shadow evaluation must collect applicability, corrections, overhead, false positives, and limitations |
+| Field-evidence lane | `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`, `ENG-PORT-DISC-006`, `ENG-PORT-DES-001`, `ENG-PORT-DES-002`, `ENG-PORT-DES-004`, `ENG-PORT-DES-007`, `ENG-PORT-DES-010`, `ENG-PORT-DES-011`, `ENG-PORT-DEL-006`, `ENG-PORT-DEL-008`, `ENG-PORT-DEL-010`, `ENG-PORT-DEL-011`, `ENG-PORT-DEL-012` | Twelve independently ready rules are authoritative `extracted-beta`; `ENG-PORT-DES-001` and `ENG-PORT-DEL-006` remain non-authoritative field-evidence candidates until their existing per-rule gates close |
+| Standards-backed shadow lane | `ENG-PORT-DISC-003`, `ENG-PORT-DES-003`, `ENG-PORT-DES-006`, `ENG-PORT-DES-008`, `ENG-PORT-DES-012`, `ENG-PORT-DEL-003`, `ENG-PORT-DEL-004`, `ENG-PORT-DEL-007`, `ENG-PORT-DEL-009` | KCS-16 may carry a neutralized descriptor only as non-normative shadow catalog metadata; it is not an extracted rule. Shadow evaluation must collect applicability, corrections, overhead, false positives, and limitations |
 | Reference-only lane | `ENG-PORT-DISC-004`, `ENG-PORT-DISC-005`, `ENG-PORT-DES-009`, `ENG-PORT-DEL-001`, `ENG-PORT-DEL-002` | Optional non-normative catalog guidance; it is not an extracted rule or authoritative gate and does not imply standards conformance or field validation |
 
 The two excluded rules remain source-visible but outside the generic core:
@@ -70,16 +70,24 @@ KCS-16a stabilized the five evidence-triggered formulations:
 
 KCS-16b approved authoritative `extracted-beta` treatment for exactly:
 
-- `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`;
-- `ENG-PORT-DES-004`, `ENG-PORT-DES-007`, `ENG-PORT-DES-010`;
+- `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`, `ENG-PORT-DISC-006`;
+- `ENG-PORT-DES-002`, `ENG-PORT-DES-004`, `ENG-PORT-DES-007`,
+  `ENG-PORT-DES-010`, `ENG-PORT-DES-011`;
 - `ENG-PORT-DEL-008`, `ENG-PORT-DEL-010`, `ENG-PORT-DEL-011`, and
   `ENG-PORT-DEL-012`.
 
+The later three decisions are supported by `plesk_support` commit
+`60acfecc401c8080483eaac11890082e175b0bc4` plus materially different KCS
+contexts under `SR-DISC006-01`, `SR-DES002-01`, and `SR-DES011-01`. Their
+active local contracts remain prospective evidence; local completion is not
+claimed or required to repeat the observed decision effect.
+
 `ENG-PORT-DES-001` and `ENG-PORT-DEL-006` retain
 `external-trial-active` and advisory field-evidence treatment because their
-result-dependent LED contracts remain open. The 12 shadow and five
-reference-only entries retain advisory treatment. No standards disposition,
-catalog membership, or KCS-16 wording decision promoted any other rule.
+result-dependent LED contracts remain open. The nine shadow and five
+reference-only entries retain advisory treatment. No standards disposition or
+catalog membership promoted a rule; the three new authoritative decisions use
+independent field evidence only.
 
 ## External Standards Verdict
 
@@ -119,17 +127,20 @@ External backing supports the generic outcome. It does not promote a rule to
 | Rule | Primary external source outcome | Standards-backed outcome | Required neutralization before shadow catalog packaging |
 | --- | --- | --- | --- |
 | `ENG-PORT-DISC-003` | ISO/IEC/IEEE 12207 stakeholder/context and process-improvement lifecycle; AI RMF `MAP 1.1`, `MAP 2.3`, `MEASURE 2.1`–`2.3` | connect stakeholder context, requirements and constraints to measurable evaluation and correction | Do not require a controlled experiment for every Discovery question; require the smallest evidence method adequate for the material unknown |
-| `ENG-PORT-DISC-006` | AI RMF `MEASURE 2.3`, `MEASURE 2.5`; SSDF `PW.8.2` | verify a material external capability in conditions relevant to the intended design | Keep endpoints, modes and smoke commands in a target adapter or binding |
-| `ENG-PORT-DES-002` | ISO/IEC/IEEE 29148 requirements information throughout the lifecycle; SSDF `PW.1.2` design and risk decision records | identify, control and evaluate intended changes against the existing baseline | Keep concrete changed and unchanged product contracts in the target project |
 | `ENG-PORT-DES-003` | ISO/IEC 25010 quality and acceptance evaluation; SSDF `PW.8.2` regression testing and recorded results | demonstrate behavior preservation with traceable evidence | Require a bidirectional old/new map only when both directions materially apply |
 | `ENG-PORT-DES-006` | ISO/IEC/IEEE 12207 control of lifecycle processes; SSDF `PW.7`, `PW.8` and residual-issue handling | characterize compatibility-sensitive unchanged behavior and residual risk before change closure | Replace the local `frozen contract` term with a project-neutral compatibility-sensitive or declared-unchanged boundary |
 | `ENG-PORT-DES-008` | AI RMF `MAP 2.2`, `MANAGE 1.1`, `MANAGE 1.3`, `MANAGE 1.4` | make a material human decision ready with context, options, consequences, uncertainty and residual risk | Keep UI layout, approver identity and product risk acceptance in the profile |
-| `ENG-PORT-DES-011` | NIST SP 800-160 essential design criteria: non-bypassable, evaluatable, always invoked, tamper-resistant | ensure a claimed deterministic invariant is evaluatable and cannot be bypassed through supported entrypoints | Trigger strict reachability proof only for a material deterministic security, privacy, safety or equivalent invariant; keep host-tool inventories in adapters |
 | `ENG-PORT-DES-012` | ISO 9241-210 lifecycle HCD activities; ISO 9241-220 HCD analysis, design and evaluation outcomes | collect proportional human-centred evidence before committing to a material interaction design | Keep the exact fidelity ladder as optional reference guidance |
 | `ENG-PORT-DEL-003` | SSDF `RV.3.2`, `RV.3.4` root-cause pattern analysis and SDLC correction | use recurring root causes and findings to improve process or tooling | Keep the exact note-to-checklist-to-tool ladder as an optional implementation pattern |
 | `ENG-PORT-DEL-004` | SSDF `PW.7`, `PW.8`; AI RMF `MANAGE 1.4` | close a material change with validation, drift review and explicit residual risk | Keep project test suites, thresholds and review tooling local |
 | `ENG-PORT-DEL-007` | Privacy Framework `CM.AW-P6` provenance/lineage; NIST SP 800-188 privacy/utility evaluation considerations | establish provenance and privacy suitability for sensitive, sanitized or derived fixtures | Keep data classification, lawful use, allowed fixture content and fixture-level privacy proof in the target profile |
 | `ENG-PORT-DEL-009` | SSDF `PS.3.1`, `PS.3.2`; SPDX Build Profile; SLSA provenance | prove current source/build/artifact identity before relying on an installed trial | Installed activation, effective configuration, live capability, client files, service identities, and host-specific preflight remain reference/profile/adapter technique until separately supported |
+
+The prior standards alignment for `ENG-PORT-DISC-006`, `ENG-PORT-DES-002`,
+and `ENG-PORT-DES-011` remains bounded to the same generic outcomes and adapter
+limitations recorded in the pre-promotion crosswalk. It neither caused nor
+strengthened their promotion; the authoritative treatment comes only from the
+source-owned cross-project evidence reviews named above.
 
 `ENG-PORT-DES-009` remains reference-only. ISO lifecycle improvement and SSDF
 review/root-cause outcomes support review in general, but they do not establish

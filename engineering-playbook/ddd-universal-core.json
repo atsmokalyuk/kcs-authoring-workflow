@@ -140,18 +140,32 @@
     {
       "rule_id": "ENG-PORT-DISC-006",
       "family": "Discovery",
-      "catalog_lane": "standards-backed-shadow",
-      "portability_status": "external-trial-active",
-      "kit_treatment": "advisory-standards-shadow",
-      "authoritative": false,
-      "source_rule_summary": "Verify a material external capability under conditions relevant to a dependent design before substantial implementation.",
-      "missing_gate": "Close the active support-tool exact-path evidence with decision impact, corrections, overhead, false positives, limitations, and a local verdict; then complete source-owned promotion and extraction review.",
-      "standards_support": {
-        "sources": ["NIST AI RMF 1.0 Core", "NIST SSDF 1.1"],
-        "outcome": "Verify a material external capability in conditions relevant to the intended design.",
-        "limitations": "Endpoints, modes, commands, payloads, and operating bindings remain target-adapter details; the sources do not prove a current runtime capability."
-      },
-      "extraction_review_decision": "not-approved-advisory-only"
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DISC006-01",
+      "supporting_contexts": [
+        "KCS dependent-design correction after the assumed exact runtime path was absent",
+        "support-tool pre-implementation stop when nominal service evidence could not prove the required operation"
+      ],
+      "trigger": "Before finalizing a material design or starting substantial implementation whose feasibility or correctness depends on an existing external runtime or API capability that is not proven on the current operating path.",
+      "applicability": "Material work whose selected boundary depends on an exact current operation, mode, response contract, and operating condition outside the repository's deterministic control.",
+      "invariant": "Prove the exact operation, mode, response shape, and relevant operating condition with fresh evidence or one bounded safe smoke before relying on the capability. Generic health, neighboring paths, imported schemas, fixtures, and stale documentation are nominal evidence only.",
+      "expected_outcome": "A dependent design is corrected, narrowed, or stopped before substantial work when the exact capability remains unknown; nominal evidence cannot silently become runtime proof.",
+      "authority_boundary": "The accountable capability owner controls access and contract interpretation; the design owner decides whether evidence is sufficient. Deterministic checks may validate provenance and response shape but cannot manufacture external runtime truth.",
+      "stop_or_narrow": "If the exact evidence is unavailable, unsafe, deferred, or inconsistent, keep the capability unknown and stop or narrow the dependent decision. Do not probe alternative paths or send data beyond the authorized boundary.",
+      "limitations": [
+        "One bounded smoke proves only its exact operation and condition, not production reliability or general service readiness.",
+        "Target endpoints, credentials, payloads, project bindings, subscription policy, and safe-access decisions remain adapter-owned; elapsed overhead was not measured consistently."
+      ],
+      "non_goals": [
+        "Prescribing an endpoint, command, schema, fixture, or deployment mechanism",
+        "Requiring a live smoke when the material claim does not depend on a live external capability"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
     },
     {
       "rule_id": "ENG-PORT-DES-001",
@@ -168,18 +182,32 @@
     {
       "rule_id": "ENG-PORT-DES-002",
       "family": "Design",
-      "catalog_lane": "standards-backed-shadow",
-      "portability_status": "external-trial-active",
-      "kit_treatment": "advisory-standards-shadow",
-      "authoritative": false,
-      "source_rule_summary": "Identify intended changes and declared-unchanged behavior before material Delivery.",
-      "missing_gate": "Close the active support-tool contract with drift prevented, corrections, effort, false positives, limitations, and a local verdict; then complete source-owned promotion and extraction review.",
-      "standards_support": {
-        "sources": ["ISO/IEC/IEEE 29148:2018", "NIST SSDF 1.1"],
-        "outcome": "Identify, control and evaluate intended changes against the existing baseline.",
-        "limitations": "Concrete changed and unchanged product contracts remain in the target project; standards alignment does not prove the source rule portable."
-      },
-      "extraction_review_decision": "not-approved-advisory-only"
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DES002-01",
+      "supporting_contexts": [
+        "KCS material slice planning and staged review across locked phase and repository boundaries",
+        "support-tool pre-implementation discovery of a target authority conflict while adjacent workflows remained unchanged"
+      ],
+      "trigger": "Before Delivery of a material slice that intends to change one or more contracts while preserving adjacent behavior or authority boundaries.",
+      "applicability": "Material work that changes behavior, ownership, interface, dependency, persistence, failure, deployment, policy, or another externally meaningful contract.",
+      "invariant": "State the contracts intended to change and the contracts required to remain unchanged before the material slice enters Delivery.",
+      "expected_outcome": "Design and review can detect authority conflicts, unapproved scope widening, adjacent behavior drift, and false behavior-preservation claims before they become delivered changes.",
+      "authority_boundary": "Named product, policy, data, platform, or other contract owners approve changes within their authority; the slice owner records the boundary and the reviewer verifies the authorized diff against it.",
+      "stop_or_narrow": "If a changed or unchanged contract is missing, conflicts with current authority, or requires a wider unapproved slice, return to Design and keep Delivery locked at the affected boundary.",
+      "limitations": [
+        "Concrete product contracts, policy values, compatibility promises, and approval roles remain target-owned.",
+        "The rule exposes drift and authority conflicts but does not replace implementation validation; reviewer minutes were not measured consistently."
+      ],
+      "non_goals": [
+        "Freezing all surrounding behavior indefinitely",
+        "Treating a file list as a behavior or authority contract"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
     },
     {
       "rule_id": "ENG-PORT-DES-003",
@@ -340,18 +368,32 @@
     {
       "rule_id": "ENG-PORT-DES-011",
       "family": "Design",
-      "catalog_lane": "standards-backed-shadow",
-      "portability_status": "external-trial-active",
-      "kit_treatment": "advisory-standards-shadow",
-      "authoritative": false,
-      "source_rule_summary": "For a material deterministic invariant, establish that supported entrypoints cannot bypass its enforcement boundary.",
-      "missing_gate": "Close the active support-tool entrypoint/gate trial with bypass findings, corrections, overhead, false positives, limitations, and a local verdict; then complete source-owned promotion review.",
-      "standards_support": {
-        "sources": ["NIST SP 800-160 Vol. 1 Rev. 1"],
-        "outcome": "Ensure a claimed deterministic invariant is evaluatable and cannot be bypassed through supported entrypoints.",
-        "limitations": "Strict reachability proof applies only to a material deterministic security, privacy, safety, or equivalent invariant; host-tool inventories and enforcement mechanisms remain adapter-owned."
-      },
-      "extraction_review_decision": "not-approved-advisory-only"
+      "catalog_lane": "field-evidence",
+      "portability_status": "extracted-beta",
+      "kit_treatment": "authoritative-extracted-beta",
+      "authoritative": true,
+      "source_revision": "d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66",
+      "extraction_revision": "KCS-16-r1",
+      "source_review_id": "SR-DES011-01",
+      "supporting_contexts": [
+        "KCS host, model, and tool bypass review for a claimed deterministic privacy boundary",
+        "support-tool application, workflow, and command-path review that found executable finalization bypasses"
+      ],
+      "trigger": "When a material deterministic security, privacy, safety, or equivalent invariant is claimed across more than one supported user or system entrypoint.",
+      "applicability": "Claims whose validity depends on every supported path reaching an enforcement owner before the prohibited outcome can occur.",
+      "invariant": "Map every supported entrypoint to its first deterministic enforcement gate and prove that no prohibited outcome can occur before or around that gate. Model-controlled behavior is optional, not enforcement. If reachability cannot be guaranteed, restrict the supported entrypoint or label the behavior best-effort and obtain explicit approval for the weaker contract.",
+      "expected_outcome": "A guarded primary path cannot be mistaken for an end-to-end invariant while another supported path can bypass it, and unsupported universal claims are narrowed before Delivery.",
+      "authority_boundary": "The system owner defines supported entrypoints, the deterministic owner enforces the invariant, and the named human risk owner approves exclusions or a weaker best-effort contract. A model cannot grant deterministic authority to its own routing choice.",
+      "stop_or_narrow": "If an entrypoint is missing, its gate is bypassable, or reachability is unproven, return to Design and restrict the entrypoint or claim before authorizing dependent work.",
+      "limitations": [
+        "Strict reachability proof applies only to a material deterministic invariant; advisory quality goals may use explicitly weaker evidence.",
+        "Target entrypoint inventories, host capabilities, enforcement mechanisms, and accepted residual risks remain adapter-owned; review duration was not measured consistently."
+      ],
+      "non_goals": [
+        "Prescribing a server, connector, user interface, storage, or host-tool mechanism",
+        "Claiming that one protected path proves repository-wide or product-wide enforcement"
+      ],
+      "extraction_review_decision": "approved-kcs-16"
     },
     {
       "rule_id": "ENG-PORT-DES-012",
@@ -443,11 +485,11 @@
       "rule_id": "ENG-PORT-DEL-007",
       "family": "Delivery",
       "catalog_lane": "standards-backed-shadow",
-      "portability_status": "portability-candidate",
+      "portability_status": "external-trial-active",
       "kit_treatment": "advisory-standards-shadow",
       "authoritative": false,
       "source_rule_summary": "Establish provenance and privacy suitability before using sensitive, sanitized, synthetic, or derived fixtures.",
-      "missing_gate": "Track the exact rule revision and fixture acceptance/correction evidence externally without importing private data, then complete source-owned promotion review.",
+      "missing_gate": "An exact support-tool contract genuinely stopped an approved synthetic fixture before send because the destination-purpose, project/subscription, and retention boundary remained unresolved. Resume only inside that approved boundary and independently record the per-rule verdict, corrections, overhead, false positives, and limitations before cross-project and extraction review.",
       "standards_support": {
         "sources": ["NIST Privacy Framework", "NIST SP 800-188"],
         "outcome": "Establish provenance and privacy suitability for sensitive, sanitized or derived fixtures.",

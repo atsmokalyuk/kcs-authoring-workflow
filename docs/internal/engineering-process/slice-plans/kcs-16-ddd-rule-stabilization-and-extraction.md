@@ -28,7 +28,7 @@ assembling, testing, or publishing an Engineering Kit in this slice.
 - Current source counts before KCS-16 Delivery: nine
   `extraction-review-ready`, six `external-trial-active`, thirteen
   `portability-candidate`, and two `project-local` rules.
-- The universal-core boundary is 28 entries: 11 field-evidence, 12
+- The initial universal-core disposition was 28 entries: 11 field-evidence, 12
   standards-backed shadow, and five reference-only entries. `ENG-PORT-DES-005`
   and `ENG-PORT-DEL-005` are excluded as project-local.
 
@@ -42,6 +42,17 @@ assembling, testing, or publishing an Engineering Kit in this slice.
 - Delivery authorization: `authorized` for KCS-16a and KCS-16b planning,
   implementation, deterministic validation, local review, and coherent local
   commits.
+- Promotion review reopening: `authorized` by the operator's 2026-08-13
+  direction to close or provide prompts for the six active external rules and
+  the explicit follow-up that rules which materially helped should be checked
+  against the authoritative promotion gate. The reopened decision is bounded
+  to durable LED and `plesk_support` evidence returned for those exact rules;
+  it does not authorize external-project mutation or KCS-17.
+- Full `plesk_support` campaign audit: `authorized` by the operator on
+  2026-08-13 after the three-rule challenge. The audit may advance another
+  exact `plesk_support` rule only to the highest gate independently supported
+  by commit `60acfecc401c8080483eaac11890082e175b0bc4`; it may not invent a
+  per-rule verdict or treat monitoring as evidence.
 - Remote push and PR creation: `locked` pending explicit operator approval.
 
 ## Selected KCS-16a Boundary
@@ -71,7 +82,7 @@ recorded rather than filled from judgment.
 One catalog under `engineering-playbook/` will contain exactly the reviewed
 28-entry universal core.
 
-Authoritative extraction is selected only for these nine independently ready
+The initial authoritative extraction selected these nine independently ready
 rules:
 
 - `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`;
@@ -79,9 +90,11 @@ rules:
 - `ENG-PORT-DEL-008`, `ENG-PORT-DEL-010`, `ENG-PORT-DEL-011`,
   `ENG-PORT-DEL-012`.
 
-`ENG-PORT-DES-001` and `ENG-PORT-DEL-006` remain non-authoritative
+The later committed GG-006 intake independently adds `ENG-PORT-DISC-006`,
+`ENG-PORT-DES-002`, and `ENG-PORT-DES-011`, for 12 authoritative extracted
+rules. `ENG-PORT-DES-001` and `ENG-PORT-DEL-006` remain non-authoritative
 field-evidence candidates because their LED result-dependent contracts remain
-open. The 12 standards-backed shadow entries and five reference-only entries
+open. Nine standards-backed shadow entries and five reference-only entries
 remain advisory. Standards support may describe only an outcome, vocabulary,
 or control objective; it cannot change portability status or establish field
 usefulness, implementation correctness, runtime capability, applicability, or
@@ -106,8 +119,9 @@ claim.
 
 - revise the five triggered generic candidate formulations where evidence is
   decision-ready;
-- create the single 28-entry DDD catalog and mark the nine selected rules
-  `extracted-beta` in source authority;
+- create and maintain the single 28-entry DDD catalog; mark the initial nine
+  rules and any of the six explicitly reopened external rules that
+  independently pass source review as `extracted-beta` in source authority;
 - update existing source-owned crosswalk/navigation/status text for KCS-16
   coherence;
 - add deterministic policy coverage for identity, membership, lane,
@@ -116,8 +130,12 @@ claim.
 
 ## Locked Work
 
-- portability promotion for any rule other than the nine already reviewed as
-  `extraction-review-ready`;
+- portability promotion outside the initial nine, the six exact reopened
+  external rules (`ENG-PORT-DISC-003`, `ENG-PORT-DISC-006`,
+  `ENG-PORT-DES-001`, `ENG-PORT-DES-002`, `ENG-PORT-DES-011`, and
+  `ENG-PORT-DEL-006`), and an evidence-bounded source-state correction found by
+  the explicitly authorized full `plesk_support` campaign audit; any other
+  source-status change requires separate authorization and review;
 - closing or rewriting LED, `plesk_support`, AI Engineer, Understanding Tool,
   or any other external-project evidence;
 - importing project/company policy, data, thresholds, repository layouts,
@@ -146,7 +164,7 @@ claim.
 | Criterion | Gate | Required evidence |
 | --- | --- | --- |
 | Catalog has exactly 28 complete, unique canonical rule IDs | deterministic policy test | parsed catalog membership equals the registry/crosswalk core set |
-| Nine and only nine independently ready rules are authoritative extracted beta | deterministic policy test plus reviewer | source status and treatment match the reviewed evidence decisions |
+| Twelve and only twelve independently ready rules are authoritative extracted beta after the committed GG-006 review | deterministic policy test plus reviewer | source status and treatment match the reviewed evidence decisions |
 | Non-ready, shadow, and reference entries cannot become authority | deterministic policy test | authority flag/treatment/lane constraints and no lane overlap |
 | Project-local rules are excluded | deterministic policy test | exact excluded set and absence from catalog entries |
 | Five triggered rules use evidence-supported stabilized wording | human review plus focused assertions | wording diff mapped to pre-KCS-16 review triggers |
@@ -213,10 +231,10 @@ Mechanical checks:
 
 Reviewed drift:
 
-- exactly the nine independently reviewed rules moved from
+- exactly the 12 independently reviewed rules moved from
   `extraction-review-ready` to `extracted-beta` and gained authoritative
   catalog treatment;
-- `ENG-PORT-DES-001`, `ENG-PORT-DEL-006`, the 12 shadow entries, and five
+- `ENG-PORT-DES-001`, `ENG-PORT-DEL-006`, the nine shadow entries, and five
   reference entries remain non-authoritative with explicit missing gates;
 - `ENG-PORT-DES-005` and `ENG-PORT-DEL-005` remain project-local and absent
   from the universal core;
@@ -248,7 +266,7 @@ external-project, or KCS-17 behavior drift found.
   weakening triggered core invariants.
 - Advisory authority path: none through the represented catalog contract and
   deterministic checks.
-- Independent extraction gate: pass for all nine authoritative entries.
+- Independent extraction gate: pass for all 12 authoritative entries.
 
 ### Compact Ousterhout Review
 
@@ -307,8 +325,8 @@ Functional commit split:
 
 Exact KCS-17 input:
 `engineering-playbook/ddd-universal-core.json` at catalog revision
-`KCS-16-r1`, containing nine authoritative extracted-beta entries, two
-advisory field-evidence candidates, 12 advisory standards-backed shadow
+`KCS-16-r1`, containing 12 authoritative extracted-beta entries, two
+advisory field-evidence candidates, nine advisory standards-backed shadow
 entries, five advisory reference-only entries, and two explicitly excluded
 project-local rules. KCS-17 execution remains locked.
 
@@ -318,10 +336,12 @@ admitted under source review `SR-LED-PAUSE-145`: `ENG-PORT-DISC-003`,
 `external-trial-active`, while their exact local contracts are paused because
 the authorized physical event and traceable evidence package are absent. This
 is not a failure, closeout, promotion, or extraction decision; the resume gate
-is recorded in the source protocol and advisory catalog. Tracked
-`plesk_support` closeout remains required for `ENG-PORT-DISC-006`,
-`ENG-PORT-DES-002`, and `ENG-PORT-DES-011`; the operator-provided handoff is
-not source-admissible until its evidence is committed durably. KCS-17 remains
+is recorded in the source protocol and advisory catalog. The `plesk_support`
+GG-006 handoff is now durably admitted from commit
+`60acfecc401c8080483eaac11890082e175b0bc4` for
+`ENG-PORT-DISC-006`, `ENG-PORT-DES-002`, and `ENG-PORT-DES-011`. All three
+local contracts remain active, while independent source reviews promote the
+rules to `extracted-beta` without claiming local closeout. KCS-17 remains
 locked.
 
 ### Post-closeout LED blocker intake
@@ -342,10 +362,12 @@ The intake changes only current evidence state and missing gates:
 - the exact resume evidence and the new/revised-contract stop condition are
   recorded in the source protocol and advisory catalog.
 
-Unchanged contracts: 28-entry membership, `11/12/5` catalog lanes, nine
-authoritative extracted rules, two project-local exclusions, all candidate
-formulations, all portability statuses, standards claims, loading contract,
-profile/adapter boundary, and KCS-17 lock.
+At the LED-only intake checkpoint, unchanged contracts were 28-entry
+membership, the then-current `11/12/5` catalog lanes, nine authoritative
+extracted rules, two project-local exclusions, all candidate formulations and
+portability statuses, standards claims, loading contract, profile/adapter
+boundary, and KCS-17 lock. The later GG-006 source review changes only the
+three explicitly recorded promotion decisions and resulting lane split.
 
 Validation on the final intake content:
 
@@ -365,3 +387,124 @@ Ousterhout gate: `not triggered`. This is a bounded source-owned evidence-state
 and advisory missing-gate update; it changes no catalog schema or consumer
 interface, ownership or authority boundary, dependency, persistence, failure,
 deployment, algorithm, control flow, or material internal complexity.
+
+### Post-closeout `plesk_support` GG-006 intake
+
+On 2026-08-13, the source admitted exact commit
+`60acfecc401c8080483eaac11890082e175b0bc4` under
+`SR-PS-GG006-60ACF`. The commit contains only the five declared evidence,
+Design, contract, and structural-test files. Three unrelated untracked files
+remain outside the commit and source intake.
+
+The first source disposition conservatively retained all three statuses because
+their local contracts remained active. The operator challenged that rationale
+on 2026-08-13 after confirming that the rules materially helped. Re-reading the
+authoritative gate showed that `complete-local-trial` is not a prerequisite:
+the source requires two materially different contexts with decision or failure
+effect, corrections, overhead, false positives, and limitations. Existing
+KCS evidence plus the committed GG-006 packet independently satisfies that
+gate for all three rules. The source therefore reopened only these three
+promotion decisions under the already authorized KCS-16a/KCS-16b boundary.
+
+The source reviewed each local verdict independently:
+
+- `ENG-PORT-DISC-006`: `retain`; exact runtime capability remains `UNKNOWN`,
+  and nominal health/schema/fixture evidence cannot satisfy the operational
+  gate;
+- `ENG-PORT-DES-002`: `retain`; the changed/unchanged contract map exposed a
+  real no-egress authority conflict before implementation;
+- `ENG-PORT-DES-011`: target-local `revise`; executable direct-finalization
+  and manual-backfill bypasses required a narrower future server-bound claim,
+  while the upstream generic formulation already requires that correction.
+
+The selected source dispositions are `extraction-review-ready` followed by
+KCS-16 `extracted-beta` for all three rules. The local contracts remain
+`active-local-trial`; their operational gaps continue as prospective evidence
+and are not reported as completed. `ENG-PORT-DES-011` requires no wording
+change because its current generic stop/narrow behavior already covers the
+new bypass findings. The catalog retains 28 entries, moves these three entries
+from standards-backed shadow to authoritative field evidence, and changes the
+lane split from `11/12/5` to `14/9/5`. Standards support remains historical
+alignment only and is not the promotion basis. Profile/adapter boundaries,
+project-local exclusions, and the KCS-17 lock remain unchanged.
+
+Validation on the intake content:
+
+- committed external structural evidence test: `5 passed`;
+- focused catalog, documentation, and graph policy suite: `39 passed`;
+- full policy suite: `82 passed`;
+- full repository suite: `1681 passed, 2 skipped`;
+- Ruff lint and format checks for both changed Python policy tests: passed;
+- JSON parsing, graph-hash validation, and `git diff --cached --check`: passed.
+
+The operator then authorized an audit of the complete committed
+`plesk_support` campaign. `SR-PS-CAMPAIGN-AUDIT-60ACF` found:
+
+- the already extracted `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`,
+  `ENG-PORT-DES-004`, `ENG-PORT-DES-007`, and `ENG-PORT-DEL-008` remain useful
+  and require no wording or status change;
+- `ENG-PORT-DES-001` remains `external-trial-active` because the shared
+  campaign records do not supply a separately attributed per-rule verdict and
+  complete effectiveness fields;
+- `ENG-PORT-DEL-007` advances from `portability-candidate` to
+  `external-trial-active`: its exact prospective contract genuinely collected
+  safe no-send evidence and paused before fixture release, but it remains
+  advisory until a per-rule verdict and complete cross-project evidence record
+  exist;
+- monitored and retrospective-only entries receive no promotion from campaign
+  membership or shared evidence; project-local exclusions remain unchanged.
+
+### Ousterhout review for the reopened promotion batch
+
+Ousterhout gate: `reviewed`.
+
+Trigger: three catalog entries move from advisory shadow metadata to the
+authoritative loaded rule set, changing the authority interface from nine to
+12 rules and the lane split from `11/12/5` to `14/9/5`. A fourth rule changes
+source evidence state to active advisory without entering authority.
+
+Complexity hidden: the single catalog continues to hide source-evidence,
+promotion, treatment, and semantic-contract detail behind the unchanged
+two-field loading predicate. Each newly authoritative entry carries its full
+generic trigger, applicability, invariant, outcome, authority, stop behavior,
+limitations, and non-goals rather than requiring consumers to reconstruct them
+from source reviews.
+
+Owner and what it must not know: this source repository owns promotion and
+extraction decisions. KCS-17 and later consumers must not know target endpoint,
+policy, host-path, fixture, subscription, or local-contract mechanisms, and
+must not infer operational capability or local completion from authority.
+
+Interface depth and caller cognitive load: the consumer contract remains small
+and stable — load only `authoritative=true` plus
+`kit_treatment=authoritative-extracted-beta`. The catalog absorbs the increased
+evidence and semantic detail without adding another consumer API or treatment.
+
+Information leakage and change amplification: value-safe source reviews import
+only rule IDs, revisions, generic decision effects, evidence categories, and
+limitations. Project bindings remain in adapters. The deliberate registry,
+crosswalk, catalog, plan, and test updates are coupled by exact-set and
+source-status checks so authority cannot drift silently.
+
+Complexity removed, moved, or added: three standards-shadow descriptors become
+self-contained authoritative semantic records, removing downstream ambiguity.
+One additional active advisory status records the highest honest gate for its
+safe no-send evidence. No runtime, schema-version, orchestration, persistence,
+or deployment complexity is added.
+
+Residual design risk: KCS-17 must enforce the authority predicate and preserve
+the distinction between extracted process usefulness and still-open target
+operational evidence. Future adapters must bind concrete mechanisms without
+weakening stop conditions or presenting local trial completion that did not
+occur.
+
+Verdict: `pass`, subject to strict staged review confirming each independent
+promotion gate and the final deterministic counts.
+
+Final strict staged review: `pass`, with no blockers or warnings. The reviewer
+confirmed the reopened authorization and plan/diff alignment; all three
+independent extraction gates; the DEL-007 activation-only boundary; DES-001's
+remaining advisory status; no drift for previously extracted, monitored,
+reference, or project-local rules; exact catalog and registry counts; bounded
+standards claims; value-safe traceability; KCS-17 lock; graph hashes; and all
+recorded validation. The Ousterhout verdict is therefore final `pass`.

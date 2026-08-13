@@ -282,10 +282,10 @@ def test_pre_kcs16_ddd_source_review_and_statuses_are_consistent() -> None:
 
     assert len(rows) == 30
     assert status_counts == {
-        "portability-candidate": 13,
-        "external-trial-active": 6,
+        "portability-candidate": 12,
+        "external-trial-active": 4,
         "project-local": 2,
-        "extracted-beta": 9,
+        "extracted-beta": 12,
     }
     assert "pre-kcs-16-ddd-evidence-review.md" in registry
     assert "pre-kcs-16-ddd-evidence-review.md" in protocol
@@ -310,6 +310,24 @@ def test_pre_kcs16_ddd_source_review_and_statuses_are_consistent() -> None:
         row = next(row for row in rows if row[0] == rule_id)
         assert "`paused-local-trial`" in row[3]
         assert row[4] == "external-trial-active"
+    assert "### SR-PS-GG006-60ACF" in protocol
+    assert "60acfecc401c8080483eaac11890082e175b0bc4" in protocol
+    assert "local contracts remain active" in protocol
+    assert "no KCS-16a wording change" in protocol
+    for rule_id in (
+        "ENG-PORT-DISC-006",
+        "ENG-PORT-DES-002",
+        "ENG-PORT-DES-011",
+    ):
+        row = next(row for row in rows if row[0] == rule_id)
+        assert "`SR-" in row[3]
+        assert row[4] == "extracted-beta"
+    assert "### SR-PS-CAMPAIGN-AUDIT-60ACF" in protocol
+    del007_row = next(row for row in rows if row[0] == "ENG-PORT-DEL-007")
+    assert "`ETC-PS-DEL-007-r1`" in del007_row[3]
+    assert "`SR-PS-CAMPAIGN-AUDIT-60ACF`" in del007_row[3]
+    assert del007_row[4] == "external-trial-active"
+    assert "per-rule verdict" in del007_row[5]
     for review_id in (
         "SR-DISC001-01",
         "SR-DISC002-01",
@@ -320,6 +338,9 @@ def test_pre_kcs16_ddd_source_review_and_statuses_are_consistent() -> None:
         "SR-DEL011-01",
         "SR-DEL012-01",
         "SR-DEL010-01",
+        "SR-DISC006-01",
+        "SR-DES002-01",
+        "SR-DES011-01",
     ):
         assert review_id in protocol or review_id in review
 
@@ -358,10 +379,13 @@ def test_ddd_universal_core_boundary_and_lanes_are_consistent() -> None:
         {
             "ENG-PORT-DISC-001",
             "ENG-PORT-DISC-002",
+            "ENG-PORT-DISC-006",
             "ENG-PORT-DES-001",
+            "ENG-PORT-DES-002",
             "ENG-PORT-DES-004",
             "ENG-PORT-DES-007",
             "ENG-PORT-DES-010",
+            "ENG-PORT-DES-011",
             "ENG-PORT-DEL-006",
             "ENG-PORT-DEL-008",
             "ENG-PORT-DEL-010",
@@ -370,12 +394,9 @@ def test_ddd_universal_core_boundary_and_lanes_are_consistent() -> None:
         },
         {
             "ENG-PORT-DISC-003",
-            "ENG-PORT-DISC-006",
-            "ENG-PORT-DES-002",
             "ENG-PORT-DES-003",
             "ENG-PORT-DES-006",
             "ENG-PORT-DES-008",
-            "ENG-PORT-DES-011",
             "ENG-PORT-DES-012",
             "ENG-PORT-DEL-003",
             "ENG-PORT-DEL-004",
