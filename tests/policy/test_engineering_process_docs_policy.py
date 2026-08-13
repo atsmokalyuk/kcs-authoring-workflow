@@ -214,6 +214,14 @@ def test_engineering_rule_portability_has_portfolio_coverage_gate() -> None:
     assert len(rows) == 15
     assert len({row[0] for row in rows}) == 15
     rows_by_id = {row[0]: row for row in rows}
+    allowed_dispositions = {
+        "covered-by-portable-rule",
+        "human-owned",
+        "platform-owned",
+        "project-specific",
+        "explicitly-out-of-kit-scope",
+        "evidence-gap",
+    }
     for row in rows:
         assert len(row) == 7
         capability_id, family, _, coverage, _, disposition, _ = row
@@ -222,7 +230,10 @@ def test_engineering_rule_portability_has_portfolio_coverage_gate() -> None:
             family_code
         ]
         assert coverage in {"covered", "partial", "gap"}
-        assert disposition == "`unclassified`"
+        recorded_dispositions = set(re.findall(r"`([^`]+)`", disposition))
+        assert recorded_dispositions
+        assert recorded_dispositions <= allowed_dispositions
+        assert "`unclassified`" not in disposition
     for family in ("DISC", "DES", "DEL"):
         assert sum(row[0].startswith(f"DDD-{family}-") for row in rows) == 5
     for disposition in (
@@ -238,8 +249,60 @@ def test_engineering_rule_portability_has_portfolio_coverage_gate() -> None:
         registry
     )
     assert "KCS-16b must not start" in registry
-    assert "each named concern" in rows_by_id["DDD-DES-05"][-1]
-    assert "each named lifecycle concern" in rows_by_id["DDD-DEL-04"][-1]
+    assert "privacy/security risk" in rows_by_id["DDD-DES-05"][-2]
+    assert "reliability/performance/observability" in rows_by_id["DDD-DES-05"][-2]
+    assert "build/deployment/migration/activation/rollback" in rows_by_id[
+        "DDD-DEL-04"
+    ][-2]
+
+
+def test_pre_kcs16_ddd_source_review_and_statuses_are_consistent() -> None:
+    process_root = ROOT / "docs/internal/engineering-process"
+    registry = (process_root / "engineering-rule-portability.md").read_text(
+        encoding="utf-8"
+    )
+    protocol = (process_root / "ddd-portfolio-trial-protocol.md").read_text(
+        encoding="utf-8"
+    )
+    review = (process_root / "pre-kcs-16-ddd-evidence-review.md").read_text(
+        encoding="utf-8"
+    )
+    candidate_section = registry.split("## Candidate Registry", 1)[1].split(
+        "## Registry Maintenance", 1
+    )[0]
+    rows = [
+        [part.strip() for part in line.strip().strip("|").split("|")]
+        for line in candidate_section.splitlines()
+        if line.startswith("| ENG-PORT-")
+    ]
+    status_counts: dict[str, int] = {}
+    for row in rows:
+        status_counts[row[4]] = status_counts.get(row[4], 0) + 1
+
+    assert len(rows) == 30
+    assert status_counts == {
+        "portability-candidate": 13,
+        "external-trial-active": 6,
+        "project-local": 2,
+        "extraction-review-ready": 9,
+    }
+    assert "pre-kcs-16-ddd-evidence-review.md" in registry
+    assert "pre-kcs-16-ddd-evidence-review.md" in protocol
+    assert "KCS-16 extraction has not started" in review
+    assert "Nine rules are `extraction-review-ready`" in review
+    assert "No repeated trial" in protocol
+    for review_id in (
+        "SR-DISC001-01",
+        "SR-DISC002-01",
+        "SR-DES004-01",
+        "SR-DES007-01",
+        "SR-DES010-01",
+        "SR-DEL008-01",
+        "SR-DEL011-01",
+        "SR-DEL012-01",
+        "SR-DEL010-01",
+    ):
+        assert review_id in protocol or review_id in review
 
 
 def test_design_uncertainty_protocol_required_anchors() -> None:

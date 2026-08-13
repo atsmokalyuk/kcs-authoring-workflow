@@ -88,9 +88,15 @@ rule semantics exercised, decision impact, validation, and limitations.
 Missing fields remain `unknown`; they are not reconstructed from chat.
 
 Retrospective evidence cannot create a historical `active-local-trial` or
-`external-trial-active` state. The source may use it as supporting evidence in
-a later cross-project review, but retrospective evidence alone cannot make a
-rule `extraction-review-ready`.
+`external-trial-active` state. The source may use it in a later cross-project
+and extraction-readiness review when contemporaneous records establish the
+exact rule semantics, decision effect, validation, corrections, overhead,
+false positives, and limitations across materially different contexts. The
+absence of a prospective contract remains a limitation, but it is not an
+automatic demand to repeat completed work. A new prospective trial is required
+only when source review identifies a material unresolved applicability,
+formulation, effect, or overhead question. Missing fields are never
+reconstructed to satisfy this gate.
 
 ## Source-Owned Status Review
 
@@ -127,8 +133,8 @@ owned by the separate toolkit project.
 
 | Campaign | Project class | Source revision under test | Local state | Formal active rules | Source status effect |
 | --- | --- | --- | --- | --- | --- |
-| `DDD-LED-CAMPAIGN-01` | Greenfield scientific feasibility and controlled physical evidence | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring | `ENG-PORT-DISC-002`, `003`; `ENG-PORT-DES-001`, `004`, `007`; `ENG-PORT-DEL-006`, `008`, `012` | source-reviewed `external-trial-active` |
-| `DDD-AIE-CAMPAIGN-01` | API engineering toolkit implementation and reference-project evaluation | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring of all 30; no exact unfinished task trigger at baseline | none; two future contracts are proposed and `ENG-PORT-DEL-010` has retrospective evidence | `ENG-PORT-DEL-010` separately source-reviewed to `cross-project-evidence-recorded` by `SR-DEL010-01`; no other automatic change |
+| `DDD-LED-CAMPAIGN-01` | Greenfield scientific feasibility and controlled physical evidence | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring; D-212/Checkpoint 144 reconcile the current eight contracts without rewriting the historical three-contract baseline | `ENG-PORT-DISC-002`, `003`; `ENG-PORT-DES-001`, `004`, `007`; `ENG-PORT-DEL-006`, `008`, `012` | source-reviewed statuses apply only to exact rules; physical-result-dependent contracts remain open |
+| `DDD-AIE-CAMPAIGN-01` | API engineering toolkit implementation and reference-project evaluation | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring of all 30; the Pack is adopted and no exact unfinished task is active | none; two future contracts are proposed; RP-B9 and `ENG-PORT-DEL-010` evidence are retrospective | target records change no status; source reviews in `pre-kcs-16-ddd-evidence-review.md` own later dispositions |
 | `DDD-PS-CAMPAIGN-01` | Existing support-tool material integration and privacy-sensitive external feasibility | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | active monitoring; implementation not started and an external capability blocker remains | `ENG-PORT-DISC-002`, `006`; `ENG-PORT-DES-001`, `002`, `007`, `011`; `ENG-PORT-DEL-008`; `ENG-PORT-DEL-007` is paused | source-reviewed active contracts affect exact rules only; no automatic completion or cross-project promotion |
 | `DDD-UT-CAMPAIGN-01` | Completed standalone engineering-Discovery investigation with bounded deterministic, agent-mediated, and hidden-holdout comparisons | `d1c6f6d1af8442ce704cf57c07a28ec4ed6aec66` | closed retrospective review under terminal decision 0077 | none; qualifying prior use is retrospective only | no automatic change; value-safe evidence is eligible for source review |
 
@@ -137,6 +143,14 @@ campaign inventory, portability review, extraction decision, and export
 boundary.
 
 ## Source-Reviewed Cross-Project Evidence
+
+The authoritative pre-KCS-16 intake and per-rule source dispositions are in
+`docs/internal/engineering-process/pre-kcs-16-ddd-evidence-review.md`.
+The following reviews establish cross-project evidence and move exact rules to
+`extraction-review-ready`: `SR-DISC001-01`, `SR-DISC002-01`,
+`SR-DES004-01`, `SR-DES007-01`, `SR-DES010-01`, `SR-DEL008-01`,
+`SR-DEL011-01`, and `SR-DEL012-01`. The status permits KCS-16 consideration;
+it does not approve extraction or skip a triggered KCS-16a stabilization.
 
 ### SR-DEL010-01
 
@@ -165,8 +179,10 @@ boundary.
 - **Limitations:** the external use was retrospective, PUT runtime retry and
   concurrency behavior was not executed, the original RP-B3 packet remains
   lost, and no prospective `DDD-AIE-DEL010-02` evidence exists yet.
-- **Source disposition:** `cross-project-evidence-recorded`.
-- **Next gate:** retain the prospective AI Engineer contract and obtain one
-  source-reviewed closeout with rule-owned overhead/correction measurements
-  before any `extraction-review-ready` decision. This retrospective review
-  cannot satisfy that later gate by itself.
+- **Source disposition:** `extraction-review-ready`; the review first satisfies
+  `cross-project-evidence-recorded` and then finds the evidence sufficient for
+  KCS-16 consideration under the retrospective-admission rule above.
+- **Next gate:** retain the prospective AI Engineer contract for unresolved
+  runtime applicability evidence, and use KCS-16a to confirm
+  mechanism-neutral wording before any extraction decision. No repeated trial
+  is required solely to recreate a prospective timestamp.
