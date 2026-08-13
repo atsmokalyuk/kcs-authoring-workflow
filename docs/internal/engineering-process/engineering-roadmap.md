@@ -255,11 +255,15 @@ ChatGPT Pro review, Fable 5 review, or a future internal runner may have thin
 adapters that explain how to consume the same repo-local process, but those
 adapters must not become the authoritative copy of the workflow.
 
-Reusable design/spec infrastructure should start as project-local generic
-templates, schemas, and validators. If the same workflow becomes useful in a
-second project, extract the generic parts into a reusable package. Keep
-project-specific contracts, such as KCS workflow rules, ticket storage,
-semantic-review policy, and article-style rules, in this project.
+Reusable design/spec infrastructure started as project-local generic
+templates, schemas, and validators. KCS-16 has now extracted only the nine
+independently eligible generic DDD rules into the 28-entry catalog at
+`engineering-playbook/ddd-universal-core.json`; the other entries remain
+non-authoritative advisory metadata. KCS-17 owns any later export assembly and
+compatibility handoff, while a separate project owns role composition,
+integration testing, and packaging. Project-specific contracts, such as KCS
+workflow rules, ticket storage, semantic-review policy, and article-style
+rules, stay in this project.
 
 The local tool entrypoint spec should live near `AGENTS.md` and the engineering
 playbooks. It should be compact: name the supported task, the exact command,

@@ -1,8 +1,9 @@
 # KCS-16 DDD Rule Stabilization And Extraction
 
 Status: Active Slice Plan. Outcome agreed, design selected, and Delivery
-authorized by the operator on 2026-08-13. Push, PR creation, merge, KCS-17,
-external-project changes, and deployment remain separately locked.
+authorized by the operator on 2026-08-13. KCS-16 Delivery is complete locally
+and PR-ready. Push, PR creation, merge, KCS-17, external-project changes, and
+deployment remain separately locked.
 
 ## Agreed Outcome
 
@@ -194,9 +195,126 @@ Reviewer questions:
 
 ## Closeout Records To Complete
 
-- behavior and authority drift review;
-- plan/diff alignment verdict;
-- compact Ousterhout design review;
-- reviewer blockers/warnings and resolution;
-- promotion-candidate checkpoint;
-- proposed functional commit split and KCS-17 input statement.
+### Behavior And Authority Drift Review
+
+Behavior change intended: yes, limited to source-owned DDD wording,
+portability status, and catalog authority. No KCS product/runtime/data/privacy
+behavior changed.
+
+Mechanical checks:
+
+- exact catalog membership, canonical IDs, lane disjointness, exclusions,
+  source-status match, advisory treatment, and authority predicate tests;
+- exact shadow outcome checks and reference-only no-authority checks;
+- authoritative semantic-field mechanism-leakage checks;
+- five evidence-triggered wording anchors;
+- engineering-process policy, code-review graph/hash, Ruff, JSON parsing,
+  complete Python 3.11 test suite, and staged diff checks.
+
+Reviewed drift:
+
+- exactly the nine independently reviewed rules moved from
+  `extraction-review-ready` to `extracted-beta` and gained authoritative
+  catalog treatment;
+- `ENG-PORT-DES-001`, `ENG-PORT-DEL-006`, the 12 shadow entries, and five
+  reference entries remain non-authoritative with explicit missing gates;
+- `ENG-PORT-DES-005` and `ENG-PORT-DEL-005` remain project-local and absent
+  from the universal core;
+- only the five source-triggered candidate formulations changed; the other
+  candidate formulations and all external evidence records remain unchanged;
+- standards alignment, catalog membership, and target-local state still
+  cannot promote portability status.
+
+Review-only drift risks:
+
+- later KCS-17 consumers must enforce both `authoritative=true` and
+  `kit_treatment=authoritative-extracted-beta` rather than infer authority from
+  catalog membership or lane;
+- registry, crosswalk, and catalog deliberately duplicate status/lane facts;
+  deterministic source-match and exact-set tests now make divergence a
+  failing change rather than a silent drift.
+
+Verdict: intended authority change only; no unintended runtime, data, privacy,
+external-project, or KCS-17 behavior drift found.
+
+### Reviewer Result
+
+- Plan/diff alignment: `pass`.
+- Reviewer blockers: none.
+- Reviewer warnings: none.
+- Extraction/advisory boundary: explicit and sufficient.
+- Standards claims: bounded to outcome-level support.
+- Profile/adapter boundary: preserves target specificity and prohibits
+  weakening triggered core invariants.
+- Advisory authority path: none through the represented catalog contract and
+  deterministic checks.
+- Independent extraction gate: pass for all nine authoritative entries.
+
+### Compact Ousterhout Review
+
+Ousterhout gate: reviewed
+
+Trigger: new authoritative machine-readable catalog interface and
+ownership/authority boundary for downstream KCS-17 consumption.
+
+Complexity hidden: one catalog encodes rule identity, lane, portability,
+treatment, authority, evidence traceability, semantic rule contract, and
+advisory limitations; deterministic tests own cross-document consistency.
+
+Owner and what it must not know: this source repository and KCS-16 own catalog
+status and extraction decisions. Later profiles/adapters must not know or
+rewrite source promotion mechanics, weaken core invariants, or treat advisory
+metadata as authority.
+
+Interface depth and caller cognitive load: the top-level loading rule and four
+explicit treatments provide a small consumption contract while detailed
+evidence and limitations remain behind each record.
+
+Information leakage and change amplification: project mechanisms and private
+data remain outside the semantic rules. Status changes intentionally require
+registry, catalog, and deterministic expected-disposition updates; tests make
+that bounded duplication explicit.
+
+Complexity removed, moved, or added: scattered consumption inference is
+removed and consolidated in one catalog plus policy checks. The slice adds a
+deliberate schema and maintenance surface.
+
+Residual design risk: KCS-17 must enforce the two-field authority predicate and
+preserve the profile/adapter boundary; export compatibility remains untested
+and locked to KCS-17.
+
+Verdict: pass.
+
+### Validation Record
+
+- Python: 3.11.13.
+- Focused catalog, engineering-doc, and graph/hash policy: 36 passed.
+- Complete policy suite: 79 passed.
+- Complete repository suite: 1678 passed, 2 skipped.
+- Ruff lint and format checks for changed Python policy tests: passed.
+- `git diff --cached --check`: passed.
+- Complete intended diff review: passed; no unrelated files.
+
+### Promotion And Downstream Checkpoint
+
+Promotion candidates: none.
+
+Functional commit split:
+
+1. tracked KCS-16 Active Slice Plan and authorization;
+2. wording stabilization, extracted/advisory catalog, authority/navigation
+   updates, deterministic policy checks, graph hash, and closeout record.
+
+Exact KCS-17 input:
+`engineering-playbook/ddd-universal-core.json` at catalog revision
+`KCS-16-r1`, containing nine authoritative extracted-beta entries, two
+advisory field-evidence candidates, 12 advisory standards-backed shadow
+entries, five advisory reference-only entries, and two explicitly excluded
+project-local rules. KCS-17 execution remains locked.
+
+External-trial follow-up remains independent: tracked LED closeout is still
+required for `ENG-PORT-DISC-003`, `ENG-PORT-DES-001`, and
+`ENG-PORT-DEL-006`; tracked `plesk_support` closeout is still required for
+`ENG-PORT-DISC-006`, `ENG-PORT-DES-002`, and `ENG-PORT-DES-011`. The operator
+started those external closeout tasks on 2026-08-13; no result or source-owned
+promotion is inferred here.

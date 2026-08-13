@@ -285,7 +285,7 @@ def test_pre_kcs16_ddd_source_review_and_statuses_are_consistent() -> None:
         "portability-candidate": 13,
         "external-trial-active": 6,
         "project-local": 2,
-        "extraction-review-ready": 9,
+        "extracted-beta": 9,
     }
     assert "pre-kcs-16-ddd-evidence-review.md" in registry
     assert "pre-kcs-16-ddd-evidence-review.md" in protocol
@@ -383,7 +383,7 @@ def test_ddd_universal_core_boundary_and_lanes_are_consistent() -> None:
     )
     assert "`ENG-PORT-DES-005`" in crosswalk
     assert "`ENG-PORT-DEL-005`" in crosswalk
-    assert "does not start\nKCS-16 or KCS-17" in crosswalk
+    assert "does not start KCS-17" in crosswalk
     assert "silently weaken or bypass" in crosswalk
     assert "ddd-universal-core-standards-crosswalk.md" in agents
     assert "ddd-universal-core-standards-crosswalk.md" in registry
@@ -621,9 +621,13 @@ def test_duplicate_continuation_gate_is_tracked() -> None:
     for text in (checklist, feature_playbook, portability):
         assert "side-effecting" in text
         assert "duplicate" in text
+    for text in (checklist, feature_playbook):
         assert "replay" in text
         assert "newer" in text
         assert "pending" in text
+    assert "same stable outcome or a deterministic no-op" in portability
+    assert "different current operation" in portability
+    assert "still-valid operation" in portability
     assert "## Duplicate And Re-entrant Continuation Gate" in feature_playbook
     assert "Prompt instructions" in feature_playbook
     assert "ENG-PORT-DEL-010" in portability

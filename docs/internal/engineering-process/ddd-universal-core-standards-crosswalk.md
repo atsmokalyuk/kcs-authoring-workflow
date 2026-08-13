@@ -1,8 +1,8 @@
 # DDD Universal Core Standards Crosswalk
 
-Status: authoritative source-owned portfolio boundary and planning input for
-KCS-16 extraction and the later KCS-17 handoff. This record does not start
-KCS-16 or KCS-17, change a rule's portability status, or approve extraction.
+Status: authoritative source-owned portfolio boundary and KCS-16 disposition
+record for the later KCS-17 handoff. This record does not start KCS-17, assign
+kit roles, implement orchestration, or claim kit readiness.
 
 Date: 2026-08-13
 
@@ -11,6 +11,11 @@ Date: 2026-08-13
 The generic Engineering Kit portfolio is a 28-rule universal-core catalog:
 every current `ENG-PORT-*` candidate except `ENG-PORT-DES-005` and
 `ENG-PORT-DEL-005`.
+
+KCS-16 materialized that boundary as one machine-readable catalog:
+`engineering-playbook/ddd-universal-core.json`. The catalog keeps portability
+status, catalog lane, kit treatment, and authority independent so later tooling
+cannot infer authority merely from membership in the universal core.
 
 The 28 rules provide sufficient capability coverage for the declared kit
 scope:
@@ -24,7 +29,7 @@ portability maturity. The catalog contains three operational strengths:
 
 | Core lane | Rules | Intended kit treatment |
 | --- | --- | --- |
-| Field-evidence lane | `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`, `ENG-PORT-DES-001`, `ENG-PORT-DES-004`, `ENG-PORT-DES-007`, `ENG-PORT-DES-010`, `ENG-PORT-DEL-006`, `ENG-PORT-DEL-008`, `ENG-PORT-DEL-010`, `ENG-PORT-DEL-011`, `ENG-PORT-DEL-012` | Eligible for authoritative beta extraction only after the existing per-rule KCS-16 gate; current source status remains authoritative |
+| Field-evidence lane | `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`, `ENG-PORT-DES-001`, `ENG-PORT-DES-004`, `ENG-PORT-DES-007`, `ENG-PORT-DES-010`, `ENG-PORT-DEL-006`, `ENG-PORT-DEL-008`, `ENG-PORT-DEL-010`, `ENG-PORT-DEL-011`, `ENG-PORT-DEL-012` | Nine independently ready rules are authoritative `extracted-beta`; `ENG-PORT-DES-001` and `ENG-PORT-DEL-006` remain non-authoritative field-evidence candidates until their existing per-rule gates close |
 | Standards-backed shadow lane | `ENG-PORT-DISC-003`, `ENG-PORT-DISC-006`, `ENG-PORT-DES-002`, `ENG-PORT-DES-003`, `ENG-PORT-DES-006`, `ENG-PORT-DES-008`, `ENG-PORT-DES-011`, `ENG-PORT-DES-012`, `ENG-PORT-DEL-003`, `ENG-PORT-DEL-004`, `ENG-PORT-DEL-007`, `ENG-PORT-DEL-009` | KCS-16 may carry a neutralized descriptor only as non-normative shadow catalog metadata; it is not an extracted rule. Shadow evaluation must collect applicability, corrections, overhead, false positives, and limitations |
 | Reference-only lane | `ENG-PORT-DISC-004`, `ENG-PORT-DISC-005`, `ENG-PORT-DES-009`, `ENG-PORT-DEL-001`, `ENG-PORT-DEL-002` | Optional non-normative catalog guidance; it is not an extracted rule or authoritative gate and does not imply standards conformance or field validation |
 
@@ -40,12 +45,41 @@ validation, residual risk, and maintainability outcomes are already represented
 elsewhere in the portfolio; the two excluded mechanisms may be supplied by a
 project profile if a target context needs them.
 
-The KCS-16 extraction gate remains unchanged: only a rule that independently
-reaches `extraction-review-ready` may become an authoritative extracted beta
-asset. Carrying a shadow or reference descriptor in the 28-entry catalog is a
-separate, non-extracted advisory packaging path. KCS-17 must preserve that
-distinction in the export manifest, and the later kit must not load either
-advisory lane as rule authority.
+The KCS-16 extraction gate remained unchanged: only a rule that independently
+reached `extraction-review-ready` could become an authoritative extracted beta
+asset. Carrying a non-ready field-evidence, shadow, or reference descriptor in
+the 28-entry catalog is a separate, non-extracted advisory packaging path.
+KCS-17 must preserve that distinction in the export manifest, and the later
+kit must not load any advisory treatment as rule authority.
+
+## KCS-16 Disposition
+
+KCS-16a stabilized the five evidence-triggered formulations:
+
+- `ENG-PORT-DISC-002`: minimal evidence states remain separate from decision
+  authority;
+- `ENG-PORT-DES-004`: ownership identifies responsibility and authority but
+  does not validate AI content;
+- `ENG-PORT-DES-010`: the durable design record applies to material work and a
+  reviewer-verifiable mechanical leaf exception remains available;
+- `ENG-PORT-DEL-010`: duplicate and re-entrant safety is expressed as
+  applicability and outcome invariants without mandating an API, storage, or
+  replay mechanism;
+- `ENG-PORT-DEL-012`: evidence level is proportional to the completion claim,
+  and a production trial is not the default.
+
+KCS-16b approved authoritative `extracted-beta` treatment for exactly:
+
+- `ENG-PORT-DISC-001`, `ENG-PORT-DISC-002`;
+- `ENG-PORT-DES-004`, `ENG-PORT-DES-007`, `ENG-PORT-DES-010`;
+- `ENG-PORT-DEL-008`, `ENG-PORT-DEL-010`, `ENG-PORT-DEL-011`, and
+  `ENG-PORT-DEL-012`.
+
+`ENG-PORT-DES-001` and `ENG-PORT-DEL-006` retain
+`external-trial-active` and advisory field-evidence treatment because their
+result-dependent LED contracts remain open. The 12 shadow and five
+reference-only entries retain advisory treatment. No standards disposition,
+catalog membership, or KCS-16 wording decision promoted any other rule.
 
 ## External Standards Verdict
 
@@ -147,8 +181,8 @@ the existing source-owned evidence review.
 
 ## Downstream Ownership
 
-- KCS-16 owns wording stabilization, extraction selection and generic asset
-  creation.
+- KCS-16 completed wording stabilization, extraction selection and generic
+  catalog asset creation in `engineering-playbook/ddd-universal-core.json`.
 - KCS-17 owns the export manifest, evidence-strength metadata, compatibility
   boundary and handoff to the separate Engineering Kit project.
 - The separate Engineering Kit project owns profile and adapter interfaces,

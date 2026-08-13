@@ -168,6 +168,9 @@ Authoritative layers:
 - `docs/internal/engineering-process/ddd-universal-core-standards-crosswalk.md`:
   authoritative 28-rule universal-core boundary, standards-backed shadow
   dispositions, and target profile/adapter separation.
+- `engineering-playbook/ddd-universal-core.json`: KCS-16 generic DDD catalog
+  containing authoritative extracted-beta rules and visibly non-authoritative
+  field-evidence, shadow, and reference advisory entries for KCS-17 input.
 - `docs/internal/engineering-process/functional-test-from-behavior.md`:
   functional acceptance test convention, fixture tiers, provenance checks, and
   refactor-safety test expectations.
